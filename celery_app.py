@@ -50,8 +50,6 @@ celery = Celery(
         'tasks.email_tasks',
         'tasks.notification_tasks',
         'tasks.cert_tasks',
-        'tasks.export_tasks',
-        'tasks.webhook_tasks',
         'tasks.analytics_tasks',
         'tasks.scheduled_tasks',
         'tasks.waitlist_tasks',
@@ -82,8 +80,6 @@ celery.conf.update(
         'tasks.email_tasks.*':        {'queue': 'email'},
         'tasks.notification_tasks.*': {'queue': 'email'},
         'tasks.cert_tasks.*':         {'queue': 'certs'},
-        'tasks.export_tasks.*':       {'queue': 'exports'},
-        'tasks.webhook_tasks.*':      {'queue': 'webhooks'},
         'tasks.analytics_tasks.*':    {'queue': 'default'},
         'tasks.scheduled_tasks.*':    {'queue': 'default'},
     },
@@ -137,6 +133,9 @@ celery.conf.update(
 )
 
 
+_flask_app = None   # the app tasks run in; set by init_celery
+
+
 def init_celery(app):
     """
     Bind a Flask app to the celery instance so tasks run inside the
@@ -145,9 +144,15 @@ def init_celery(app):
         from celery_app import celery, init_celery
         init_celery(app)
     """
+    # Tasks read the app when they run, not when their class was made: task
+    # modules are imported once, so a later init_celery (a reloaded app in the
+    # tests) must still reach them (UPG-110)
+    global _flask_app
+    _flask_app = app
+
     class ContextTask(celery.Task):
         def __call__(self, *args, **kwargs):
-            with app.app_context():
+            with (_flask_app or app).app_context():
                 return self.run(*args, **kwargs)
 
     celery.Task = ContextTask

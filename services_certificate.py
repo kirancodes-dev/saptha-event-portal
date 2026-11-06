@@ -44,7 +44,10 @@ class CertificateService:
 
     @staticmethod
     def generate_verification_hash(cert_id: str, event_id: str, email: str) -> str:
-        """Create an HMAC-SHA256 signature hash for anti-counterfeit verification."""
+        """API v1's verification hash: the first 24 hex characters of a SHA-256
+        of the certificate ID, event, email and the secret joined together. It
+        is not an HMAC. The web's certificates (services_certificates) carry a
+        random number instead, checked at /verify/<number> (UPG-126)."""
         secret = _get_cert_secret()
         payload = f"{cert_id}:{event_id}:{email.strip().lower()}:{secret}"
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:24]

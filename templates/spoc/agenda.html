@@ -24,15 +24,25 @@
           <i class="fas fa-plus" aria-hidden="true"></i> Add item
         </button>
       </div>
+      <p class="small text-subtle mb-0" style="padding:12px 20px 0;">
+        Each item is a session. Give it seats to warn the scanner when the room is full, and hours
+        to credit attendees only for the sessions they were scanned into (FDPs, NSS).
+        Scan people into a session from the scanner's <strong>Session</strong> mode.
+      </p>
       <div style="padding:20px;" id="rows-container">
         {% if event.get('agenda') %}
           {% for item in event.agenda %}
           <div class="d-flex gap-3 align-items-start mb-3 agenda-row">
             <div class="row-num">{{ loop.index }}</div>
             <div class="row g-2 flex-grow-1">
+              <input type="hidden" name="sid[]" value="{{ item.id or '' }}">
               <div class="col-auto">
-                <input aria-label="Time" type="time" name="time[]" value="{{ item.time }}"
+                <input aria-label="Start time" type="time" name="time[]" value="{{ item.time }}"
                        class="form-control form-control-sm" style="width:110px;" required>
+              </div>
+              <div class="col-auto">
+                <input aria-label="End time (optional)" type="time" name="end[]" value="{{ item.end or '' }}"
+                       class="form-control form-control-sm" style="width:110px;">
               </div>
               <div class="col">
                 <input aria-label="Item title (e.g. Opening Ceremony)" type="text" name="title[]" value="{{ item.title }}"
@@ -43,6 +53,18 @@
                 <input aria-label="Details (optional)" type="text" name="desc[]" value="{{ item.desc }}"
                        placeholder="Details (optional)"
                        class="form-control form-control-sm">
+              </div>
+              <div class="col">
+                <input aria-label="Room (optional)" type="text" name="room[]" value="{{ item.room or '' }}"
+                       placeholder="Room (optional)" class="form-control form-control-sm">
+              </div>
+              <div class="col-auto">
+                <input aria-label="Seats (optional)" type="number" min="1" name="capacity[]" value="{{ item.capacity or '' }}"
+                       placeholder="Seats" class="form-control form-control-sm" style="width:100px;">
+              </div>
+              <div class="col-auto">
+                <input aria-label="Hours credited (optional)" type="number" min="0" step="0.25" name="hours[]" value="{{ item.hours or '' }}"
+                       placeholder="Hours" class="form-control form-control-sm" style="width:100px;">
               </div>
             </div>
             <button type="button" class="remove-row" data-h-click="spoc/agenda:2" aria-label="Remove this item">

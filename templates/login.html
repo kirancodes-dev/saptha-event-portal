@@ -30,6 +30,7 @@
 {% endblock %}
 {% block body_attrs %} class="auth"{% endblock %}
 {% block body %}
+{% include "includes/back_link.html" %}
     <a href="#main-content" class="skip-link">Skip to the sign-in form</a>
 
     <div class="auth-container">
@@ -106,11 +107,13 @@
                                 <i class="fas fa-user-shield inp-icon" aria-hidden="true"></i>
                                 <select name="role" id="roleSelect" class="form-select" required aria-required="true" aria-describedby="roleHint">
                                     <option value="">Choose your role...</option>
-                                    <option value="Student">Student / participant</option>
+                                    {# The five roles of the login page (UPG-197, owner 2026-11-05) #}
+                                    <option value="SuperAdmin">Admin</option>
+                                    <option value="ClubSPOC">SPOC</option>
                                     <option value="EventCoordinator">Event coordinator</option>
-                                    <option value="ClubSPOC">Club SPOC (manager)</option>
-                                    <option value="Judge">Event judge</option>
-                                    <option value="SuperAdmin">Super admin</option>
+                                    <option value="Judge">Judge</option>
+                                    <option value="Student">Student</option>
+                                    {# Volunteer, IQAC coordinator and department admin are off the menu for now (UPG-204, owner 2026-11-06) #}
                                 </select>
                             </div>
                             <span id="roleHint" class="visually-hidden">Select your role in the Sapthagiri event portal</span>

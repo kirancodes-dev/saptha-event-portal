@@ -1,0 +1,188 @@
+{% extends "base_classic.html" %}
+{#- The registered team's hackathon page (UPG-196): stages, problem statements,
+    the submission form, updates and the team. Polls every 60 seconds. -#}
+{% block title %}{{ event.title }} — Hackathon{% endblock %}
+{% block page_title %}{{ event.title }}{% endblock %}
+{% block page_sub %}Team <strong>{{ reg.team_name or reg.lead_name }}</strong> · this page is where every update appears{% endblock %}
+{% block page_actions %}<a href="/participant/dashboard" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Dashboard</a>{% endblock %}
+{% block extra_css %}
+<style>
+.hk-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:20px 22px;margin-bottom:18px;}
+.hk-card h2{font-size:15px;font-weight:700;color:var(--brand-ink,#1a2557);text-transform:uppercase;letter-spacing:.4px;margin:0 0 14px;display:flex;align-items:center;gap:8px;}
+.hk-stages{list-style:none;margin:0;padding:0;display:grid;gap:10px;}
+.hk-stage{display:flex;gap:12px;align-items:flex-start;padding:10px 12px;border-radius:10px;border:1px solid #e2e8f0;}
+.hk-stage__dot{flex:0 0 26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;background:#f1f5f9;color:#64748b;}
+.hk-stage--done .hk-stage__dot{background:#dcfce7;color:#166534;}
+.hk-stage--current{border-color:#1a2557;background:#f8faff;}
+.hk-stage--current .hk-stage__dot{background:#1a2557;color:#fff;}
+.hk-stage__label{font-weight:700;color:#1a2557;}
+.hk-stage__note{font-size:13px;color:#475569;}
+.hk-countdown{font-variant-numeric:tabular-nums;font-weight:700;color:#b45309;font-size:13px;}
+.hk-wa{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:14px 18px;margin-bottom:18px;}
+.hk-problem{border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;margin-bottom:10px;}
+.hk-problem h3{font-size:15px;font-weight:700;margin:0 0 6px;color:#1a2557;}
+.hk-problem p{white-space:pre-line;font-size:14px;color:#334155;margin:0 0 8px;}
+.hk-update{border-left:3px solid #c9a227;padding:6px 12px;margin-bottom:12px;}
+.hk-update__at{font-size:12px;color:#64748b;}
+.hk-update__msg{white-space:pre-line;font-size:14px;color:#334155;}
+.hk-field{margin-bottom:14px;}
+.hk-field .form-text{font-size:12px;}
+.hk-err{color:#b91c1c;font-size:13px;font-weight:600;}
+.hk-closed{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:12px 14px;font-weight:600;}
+.hk-open{background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:10px;padding:10px 14px;margin-bottom:14px;}
+</style>
+{% endblock %}
+{% block content %}
+<div id="hkPortal" data-state-url="/hackathon/{{ event.id }}/state" data-version="{{ version }}">
+
+  {% if group_link %}
+  <div class="hk-wa">
+    <div><strong><i class="fab fa-whatsapp" aria-hidden="true"></i> Join the hackathon's WhatsApp group</strong><br>
+      <span class="text-muted small">Quick announcements come there; everything official is on this page.</span></div>
+    <a class="btn btn-success" href="{{ group_link }}" target="_blank" rel="noopener noreferrer">Join WhatsApp group</a>
+  </div>
+  {% endif %}
+
+  <div class="row g-3">
+    <div class="col-lg-4">
+      <section class="hk-card" aria-labelledby="stagesHead">
+        <h2 id="stagesHead"><i class="fas fa-route" aria-hidden="true"></i> Where things stand</h2>
+        <ol class="hk-stages">
+          {% for s in stages %}
+          <li class="hk-stage hk-stage--{{ s.state }}" data-stage="{{ s.key }}" data-state="{{ s.state }}">
+            <span class="hk-stage__dot" aria-hidden="true">{% if s.state == 'done' %}<i class="fas fa-check"></i>{% else %}{{ loop.index }}{% endif %}</span>
+            <div>
+              <div class="hk-stage__label">{{ s.label }} <span class="visually-hidden">({{ s.state }})</span></div>
+              {% if s.note %}<div class="hk-stage__note">{{ s.note }}</div>{% endif %}
+              {% if s.countdown_to %}<div class="hk-countdown" data-countdown="{{ s.countdown_to }}"></div>{% endif %}
+            </div>
+          </li>
+          {% endfor %}
+        </ol>
+      </section>
+
+      <section class="hk-card" aria-labelledby="teamHead">
+        <h2 id="teamHead"><i class="fas fa-users" aria-hidden="true"></i> Your team</h2>
+        <p class="mb-1"><strong>{{ reg.team_name or 'Team' }}</strong></p>
+        <ul class="list-unstyled small mb-0">
+          <li><i class="fas fa-crown text-warning" aria-hidden="true"></i> {{ reg.lead_name }} (lead)</li>
+          {% for m in members %}<li><i class="fas fa-user text-muted" aria-hidden="true"></i> {{ m.name }}</li>{% endfor %}
+        </ul>
+      </section>
+    </div>
+
+    <div class="col-lg-8">
+      {% if results %}
+      <section class="hk-card hk-result" id="results" aria-labelledby="resultsHead">
+        <h2 id="resultsHead"><i class="fas fa-trophy" aria-hidden="true"></i> Results</h2>
+        <p class="hk-result__outcome mb-1" data-outcome="{{ results.outcome }}">Your team: <strong>{{ results.outcome }}</strong>{% if results.rank %} · rank {{ results.rank }}{% endif %}</p>
+        {% if results.podium %}
+        <ul class="list-unstyled mb-0 mt-2">
+          {% for w in results.podium %}<li><i class="fas fa-medal text-warning" aria-hidden="true"></i> <strong>{{ w.label }}</strong>: {{ w.team }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+      </section>
+      {% elif reg.is_eliminated %}
+      <section class="hk-card hk-out" id="status" aria-labelledby="outHead">
+        <h2 id="outHead"><i class="fas fa-flag-checkered" aria-hidden="true"></i> Your team's status</h2>
+        <p class="mb-0">Your team wasn't shortlisted for the finale this time, so submissions are closed to it. Thank you for taking part; the results will appear here.</p>
+      </section>
+      {% endif %}
+
+      {% if certificates %}
+      <section class="hk-card" id="certificates" aria-labelledby="certsHead">
+        <h2 id="certsHead"><i class="fas fa-award" aria-hidden="true"></i> Certificates</h2>
+        <ul class="list-unstyled mb-0">
+          {% for c in certificates %}<li class="mb-1"><a href="/certificates/c/{{ c.number }}/pdf" target="_blank" rel="noopener"><i class="fas fa-file-pdf" aria-hidden="true"></i> {{ c.name }}: {{ c.cert_type | replace('_', ' ') | capitalize }}</a></li>{% endfor %}
+        </ul>
+        <p class="hk-note small text-muted mt-2 mb-0">Each person can also find their own under My certificates.</p>
+      </section>
+      {% endif %}
+
+      <section class="hk-card" id="updates" aria-labelledby="updatesHead">
+        <h2 id="updatesHead"><i class="fas fa-bullhorn" aria-hidden="true"></i> Updates</h2>
+        {% for u in updates[:20] %}
+        <div class="hk-update">
+          <div class="hk-update__at">{{ show(u.at) }}</div>
+          <div class="fw-bold">{{ u.title }}</div>
+          {% if u.message %}<div class="hk-update__msg">{{ u.message }}</div>{% endif %}
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">No updates yet. Check this page regularly; we post everything here, not by email.</p>
+        {% endfor %}
+      </section>
+
+      <section class="hk-card" id="problems" aria-labelledby="problemsHead">
+        <h2 id="problemsHead"><i class="fas fa-lightbulb" aria-hidden="true"></i> Problem statements</h2>
+        {% for p in problems %}
+        <article class="hk-problem">
+          <h3>{{ p.title }}{% if p.track %} <span class="se-badge se-badge--plain">{{ p.track }}</span>{% endif %}</h3>
+          <p>{{ p.description }}</p>
+          {% if p.pdf_key %}<a href="/hackathon/{{ event.id }}/problem/{{ p.id }}/pdf" target="_blank" rel="noopener"><i class="fas fa-file-pdf" aria-hidden="true"></i> {{ p.pdf_name or 'Problem statement (PDF)' }}</a>{% endif %}
+        </article>
+        {% else %}
+        <p class="text-muted mb-0">{% if next_release %}Problem statements will be released on <strong>{{ next_release }}</strong>.{% else %}Problem statements haven't been released yet. They will appear here.{% endif %}</p>
+        {% endfor %}
+      </section>
+
+      <section class="hk-card" id="submission" aria-labelledby="subHead">
+        <h2 id="subHead"><i class="fas fa-upload" aria-hidden="true"></i> Submission</h2>
+        {% if reg.is_eliminated and window != 'closed' %}
+          <p class="text-muted mb-0">Submissions are closed to your team: it is no longer in the hackathon.</p>
+        {% elif window == 'not_set' %}
+          <p class="text-muted mb-0">The organisers haven't opened submissions yet. The form will appear here.</p>
+        {% elif window == 'not_open' %}
+          <p class="mb-0">Submissions open on <strong>{{ opens }}</strong> and close on <strong>{{ closes }}</strong>.</p>
+        {% elif window == 'closed' %}
+          <div class="hk-closed">Submissions closed on {{ closes }}.{% if submission %} Your team's submission is below.{% else %} Your team didn't submit.{% endif %}</div>
+        {% else %}
+          <div class="hk-open"><i class="fas fa-clock" aria-hidden="true"></i> Closes <strong>{{ closes }}</strong> · <span class="hk-countdown" data-countdown="{{ closes_iso }}"></span>
+            {% if submission %}<br><span class="small">Submitted {{ show(submission.updated_at) }}. You can edit it until the deadline.</span>{% endif %}</div>
+          {% if reg.is_eliminated %}
+            <p class="text-muted">Your team is no longer in the hackathon.</p>
+          {% else %}
+          <form method="POST" action="/hackathon/{{ event.id }}/submit" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% for f in form.fields %}
+            {% set answer = (submission.answers or {}).get(f.id) if submission else none %}
+            <div class="hk-field">
+              <label class="form-label fw-semibold" for="f_{{ f.id }}">{{ f.label }}{% if f.required %} <span class="text-danger" aria-hidden="true">*</span>{% endif %}</label>
+              {% if f.kind == 'textarea' %}
+                <textarea class="form-control" id="f_{{ f.id }}" name="f_{{ f.id }}" rows="5" maxlength="5000" {% if f.required %}required{% endif %}>{{ answer or '' }}</textarea>
+              {% elif f.kind == 'link' %}
+                <input class="form-control" type="url" id="f_{{ f.id }}" name="f_{{ f.id }}" value="{{ answer or '' }}" placeholder="https://" maxlength="500" {% if f.required %}required{% endif %}>
+              {% elif f.kind == 'pdf' %}
+                <input class="form-control" type="file" accept="application/pdf,.pdf" id="f_{{ f.id }}" name="f_{{ f.id }}" {% if f.required and not answer %}required{% endif %}>
+                <div class="form-text">PDF, up to {{ f.max_mb or pdf_limit }} MB.{% if answer and answer.key %} Uploaded: <a href="/hackathon/{{ event.id }}/file/{{ reg_id }}/{{ f.id }}" target="_blank" rel="noopener">{{ answer.name }}</a>. Choose a file only to replace it.{% endif %}</div>
+              {% elif f.kind == 'problem' %}
+                <select class="form-select" id="f_{{ f.id }}" name="f_{{ f.id }}" {% if f.required %}required{% endif %}>
+                  <option value="">Choose a problem statement…</option>
+                  {% for p in problems %}<option value="{{ p.id }}" {% if answer == p.id %}selected{% endif %}>{{ p.title }}</option>{% endfor %}
+                </select>
+              {% else %}
+                <input class="form-control" type="text" id="f_{{ f.id }}" name="f_{{ f.id }}" value="{{ answer or '' }}" maxlength="200" {% if f.required %}required{% endif %}>
+              {% endif %}
+              {% if f.help %}<div class="form-text">{{ f.help }}</div>{% endif %}
+              {% if errors.get(f.id) %}<div class="hk-err" role="alert">{{ errors.get(f.id) }}</div>{% endif %}
+            </div>
+            {% endfor %}
+            <button class="btn btn-primary" type="submit"><i class="fas fa-paper-plane" aria-hidden="true"></i> {% if submission %}Save changes{% else %}Submit{% endif %}</button>
+            <p class="small text-muted mt-2 mb-0">Only the team lead can submit. The deadline is checked by the server; a late submission is refused.</p>
+          </form>
+          {% endif %}
+        {% endif %}
+
+        {% if submission and window != 'open' %}
+        <dl class="mt-3 mb-0">
+          {% for f in form.fields %}{% set answer = (submission.answers or {}).get(f.id) %}{% if answer %}
+          <dt class="small text-muted">{{ f.label }}</dt>
+          <dd>{% if f.kind == 'pdf' %}<a href="/hackathon/{{ event.id }}/file/{{ reg_id }}/{{ f.id }}" target="_blank" rel="noopener">{{ answer.name }}</a>{% elif f.kind == 'problem' %}{{ problem_titles.get(answer, answer) }}{% elif f.kind == 'link' %}<a href="{{ answer }}" target="_blank" rel="noopener noreferrer">{{ answer }}</a>{% else %}<span style="white-space:pre-line">{{ answer }}</span>{% endif %}</dd>
+          {% endif %}{% endfor %}
+        </dl>
+        {% endif %}
+      </section>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}<script src="/static/js/pages/hackathon__portal.js"></script>{% endblock %}

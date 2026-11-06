@@ -87,12 +87,43 @@ def fee_for(event_data: dict, participant_type: str = '') -> float:
     return float(event_data.get('entry_fee', 0) or fees.get('regular', 0) or 0)
 
 
-def server_price(db, event_id: str, event_data: dict, coupon_code: str = '',
-                 participant_type: str = '') -> dict:
-    """The amount to charge, computed only from server-side data."""
-    from routes_dynamic_pricing import calculate_surge_price
+def priced_as(reg_data: dict) -> dict:
+    """What a pending registration's price depends on, for server_price."""
+    reg_data = reg_data or {}
+    return {'participant_type': reg_data.get('participant_type', ''),
+            'ticket_type': reg_data.get('ticket_type_id', ''),   # not 'ticket_type': the issued ticket's name goes there
+            'member_count': reg_data.get('member_count') or len(reg_data.get('members') or []) or 1,
+            # A seat held for them (waitlist promotion) is paid at its type's
+            # price even after the type's sale dates (UPG-155)
+            'check_sale': str(reg_data.get('status', '')).lower() != 'pending_payment'}
 
-    fee = fee_for(event_data, participant_type)
+
+def registration_fee(event_data: dict, participant_type: str = '', ticket_type: str = '',
+                     member_count: int = 1) -> float:
+    """The fee before coupons: the chosen ticket type's price when the event
+    has ticket types (UPG-155), else the registrant's group fee."""
+    import services_ticket_types as tt
+    if tt.types_for(event_data):
+        ticket = tt.find(event_data, ticket_type)
+        if ticket is None:
+            raise PaymentError('Please choose a ticket type.')
+        return tt.price(ticket, member_count)
+    return fee_for(event_data, participant_type)
+
+
+def server_price(db, event_id: str, event_data: dict, coupon_code: str = '',
+                 participant_type: str = '', ticket_type: str = '', member_count: int = 1,
+                 check_sale: bool = True) -> dict:
+    """The amount to charge, computed only from server-side data. A ticket
+    type that isn't on sale is refused, so an order is made only inside its
+    sale dates (UPG-155)."""
+    from routes_dynamic_pricing import calculate_surge_price
+    import services_ticket_types as tt
+
+    fee = registration_fee(event_data, participant_type, ticket_type, member_count)
+    ticket = tt.find(event_data, ticket_type) if tt.types_for(event_data) else None
+    if ticket is not None and check_sale and not tt.on_sale(ticket):
+        raise PaymentError(f"{ticket['name']} is no longer on sale.")
     discount, coupon = 0.0, None
     if coupon_code:
         coupon, error = find_valid_coupon(db, coupon_code, event_id)

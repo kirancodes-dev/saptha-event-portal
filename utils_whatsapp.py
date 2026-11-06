@@ -83,11 +83,45 @@ def _fmt_phone(phone: str) -> str:
     return f'whatsapp:+{p}'   # best-effort
 
 
-def _send(to_phone: str, body: str) -> bool:
+def _send(to_phone: str, body: str, consented: bool = False) -> bool:
     """
-    Core send function. Returns True on success, False on any failure.
-    Never raises.
+    Every WhatsApp message goes through here: only when WhatsApp is switched on,
+    the person opted in and didn't reply STOP, and this month's cap isn't
+    reached (services_whatsapp.gate, UPG-147). Returns True on success, False
+    otherwise. Never raises.
     """
+    try:
+        from services_whatsapp import counted, gate
+        why = gate(to_phone, consented=consented)
+    except Exception as exc:
+        logger.warning("WhatsApp gate failed: %s", exc)
+        return False
+    if why:
+        logger.info("WhatsApp to %s not sent: %s", str(to_phone)[-4:], why)
+        return False
+    ok = _provider_send(to_phone, body)
+    if ok:
+        try:
+            counted()
+        except Exception:
+            logger.exception("WhatsApp send not counted")
+    return ok
+
+
+def _provider_send(to_phone: str, body: str) -> bool:
+    """Hand one text message to the configured provider (Meta's Cloud API or Twilio)."""
+    if (os.environ.get('WHATSAPP_PROVIDER') or 'twilio').strip().lower() == 'meta':
+        import requests
+        digits = ''.join(c for c in str(to_phone) if c.isdigit())
+        try:
+            resp = requests.post(f"https://graph.facebook.com/v20.0/{os.environ.get('META_WA_PHONE_ID', '')}/messages",
+                                 json={'messaging_product': 'whatsapp', 'to': digits if len(digits) > 10 else '91' + digits,
+                                       'type': 'text', 'text': {'body': body}}, timeout=15,
+                                 headers={'Authorization': f"Bearer {os.environ.get('META_WA_TOKEN', '')}"})
+            return resp.status_code < 300
+        except Exception as exc:
+            logger.error("WhatsApp (Meta) failed: %s", exc)
+            return False
     client = _client()
     if not client:
         return False
@@ -115,15 +149,16 @@ def _send(to_phone: str, body: str) -> bool:
 # ─────────────────────────────────────────────────────────────
 
 def whatsapp_configured() -> bool:
-    """Whether Twilio settings are present, so WhatsApp can be sent at all."""
-    return bool(os.environ.get('TWILIO_ACCOUNT_SID', '').strip()
-                and os.environ.get('TWILIO_AUTH_TOKEN', '').strip())
+    """Whether WhatsApp is switched on and a provider is set up (UPG-147)."""
+    from services_whatsapp import enabled
+    return enabled()
 
 
-def send_whatsapp_message(phone: str, body: str) -> bool:
+def send_whatsapp_message(phone: str, body: str, consented: bool = False) -> bool:
     """A plain WhatsApp message (services_automation's channel, UPG-49).
-    True when Twilio accepted it; never raises."""
-    return _send(phone, body)
+    `consented`: the person opted in through their notification preferences.
+    True when the provider accepted it; never raises."""
+    return _send(phone, body, consented=consented)
 
 
 def send_ticket_whatsapp(phone: str, name: str, event_title: str,

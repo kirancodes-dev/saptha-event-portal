@@ -176,10 +176,12 @@ def event_teams(event_id):
         teams.append(d)
 
     teams.sort(key=lambda x: x.get('team_name', ''))
+    import services_hackathon   # a link to each team's submission (UPG-194)
     return render_template('judge/teams.html',
                             event=event, teams=teams,
                             judge_email=judge_email,
-                            open_hall=open_hall)
+                            open_hall=open_hall,
+                            is_hackathon=services_hackathon.has_form(event))
 
 
 # =========================================================
@@ -207,6 +209,13 @@ def submit_score(reg_id):
             if request.is_json or 'json' in request.headers.get('Accept', ''):
                 return jsonify({'status': 'locked', 'message': 'Scoring is locked by the SPOC for this round.'}), 403
             return "locked", 403
+        from services_rounds import can_score   # only teams still in this round (UPG-149)
+        if not can_score(event_doc, reg_data):
+            message = "This team isn't in the current round, so it can't be scored."
+            if request.is_json or 'json' in request.headers.get('Accept', ''):
+                return jsonify({'status': 'error', 'message': message}), 409
+            flash(message, "warning")
+            return redirect(f'/judge/event/{event_id}'), 409
 
         norm_criteria = normalize_criteria(event_doc.get('judging_criteria'))
 
@@ -242,7 +251,8 @@ def submit_score(reg_id):
         avg_score = round(total_score / len(norm_criteria), 1) if norm_criteria else total_score
         avg_score = int(avg_score) if avg_score == int(avg_score) else avg_score
         judge_email = session.get('user_id')
-        remarks     = (json_data.get('remarks') if json_data else request.form.get('remarks', '')).strip()
+        # A JSON score may leave out its remarks (UPG-04: None.strip() refused every such score)
+        remarks     = str((json_data.get('remarks') if json_data else request.form.get('remarks', '')) or '').strip()
 
         reg_ref.set({
             'scores': {
@@ -301,6 +311,10 @@ def score_inline(reg_id):
         if event_doc.get('scoring_locked'):
             return jsonify({'status': 'locked',
                             'message': 'Scoring is locked by the SPOC for this round.'}), 403
+        from services_rounds import can_score   # only teams still in this round (UPG-149)
+        if not can_score(event_doc, reg_data):
+            return jsonify({'status': 'error',
+                            'message': "This team isn't in the current round, so it can't be scored."}), 409
 
         norm_criteria = normalize_criteria(event_doc.get('judging_criteria'))
 

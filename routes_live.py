@@ -11,13 +11,14 @@ Routes (public — no auth required):
 import json
 import time
 
-from flask import Blueprint, Response, jsonify, render_template, stream_with_context
+from flask import Blueprint, Response, abort, current_app, jsonify, render_template, stream_with_context
 try:
     from google.cloud.firestore_v1.base_query import FieldFilter
 except ImportError:
     FieldFilter = None
 
 from models import db
+from utils import venue_label  # never an invented place (UPG-111)
 
 live_bp = Blueprint('live', __name__, url_prefix='/live')
 
@@ -44,7 +45,7 @@ def _compute_leaderboard(event_id: str) -> "dict | None":
     return {
         'event_id':     event_id,
         'event_title':  event.get('title', 'Event'),
-        'venue':        event.get('venue', 'SNPSU Campus'),
+        'venue':        venue_label(event),   # UPG-111
         'category':     event.get('category', ''),
         'cur_round':    cur_round,
         'round_label':  _ROUND_LABEL.get(cur_round, f'Round {cur_round}'),
@@ -183,10 +184,17 @@ def live_data(event_id):
     return jsonify(snapshot)
 
 # ── 4. Live Streams & Reels ──────────────────────────────────────────────
+# Both pages simulate their content (viewer and like counts, bot chat, comment
+# and share buttons that do nothing), so they are hidden unless
+# DEMO_PAGES_ENABLED (UPG-65, D-8).
 @live_bp.route('/streams')
 def live_streams():
+    if not current_app.config.get('DEMO_PAGES_ENABLED'):
+        abort(404)
     return render_template('public/live_streams.html')
 
 @live_bp.route('/reels')
 def live_reels():
+    if not current_app.config.get('DEMO_PAGES_ENABLED'):
+        abort(404)
     return render_template('public/reels.html')

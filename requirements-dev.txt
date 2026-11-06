@@ -8,3 +8,5 @@ ruff==0.16.9
 pyrefly==1.4.0
 bandit==1.9.4
 python-docx==1.2.0
+# Browser checks (tests/headless.py: UPG-23, UPG-25 to UPG-28); then: python -m playwright install chromium
+playwright==1.64.0

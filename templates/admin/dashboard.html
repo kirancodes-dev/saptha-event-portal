@@ -7,6 +7,11 @@
 {% block page_actions %}
 <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#appointSpocModal"><i class="fas fa-user-shield" aria-hidden="true"></i> New SPOC</button>
 <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#aiCopilotModal"><i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i> AI copilot</button>
+<a href="/reach/settings" class="btn btn-outline-primary">Public pages</a>
+<a href="/whatsapp/settings" class="btn btn-outline-primary">WhatsApp</a>
+<a href="/impact/dashboard" class="btn btn-outline-primary"><i class="fas fa-chart-line" aria-hidden="true"></i> Impact</a>
+<a href="/naac/" class="btn btn-outline-primary"><i class="fas fa-file-lines" aria-hidden="true"></i> NAAC reports</a>
+<a href="/certificates/reports/counts" class="btn btn-outline-primary"><i class="fas fa-award" aria-hidden="true"></i> Certificate counts</a>
 <a href="/spoc/create_event" class="btn btn-gold"><i class="fas fa-plus" aria-hidden="true"></i> New event</a>
 {% endblock %}
 {% block extra_css %}
@@ -825,10 +830,11 @@ async function approveAiProposal() {
       </div>
       <form action="/coordinator/promote_round/{{ event.id }}" method="POST">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="round" value="{{ event.active_round|default(1) }}">
         <div class="modal-body p-4">
           <div class="alert alert-warning text-center">
             <strong>Current Round: {{ event.active_round|default(1) }}</strong><br>
-            <small>Teams at or above the cut-off advance to Round {{ (event.active_round|default(1)) + 1 }}.</small>
+            <small>Teams whose average judge score is at or above the cut-off advance to Round {{ (event.active_round|default(1)) + 1 }}.</small>
           </div>
           <label class="form-label text-danger">Cut-off Score</label>
           <input aria-label="Cut-off Score" type="number" step="0.1" name="cutoff_score" class="form-control form-control-lg text-center fw-bold border-danger" placeholder="e.g. 75" required>

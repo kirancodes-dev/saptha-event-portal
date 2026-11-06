@@ -1,0 +1,21 @@
+{% extends "layouts/status.html" %}
+{#- A certificate download link that expired, was altered, or points at a replaced certificate (UPG-125). -#}
+{% set status_tone = 'warning' %}
+{% set status_icon = 'fa-link-slash' %}
+{% block title %}Download link{% endblock %}
+{% block status %}
+  {% if expired %}
+  <h1>This link has expired</h1>
+  <p>Download links work for a limited time. Sign in and open <strong>My certificates</strong> to download it again.</p>
+  {% elif replaced %}
+  <h1>This certificate was replaced</h1>
+  <p>The certificate this link was for is no longer current. Sign in and open <strong>My certificates</strong> for the current one,
+     or <a href="/verify/{{ number }}">check it here</a>.</p>
+  {% else %}
+  <h1>This link isn't valid</h1>
+  <p>Check that the whole link was copied from the email, or sign in and open <strong>My certificates</strong>.</p>
+  {% endif %}
+  <div class="status-actions">
+    <a href="/certificates/mine" class="btn btn-primary">My certificates</a>
+  </div>
+{% endblock %}

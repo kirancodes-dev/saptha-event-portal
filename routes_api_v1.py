@@ -267,47 +267,84 @@ def api_get_event(event_id):
     return api_success(ev)
 
 
+# ── Creating events: the wizard's checks, saved as a draft (UPG-82) ───────────
+# Owner decision 2026-10-17: an event created through the API starts as a draft
+# and goes through the same review as one made in the web wizard.
+_API_FIELD_ALIASES = {'fee': 'reg_fee', 'deadline': 'reg_deadline', 'registration_deadline': 'reg_deadline',
+                      'min_team_size': 'team_min', 'max_team_size': 'team_max', 'capacity': 'max_participants'}
+
+
+class _ApiForm(dict):
+    """A JSON body that parse_form reads like request.form."""
+    def getlist(self, key):
+        value = self.get(key)
+        return value if isinstance(value, list) else ([] if value in (None, '') else [value])
+
+
+def _api_form(data):
+    form = _ApiForm()
+    for key, value in (data or {}).items():
+        target = _API_FIELD_ALIASES.get(key, key)
+        if target != key and target in data:    # the wizard's own name wins over an old alias
+            continue
+        form[target] = value if isinstance(value, list) else ('' if value is None else str(value))
+    if 'is_team_event' in (data or {}) and 'participation_type' not in form:
+        form['participation_type'] = 'Team' if data['is_team_event'] else 'Individual'
+    if form.get('date') and not form.get('reg_deadline'):
+        form['reg_deadline'] = form['date']     # the old API's default: registration closes on the day
+    return form
+
+
+def _save_api_draft(data):
+    """Validate an API body exactly as the wizard does and save it as a draft
+    owned by the caller; answers 400 with the wizard's errors, or 201."""
+    from services_event_types import apply_preset, get_type, parse_form
+    db = _db()
+    if db is None:
+        return api_error("service_unavailable", "Database not available", status=503)
+    event, errors, warnings = parse_form(_api_form(data))
+    if errors:
+        return api_error("invalid_event", errors[0], details={"errors": errors})
+    spec = get_type(event["event_type"])
+    contact = event.pop("contact", None) or {}
+    owner = g.jwt_user.get("sub", "")
+    event.update({
+        "organization_id": g.jwt_user.get("org_id") or "default",
+        "status": "draft",
+        "spoc_id": owner,
+        "organizer": {"name": g.jwt_user.get("name", ""), "email": owner,
+                      "phone": contact.get("phone", ""), "group_link": contact.get("group_link", "")},
+        "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "results_published": False,
+        "warnings": warnings,
+        "source": "api",
+    })
+    preset_fields = apply_preset(event, spec)
+    _, ref = db.collection("events").add(event)
+    event["id"] = ref.id
+    if preset_fields:
+        db.collection("event_forms").document(ref.id).set({
+            "event_id": ref.id, "form_type": "custom", "fields": preset_fields, "created_by": owner,
+            "created_at": event["created_at"], "source": "template"})
+        db.collection("events").document(ref.id).update({"has_custom_form": True})
+    try:
+        from audit_logger import log_action
+        log_action("EVENT_CREATED", f"{owner} created draft '{event['title']}' ({event['event_type']}) {ref.id} via the API")
+    except Exception:
+        pass
+    return api_success(event, status=201)
+
+
 @api_v1_bp.route("/events", methods=["POST"])
 @jwt_roles_required(["ClubSPOC", "Admin", "Coordinator"])
 def api_create_event():
-    """Create a new event.
+    """Create an event as a draft, with the wizard's checks (UPG-82).
 
-    Body: { "title", "description", "category", "date", "venue", ... }
+    Body: the wizard's fields ({"title", "event_type", "category", "date",
+    "reg_deadline", "venue", ...}); "fee", "deadline", "min_team_size",
+    "max_team_size", "capacity" and "is_team_event" are accepted as before.
     """
-    db = _db()
-    data = request.get_json(silent=True) or {}
-
-    required = ["title", "category", "date", "venue"]
-    missing = [f for f in required if not data.get(f)]
-    if missing:
-        return api_error("missing_fields", f"Required fields: {missing}")
-
-    event_data = {
-        "title": data["title"],
-        "description": data.get("description", ""),
-        "category": data["category"],
-        "date": data["date"],
-        "deadline": data.get("deadline", data["date"]),
-        "venue": data["venue"],
-        "status": "active",
-        "entry_fee": data.get("fee", 0),
-        "fee": data.get("fee", 0),
-        "is_team_event": data.get("is_team_event", False),
-        "min_team_size": data.get("min_team_size", 1),
-        "max_team_size": data.get("max_team_size", 1),
-        "registration_count": 0,
-        "rules": data.get("rules", ""),
-        "prizes": data.get("prizes", ""),
-        "poster_url": data.get("poster_url", ""),
-        "created_by": g.jwt_user["sub"],
-        "org_id": g.jwt_user.get("org_id", ""),
-        "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-    }
-
-    doc_ref = db.collection("events").add(event_data)
-    event_data["id"] = doc_ref[1].id
-
-    return api_success(event_data, status=201)
+    return _save_api_draft(request.get_json(silent=True) or {})
 
 
 @api_v1_bp.route("/events/<event_id>", methods=["PUT"])
@@ -709,38 +746,21 @@ def api_get_template(template_id):
 @api_v1_bp.route("/events/from-template", methods=["POST"])
 @jwt_roles_required(["SuperAdmin", "Admin", "SPOC", "Organizer"])
 def api_create_event_from_template():
-    """Create an event pre-configured from a turnkey template."""
-    from services_templates import TemplateService
+    """Create a draft from a catalogue template: the event type whose preset
+    (or key) is the template, checked and saved like the wizard (UPG-82)."""
+    from services_event_types import TYPES
     data = request.get_json(silent=True) or {}
     template_id = (data.get("template_id") or "").strip().lower()
-    title = (data.get("title") or "").strip()
-    date_str = (data.get("date") or "").strip()
-
-    if not template_id or not title or not date_str:
+    if not template_id or not (data.get("title") or "").strip() or not (data.get("date") or "").strip():
         return api_error("missing_fields", "template_id, title, and date are required")
-
-    db = _db()
-    if db is None:
-        return api_error("service_unavailable", "Database not available", status=503)
-
-    try:
-        event = TemplateService.instantiate_event(
-            db,
-            template_id=template_id,
-            title=title,
-            date_str=date_str,
-            deadline_str=(data.get("registration_deadline") or "").strip(),
-            venue=(data.get("venue") or "").strip(),
-            organization_id=data.get("organization_id"),
-            created_by=g.jwt_user.get("sub", ""),
-            overrides=data.get("overrides"),
-        )
-        return api_success(event, status=201)
-    except ValueError as e:
-        return api_error("invalid_template", str(e), status=400)
-    except Exception as e:
-        logger.error("Error creating event from template: %s", e)
-        return api_error("server_error", str(e), status=500)
+    key = template_id if template_id in TYPES else next(
+        (k for k, spec in TYPES.items() if spec.get("preset") == template_id), None)
+    if not key:
+        return api_error("invalid_template", f"Unknown template: {template_id}")
+    body = dict(data.get("overrides") or {})
+    body.update({k: v for k, v in data.items() if k not in ("overrides", "template_id", "organization_id")})
+    body["event_type"] = key
+    return _save_api_draft(body)
 
 
 @api_v1_bp.route("/events/<event_id>/workflow-transition", methods=["POST"])
@@ -1034,39 +1054,56 @@ def api_event_leaderboard(event_id):
 
 
 @api_v1_bp.route("/events/<event_id>/issue-certificates", methods=["POST"])
-@jwt_roles_required(["SuperAdmin", "Admin", "SPOC", "Organizer"])
+@jwt_roles_required(["SuperAdmin", "Admin", "SPOC", "ClubSPOC", "Organizer"])
 def api_bulk_issue_certificates(event_id):
-    """Bulk issue certificates for an event (winners, runner ups, participants)."""
-    from services_certificate import CertificateService
+    """Issue an event's certificates through the web's issuing (UPG-137): the
+    same `certificates` records, in the background, each person once. Optional
+    JSON `category`: one certificate type (e.g. "participation", "winner")."""
+    import services_certificate_runs as runs
+    import services_certificates as certs
+    from services_permission import can
     db = _db()
     if db is None:
         return api_error("service_unavailable", "Database not available", status=503)
-
-    data = request.get_json(silent=True) or {}
-    category = data.get("category")
-
+    doc = db.collection("events").document(event_id).get()
+    if not doc.exists:
+        return api_error("not_found", "Event not found", status=404)
+    caller = {"user_id": g.jwt_user.get("sub", ""), "role": g.jwt_user.get("role", "")}
+    if not can(caller, "issue_certificates", dict(doc.to_dict() or {}, id=event_id), db=db):
+        return api_error("forbidden", "You can't issue this event's certificates", status=403)
+    category = (request.get_json(silent=True) or {}).get("category")
+    if category and category not in certs.TYPES:
+        return api_error("bad_request", f"Unknown certificate type: {category}", status=400)
     try:
-        certs = CertificateService.bulk_issue_event_certificates(db, event_id, category=category)
-        return api_success({
-            "event_id": event_id,
-            "issued_count": len(certs),
-            "certificates": certs,
-        }, status=201)
-    except ValueError as e:
-        return api_error("not_found", str(e), status=404)
-    except Exception as e:
-        logger.error("Error bulk issuing certificates: %s", e)
-        return api_error("internal_error", str(e), status=500)
+        run = runs.start(db, event_id, caller["user_id"], kinds=[category] if category else None, reason="api")
+    except certs.CertificateError as e:
+        return api_error("not_ready", str(e), status=409)
+    run = runs.get(db, run["id"]) or run
+    return api_success(dict(runs.progress(run), run_id=run["id"],
+                            certificates=[{"number": c["number"], "name": c["name"], "type": c["cert_type"],
+                                           "verify_url": certs.verify_url(c["number"])}
+                                          for c in certs.for_event(event_id)
+                                          if not category or c["cert_type"] == category]), status=202)
 
 
 @api_v1_bp.route("/certificates/<cert_id>", methods=["GET"])
 def api_verify_certificate(cert_id):
-    """Public certificate verification endpoint."""
-    from services_certificate import CertificateService
+    """Public certificate verification: a certificate number from the web's
+    store (UPG-137), else an ID from the older API store."""
+    import services_certificates as certs
     db = _db()
     if db is None:
         return api_error("service_unavailable", "Database not available", status=503)
-
+    if certs.looks_like_number(cert_id):
+        view = certs.public_view(cert_id)
+        if not view:
+            return api_error("not_found", "No certificate has this number", status=404)
+        return api_success({"verified": view["state"] == "valid", "message": view["state"],
+                            "certificate": {k: view[k] for k in ("number", "version", "state", "name", "event_title",
+                                                                 "date", "type_title", "position", "college",
+                                                                 "issued_on", "revoked_on")},
+                            "verify_url": certs.verify_url(view["number"])})
+    from services_certificate import CertificateService
     valid, message, cert_data = CertificateService.verify_certificate(db, cert_id)
     if not valid and not cert_data:
         return api_error("not_found", message, status=404)

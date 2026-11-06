@@ -37,10 +37,21 @@ h1, h2, h3, h4, h5, h6 {
 }
 @media (max-width: 992px) {
   .dashboard-layout {
-    grid-template-columns: 1fr;
+    /* minmax(0, …): a plain 1fr grows to its widest content, which pushed the
+       event panel off a phone screen (UPG-106) */
+    grid-template-columns: minmax(0, 1fr);
     height: auto;
     overflow: visible;
   }
+  .detail-column, .event-detail-panel { min-width: 0; max-width: 100%; }
+}
+/* The event's header: title and venue beside the status and actions on wide
+   screens, stacked on phones so the buttons can't squeeze the title (UPG-106) */
+@media (max-width: 768px) {
+  .event-head { flex-direction: column; align-items: stretch !important; }
+  .event-head-actions { align-items: flex-start !important; width: 100%; }
+  .event-head-actions > div { justify-content: flex-start !important; }
+  .event-head-actions .btn { white-space: normal; text-align: left; }
 }
 /* Sidebar Column */
 .sidebar-column {
@@ -1537,7 +1548,7 @@ h1, h2, h3, h4, h5, h6 {
           </button>
           
           <!-- EVENT PRIMARY HEADER -->
-          <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+          <div class="event-head d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
             <div style="flex:1; min-width:0;">
               <div style="font-size:12px; color:var(--ink-500); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">
                 <span class="badge bg-primary me-2">{{ event.category }}</span> 
@@ -1549,7 +1560,7 @@ h1, h2, h3, h4, h5, h6 {
               </div>
             </div>
             
-            <div class="d-flex flex-column align-items-end gap-2">
+            <div class="event-head-actions d-flex flex-column align-items-end gap-2">
               <span class="badge {{ 'bg-success' if event.status in ('active', 'published', 'registration_open', 'in_progress') else 'bg-secondary' }} px-3 py-2 fs-7" style="border-radius:100px;">
                 <i class="fas fa-{{ 'circle fa-xs' if event.status in ('active', 'published', 'registration_open') else 'check-circle' }} me-1"></i>
                 {{ event.status | replace('_', ' ') | title }}
@@ -1774,6 +1785,9 @@ h1, h2, h3, h4, h5, h6 {
                     <a href="/spoc/room_allocation/{{ event.id }}" class="action-btn btn-outline justify-content-start">
                       <i class="fas fa-table"></i> View Auto-Allocated Rooms
                     </a>
+                    <a href="/spoc/hackathon/{{ event.id }}" class="action-btn btn-blue-outline justify-content-start">
+                      <i class="fas fa-code"></i> Run hackathon: problems, submissions, deadline
+                    </a>
                     <a href="/spoc/round_panel/{{ event.id }}" class="action-btn btn-blue-outline justify-content-start">
                       <i class="fas fa-layer-group"></i> Round &amp; Elimination Manager
                     </a>
@@ -1882,6 +1896,15 @@ h1, h2, h3, h4, h5, h6 {
                     </a>
                     <a href="/spoc/export_csv/{{ event.id }}" class="action-btn btn-outline justify-content-start">
                       <i class="fas fa-file-csv"></i> Export Registrations (CSV)
+                    </a>
+                    <a href="/ticket/badges/{{ event.id }}.pdf" target="_blank" rel="noopener" class="action-btn btn-outline justify-content-start">
+                      <i class="fas fa-id-badge"></i> Print Name Badges (PDF)
+                    </a>
+                    <a href="/interact/{{ event.id }}/host" class="action-btn btn-outline justify-content-start">
+                      <i class="fas fa-square-poll-vertical"></i> Live Polls &amp; Q&amp;A
+                    </a>
+                    <a href="/spoc/event/{{ event.id }}/share" class="action-btn btn-outline justify-content-start">
+                      <i class="fas fa-share-nodes"></i> Share Links &amp; Sources
                     </a>
                     <a href="/spoc/judging/audit/{{ event.id }}" class="action-btn btn-purple-outline justify-content-start">
                       <i class="fas fa-scale-balanced"></i> Run Judging Strictness Audit

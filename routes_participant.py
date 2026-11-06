@@ -10,9 +10,8 @@ Fixes & additions in this version
 """
 import datetime
 import json
-import time
 
-from flask import (Blueprint, current_app, flash, jsonify, redirect, render_template,
+from flask import (Blueprint, abort, current_app, flash, jsonify, redirect, render_template,
                    request, session)
 try:
     from google.cloud import firestore
@@ -38,7 +37,8 @@ class DynamicDBProxy:
             raise AttributeError(f"No DB available for attribute '{name}'")
 
 db = DynamicDBProxy()
-from utils import login_required, role_required, log_action, safe_int
+from utils import (login_required, role_required, log_action, safe_int, create_registration, generate_reg_id,
+                   AlreadyRegistered, venue_label)
 from utils_email import send_ticket_email
 
 participant_bp = Blueprint('participant', __name__, url_prefix='/participant')
@@ -46,6 +46,12 @@ participant_bp = Blueprint('participant', __name__, url_prefix='/participant')
 
 def _ff(f, op, v):
     return FieldFilter(f, op, v)
+
+
+def _category_key(category) -> str:
+    """A dashboard tab key for an event category: 'Technical' -> 'cat-technical' (UPG-104)."""
+    slug = ''.join(ch if ch.isalnum() else '-' for ch in str(category or 'General').strip().lower()).strip('-')
+    return f"cat-{slug or 'general'}"
 
 
 def _days_until(date_str: str) -> "int | None":
@@ -84,7 +90,7 @@ def dashboard():
         r['event_banner'] = evt.get('banner_url', '')
         r['event_date']   = evt.get('date', '')
         r['event_title']  = evt.get('title', r.get('event_title', ''))
-        r['event_venue']  = evt.get('venue', 'SNPSU Campus')
+        r['event_venue']  = venue_label(evt)   # UPG-111
         r['event_cat']    = evt.get('category', 'General')
         r['days_until']   = _days_until(evt.get('date', ''))
 
@@ -101,6 +107,11 @@ def dashboard():
         r['final_rank']   = r.get('final_rank')
         r['final_score']  = r.get('final_score')
         r['ai_summary']   = r.get('ai_summary')   # Gemini performance summary
+        from services_rounds import status_for   # "Round 2 of 3" (UPG-149)
+        r['round_status'] = status_for(evt, r)
+        import services_hackathon   # the team lead's hackathon page (UPG-196)
+        r['hackathon_page'] = (services_hackathon.is_hackathon(evt)
+                               and str(r.get('lead_email') or '').lower() == str(session.get('user_id') or '').lower())
 
         # Certificate eligible: attended + event completed or certified
         r['cert_eligible'] = (
@@ -111,7 +122,13 @@ def dashboard():
         # Feedback already submitted?
         r['feedback_done'] = bool(r.get('feedback'))
 
-        if evt.get('status') in ('active', 'published', 'registration_open', 'registration_closed', 'in_progress'):
+        # Upcoming: a live event dated today or later, not cancelled. A past
+        # date or a cancelled registration goes to past events (UPG-104).
+        r['is_cancelled'] = str(r.get('status') or '').strip().lower() in ('cancelled', 'refunded')
+        r['cat_key'] = _category_key(r['event_cat'])
+        live = evt.get('status') in ('active', 'published', 'registration_open', 'registration_closed', 'in_progress')
+        not_past = r['days_until'] is None or r['days_until'] >= 0
+        if live and not_past and not r['is_cancelled']:
             active_tickets.append(r)
         else:
             completed_events.append(r)
@@ -164,7 +181,7 @@ def dashboard():
         pass
 
     # XP + badges + full profile for dashboard header
-    user_xp = 20
+    user_xp = 0   # no made-up starting points (UPG-65)
     user_badges = []
     user_doc_data = {}
     try:
@@ -173,7 +190,7 @@ def dashboard():
             u = db.collection('users').document(uid).get()
             if u.exists:
                 user_doc_data = u.to_dict() or {}
-                user_xp     = int(user_doc_data.get('xp', 0) or user_doc_data.get('activity_points', 0) or 20)
+                user_xp     = int(user_doc_data.get('xp', 0) or user_doc_data.get('activity_points', 0) or 0)
                 user_badges = user_doc_data.get('badges', []) or []
     except Exception:
         pass
@@ -187,6 +204,18 @@ def dashboard():
         'other': sum(1 for r in all_regs if r.get('event_cat') not in ('Technical', 'Cultural', 'Sports')),
     }
     last_updated = datetime.datetime.now().strftime('%d/%m/%Y  %I:%M %p')
+
+    # The tabs come from the student's own registrations, with counts (UPG-104)
+    by_cat = {}
+    for r in all_regs:
+        label, n = by_cat.get(r['cat_key'], (r['event_cat'] or 'General', 0))
+        by_cat[r['cat_key']] = (label, n + 1)
+    ticket_tabs = [('all', 'All', len(all_regs)), ('active', 'Upcoming', len(active_tickets)),
+                   ('past', 'Past', len(completed_events))]
+    ticket_tabs += [(key, label, n) for key, (label, n) in sorted(by_cat.items(), key=lambda kv: (-kv[1][1], kv[0]))]
+    certificates = sum(1 for r in completed_events if r.get('cert_eligible'))
+    if certificates:
+        ticket_tabs.append(('certificates', 'Certificates', certificates))
 
     return render_template(
         'participant/dashboard.html',
@@ -204,6 +233,7 @@ def dashboard():
         total_regs_count = len(all_regs),
         cat_counts       = cat_counts,
         last_updated     = last_updated,
+        ticket_tabs      = ticket_tabs,
     )
 
 
@@ -246,10 +276,16 @@ def view_certificate(reg_id):
         flash("Please provide your feedback to receive your certificate.", "info")
         return redirect(f'/participant/feedback/{reg_id}')
 
+    # The viewer's own certificate for this event (UPG-138), else an older one on the registration
+    import services_certificates
+    own = [c for c in services_certificates.for_person([user_email or ''])
+           if str(c['event_id']) == str(reg_data.get('event_id')) and c['status'] == 'valid']
+    own.sort(key=lambda c: c['cert_type'] not in services_certificates.ATTENDED_TYPES)
     return render_template('participant/certificate.html',
                             student_name=reg_data.get('lead_name'),
                             event=event_data,
-                            certificate_id=reg_data.get('certificate_id'))  # issued by UPG-06's path
+                            certificate_number=own[0]['number'] if own else '',
+                            certificate_id=reg_data.get('certificate_id'))
 
 
 # =========================================================
@@ -439,7 +475,7 @@ def public_register(event_id):
             ):
                 wl_count += 1
 
-            wl_id = f"WL-{int(time.time() * 1000)}"
+            wl_id = generate_reg_id('WL')
             wl_entry = {
                 'id':            wl_id,
                 'event_id':      event_id,
@@ -461,21 +497,22 @@ def public_register(event_id):
                     'member_count': 1, 'attendance': 'Pending',
                     'registered_at': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                     'is_eliminated': False, 'current_round': 1,
-                    'reg_id': f"REG-{int(time.time() * 1000)}",
+                    'reg_id': generate_reg_id(),
                 },
             }
-            db.collection('waitlists').document(wl_id).set(wl_entry)
-            flash(f"This event is full! You've joined the waitlist at position #{wl_count + 1}. We'll email you if a spot opens.", "info")
+            create_registration(db, wl_id, wl_entry, collection='waitlists')
+            from services_waitlist import place_in_line
+            place = place_in_line(db, event_id, email) or wl_count + 1   # join order (UPG-114)
+            flash(f"This event is full! You've joined the waitlist at position #{place}. We'll email you if a spot opens.", "info")
             return redirect('/participant/dashboard' if session_email else f'/event/{event_id}')
 
         # New email: unverified account + one-time set-password link
         is_new_user = not session_email and not without_login
-        if is_new_user:
+        if is_new_user:   # the link goes in the registration's one email below (UPG-152)
             from services_accounts import create_unverified_account, send_set_password_link
-            create_unverified_account(db, email, full_name, phone)
-            send_set_password_link(db, email, full_name)
+            create_unverified_account(db, email, full_name, phone, from_registration=True)
 
-        reg_id   = f"REG-{int(time.time() * 1000)}"
+        reg_id   = generate_reg_id()   # UPG-95
         members  = [{'role': 'Team Leader', 'name': full_name,
                       'email': email, 'usn': usn, 'phone': phone}]
         for i, m_name in enumerate(request.form.getlist('member_name[]')):
@@ -513,10 +550,16 @@ def public_register(event_id):
 
         if fee > 0:
             session['pending_reg_data'] = reg_data
+            if is_new_user:
+                send_set_password_link(db, email, full_name)
             return redirect(f'/payment/checkout/{event_id}')
 
         reg_data.update({'status': 'Confirmed', 'payment_status': 'Free', 'amount_paid': 0})
-        db.collection('registrations').document(reg_id).set(reg_data)
+        try:
+            create_registration(db, reg_id, reg_data)
+        except AlreadyRegistered:   # another form for this person got there first (UPG-115)
+            flash("You're already registered for this event.", "info")
+            return redirect('/participant/dashboard' if session_email else f'/event/{event_id}')
 
         # Award +50 XP for registration
         try:
@@ -529,8 +572,21 @@ def public_register(event_id):
         db.collection('events').document(event_id).update({
             'registration_count': firestore.Increment(1)
         })
-        send_ticket_email(email, full_name, event_data.get('title', ''),
-                          reg_id, is_new_user=is_new_user, cancel_url=cancel_url_for(reg_data))
+        import services_hackathon   # a portal-mode hackathon: the instructions, no ticket email (UPG-195)
+        instructions = services_hackathon.registration_instructions(event_data, event_id)
+        if is_new_user:   # one email: the set-password link with the registration (UPG-152)
+            send_set_password_link(db, email, full_name, registration={
+                'event_title': event_data.get('title', ''), 'event_date': event_data.get('date', ''),
+                'venue': event_data.get('venue', ''), 'reg_id': reg_id, 'instructions': instructions})
+        elif instructions:
+            from utils_email import send_registration_confirmed_email
+            send_registration_confirmed_email(email, full_name, event_data.get('title', ''),
+                                              event_date=event_data.get('date', ''),
+                                              venue=event_data.get('venue', ''),
+                                              cancel_url=cancel_url_for(reg_data), instructions=instructions)
+        else:
+            send_ticket_email(email, full_name, event_data.get('title', ''),
+                              reg_id, cancel_url=cancel_url_for(reg_data))
         log_action(db, "REGISTRATION_CONFIRMED", f"{email} registered for {event_id}")
         if session_email:
             return redirect(f'/ticket/{reg_id}')
@@ -588,6 +644,14 @@ def cancel_registration_record(reg_id, reg, actor, reason=''):
         'registration_count': firestore.Increment(-1)
     })
 
+    # Its ticket type's seat is free again (UPG-155)
+    if reg.get('ticket_type_id'):
+        try:
+            import services_ticket_types
+            services_ticket_types.give_back_seat(event_id, reg['ticket_type_id'])
+        except Exception:
+            current_app.logger.warning("Could not free the ticket-type seat of %s", reg_id, exc_info=True)
+
     # Trigger waitlist promotion
     try:
         from tasks.waitlist_tasks import promote_from_waitlist
@@ -615,6 +679,7 @@ def waitlist_status():
           .where(filter=_ff('status', '==', 'waiting'))
           .stream()
     )
+    from services_waitlist import place_in_line
     result = []
     for e in entries:
         d = e.to_dict()
@@ -627,7 +692,7 @@ def waitlist_status():
         result.append({
             'event_title': event_title,
             'event_id':    event_id,
-            'position':    d.get('position', '?'),
+            'position':    place_in_line(db, event_id, d.get('user_email') or d.get('email', '')) or '?',   # UPG-114
         })
     return jsonify(result)
 
@@ -693,7 +758,7 @@ def my_events():
 
             # Enrich registration object
             r['event_title'] = evt.get('title') or r.get('event_title', 'Campus Event')
-            r['event_venue'] = evt.get('room_name') or evt.get('venue') or 'SNPSU Campus'
+            r['event_venue'] = venue_label(evt)   # UPG-111
             r['event_date'] = evt.get('date') or ''
             r['event_start'] = evt.get('start_datetime') or evt.get('date') or ''
             r['event_category'] = evt.get('category') or 'General'
@@ -863,6 +928,13 @@ def participation_ledger():
     total_points = 0.0
     total_hours = 0.0
 
+    # The person's certificates, one per event for the ledger (the attendance one first, UPG-125)
+    import services_certificates
+    issued = {}
+    for c in sorted(services_certificates.for_person([user_email]),
+                    key=lambda c: c['cert_type'] not in services_certificates.ATTENDED_TYPES):
+        issued.setdefault(str(c['event_id']), c)
+
     for reg_id, reg in sorted(registrations, key=lambda x: str(x[1].get('registered_at') or ''), reverse=True):
         event_id = str(reg.get('event_id') or '')
         event = events_map.get(event_id, {})
@@ -875,7 +947,7 @@ def participation_ledger():
 
         # Once per registration, from its current attendance (services_ledger)
         from services_ledger import credit_for
-        points_earned, hours_earned = credit_for(reg, event)
+        points_earned, hours_earned = credit_for(reg, event, reg_id)
 
         total_points += points_earned
         total_hours += hours_earned
@@ -893,6 +965,7 @@ def participation_ledger():
             'points_earned': points_earned,
             'hours_earned': hours_earned,
             'certificate_id': reg.get('certificate_id', ''),
+            'certificate_number': (issued.get(event_id) or {}).get('number', ''),
         })
 
     is_json = (
@@ -922,3 +995,102 @@ def participation_ledger():
         current_page='ledger',
     )
 
+
+
+# ── My agenda: starred sessions (UPG-159) ──────────────────────────────────
+
+def _agenda_event_or_404(event_id):
+    """The event, if the signed-in user may see it: it's listed for them, or
+    they registered for it."""
+    from services_event_types import is_listed
+    doc = db.collection('events').document(event_id).get()
+    if not doc.exists:
+        abort(404)
+    event = dict(doc.to_dict() or {}, id=event_id)
+    email = (session.get('user_id') or '').lower()
+    user = db.collection('users').document(email).get()
+    dept = ((user.to_dict() or {}).get('department') or '') if user.exists else ''
+    if not is_listed(event, viewer_dept=dept):
+        mine = db.collection('registrations').where('event_id', '==', event_id) \
+                 .where('lead_email', '==', email).limit(1).stream()
+        if not list(mine):
+            abort(404)
+    return event
+
+
+@participant_bp.route('/agenda/<event_id>')
+@login_required
+def my_agenda(event_id):
+    import services_sessions
+    event = _agenda_event_or_404(event_id)
+    sessions = services_sessions.sessions_for(event)
+    starred = services_sessions.starred(session.get('user_id'), event_id)
+    return render_template('participant/my_agenda.html', event=event,
+                           mine=[s for s in sessions if s['id'] in starred],
+                           others=[s for s in sessions if s['id'] not in starred])
+
+
+@participant_bp.route('/agenda/<event_id>/star', methods=['POST'])
+@login_required
+def star_session(event_id):
+    import services_sessions
+    event = _agenda_event_or_404(event_id)
+    sess = services_sessions.find(event, request.form.get('session_id'))
+    if sess is None:
+        abort(404)
+    services_sessions.star(session.get('user_id'), event_id, sess['id'], on=request.form.get('on') != '0')
+    return redirect(f'/participant/agenda/{event_id}')
+
+
+@participant_bp.route('/agenda/<event_id>.ics')
+@login_required
+def my_agenda_ics(event_id):
+    import services_sessions
+    from flask import Response
+    event = _agenda_event_or_404(event_id)
+    starred = services_sessions.starred(session.get('user_id'), event_id)
+    body = services_sessions.ics(event_id, event, [s for s in services_sessions.sessions_for(event) if s['id'] in starred])
+    return Response(body, mimetype='text/calendar',
+                    headers={'Content-Disposition': f'attachment; filename=my-agenda-{event_id}.ics'})
+
+
+# ── Transfer a ticket (UPG-161) ────────────────────────────────────────────
+
+@participant_bp.route('/transfer/<reg_id>', methods=['GET', 'POST'])
+@login_required
+def transfer_ticket(reg_id):
+    import services_transfer as transfers
+    reg_doc = db.collection('registrations').document(reg_id).get()
+    if not reg_doc.exists:
+        abort(404)
+    reg = reg_doc.to_dict() or {}
+    me = (session.get('user_id') or '').strip().lower()
+    people = {(reg.get('lead_email') or '').lower()} | {(m.get('email') or '').lower() for m in reg.get('members') or []}
+    if me not in people:
+        abort(403)
+    event_id = str(reg.get('event_id') or '')
+    ev_doc = db.collection('events').document(event_id).get()
+    event = dict(ev_doc.to_dict() or {}, id=event_id) if ev_doc.exists else {}
+    allowed, reason = transfers.open_for(event, reg, me)
+
+    if request.method == 'POST':
+        if not allowed:
+            flash(reason, 'danger')
+            return redirect(f'/participant/transfer/{reg_id}'), 303
+        if request.form.get('confirm') != 'yes':
+            flash("Tick the box to confirm: your ticket stops working once it's transferred.", 'danger')
+            return redirect(f'/participant/transfer/{reg_id}'), 303
+        try:
+            recipient = transfers.check_recipient(db, event_id, event, reg, request.form.get('email', ''))
+        except transfers.TransferRefused as exc:
+            flash(str(exc), 'danger')
+            return redirect(f'/participant/transfer/{reg_id}'), 303
+        new = transfers.transfer(db, reg_id, reg, event, recipient, me)
+        transfers.notify(reg_id, event, me, reg.get('lead_name', ''), new['lead_email'], new['lead_name'])
+        flash(f"Done: your ticket now belongs to {new['lead_name']}. We've emailed you both.", 'success')
+        return redirect('/participant/dashboard')
+
+    limit = transfers.cutoff(event)
+    return render_template('participant/transfer.html', reg=reg, reg_id=reg_id, event=event,
+                           allowed=allowed, reason=reason,
+                           closes=limit.strftime('%d %b %Y, %H:%M') if limit else '')

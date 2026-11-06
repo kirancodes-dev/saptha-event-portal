@@ -72,9 +72,12 @@ def _regs(db, event_id):
 
 
 def _set_password_links(outbox, email):
+    """Every set-password link emailed to `email`. Since UPG-152 a new
+    registrant's link comes in the registration's one email (subject
+    "Registration Confirmed — ..."), so every email to them is searched."""
     links = []
     for m in outbox['mail']:
-        if m['to'] == email and 'Set your SapthaEvent password' in m['subject']:
+        if m['to'] == email:
             links += re.findall(r'href="https?://[^/"]+(/set_password/[^"]+)"', m['html'])
     return links
 

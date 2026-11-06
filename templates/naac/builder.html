@@ -1,0 +1,56 @@
+{% extends "base_classic.html" %}
+{#- The yearly NAAC / AQAR report builder (UPG-144). -#}
+{% set app_active = 'naac' %}
+{% block title %}NAAC report builder{% endblock %}
+{% block page_sub %}Academic year {{ data.year }} ({{ data['from'] }} to {{ data['to'] }}){% endblock %}
+{% block page_actions %}
+{% set q = request.query_string.decode() %}
+<a class="btn btn-secondary" href="/naac/report.xlsx{{ '?' ~ q if q }}"><i class="fas fa-file-excel" aria-hidden="true"></i> Excel</a>
+<a class="btn btn-secondary" href="/naac/report.pdf{{ '?' ~ q if q }}"><i class="fas fa-file-pdf" aria-hidden="true"></i> PDF</a>
+<a class="btn btn-secondary" href="/naac/report.zip{{ '?' ~ q if q }}"><i class="fas fa-file-zipper" aria-hidden="true"></i> Evidence ZIP</a>
+{% endblock %}
+{% block content %}
+<form method="GET" class="card mb-3"><div class="card-body row g-2 align-items-end">
+    {% for name, label, values in [('year', 'Academic year', options.years), ('unit', 'Department or club', options.units), ('category', 'NAAC category', options.categories), ('event_type', 'Event type', options.event_types)] %}
+    <div class="col-md-3"><label class="form-label" for="b-{{ name }}">{{ label }}</label>
+    <select class="form-select" id="b-{{ name }}" name="{{ name }}">
+        {% if name != 'year' %}<option value="">All</option>{% endif %}
+        {% for v in values %}<option {% if args.get(name) == v %}selected{% endif %}>{{ v }}</option>{% endfor %}
+    </select></div>
+    {% endfor %}
+    <div class="col-12"><button type="submit" class="btn btn-primary">Show</button></div>
+</div></form>
+
+<div class="card mb-3"><div class="card-body">
+    <h2 class="h5">Summary by NAAC category</h2>
+    {% if data.summary %}
+    <div class="table-responsive"><table class="table table-sm">
+        <thead><tr><th scope="col">Category</th><th scope="col">Events</th><th scope="col">Students</th><th scope="col">Faculty</th><th scope="col">External</th><th scope="col">Participants</th><th scope="col">Hours</th></tr></thead>
+        <tbody>{% for s in data.summary %}<tr><td>{{ s.category }}</td><td>{{ s.events }}</td><td>{{ s.students }}</td><td>{{ s.faculty }}</td><td>{{ s.external }}</td><td>{{ s.participants }}</td><td>{{ s.hours }}</td></tr>{% endfor %}</tbody>
+    </table></div>
+    {% else %}<p class="text-muted mb-0">No held events match.</p>{% endif %}
+</div></div>
+
+{% for cat, rows in data.detail.items() %}
+<div class="card mb-3"><div class="card-body">
+    <h2 class="h6">{{ cat }}</h2>
+    <div class="table-responsive"><table class="table table-sm">
+        <thead><tr><th scope="col">Title</th><th scope="col">Dates</th><th scope="col">Department</th><th scope="col">Resource person</th><th scope="col">Participants</th><th scope="col">Report</th></tr></thead>
+        <tbody>{% for r in rows %}<tr><td>{{ r.title }}</td><td>{{ r.date }}{% if r.end_date and r.end_date != r.date %} to {{ r.end_date }}{% endif %}</td>
+            <td>{{ r.department }}</td><td>{{ r.resource_person }}</td><td>{{ r.participants }}</td>
+            <td><a href="{{ r.evidence_link }}">{{ r.report|capitalize }}</a>{% if r.evidence_files %} · {{ r.evidence_files }} file{{ '' if r.evidence_files == 1 else 's' }}{% endif %}</td></tr>{% endfor %}</tbody>
+    </table></div>
+</div></div>
+{% endfor %}
+
+<div class="card mb-3"><div class="card-body">
+    <h2 class="h5">Awards and positions won</h2>
+    {% if data.awards %}<ul class="mb-0">{% for a in data.awards %}<li>{{ a.name }}: {{ a.award }}{% if a.position %} ({{ a.position }}){% endif %}, {{ a.event }} ({{ a.date }})</li>{% endfor %}</ul>
+    {% else %}<p class="text-muted mb-0">None in this selection.</p>{% endif %}
+</div></div>
+<div class="card mb-3"><div class="card-body">
+    <h2 class="h5">Faculty participation in FDPs and workshops</h2>
+    {% if data.faculty %}<ul class="mb-0">{% for f in data.faculty %}<li>{{ f.name }}{% if f.designation %}, {{ f.designation }}{% endif %}{% if f.institution %} ({{ f.institution }}){% endif %}: {{ f.event }}, {{ f.hours }} hours</li>{% endfor %}</ul>
+    {% else %}<p class="text-muted mb-0">None in this selection.</p>{% endif %}
+</div></div>
+{% endblock %}

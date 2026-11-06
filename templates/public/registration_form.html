@@ -1,46 +1,210 @@
 {% extends "base_classic.html" %}
-{#- Event registration form (UPG-63): app layout, one focused column. Field names,
-    ids and error hooks are unchanged; the route builds `schema.fields`. -#}
+{#- Event registration form. UPG-150: a full-page, official form: the event's
+    summary beside the form on a wide screen, numbered sections, underlined
+    fields (as in Google Forms or Unstop). Field names, ids, error hooks, the
+    CSRF token, the submission id and the Back link are unchanged (UPG-01, 26,
+    92); the route groups the fields into `sections` (routes_forms.form_sections). -#}
 {% set hide_page_head = true %}
 {% set app_active = 'events' %}
 {% block robots %}index, follow{% endblock %}
 {% block title %}Register — {{ event.title }}{% endblock %}
 {% block extra_css %}
 <style>
-.reg-wrap { max-width: 680px; margin: 0 auto; }
-.event-banner {
-  background: var(--brand-navy);
-  color: #fff;
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  padding: 22px 26px 20px;
-  border-bottom: 3px solid var(--brand-gold);
+/* The whole content width, not a narrow card */
+.reg-wrap { width: 100%; }
+.reg-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-5, 20px); align-items: start; }
+@media (min-width: 992px) {
+  .reg-layout { grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); gap: 40px; }
+  .reg-summary { position: sticky; top: 84px; }
 }
-.event-banner .cat { font-size: var(--fs-xs); letter-spacing: 0.1em; text-transform: uppercase; color: var(--brand-gold-300); font-weight: 700; margin-bottom: 6px; }
-.event-banner h1 { font-size: clamp(1.25rem, 4vw, 1.6rem); margin: 0 0 10px; line-height: 1.2; color: #fff; }
-.event-banner .meta { font-size: var(--fs-sm); color: rgba(255,255,255,0.85); display: flex; flex-wrap: wrap; gap: 8px 16px; }
-.event-banner .meta span { display: inline-flex; align-items: center; gap: 6px; }
-.event-banner .meta i { color: var(--brand-gold-300); }
-.fee-free { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.22); border-radius: var(--radius-pill); padding: 1px 10px; font-weight: 600; }
-.form-card {
-  background: var(--surface-card);
-  border: 1px solid var(--border);
-  border-top: 0;
-  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-  padding: 26px 22px 28px;
-  box-shadow: var(--shadow-sm);
+
+/* Event summary */
+.reg-summary {
+  background: var(--brand-navy); color: #fff;
+  border-radius: var(--radius-lg); padding: 24px 24px 22px;
+  border-bottom: 4px solid var(--brand-gold);
 }
-@media (min-width: 480px) { .form-card { padding: 30px 32px 34px; } }
-.form-title { font-size: var(--fs-xl); margin: 0 0 6px; }
-.form-desc { font-size: var(--fs-base); color: var(--text-muted); margin: 0 0 22px; }
-.form-group label:not(.choice-item):not(.single-check), .form-group .group-label { display: block; font-size: var(--fs-sm); font-weight: 600; color: var(--text-strong); margin-bottom: 6px; }
+.reg-summary .cat { font-size: var(--fs-xs); letter-spacing: 0.12em; text-transform: uppercase; color: var(--brand-gold-300); font-weight: 700; margin-bottom: 8px; }
+.reg-summary h1 { font-size: clamp(1.3rem, 3.4vw, 1.75rem); margin: 0 0 16px; line-height: 1.2; color: #fff; overflow-wrap: anywhere; }
+.reg-facts { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; font-size: var(--fs-sm); }
+.reg-facts li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px; align-items: start; }
+.reg-facts i { color: var(--brand-gold-300); margin-top: 3px; }
+.reg-facts .k { display: block; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,0.7); }
+.reg-facts .v { color: #fff; font-weight: 600; overflow-wrap: anywhere; }
+.reg-summary .note { margin: 18px 0 0; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.18); font-size: var(--fs-xs); color: rgba(255,255,255,0.78); display: flex; gap: 8px; }
+
+/* The form sheet */
+.reg-sheet { background: var(--surface-card); border-top: 4px solid var(--brand-navy); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding: 26px 20px 30px; }
+@media (min-width: 576px) { .reg-sheet { padding: 32px 36px 36px; } }
+@media (min-width: 1200px) { .reg-sheet { padding: 40px 56px 44px; } }
+.reg-sheet__head { border-bottom: 1px solid var(--divider); padding-bottom: 18px; margin-bottom: 8px; }
+.reg-sheet__head h2 { font-size: var(--fs-2xl, 1.5rem); margin: 0 0 6px; }
+.reg-sheet__head p { color: var(--text-muted); margin: 0; }
+.reg-sheet__head .req-note { font-size: var(--fs-sm); color: var(--danger-text); margin-top: 10px; }
+
+/* Numbered sections, divided by rules, no boxes */
+.reg-section { border: 0; margin: 0; padding: 26px 0 6px; min-width: 0; }
+.reg-section + .reg-section { border-top: 1px solid var(--divider); }
+.reg-section > legend + * { clear: left; }
+.reg-section > legend { float: left; width: 100%; display: flex; align-items: center; gap: 12px; font-family: var(--font-heading); font-size: var(--fs-lg, 1.15rem); font-weight: 700; color: var(--text-strong); margin: 0 0 8px; padding: 0; }
+.reg-step { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: var(--brand-navy); color: #fff; font-size: var(--fs-sm); flex-shrink: 0; }
+.reg-section .section-hint { color: var(--text-muted); font-size: var(--fs-sm); margin: 0 0 16px 42px; }
+@media (max-width: 575px) { .reg-section .section-hint { margin-left: 0; } }
+@media (min-width: 768px) {
+  .reg-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 36px; }
+  .reg-grid > .wide, .reg-grid > .field-heading, .reg-grid > .field-paragraph, .reg-grid > .field-divider { grid-column: 1 / -1; }
+}
+
+/* Underlined fields */
+.reg-wrap .form-group { margin-bottom: 22px; }
+.reg-wrap .form-group label:not(.choice-item):not(.single-check), .reg-wrap .form-group .group-label { display: block; font-size: var(--fs-sm); font-weight: 600; color: var(--text-strong); margin-bottom: 2px; }
+.reg-wrap .form-control, .reg-wrap .form-select {
+  border-width: 0 0 1.5px; border-style: solid; border-color: var(--border-strong);
+  border-radius: 0; background-color: transparent; box-shadow: none;
+  padding: 8px 2px 7px; min-height: 42px;
+}
+.reg-wrap .form-select { padding-right: 2rem; background-position: right 2px center; }
+.reg-wrap .form-control:hover, .reg-wrap .form-select:hover { border-color: var(--text-subtle); }
+.reg-wrap .form-control:focus, .reg-wrap .form-select:focus {
+  border-color: var(--brand-navy); box-shadow: 0 1.5px 0 0 var(--brand-navy); outline: none; background-color: transparent;
+}
+.reg-wrap .form-control:focus-visible, .reg-wrap .form-select:focus-visible { box-shadow: 0 2px 0 0 var(--brand-gold-700); border-color: var(--brand-gold-700); }
+.reg-wrap textarea.form-control { min-height: 88px; }
+.reg-wrap [aria-invalid="true"] { box-shadow: 0 1.5px 0 0 var(--danger); }
 .req { color: var(--danger); margin-left: 2px; }
-.help-text { font-size: var(--fs-xs); color: var(--text-subtle); margin: -2px 0 6px; }
+.help-text { font-size: var(--fs-xs); color: var(--text-subtle); margin: 0 0 4px; }
+
+/* Choices as plain rows */
+.reg-wrap .choice-list { gap: 2px; }
+.reg-wrap .choice-item, .reg-wrap .single-check { border: 0 !important; background: transparent !important; padding: 7px 0; border-radius: 0; }
+.reg-wrap .choice-item:has(input:focus-visible), .reg-wrap .single-check:has(input:focus-visible) { box-shadow: none; outline: 2px solid var(--brand-gold-700); outline-offset: 2px; }
+.reg-wrap .field-heading { font-size: var(--fs-base); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin: 10px 0 14px; }
+
+/* Team members: one block each, numbered, never mixed */
+.reg-member { border-left: 3px solid var(--brand-gold); padding: 2px 0 0 16px; margin: 4px 0 22px; }
+.reg-member__title { display: flex; align-items: center; gap: 10px; font-size: var(--fs-base); font-weight: 700; color: var(--text-strong); margin: 0 0 10px; }
+.reg-member__tag { font-size: var(--fs-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--danger-text); }
+.reg-member__tag.is-optional { color: var(--text-muted); }
+.reg-member .form-group { margin-bottom: 14px; }
+@media (min-width: 768px) {
+  /* three even columns: a member asked more than name, email and USN wraps
+     to the next row, still inside their own block */
+  .reg-member__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 28px; }
+}
+
+.reg-declare .form-check { margin-bottom: 12px; }
+.reg-submit { margin-top: 18px; padding-top: 22px; border-top: 1px solid var(--divider); display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; }
+.reg-submit .btn { min-width: min(100%, 280px); }
+.reg-submit small { color: var(--text-subtle); }
 .already-card { max-width: 480px; margin: 0 auto; text-align: center; }
 .already-card i.big { font-size: 2.75rem; color: var(--success); margin-bottom: 12px; display: block; }
-.security-note { text-align: center; color: var(--text-subtle); font-size: var(--fs-sm); margin-top: 18px; display: flex; align-items: center; justify-content: center; gap: 6px; }
 @media (max-width: 400px) { .form-control, .form-select { font-size: 16px; } }
 </style>
 {% endblock %}
+
+{% macro render_field(field) %}
+  {# ── Layout fields ── #}
+  {% if field.type == 'divider' %}
+    <hr class="field-divider">
+  {% elif field.type == 'heading' %}
+    <div class="field-heading">{{ field.label }}</div>
+  {% elif field.type == 'paragraph' %}
+    <p class="field-paragraph">{{ field.label }}</p>
+
+  {# ── Dropdown ── #}
+  {% elif field.type == 'select' %}
+  <div class="form-group">
+    <label for="{{ field.id }}">{{ field.label }}{% if field.required %}<span class="req">*</span>{% endif %}</label>
+    {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
+    <div class="select-wrap">
+      <select class="form-select" id="{{ field.id }}" name="{{ field.id }}"
+              {% if field.required %}required{% endif %} {% if field_errors.get(field.id) %}aria-invalid="true" aria-describedby="{{ field.id }}-error"{% endif %}>
+        <option value="">{{ field.placeholder or 'Select an option…' }}</option>
+        {% for opt in field.options %}
+        <option value="{{ opt }}" {% if values.get(field.id) == opt %}selected{% endif %}>{{ opt }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% if field_errors.get(field.id) %}<div class="field-error" id="{{ field.id }}-error" role="alert">{{ field_errors[field.id] }}</div>{% endif %}
+  </div>
+
+  {# ── Multiple choice (radio) ── #}
+  {% elif field.type == 'radio' %}
+  <div class="form-group wide">
+    <span class="group-label">{{ field.label }}{% if field.required %}<span class="req">*</span>{% endif %}</span>
+    {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
+    <div class="choice-list mt-1">
+      {% for opt in field.options %}
+      <label class="choice-item">
+        <input type="radio" name="{{ field.id }}" value="{{ opt }}"
+               {% if field.required %}required{% endif %} {% if values.get(field.id) == opt %}checked{% endif %}>
+        <span>{{ opt }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    {% if field_errors.get(field.id) %}<div class="field-error" id="{{ field.id }}-error" role="alert">{{ field_errors[field.id] }}</div>{% endif %}
+  </div>
+
+  {# ── Checkbox group ── #}
+  {% elif field.type == 'checkbox_group' %}
+  <div class="form-group wide">
+    <span class="group-label">{{ field.label }}{% if field.required %}<span class="req">*</span>{% endif %}</span>
+    {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
+    <div class="choice-list mt-1">
+      {% for opt in field.options %}
+      <label class="choice-item">
+        <input type="checkbox" name="{{ field.id }}" value="{{ opt }}" {% if opt in (values.get(field.id) or []) %}checked{% endif %}>
+        <span>{{ opt }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    {% if field_errors.get(field.id) %}<div class="field-error" id="{{ field.id }}-error" role="alert">{{ field_errors[field.id] }}</div>{% endif %}
+  </div>
+
+  {# ── Single checkbox ── #}
+  {% elif field.type == 'checkbox' %}
+  <div class="form-group wide">
+    <label class="single-check">
+      <input type="checkbox" name="{{ field.id }}" value="yes"
+             {% if field.required %}required{% endif %} {% if values.get(field.id) == 'yes' %}checked{% endif %}>
+      <span>{{ field.label }}{% if field.required %}<span class="req">*</span>{% endif %}</span>
+    </label>
+    {% if field.help_text %}<div class="help-text mt-1">{{ field.help_text }}</div>{% endif %}
+    {% if field_errors.get(field.id) %}<div class="field-error" id="{{ field.id }}-error" role="alert">{{ field_errors[field.id] }}</div>{% endif %}
+  </div>
+
+  {# ── Textarea ── #}
+  {% elif field.type == 'textarea' %}
+  <div class="form-group wide">
+    <label for="{{ field.id }}">{{ field.label }}{% if field.required %}<span class="req">*</span>{% endif %}</label>
+    {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
+    <textarea class="form-control" id="{{ field.id }}" name="{{ field.id }}"
+              placeholder="{{ field.placeholder }}"
+              {% if field.required %}required{% endif %} {% if field_errors.get(field.id) %}aria-invalid="true" aria-describedby="{{ field.id }}-error"{% endif %}>{{ values.get(field.id, '') }}</textarea>
+    {% if field_errors.get(field.id) %}<div class="field-error" id="{{ field.id }}-error" role="alert">{{ field_errors[field.id] }}</div>{% endif %}
+  </div>
+
+  {# ── All other inputs (text, email, tel, number, date, url) ── #}
+  {% else %}
+  <div class="form-group">
+    <label for="{{ field.id }}">{{ field.label }}{% if field.required %}<span class="req">*</span>{% endif %}</label>
+    {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
+    <input type="{{ field.type }}"
+           class="form-control"
+           id="{{ field.id }}"
+           name="{{ field.id }}"
+           placeholder="{{ field.placeholder }}"
+           {% if field.min is defined and field.min != '' %}min="{{ field.min }}"{% endif %}
+           {% if field.max is defined and field.max != '' %}max="{{ field.max }}"{% endif %}
+           {% if field.required %}required{% endif %}
+           autocomplete="{{ 'email' if field.type == 'email' else 'tel' if field.type == 'tel' else 'off' }}"
+           inputmode="{{ 'email' if field.type == 'email' else 'numeric' if field.type in ('number','tel') else 'text' }}"
+           value="{{ values.get(field.id, '') if values.get(field.id) is string else '' }}" {% if field_errors.get(field.id) %}aria-invalid="true" aria-describedby="{{ field.id }}-error"{% endif %}>
+    {% if field_errors.get(field.id) %}<div class="field-error" id="{{ field.id }}-error" role="alert">{{ field_errors[field.id] }}</div>{% endif %}
+  </div>
+  {% endif %}
+{% endmacro %}
+
 {% block content %}
 <div class="reg-wrap">
   <a href="{{ back_url or '/event/' ~ event.id }}" class="btn btn-link px-0 mb-3"><i class="fas fa-arrow-left" aria-hidden="true"></i> Back</a>
@@ -57,242 +221,212 @@
   </div>
 
   {% else %}
+  {% set paid = event.get('entry_fee') and event.entry_fee|int > 0 %}
+  <div class="reg-layout">
 
-  <!-- ── Event banner ── -->
-  <div class="event-banner">
-    {% if event.get('category') %}
-    <div class="cat">{{ event.category }}</div>
-    {% endif %}
-    <h1>{{ event.title }}</h1>
-    <div class="meta">
-      {% if event.get('date') %}
-      <span><i class="fas fa-calendar-alt" aria-hidden="true"></i>{{ event.date }}</span>
+    <!-- ── Event summary ── -->
+    <aside class="reg-summary" aria-label="Event summary">
+      {% if event.get('category') %}<div class="cat">{{ event.category }}</div>{% endif %}
+      <h1>{{ event.title }}</h1>
+      <ul class="reg-facts">
+        {% if event.get('date') %}
+        <li><i class="fas fa-calendar-alt" aria-hidden="true"></i><span><span class="k">Date</span><span class="v">{{ event.date }}{% if event.get('time') %} · {{ event.time }}{% endif %}</span></span></li>
+        {% endif %}
+        {% if event.get('venue') %}
+        <li><i class="fas fa-map-marker-alt" aria-hidden="true"></i><span><span class="k">Venue</span><span class="v">{{ event.venue }}</span></span></li>
+        {% endif %}
+        <li><i class="fas fa-rupee-sign" aria-hidden="true"></i><span><span class="k">Entry fee</span><span class="v">{% if paid %}₹{{ event.entry_fee }}{% else %}Free{% endif %}</span></span></li>
+        {% if team_size and team_size[1] > 1 %}
+        <li><i class="fas fa-users" aria-hidden="true"></i><span><span class="k">Team size</span><span class="v">{{ team_size[0] }}–{{ team_size[1] }} people</span></span></li>
+        {% endif %}
+        {% if (event.get('total_rounds') or 1)|int > 1 %}
+        <li><i class="fas fa-layer-group" aria-hidden="true"></i><span><span class="k">Format</span><span class="v">{{ event.total_rounds|int }} rounds</span></span></li>
+        {% endif %}
+        {% if event.get('reg_deadline') %}
+        <li><i class="fas fa-hourglass-half" aria-hidden="true"></i><span><span class="k">Register by</span><span class="v">{{ event.reg_deadline }}</span></span></li>
+        {% endif %}
+      </ul>
+      <p class="note"><i class="fas fa-lock" aria-hidden="true"></i><span>Your details are used only to run this event.</span></p>
+    </aside>
+
+    <!-- ── Registration form ── -->
+    <section class="reg-sheet" aria-labelledby="reg-form-title">
+      <header class="reg-sheet__head">
+        <h2 id="reg-form-title">{{ schema.form_title or 'Registration Form' }}</h2>
+        {% if schema and schema.form_desc %}<p>{{ schema.form_desc }}</p>{% endif %}
+        <div class="req-note"><span aria-hidden="true">*</span> Indicates a required question</div>
+      </header>
+
+      {% if is_waitlist %}
+        <div class="alert alert-warning mt-3 mb-0">
+          <i class="fas fa-hourglass-half" aria-hidden="true"></i>
+          <div><strong>Waitlist Only:</strong> This event is currently full. Submitting this form will place you on the waitlist.</div>
+        </div>
       {% endif %}
-      {% if event.get('venue') %}
-      <span><i class="fas fa-map-marker-alt" aria-hidden="true"></i>{{ event.venue }}</span>
-      {% endif %}
-      {% if event.get('entry_fee') and event.entry_fee|int > 0 %}
-      <span><i class="fas fa-rupee-sign" aria-hidden="true"></i>{{ event.entry_fee }} entry fee</span>
-      {% else %}
-      <span class="fee-free">Free event</span>
-      {% endif %}
-    </div>
-  </div>
 
-  <!-- ── Registration form ── -->
-  <div class="form-card">
-
-    <h2 class="form-title">{{ schema.form_title or 'Registration Form' }}</h2>
-    {% if schema and schema.form_desc %}
-    <p class="form-desc">{{ schema.form_desc }}</p>
-    {% endif %}
-
-    {% if is_waitlist %}
-      <div class="alert alert-warning mb-3">
-        <i class="fas fa-hourglass-half" aria-hidden="true"></i>
-        <div><strong>Waitlist Only:</strong> This event is currently full. Submitting this form will place you on the waitlist.</div>
-      </div>
-    {% endif %}
-
-    <form method="POST" action="/forms/submit/{{ event.id }}"
-          id="reg-form" novalidate>
+      <form method="POST" action="/forms/submit/{{ event.id }}" id="reg-form" novalidate>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="submission_id" value="{{ submission_id }}">
+        {% if share_src %}<input type="hidden" name="src" value="{{ share_src }}">{% endif %}
+        {% set step = namespace(n=0) %}
 
-      {# Who is registering: students, faculty, external participants (UPG-12) #}
-      {% set ptypes = allowed_types(event) %}
-      {% if ptypes != ['student'] %}
-        {% set chosen = values.get('participant_type') or ptypes[0] %}
-        {% if ptypes|length > 1 %}
-        <div class="form-group">
-          <span class="group-label">I'm registering as<span class="req">*</span></span>
-          <div class="choice-list mt-1">
-            {% for t in ptypes %}
-            <label class="choice-item">
-              <input type="radio" name="participant_type" value="{{ t }}" required {% if chosen == t %}checked{% endif %}
-                     data-h-change="public/registration_form:participant-type">
-              <span>{{ participant_labels[t] }}</span>
-            </label>
-            {% endfor %}
-          </div>
-          {% if field_errors.get('participant_type') %}<div class="field-error" role="alert">{{ field_errors['participant_type'] }}</div>{% endif %}
-        </div>
-        {% else %}
-        <input type="hidden" name="participant_type" value="{{ ptypes[0] }}">
-        {% endif %}
-        {% set needs = chosen in ('faculty', 'external') %}
-        <div id="affiliation-fields" {% if not needs %}hidden{% endif %}>
-          <div class="form-group">
-            <label for="designation">Designation<span class="req">*</span></label>
-            <input type="text" class="form-control" id="designation" name="designation" maxlength="150"
-                   placeholder="e.g. Assistant Professor" value="{{ values.get('designation', '') }}" {% if needs %}required{% endif %}
-                   {% if field_errors.get('designation') %}aria-invalid="true" aria-describedby="designation-error"{% endif %}>
-            {% if field_errors.get('designation') %}<div class="field-error" id="designation-error" role="alert">{{ field_errors['designation'] }}</div>{% endif %}
-          </div>
-          <div class="form-group">
-            <label for="institution">Institution<span class="req">*</span></label>
-            <input type="text" class="form-control" id="institution" name="institution" maxlength="200"
-                   placeholder="Your college, university or organisation" value="{{ values.get('institution', '') }}" {% if needs %}required{% endif %}
-                   {% if field_errors.get('institution') %}aria-invalid="true" aria-describedby="institution-error"{% endif %}>
-            {% if field_errors.get('institution') %}<div class="field-error" id="institution-error" role="alert">{{ field_errors['institution'] }}</div>{% endif %}
-          </div>
-        </div>
-      {% endif %}
-
-      {% for field in schema.fields %}
-
-        {# ── Layout fields ── #}
-        {% if field.type == 'divider' %}
-          <hr class="field-divider">
-
-        {% elif field.type == 'heading' %}
-          <div class="field-heading">{{ field.label }}</div>
-
-        {% elif field.type == 'paragraph' %}
-          <p class="field-paragraph">{{ field.label }}</p>
-
-        {# ── Dropdown ── #}
-        {% elif field.type == 'select' %}
-        <div class="form-group">
-          <label for="{{ field.id }}">
-            {{ field.label }}{% if field.required %}<span class="req">*</span>{% endif %}
-          </label>
-          {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
-          <div class="select-wrap">
-            <select class="form-select" id="{{ field.id }}" name="{{ field.id }}"
-                    {% if field.required %}required{% endif %} {% if field_errors.get(field.id) %}aria-invalid="true" aria-describedby="{{ field.id }}-error"{% endif %}>
-              <option value="">{{ field.placeholder or 'Select an option…' }}</option>
-              {% for opt in field.options %}
-              <option value="{{ opt }}" {% if values.get(field.id) == opt %}selected{% endif %}>{{ opt }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          {% if field_errors.get(field.id) %}<div class="field-error" id="{{ field.id }}-error" role="alert">{{ field_errors[field.id] }}</div>{% endif %}
-        </div>
-
-        {# ── Multiple choice (radio) ── #}
-        {% elif field.type == 'radio' %}
-        <div class="form-group">
-          <label>
-            {{ field.label }}{% if field.required %}<span class="req">*</span>{% endif %}
-          </label>
-          {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
-          <div class="choice-list mt-1">
-            {% for opt in field.options %}
-            <label class="choice-item">
-              <input type="radio" name="{{ field.id }}" value="{{ opt }}"
-                     {% if field.required %}required{% endif %} {% if values.get(field.id) == opt %}checked{% endif %}>
-              <span>{{ opt }}</span>
-            </label>
-            {% endfor %}
-          </div>
-          {% if field_errors.get(field.id) %}<div class="field-error" id="{{ field.id }}-error" role="alert">{{ field_errors[field.id] }}</div>{% endif %}
-        </div>
-
-        {# ── Checkbox group ── #}
-        {% elif field.type == 'checkbox_group' %}
-        <div class="form-group">
-          <label>
-            {{ field.label }}{% if field.required %}<span class="req">*</span>{% endif %}
-          </label>
-          {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
-          <div class="choice-list mt-1">
-            {% for opt in field.options %}
-            <label class="choice-item">
-              <input type="checkbox" name="{{ field.id }}" value="{{ opt }}" {% if opt in (values.get(field.id) or []) %}checked{% endif %}>
-              <span>{{ opt }}</span>
-            </label>
-            {% endfor %}
-          </div>
-          {% if field_errors.get(field.id) %}<div class="field-error" id="{{ field.id }}-error" role="alert">{{ field_errors[field.id] }}</div>{% endif %}
-        </div>
-
-        {# ── Single checkbox ── #}
-        {% elif field.type == 'checkbox' %}
-        <div class="form-group">
-          <label class="single-check">
-            <input type="checkbox" name="{{ field.id }}" value="yes"
-                   {% if field.required %}required{% endif %} {% if values.get(field.id) == 'yes' %}checked{% endif %}>
-            <span>
-              {{ field.label }}{% if field.required %}<span class="req">*</span>{% endif %}
-            </span>
-          </label>
-          {% if field.help_text %}<div class="help-text mt-1">{{ field.help_text }}</div>{% endif %}
-          {% if field_errors.get(field.id) %}<div class="field-error" id="{{ field.id }}-error" role="alert">{{ field_errors[field.id] }}</div>{% endif %}
-        </div>
-
-        {# ── Textarea ── #}
-        {% elif field.type == 'textarea' %}
-        <div class="form-group">
-          <label for="{{ field.id }}">
-            {{ field.label }}{% if field.required %}<span class="req">*</span>{% endif %}
-          </label>
-          {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
-          <textarea class="form-control" id="{{ field.id }}" name="{{ field.id }}"
-                    placeholder="{{ field.placeholder }}"
-                    {% if field.required %}required{% endif %} {% if field_errors.get(field.id) %}aria-invalid="true" aria-describedby="{{ field.id }}-error"{% endif %}>{{ values.get(field.id, '') }}</textarea>
-          {% if field_errors.get(field.id) %}<div class="field-error" id="{{ field.id }}-error" role="alert">{{ field_errors[field.id] }}</div>{% endif %}
-        </div>
-
-        {# ── All other inputs (text, email, tel, number, date, url) ── #}
-        {% else %}
-        <div class="form-group">
-          <label for="{{ field.id }}">
-            {{ field.label }}{% if field.required %}<span class="req">*</span>{% endif %}
-          </label>
-          {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
-          <input type="{{ field.type }}"
-                 class="form-control"
-                 id="{{ field.id }}"
-                 name="{{ field.id }}"
-                 placeholder="{{ field.placeholder }}"
-                 {% if field.min is defined and field.min != '' %}min="{{ field.min }}"{% endif %}
-                 {% if field.max is defined and field.max != '' %}max="{{ field.max }}"{% endif %}
-                 {% if field.required %}required{% endif %}
-                 autocomplete="{{ 'email' if field.type == 'email' else 'tel' if field.type == 'tel' else 'off' }}"
-                 inputmode="{{ 'email' if field.type == 'email' else 'numeric' if field.type in ('number','tel') else 'text' }}"
-                 value="{{ values.get(field.id, '') if values.get(field.id) is string else '' }}" {% if field_errors.get(field.id) %}aria-invalid="true" aria-describedby="{{ field.id }}-error"{% endif %}>
-          {% if field_errors.get(field.id) %}<div class="field-error" id="{{ field.id }}-error" role="alert">{{ field_errors[field.id] }}</div>{% endif %}
-        </div>
-        {% endif %}
-
-      {% endfor %}
-
-      <!-- Privacy notice consent (UPG-22) -->
-      <div class="form-check mb-3">
-        <input class="form-check-input" type="checkbox" id="privacy_consent" name="privacy_consent" value="yes" required
-               {% if field_errors.get('privacy_consent') %}aria-invalid="true" aria-describedby="privacy_consent-error"{% endif %}>
-        <label class="form-check-label" for="privacy_consent">
-          I have read the <a href="/privacy" target="_blank" rel="noopener">privacy notice</a> and agree that
-          SapthaEvent uses my details to run this event.
-        </label>
-        {% if field_errors.get('privacy_consent') %}<div class="field-error" id="privacy_consent-error" role="alert">{{ field_errors['privacy_consent'] }}</div>{% endif %}
-      </div>
-
-      <!-- Submit -->
-      <button type="submit" class="btn btn-gold btn-lg w-100 mt-2" id="submit-btn" data-no-loader>
-        <i class="fas fa-paper-plane" aria-hidden="true"></i>
-        {% if is_waitlist %}
-          Join the waitlist (event is full)
-        {% else %}
-          {% if event.get('entry_fee') and event.entry_fee|int > 0 %}
-            Continue to payment — ₹{{ event.entry_fee }}
-          {% else %}
-            Register now — free
+        {# 1. Who is registering (UPG-12) and who they are #}
+        {% set ptypes = allowed_types(event) %}
+        {% if sections.participant or ptypes != ['student'] %}
+        {% set step.n = step.n + 1 %}
+        <fieldset class="reg-section" data-section="participant">
+          <legend><span class="reg-step">{{ step.n }}</span> Participant details</legend>
+          <p class="section-hint">Exactly as they should appear on your ticket and certificate.</p>
+          {% if ptypes != ['student'] %}
+            {% set chosen = values.get('participant_type') or ptypes[0] %}
+            {% if ptypes|length > 1 %}
+            <div class="form-group">
+              <span class="group-label">I'm registering as<span class="req">*</span></span>
+              <div class="choice-list mt-1">
+                {% for t in ptypes %}
+                <label class="choice-item">
+                  <input type="radio" name="participant_type" value="{{ t }}" required {% if chosen == t %}checked{% endif %}
+                         data-h-change="public/registration_form:participant-type">
+                  <span>{{ participant_labels[t] }}</span>
+                </label>
+                {% endfor %}
+              </div>
+              {% if field_errors.get('participant_type') %}<div class="field-error" role="alert">{{ field_errors['participant_type'] }}</div>{% endif %}
+            </div>
+            {% else %}
+            <input type="hidden" name="participant_type" value="{{ ptypes[0] }}">
+            {% endif %}
+            {% set needs = chosen in ('faculty', 'external') %}
+            <div id="affiliation-fields" class="reg-grid" {% if not needs %}hidden{% endif %}>
+              <div class="form-group">
+                <label for="designation">Designation<span class="req">*</span></label>
+                <input type="text" class="form-control" id="designation" name="designation" maxlength="150"
+                       placeholder="e.g. Assistant Professor" value="{{ values.get('designation', '') }}" {% if needs %}required{% endif %}
+                       {% if field_errors.get('designation') %}aria-invalid="true" aria-describedby="designation-error"{% endif %}>
+                {% if field_errors.get('designation') %}<div class="field-error" id="designation-error" role="alert">{{ field_errors['designation'] }}</div>{% endif %}
+              </div>
+              <div class="form-group">
+                <label for="institution">Institution<span class="req">*</span></label>
+                <input type="text" class="form-control" id="institution" name="institution" maxlength="200"
+                       placeholder="Your college, university or organisation" value="{{ values.get('institution', '') }}" {% if needs %}required{% endif %}
+                       {% if field_errors.get('institution') %}aria-invalid="true" aria-describedby="institution-error"{% endif %}>
+                {% if field_errors.get('institution') %}<div class="field-error" id="institution-error" role="alert">{{ field_errors['institution'] }}</div>{% endif %}
+              </div>
+            </div>
           {% endif %}
+          <div class="reg-grid">
+            {% for field in sections.participant %}{{ render_field(field) }}{% endfor %}
+          </div>
+        </fieldset>
         {% endif %}
-      </button>
 
-    </form>
+        {# The ticket type (UPG-155): price, early-bird dates and seats left #}
+        {% if ticket_types %}
+        {% set step.n = step.n + 1 %}
+        <fieldset class="reg-section" data-section="ticket">
+          <legend><span class="reg-step">{{ step.n }}</span> Ticket</legend>
+          <div class="form-group">
+            <span class="group-label" id="ticket_type-label">Choose your ticket<span class="req">*</span></span>
+            <div class="choice-list mt-1" role="radiogroup" aria-labelledby="ticket_type-label"
+                 {% if field_errors.get('ticket_type') %}aria-describedby="ticket_type-error"{% endif %}>
+              {% set picked = values.get('ticket_type', '') %}
+              {% for t in ticket_types %}
+              {% set unavailable = t.sold_out or not t.on_sale %}
+              <label class="choice-item" data-ticket="{{ t.id }}">
+                <input type="radio" name="ticket_type" value="{{ t.id }}" required
+                       {% if unavailable %}disabled{% elif picked == t.id %}checked{% endif %}>
+                <span>
+                  <strong>{{ t.name }}</strong> —
+                  {% if t.price > 0 %}₹{{ '%g'|format(t.price) }}{% if t.per == 'person' %} per person{% elif sections.team %} per team{% endif %}{% else %}Free{% endif %}
+                  <small class="text-muted d-block">
+                    {% if t.sold_out %}Sold out
+                    {% elif not t.on_sale and t.sale_start %}On sale from {{ t.sale_start }}
+                    {% elif not t.on_sale %}No longer on sale
+                    {% else %}{% if t.sale_end %}Until {{ t.sale_end }}{% endif %}{% if t.seats_left is not none %}{% if t.sale_end %} · {% endif %}{{ t.seats_left }} left{% endif %}{% endif %}
+                    {% if t.who %} · for {{ t.who|map('title')|join(', ') }} only{% endif %}
+                  </small>
+                </span>
+              </label>
+              {% endfor %}
+            </div>
+            {% if field_errors.get('ticket_type') %}<div class="field-error" id="ticket_type-error" role="alert">{{ field_errors['ticket_type'] }}</div>{% endif %}
+          </div>
+        </fieldset>
+        {% endif %}
+
+        {# 2. The event's own questions #}
+        {% if sections.details %}
+        {% set step.n = step.n + 1 %}
+        <fieldset class="reg-section" data-section="details">
+          <legend><span class="reg-step">{{ step.n }}</span> Registration details</legend>
+          <div class="reg-grid">
+            {% for field in sections.details %}{{ render_field(field) }}{% endfor %}
+          </div>
+        </fieldset>
+        {% endif %}
+
+        {# 3. The team (UPG-08) #}
+        {% if sections.team %}
+        {% set step.n = step.n + 1 %}
+        <fieldset class="reg-section" data-section="team">
+          <legend><span class="reg-step">{{ step.n }}</span> Team</legend>
+          <p class="section-hint">You are the team lead (member 1). Add each member's name and email so they get their own notices.</p>
+          <div class="reg-grid">
+            {% for field in team_blocks.general %}{{ render_field(field) }}{% endfor %}
+          </div>
+          {# One block per member: a member's fields never share a row with another's #}
+          {% for m in team_blocks.members %}
+          <div class="reg-member" role="group" aria-labelledby="member-{{ m.n }}-title" data-member="{{ m.n }}">
+            <h3 class="reg-member__title" id="member-{{ m.n }}-title">
+              Member {{ m.n }}
+              <span class="reg-member__tag{% if not m.required %} is-optional{% endif %}">{{ 'Required' if m.required else 'Optional' }}</span>
+            </h3>
+            <div class="reg-member__grid">
+              {% for field in m.fields %}{{ render_field(field) }}{% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+        </fieldset>
+        {% endif %}
+
+        {# 4. Declaration: consent (UPG-22) and WhatsApp (UPG-147) #}
+        {% set step.n = step.n + 1 %}
+        <fieldset class="reg-section reg-declare" data-section="declaration">
+          <legend><span class="reg-step">{{ step.n }}</span> Declaration</legend>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="privacy_consent" name="privacy_consent" value="yes" required
+                   {% if field_errors.get('privacy_consent') %}aria-invalid="true" aria-describedby="privacy_consent-error"{% endif %}>
+            <label class="form-check-label" for="privacy_consent">
+              I have read the <a href="/privacy" target="_blank" rel="noopener">privacy notice</a> and agree that
+              SapthaEvent uses my details to run this event.<span class="req">*</span>
+            </label>
+            {% if field_errors.get('privacy_consent') %}<div class="field-error" id="privacy_consent-error" role="alert">{{ field_errors['privacy_consent'] }}</div>{% endif %}
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="whatsapp_opt_in" name="whatsapp_opt_in" value="yes">
+            <label class="form-check-label" for="whatsapp_opt_in">
+              Send me updates about this event on WhatsApp (reply STOP any time to stop).
+            </label>
+          </div>
+        </fieldset>
+
+        <div class="reg-submit">
+          <small>Check your details before you submit; your ticket is emailed to you.</small>
+          <button type="submit" class="btn btn-gold btn-lg" id="submit-btn" data-no-loader>
+            <i class="fas fa-paper-plane" aria-hidden="true"></i>
+            {% if is_waitlist %}
+              Join the waitlist (event is full)
+            {% elif paid %}
+              Continue to payment — ₹{{ event.entry_fee }}
+            {% else %}
+              Register now — free
+            {% endif %}
+          </button>
+        </div>
+      </form>
+    </section>
   </div>
-
-  <p class="security-note">
-    <i class="fas fa-lock" aria-hidden="true"></i>
-    Your details are used only to run this event.
-  </p>
-
   {% endif %}
-
 </div>
 {% endblock %}
 {% block extra_js %}

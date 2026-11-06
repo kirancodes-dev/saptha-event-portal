@@ -1,0 +1,57 @@
+{% extends "base_classic.html" %}
+{#- The shortlist preview (UPG-193): who goes to the finale and who doesn't,
+    with ties at the cut shown. Nothing has changed until "Confirm". -#}
+{% block title %}Confirm the shortlist — {{ event.title }}{% endblock %}
+{% block page_title %}Confirm the shortlist{% endblock %}
+{% block page_sub %}{{ event.title }} · round {{ round }} · nothing changes until you confirm{% endblock %}
+{% block page_actions %}<a href="/spoc/hackathon/{{ event.id }}#ranking" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Back without changing anything</a>{% endblock %}
+{% block extra_css %}
+<style>
+.hk-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:20px 22px;margin-bottom:18px;}
+.hk-card h2{font-size:14px;font-weight:700;color:var(--brand-ink,#1a2557);text-transform:uppercase;letter-spacing:.4px;margin:0 0 14px;}
+.hk-list{list-style:none;margin:0;padding:0;}
+.hk-list li{padding:6px 0;border-top:1px solid #f1f5f9;display:flex;justify-content:space-between;gap:12px;}
+.hk-list li:first-child{border-top:0;}
+</style>
+{% endblock %}
+{% block content %}
+{% if p.tie %}
+<div class="alert alert-warning" role="alert" data-tie>
+  <strong>Tie at the cut-off.</strong> {{ p.tie | length }} teams share the score of {{ p.mark }} at place {{ p.n }}
+  ({{ p.tie | map(attribute='team') | join(', ') }}), so all of them go through: <strong>{{ p.go | length }}</strong> finalists instead of {{ p.n }}.
+  To keep exactly {{ p.n }}, go back and tick the teams by hand, or give your own scores to break the tie.
+</div>
+{% endif %}
+{% if p.unscored %}
+<div class="alert alert-info">{{ p.unscored | length }} team(s) submitted but have no score ({{ p.unscored | map(attribute='team') | join(', ') }}); with Top N they don't go through.</div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <section class="hk-card" aria-labelledby="goHead" data-go>
+      <h2 id="goHead"><i class="fas fa-circle-check text-success" aria-hidden="true"></i> To the finale ({{ p.go | length }})</h2>
+      <ul class="hk-list">
+        {% for r in p.go %}<li><span><strong>{{ r.team }}</strong></span><span class="text-muted">{{ r.key if r.key is not none else '—' }}{% if r.tied %} · tie{% endif %}</span></li>{% endfor %}
+      </ul>
+    </section>
+  </div>
+  <div class="col-md-6">
+    <section class="hk-card" aria-labelledby="outHead" data-out>
+      <h2 id="outHead"><i class="fas fa-circle-xmark text-danger" aria-hidden="true"></i> Eliminated ({{ p.out | length }})</h2>
+      <ul class="hk-list">
+        {% for r in p.out %}<li><span>{{ r.team }}</span><span class="text-muted">{% if not r.submitted %}no submission{% else %}{{ r.key if r.key is not none else 'no score' }}{% endif %}</span></li>
+        {% else %}<li class="text-muted">Nobody.</li>{% endfor %}
+      </ul>
+    </section>
+  </div>
+</div>
+
+<form method="POST" action="/spoc/hackathon/{{ event.id }}/shortlist/confirm" class="hk-card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="expected_round" value="{{ round }}">
+  {% for r in p.go %}<input type="hidden" name="go" value="{{ r.reg_id }}">{% endfor %}
+  <p>Confirming moves {{ p.go | length }} team(s) to the finale and eliminates {{ p.out | length }}. Every team gets a notice on its hackathon page and "Finalists announced" is posted there; no email is sent. You can undo it until judges start scoring the finale.</p>
+  <button class="btn btn-primary" type="submit">Confirm the shortlist</button>
+  <a class="btn btn-link" href="/spoc/hackathon/{{ event.id }}#ranking">Back</a>
+</form>
+{% endblock %}

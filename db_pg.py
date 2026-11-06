@@ -195,7 +195,7 @@ def require_schema_at_head():
 
 
 def init_db():
-    """Development only: create missing tables and nullable columns at start-up.
+    """Development only: create missing tables, nullable columns and indexes at start-up.
     Production databases are built and changed by Alembic migrations (UPG-16)."""
     engine = get_engine()
     if engine is not None:
@@ -232,21 +232,41 @@ def init_db():
                             extra = f' NOT NULL DEFAULT {literal}'
                         conn.execute(text(f'ALTER TABLE "{table_name}" ADD COLUMN "{col.name}" {col_type}{extra}'))
                         conn.commit()
+
+            # And indexes added to the models later, such as UPG-115's one active
+            # registration per person. One that existing rows break is logged, not
+            # forced: production gets it from its migration, which says what to fix.
+            for table_name, table in Base.metadata.tables.items():
+                if table_name not in existing_tables:
+                    continue
+                present = {ix['name'] for ix in inspect(engine).get_indexes(table_name)}
+                for index in table.indexes:
+                    if index.name in present:
+                        continue
+                    try:
+                        index.create(engine)
+                    except Exception as exc:
+                        import logging
+                        logging.getLogger(__name__).warning(
+                            "init_db: couldn't add index %s to %s: %s", index.name, table_name, exc)
         except Exception as exc:
             import logging
             logging.getLogger(__name__).info("init_db note: %s", exc)
 
 
 @contextmanager
-def get_session():
-    """Context manager yielding a SQLAlchemy session with auto-commit/rollback and read-replica routing."""
+def get_session(primary: bool = False):
+    """Context manager yielding a SQLAlchemy session with auto-commit/rollback and read-replica routing.
+
+    A GET request reads from the replica when one is configured; pass
+    primary=True for a write made during a GET (UPG-162's visit counter)."""
     if _SessionLocal is None:
         _build_engine()
 
     use_replica = False
     try:
         from flask import has_request_context, request
-        if has_request_context() and request.method in ('GET', 'HEAD', 'OPTIONS'):
+        if not primary and has_request_context() and request.method in ('GET', 'HEAD', 'OPTIONS'):
             use_replica = True
     except ImportError:
         pass

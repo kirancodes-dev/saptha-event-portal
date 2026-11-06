@@ -19,6 +19,7 @@ from models import db
 # Statuses an event runs in (reminders, lifecycle) and takes registrations in;
 # `active` is the old single "running" status (UPG-43).
 from services_workflow import EVENT_DAY_STATUSES as RUNNING, REGISTRATION_OPEN_STATUSES as REGISTRATION_OPEN
+from utils import venue_label  # never an invented place (UPG-111)
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +77,7 @@ def send_24h_reminders(self):
             event_id    = event['id']
             event_title = event.get('title', 'Event')
             event_date  = event.get('date', tomorrow_str)
-            venue       = event.get('venue', 'SNPSU Campus')
+            venue       = venue_label(event)
 
             regs = db.collection('registrations').where('event_id', '==', event_id).stream()
 
@@ -95,21 +96,35 @@ def send_24h_reminders(self):
                 # The entry ticket (with the QR) to the lead and every team
                 # member, once each (UPG-48); ticket_sent_to remembers who has it
                 from services_recipients import registration_people
+                import services_hackathon
+                # A portal-only event: the ticket is on the portal, no email (UPG-195)
+                by_email = services_hackathon.email_allowed(event, 'ticket')
+                if not by_email:
+                    services_hackathon.notify(db, event, reg, f"Tomorrow: {event_title}",
+                                              f"Your entry ticket with its QR is ready. {venue}".strip(),
+                                              link=f"/ticket/{reg_id}", kind='event_reminder')
                 already = set(reg.get('ticket_sent_to') or [])
                 for email, name, phone in registration_people(reg):
                     if email in already:
                         continue
-                    send_ticket_email_task.delay(
-                        to_email=email,
-                        name=name,
-                        event_title=event_title,
-                        reg_id=reg_id,
-                        event_date=event_date,
-                        venue=venue,
-                        with_qr=True,
-                    )
-                    queued_emails += 1
-                    if phone:
+                    if by_email:
+                        send_ticket_email_task.delay(
+                            to_email=email,
+                            name=name,
+                            event_title=event_title,
+                            reg_id=reg_id,
+                            event_date=event_date,
+                            venue=venue,
+                            with_qr=True,
+                        )
+                        queued_emails += 1
+                    try:   # a copy on the person's browsers, once (UPG-157)
+                        import services_push
+                        services_push.send_once(db, email, f"reminder_{reg_id}", f"Tomorrow: {event_title}",
+                                                f"Your entry ticket is ready. {venue}".strip(), f"/ticket/{reg_id}")
+                    except Exception:
+                        logger.warning("Reminder push failed for %s", email, exc_info=True)
+                    if phone:   # the task sends the template once, opted-in only, under the cap (UPG-147)
                         send_reminder_whatsapp_task.delay(
                             phone=phone,
                             name=name,
@@ -140,7 +155,7 @@ def send_24h_reminders(self):
             title    = event.get('title', 'Event')
             date_str = event.get('date', tomorrow_str)
             time_str = event.get('time', 'TBD')
-            venue    = event.get('venue', 'SNPSU Campus')
+            venue    = venue_label(event)
             reg_count = int(event.get('registration_count', 0) or 0)
             max_cap   = int((event.get('limits') or {}).get('max_participants', 0) or 0)
             cap_line  = f"{reg_count} / {max_cap}" if max_cap else str(reg_count)
@@ -274,7 +289,7 @@ def send_3day_reminders(self):
             event_id    = event['id']
             event_title = event.get('title', 'Event')
             event_date  = event.get('date', target_str)
-            venue       = event.get('venue', 'SNPSU Campus')
+            venue       = venue_label(event)
 
             regs = db.collection('registrations').where('event_id', '==', event_id).stream()
 
@@ -292,6 +307,14 @@ def send_3day_reminders(self):
 
                 # The lead and every team member, once each (UPG-48)
                 from services_recipients import registration_people
+                import services_hackathon
+                if not services_hackathon.email_allowed(event, 'reminder'):
+                    # A portal-only event: a portal notice, no email (UPG-195)
+                    services_hackathon.notify(db, event, reg, f"In 3 days: {event_title}",
+                                              f"{event_title} is on {event_date} at {venue}.",
+                                              link=f"/event/{event_id}", kind='event_reminder')
+                    db.collection('registrations').document(reg_id).update({'early_reminder_sent': True})
+                    continue
                 already = set(reg.get('early_reminder_sent_to') or [])
                 for email, name, _phone in registration_people(reg):
                     if email in already:
@@ -414,7 +437,7 @@ def check_registration_velocity(self):
 
             title     = e.get('title', 'Event')
             event_date = e.get('date', '')
-            venue     = e.get('venue', 'SNPSU Campus')
+            venue     = venue_label(e)
             reg_count = int(e.get('registration_count', 0) or 0)
             max_cap   = int((e.get('limits') or {}).get('max_participants', 0) or 0)
 

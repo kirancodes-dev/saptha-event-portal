@@ -21,7 +21,8 @@ class DynamicDBProxy:
             raise AttributeError(f"No DB available for attribute '{name}'")
 
 db = DynamicDBProxy()
-from utils import login_required, role_required, log_action, safe_int
+from utils import (login_required, role_required, log_action, safe_int, create_registration, generate_reg_id,
+                   AlreadyRegistered, venue_label)
 from utils_email import (send_appointment_email, send_broadcast_email,
                          send_ticket_email, send_result_email)
 from services_accounts import create_unverified_account, send_set_password_link
@@ -108,6 +109,8 @@ def dashboard():
             d['scored_teams'] = sum(
                 1 for r in regs
                 if not r.get('is_eliminated') and r.get('scores'))
+            # The form builder needs edit_event: show its button only to those who have it (UPG-68)
+            d['can_edit_form'] = can(session, 'edit_event', d, db=db)
             events.append(d)
     except Exception as exc:
         flash(f"Dashboard error: {exc}", "danger")
@@ -144,6 +147,12 @@ def view_registrations(event_id):
         from utils_pagination import paginate_items
         page = paginate_items(registrations, search_fields=(
             'lead_name', 'name', 'lead_email', 'student_email', 'usn', 'team_name', 'lead_phone'))
+        # Each lead's login email, for helping someone told to contact the organizer (UPG-152)
+        from services_accounts import login_status
+        for reg in page.items:
+            lead = str(reg.get('lead_email') or reg.get('student_email') or '').strip().lower()
+            doc = db.collection('users').document(lead).get() if lead else None
+            reg['login'] = login_status((doc.to_dict() or {}) if doc is not None and doc.exists else None)
         return render_template('coordinator/registrations.html',
             event=event, registrations=page.items, page=page, total=len(registrations))
     except Exception as exc:
@@ -151,6 +160,47 @@ def view_registrations(event_id):
             abort(403)
         flash(f"Error loading registrations: {exc}", "danger")
         return redirect('/coordinator/dashboard')
+
+
+@coord_bp.route('/registrations/<event_id>/login_link', methods=['POST'])
+@login_required
+@role_required(COORD_ROLES)
+def send_login_link(event_id):
+    """The organizer emails a registrant's lead a new one-time set-password
+    link (48 hours): the help behind "contact the hackathon organizer"
+    (UPG-152). Counts against the daily email limit; participant accounts
+    only."""
+    from flask import abort
+    from services_accounts import email_login_link, login_status
+    from services_permission import can
+    event_doc = db.collection('events').document(event_id).get()
+    if not event_doc.exists:
+        abort(404)
+    event = dict(event_doc.to_dict() or {}, id=event_id)
+    if not can(session, 'manage_registrations', event, db=db):
+        abort(403)
+    back = f'/coordinator/registrations/{event_id}'
+    reg_doc = db.collection('registrations').document((request.form.get('reg_id') or '').strip()).get()
+    reg = (reg_doc.to_dict() or {}) if reg_doc.exists else {}
+    if str(reg.get('event_id') or '') != str(event_id):
+        flash("That registration isn't for this event.", "danger")
+        return redirect(back)
+    lead = str(reg.get('lead_email') or reg.get('student_email') or '').strip().lower()
+    user_doc = db.collection('users').document(lead).get() if lead else None
+    user = (user_doc.to_dict() or {}) if user_doc is not None and user_doc.exists else None
+    if not login_status(user)['can_send']:
+        flash("A password link can be sent only to a participant's account.", "warning")
+        return redirect(back)
+    status = email_login_link(db, lead, (user or {}).get('name', ''), 'set_password',
+                              reason="earlier, and the event's organizer has sent you a new link",
+                              by=session.get('user_id', ''))
+    if status == 'sent':
+        flash(f"✅ A one-time password link (valid 48 hours) was emailed to {lead}.", "success")
+    elif status == 'limit':
+        flash("Today's email limit is reached, so nothing was sent. Try again tomorrow.", "danger")
+    else:
+        flash(f"The email to {lead} couldn't be sent. Check the mail settings and try again.", "danger")
+    return redirect(back)
 
 
 # 3. CREATE EVENT: retired (UPG-78). This used to save a live event straight
@@ -334,9 +384,14 @@ def trigger_reminders(event_id):
             body = (f"ROUND {round_num} ALERT\n\nHello {lead_name},\n\n"
                     f"You are in Round {round_num} of '{event_data['title']}'.\n"
                     f"Room: {room}\nJudge: {judge}\n\nBest of luck!")
-            send_broadcast_email([lead_email], f"Round {round_num} Details",
-                                  body, event_data['title'])
-            email_count += 1
+            import services_hackathon
+            if services_hackathon.email_allowed(event_data, 'room'):
+                send_broadcast_email([lead_email], f"Round {round_num} Details",
+                                      body, event_data['title'])
+                email_count += 1
+            else:   # a portal notice instead (UPG-195)
+                services_hackathon.notify(db, {**event_data, 'id': event_id}, d, f"Round {round_num} details",
+                                          body, link=f"/hackathon/{event_id}")
             if phone and _wa(send_room_assignment_whatsapp, phone, lead_name,
                              event_data['title'], round_num, room, judge):
                 wa_count += 1
@@ -351,35 +406,26 @@ def trigger_reminders(event_id):
 @login_required
 @role_required(COORD_ROLES)
 def promote_round(event_id):
-    _event_or_abort(event_id, 'publish_results')
+    event_d = _event_or_abort(event_id, 'publish_results')
     try:
-        cutoff    = float(request.form.get('cutoff_score', 0))
-        event_ref = db.collection('events').document(event_id)
-        event_d   = event_ref.get().to_dict()
-        cur_round = event_d.get('active_round', 1)
-        nxt_round = cur_round + 1
-        promoted = eliminated = 0
-        for reg in (db.collection('registrations')
-                      .where(filter=_ff('event_id', '==', event_id)).stream()):
-            rd = reg.to_dict()
-            if rd.get('is_eliminated'): continue
-            scores = rd.get('scores', {})
-            total  = sum(safe_int(s.get('total', 0)) for s in scores.values())
-            rr     = db.collection('registrations').document(reg.id)
-            if total >= cutoff:
-                rr.update({'current_round': nxt_round, 'scores': firestore.DELETE_FIELD,
-                            'assigned_room': None, 'assigned_judge_email': None,
-                            'assigned_judge_name': None})
-                promoted += 1
-            else:
-                rr.update({'is_eliminated': True})
-                eliminated += 1
-                _wa(send_elimination_whatsapp, _phone(rd), rd.get('lead_name', ''),
-                    event_d.get('title', 'Event'), cur_round)
-        event_ref.update({'active_round': nxt_round})
+        # The SPOC panel's rule: the average judge score, history kept (UPG-149)
+        import services_rounds
+        result = services_rounds.advance(
+            db, event_id=event_id, event=event_d, mode='cutoff',
+            cutoff=request.form.get('cutoff_score'), expected_round=request.form.get('round'),
+            eliminate_unscored=request.form.get('eliminate_unscored') == 'yes',
+            actor=session.get('user_id', ''))
+        if not result['ok']:
+            flash(result['message'], "warning")
+            return redirect('/coordinator/dashboard')
+        for t in result['eliminated']:
+            rd = t['reg']
+            _wa(send_elimination_whatsapp, _phone(rd), rd.get('lead_name', ''),
+                event_d.get('title', 'Event'), result['round'] - 1)
         log_action(db, "ROUND_PROMOTED",
-                   f"Event {event_id}: {promoted} promoted, {eliminated} eliminated. Cutoff={cutoff}")
-        flash(f"Round {nxt_round}: {promoted} advanced, {eliminated} eliminated.", "success")
+                   f"Event {event_id}: {len(result['advanced'])} promoted, {len(result['eliminated'])} "
+                   f"eliminated. Cutoff={request.form.get('cutoff_score')}")
+        flash(result['message'], "success")
     except Exception as exc:
         flash(f"Promotion error: {exc}", "danger")
     return redirect('/coordinator/dashboard')
@@ -402,7 +448,13 @@ def broadcast_message(event_id):
         email_list  = list({r.to_dict().get('lead_email') for r in regs
                             if r.to_dict().get('lead_email')})
         phone_list  = list({_phone(r.to_dict()) for r in regs if _phone(r.to_dict())})
-        send_broadcast_email(email_list, subject, message, event_title)
+        import services_hackathon
+        event_data = event_doc.to_dict() or {}
+        if services_hackathon.email_allowed(event_data, 'broadcast'):
+            send_broadcast_email(email_list, subject, message, event_title)
+        else:   # an update on the hackathon page instead (UPG-195)
+            services_hackathon.post_update(db, event_id, event_data, subject, message, kind='announcement',
+                                           by=session.get('user_id', ''))
         wa_sent = 0
         if _WA:
             try:
@@ -445,14 +497,23 @@ def publish_results(event_id):
             })
 
         winners = [w for w in leaderboard if w['rank'] <= 3]
+        import services_hackathon
+        portal = services_hackathon.portal_only(event_data)   # one result email per team lead (UPG-194)
         for winner in winners:
-            send_result_email(str(winner['email']), str(winner['lead_name']), event_title, winner['rank'], winner['score'])
+            if not portal:
+                send_result_email(str(winner['email']), str(winner['lead_name']), event_title, winner['rank'], winner['score'])
             if winner.get('phone'):
                 _wa(send_result_whatsapp, winner['phone'], winner['lead_name'],
                     event_title, winner['rank'], winner['score'])
 
-        event_ref.update({'status': 'completed', 'winners': winners,
+        event_ref.update({'status': 'completed', 'winners': winners, 'results_published': True,   # as the SPOC's (UPG-139)
                           'completed_at': datetime.datetime.now(datetime.timezone.utc)})
+        from routes_spoc import _push_results   # results by push too (UPG-157)
+        _push_results(event_id)
+        if portal:
+            import services_hackathon_eval
+            flash(services_hackathon_eval.publish_results(
+                db, event_id, {**event_data, 'id': event_id}, session.get('user_id', ''))['message'], 'info')
 
         # Kick off AI summaries in background (best-effort — won't block publish)
         try:
@@ -477,6 +538,10 @@ def publish_results(event_id):
 
         log_action(db, "RESULTS_PUBLISHED", f"Event {event_id} by {session.get('user_id')}")
         flash("Results published! Top 3 notified. AI summaries generating in background.", "success")
+        from services_certificate_runs import on_results_published   # position certificates (UPG-124)
+        note = on_results_published(db, event_id, session.get('user_id', ''))
+        if note:
+            flash(note, 'info')
     except Exception as exc:
         flash(f"Publish error: {exc}", "danger")
     return redirect('/coordinator/dashboard')
@@ -489,7 +554,8 @@ def export_registrations(event_id):
     import services_export
     from routes_spoc import _export_name
     event = _event_or_abort(event_id, 'export_data')
-    return Response(services_export.to_csv(services_export.registration_rows(db, event_id)), mimetype='text/csv',
+    return Response(services_export.to_csv(services_export.registration_rows(db, event_id),
+                                            services_export.registration_columns(db, event_id)), mimetype='text/csv',
                     headers={"Content-Disposition": f"attachment; filename={_export_name(event, 'Registrations.csv')}"})
 
 
@@ -520,7 +586,6 @@ def on_spot_form():
 @role_required(['EventCoordinator', 'SuperAdmin', 'Super Admin'])
 def process_walkin():
     try:
-        import time as _time
         event_id = request.form.get('event_id', '')
         email    = request.form.get('email', '').lower().strip()
         name     = request.form.get('name', '').strip()
@@ -541,20 +606,25 @@ def process_walkin():
         if is_new:
             create_unverified_account(db, email, name, phone, usn=usn)
 
-        reg_id      = f"REG-{int(_time.time() * 1000)}"
+        reg_id      = generate_reg_id()   # UPG-95
         event_doc   = db.collection('events').document(event_id).get().to_dict() or {}
         event_title = event_doc.get('title', 'Event')
-        db.collection('registrations').document(reg_id).set({
-            'reg_id': reg_id, 'event_id': event_id, 'event_title': event_title,
-            'lead_name': name, 'lead_email': email, 'lead_usn': usn, 'lead_phone': phone,
-            'team_name': name, 'members': [],
-            'status': 'Confirmed', 'payment_status': 'Paid',
-            'amount_paid': event_doc.get('fees', {}).get('regular', 0),
-            'payment_mode': request.form.get('payment_mode', 'Cash'),
-            'registered_at': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            'attendance': 'Present',
-            'checkin_time': datetime.datetime.now().strftime("%H:%M:%S"),
-            'is_eliminated': False, 'current_round': event_doc.get('active_round', 1)})
+        try:
+            create_registration(db, reg_id, {
+                'reg_id': reg_id, 'event_id': event_id, 'event_title': event_title,
+                'lead_name': name, 'lead_email': email, 'lead_usn': usn, 'lead_phone': phone,
+                'team_name': name, 'members': [],
+                'status': 'Confirmed', 'payment_status': 'Paid',
+                'amount_paid': event_doc.get('fees', {}).get('regular', 0),
+                'payment_mode': request.form.get('payment_mode', 'Cash'),
+                'registered_at': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                'attendance': 'Present',
+                'checkin_time': datetime.datetime.now().strftime("%H:%M:%S"),
+                'is_eliminated': False, 'current_round': event_doc.get('active_round', 1),
+                'source': 'walk_in'})   # a desk sign-up, not an online form (UPG-145)
+        except AlreadyRegistered:   # the database keeps one active registration per person (UPG-115)
+            flash(f"{email} is already registered for {event_title}; check them in from the scanner instead.", "info")
+            return redirect('/coordinator/on_spot')
 
         # Generate QR code bytes so it can be attached to the ticket email
         try:
@@ -572,7 +642,9 @@ def process_walkin():
         except Exception:
             qr_bytes = None
 
-        send_ticket_email(email, name, event_title, reg_id, qr_bytes=qr_bytes or b'')
+        import services_hackathon   # no ticket email for a portal-only event (UPG-195)
+        if services_hackathon.email_allowed(event_doc, 'ticket'):
+            send_ticket_email(email, name, event_title, reg_id, qr_bytes=qr_bytes or b'')
         if is_new:
             send_set_password_link(db, email, name,
                                    reason=f"when you registered at the desk for {event_title}")
@@ -589,7 +661,7 @@ def process_walkin():
 # 15. QR SCANNER
 @coord_bp.route('/scanner')
 @login_required
-@role_required(['EventCoordinator', 'SuperAdmin', 'Super Admin'])
+@role_required(['EventCoordinator', 'Volunteer', 'SuperAdmin', 'Super Admin'])   # volunteers scan where assigned (UPG-120)
 def scanner_selector():
     user_email = session.get('user_id', '')
     user_name  = session.get('name', user_email.split('@')[0].title())
@@ -614,7 +686,7 @@ def scanner_selector():
             'title':    d.get('title', 'Untitled'),
             'date':     ev_date,
             'time':     d.get('time', ''),
-            'venue':    d.get('venue', 'SNPSU Campus'),
+            'venue':    venue_label(d),   # UPG-111
             'category': d.get('category', 'General'),
             'reg_count': int(d.get('registration_count', 0) or 0),
             'max_cap':   int((d.get('limits') or {}).get('max_participants', 0) or 0),
@@ -638,8 +710,9 @@ def scanner_selector():
 
 @coord_bp.route('/scan/<event_id>')
 @login_required
-@role_required(['EventCoordinator', 'SuperAdmin', 'Super Admin'])
+@role_required(['EventCoordinator', 'Volunteer', 'SuperAdmin', 'Super Admin'])   # volunteers scan where assigned (UPG-120)
 def scan_page(event_id):
+    import services_sessions
     doc = db.collection('events').document(event_id).get()
     if not doc.exists:
         return redirect('/coordinator/scanner')
@@ -659,7 +732,8 @@ def scan_page(event_id):
                             event_title=d.get('title'),
                             event_date=event_date_str,
                             today=today_str,
-                            scanning_open=scanning_open)
+                            scanning_open=scanning_open,
+                            sessions=services_sessions.sessions_for(d))   # session mode (UPG-159)
 
 
 @coord_bp.route('/scan-hud/<event_id>')
@@ -783,6 +857,15 @@ def generate_certificate(reg_id, usn):
                 break
     if not student_name:
         return "Student not found in this registration.", 404
+    # Their certificate from the new store, if issued: its public page (UPG-126)
+    import services_certificates
+    from db_adapter import to_uuid
+    ids = {str(reg_id), str(to_uuid(reg_id))}            # the SQL layer keys registrations by UUID
+    issued = [c for c in services_certificates.for_event(data['event_id'])
+              if str(c.get('reg_id')) in ids and c.get('name') == student_name]
+    if issued:
+        issued.sort(key=lambda c: c['cert_type'] not in services_certificates.ATTENDED_TYPES)
+        return redirect(f"/verify/{issued[0]['number']}")
     event_data = db.collection('events').document(data['event_id']).get().to_dict()
     return render_template('participant/certificate.html',
                             student_name=student_name, event=event_data)

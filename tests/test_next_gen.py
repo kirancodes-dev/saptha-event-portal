@@ -82,66 +82,29 @@ def test_wayfinder_page_returns_200(client):
 # ═══════════════════════════════════════════════════════════════════════════
 
 def test_live_streams_page_returns_200(client):
-    resp = client.get('/live/streams')
-    assert resp.status_code == 200
-    assert b"SapthaEvent LiveStream" in resp.data
+    # Simulated viewers, likes and chat: hidden unless DEMO_PAGES_ENABLED (UPG-65,
+    # owner's instruction 2026-10-17); with the setting the page renders as before
+    assert client.get('/live/streams').status_code == 404
+    client.application.config['DEMO_PAGES_ENABLED'] = True
+    try:
+        resp = client.get('/live/streams')
+        assert resp.status_code == 200
+        assert b"SapthaEvent LiveStream" in resp.data
+    finally:
+        client.application.config['DEMO_PAGES_ENABLED'] = False
 
 
 def test_live_reels_page_returns_200(client):
-    resp = client.get('/live/reels')
-    assert resp.status_code == 200
-    assert b"Watch Highlight Reels" in resp.data or b"SapthaEvent Highlight Reels" in resp.data
+    # Comment and share buttons that do nothing: hidden unless DEMO_PAGES_ENABLED (UPG-65)
+    assert client.get('/live/reels').status_code == 404
+    client.application.config['DEMO_PAGES_ENABLED'] = True
+    try:
+        resp = client.get('/live/reels')
+        assert resp.status_code == 200
+        assert b"Watch Highlight Reels" in resp.data or b"SapthaEvent Highlight Reels" in resp.data
+    finally:
+        client.application.config['DEMO_PAGES_ENABLED'] = False
 
-
-# ═══════════════════════════════════════════════════════════════════════════
-# TESTS FOR UPGRADE 4: TEAMMATE MATCHMAKER CHATS
-# ═══════════════════════════════════════════════════════════════════════════
-
-def test_matchmaker_page_requires_auth(client):
-    resp = client.get('/participant/matchmaker/')
-    assert resp.status_code in (302, 401)  # Redirects to login or errors
-
-
-def test_matchmaker_endpoint_calculates_jaccard_matches(client, mock_db):
-    auth_c = login_as_student(client, mock_db)
-    payload = {
-        "skills": ["Python", "Flask"],
-        "interests": ["AI Hackathon"]
-    }
-    resp = auth_c.post(
-        '/participant/matchmaker/api/match',
-        data=json.dumps(payload),
-        content_type='application/json'
-    )
-    assert resp.status_code == 200
-    data = json.loads(resp.data)
-    assert data['success'] is True
-    assert len(data['matches']) > 0
-    # The first mock partner should have high score due to overlapping skills/interests
-    assert data['matches'][0]['match_score'] > 30
-
-
-def test_matchmaker_message_exchange_simulates_realtime_replies(client, mock_db):
-    auth_c = login_as_student(client, mock_db)
-    payload = {
-        "peer_id": "st_002",
-        "message": "Hey! Want to join forces for the web dev fest?"
-    }
-    resp = auth_c.post(
-        '/participant/matchmaker/api/message',
-        data=json.dumps(payload),
-        content_type='application/json'
-    )
-    assert resp.status_code == 200
-    data = json.loads(resp.data)
-    assert data['success'] is True
-    assert 'reply' in data
-    assert data['sender'] == 'Sneha Kulkarni'
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# TESTS FOR UPGRADE 5: JUDGE SCORE NORMALIZATION AUDITS
-# ═══════════════════════════════════════════════════════════════════════════
 
 def test_judging_audit_page_resolves_and_renders_bias(client, mock_db):
     spoc_c = login_as_spoc(client, mock_db)

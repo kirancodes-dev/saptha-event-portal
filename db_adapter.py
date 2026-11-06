@@ -992,6 +992,11 @@ class SQLDocumentReference:
 
         elif self.collection_name == 'registrations':
             d['student_email'] = record.lead_email
+            # The routes read the snake_case keys; rows written straight into the
+            # table (seeds) have only the columns, so expose both (UPG-69)
+            d['lead_email'] = record.lead_email
+            d['lead_name'] = record.lead_name
+            d['lead_phone'] = record.lead_phone
             d['checkin_time'] = getattr(record, 'checkin_time', None)
             d['ticket_id'] = getattr(record, 'ticket_id', None)
             if getattr(record, 'feedback_json', None):

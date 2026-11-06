@@ -1,0 +1,35 @@
+{% extends "base_classic.html" %}
+{#- Upcoming events open to students of other colleges (UPG-146); no login needed. -#}
+{% set app_active = 'open_events' %}
+{% block robots %}index, follow{% endblock %}
+{% block title %}Open events{% endblock %}
+{% block meta_description %}Upcoming events at Sapthagiri NPS University that students from other colleges can register for.{% endblock %}
+{% block page_sub %}Upcoming events that students from other colleges can register for.{% endblock %}
+{% block content %}
+<form method="GET" class="card mb-3" role="search"><div class="card-body row g-2 align-items-end">
+    <div class="col-md-4"><label class="form-label" for="oe-q">Search</label>
+        <input class="form-control" id="oe-q" name="q" value="{{ args.q }}" placeholder="Hackathon, robotics, music…"></div>
+    <div class="col-md-2"><label class="form-label" for="oe-cat">Category</label>
+        <select class="form-select" id="oe-cat" name="category"><option value="">All</option>
+        {% for c in categories %}<option {% if args.category == c %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></div>
+    <div class="col-md-2"><label class="form-label" for="oe-type">Type</label>
+        <select class="form-select" id="oe-type" name="event_type"><option value="">All</option>
+        {% for t in event_types %}<option {% if args.event_type == t %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></div>
+    <div class="col-md-2"><label class="form-label" for="oe-from">From</label><input class="form-control" type="date" id="oe-from" name="from" value="{{ args['from'] }}"></div>
+    <div class="col-md-2"><label class="form-label" for="oe-to">To</label><input class="form-control" type="date" id="oe-to" name="to" value="{{ args.to }}"></div>
+    <div class="col-12"><button class="btn btn-primary" type="submit">Find events</button></div>
+</div></form>
+{% if page.items %}
+<div class="row g-3">
+{% for e in page.items %}
+    <div class="col-12 col-md-6 col-lg-4"><div class="card h-100"><div class="card-body">
+        <h2 class="h6"><a href="/event/{{ e.id }}">{{ e.title }}</a></h2>
+        <p class="small text-muted mb-1">{{ e.date }} · {{ venue_label(e) }}</p>
+        {% if e.category %}<p class="small mb-2">{{ e.category }}{% if e.event_type %} · {{ e.event_type }}{% endif %}</p>{% endif %}
+        <a class="btn btn-sm btn-outline-primary" href="/event/{{ e.id }}">Details and registration</a>
+    </div></div></div>
+{% endfor %}
+</div>
+{% else %}<div class="card"><div class="card-body text-muted">No open events match right now.</div></div>{% endif %}
+{% include "includes/pagination.html" %}
+{% endblock %}

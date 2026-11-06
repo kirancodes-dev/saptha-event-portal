@@ -1,0 +1,253 @@
+{% extends "base_classic.html" %}
+
+{% block title %}Certificates — {{ event.title }}{% endblock %}
+{#- The event's certificates: signatories, template and preview (UPG-123). -#}
+{% block page_title %}Certificates{% endblock %}
+{% block page_sub %}{{ event.title }}{% endblock %}
+{% block page_actions %}<a href="/spoc/event/{{ event.id }}/review" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Event</a>{% endblock %}
+
+{% block extra_css %}{% if running %}<meta http-equiv="refresh" content="5">{% endif %}{% endblock %}
+
+{% block content %}
+{% if not ready %}
+<div class="callout callout--warning mb-3" role="status">{{ missing }}</div>
+{% endif %}
+
+<div class="card mb-3" id="issue">
+    <div class="card-body">
+        <h2 class="h5">Issue certificates</h2>
+        <p class="text-muted small">{{ people|length }} certificate{{ '' if people|length == 1 else 's' }} owed, {{ issued_count }} issued.
+            Issuing runs in the background and never gives anyone the same certificate twice.</p>
+        {% if can_issue %}
+        <form method="POST" action="/certificates/events/{{ event.id }}/issue" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-primary" {% if issue_problem %}disabled aria-describedby="issue-problem"{% endif %}>
+                <i class="fas fa-award" aria-hidden="true"></i> Issue certificates</button>
+        </form>
+        {% if issue_problem %}<p class="small text-danger mt-2 mb-0" id="issue-problem">{{ issue_problem }}</p>{% endif %}
+        <form method="POST" action="/certificates/events/{{ event.id }}/auto" class="mt-3 d-flex gap-2 align-items-center flex-wrap">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="auto" value="{{ 'off' if auto_issue else 'on' }}">
+            <span class="small">Position certificates when results are published: <strong>{{ 'on' if auto_issue else 'off' }}</strong></span>
+            <button type="submit" class="btn btn-sm btn-outline-secondary">Turn {{ 'off' if auto_issue else 'on' }}</button>
+        </form>
+        {% endif %}
+
+        {% if can_issue and registered %}
+        <form method="POST" action="/certificates/events/{{ event.id }}/award" class="mt-3 row g-2 align-items-end">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="col-md-4">
+                <label class="form-label small" for="award-person">Award to</label>
+                <select class="form-select form-select-sm" id="award-person" name="person" required>
+                    {% for p in registered %}<option value="{{ p.person_key }}">{{ p.name }}{% if p.team %} ({{ p.team }}){% endif %}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small" for="award-kind">Certificate</label>
+                <select class="form-select form-select-sm" id="award-kind" name="kind">
+                    <option value="merit">Merit</option><option value="special_mention">Special mention</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small" for="award-note">Wording (optional)</label>
+                <input class="form-control form-control-sm" id="award-note" name="note" maxlength="160" placeholder="for the best design in">
+            </div>
+            <div class="col-md-2"><button type="submit" class="btn btn-sm btn-outline-primary w-100" {% if issue_problem %}disabled{% endif %}>Award</button></div>
+        </form>
+        {% endif %}
+
+        {% if runs %}
+        <h3 class="h6 mt-3">Recent runs</h3>
+        <ul class="list-unstyled small mb-0">
+        {% for r in runs %}
+            <li class="mb-2">
+                <strong>{{ r.status|capitalize }}</strong> · {{ r.done }} of {{ r.total }} done, {{ r.failed }} failed
+                <span class="text-muted">({{ r.reason }}, {{ r.started_at[:16]|replace('T', ' ') }} UTC)</span>
+                {% if r.failed and can_issue and r.status not in ('queued', 'running') %}
+                <form method="POST" action="/certificates/events/{{ event.id }}/runs/{{ r.id }}/retry" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-outline-primary">Retry the failed ones</button>
+                </form>
+                {% endif %}
+                {% if r.errors %}<ul>{% for e in r.errors[:5] %}<li>{{ e.name }} ({{ e.type }}): {{ e.error }}</li>{% endfor %}</ul>{% endif %}
+            </li>
+        {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card mb-3" id="signatories">
+    <div class="card-body">
+        <h2 class="h5">Certificate signatories</h2>
+        <p class="text-muted small">Up to {{ max_signatories }}, shown left to right on every certificate of this event.
+            Changes apply to certificates issued from now on; ones already issued keep their signatures.</p>
+
+        {% if signatories %}
+        <form method="POST" action="/certificates/events/{{ event.id }}/signatories/order">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="table-responsive">
+            <table class="table align-middle">
+                <thead><tr><th scope="col">Order</th><th scope="col">Signatory</th><th scope="col">Signature</th>{% if can_edit %}<th scope="col"><span class="visually-hidden">Remove</span></th>{% endif %}</tr></thead>
+                <tbody>
+                {% for s in signatories %}
+                <tr>
+                    <td style="width:90px">
+                        <label for="order-{{ s.id }}" class="visually-hidden">Place of {{ s.name }}</label>
+                        <input type="number" min="1" max="{{ max_signatories }}" class="form-control form-control-sm" id="order-{{ s.id }}"
+                               name="order_{{ s.id }}" value="{{ s.order }}" {% if not can_edit %}disabled{% endif %}>
+                    </td>
+                    <td><strong>{{ s.name }}</strong><br><span class="text-muted small">{{ s.title }}</span></td>
+                    <td>{% if s.image_key %}<img src="/certificates/events/{{ event.id }}/signatories/{{ s.id }}/image" alt="Signature of {{ s.name }}" style="max-height:48px;max-width:180px" loading="lazy">{% else %}<span class="text-muted">No signature</span>{% endif %}</td>
+                    {% if can_edit %}
+                    <td class="text-end">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" formaction="/certificates/events/{{ event.id }}/signatories/{{ s.id }}/delete">Remove</button>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            </div>
+            {% if can_edit and signatories|length > 1 %}<button type="submit" class="btn btn-sm btn-outline-primary">Save order</button>{% endif %}
+        </form>
+        {% else %}
+        <p class="text-muted">No signatories yet.</p>
+        {% endif %}
+
+        {% if can_edit and signatories|length < max_signatories %}
+        <form method="POST" action="/certificates/events/{{ event.id }}/signatories" enctype="multipart/form-data" class="row g-2 align-items-end mt-2">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="col-md-3">
+                <label class="form-label" for="sig-name">Name</label>
+                <input class="form-control" id="sig-name" name="name" required maxlength="120" placeholder="Dr. A. Kumar">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="sig-title">Title</label>
+                <input class="form-control" id="sig-title" name="title" required maxlength="160" placeholder="Principal">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="sig-file">Signature (PNG or JPG, up to 1 MB, white or transparent background)</label>
+                <input class="form-control" type="file" id="sig-file" name="signature" accept="image/png,image/jpeg" required>
+            </div>
+            <div class="col-md-2"><button type="submit" class="btn btn-primary w-100">Add</button></div>
+        </form>
+        {% endif %}
+
+        {% if can_edit and copy_sources %}
+        <form method="POST" action="/certificates/events/{{ event.id }}/signatories/copy" class="d-flex gap-2 flex-wrap align-items-end mt-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div>
+                <label class="form-label" for="copy-source">Copy signatories from one of your events</label>
+                <select class="form-select" id="copy-source" name="source_event_id">
+                    {% for e in copy_sources %}<option value="{{ e.id }}">{{ e.title }} ({{ e.date }}, {{ e.count }})</option>{% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-outline-primary">Copy</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card mb-3" id="template">
+    <div class="card-body">
+        <h2 class="h5">Template and preview</h2>
+        {% if can_edit %}
+        <form method="POST" action="/certificates/events/{{ event.id }}/style" class="d-flex gap-2 flex-wrap align-items-end mb-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div>
+                <label class="form-label" for="cert-style">Template</label>
+                <select class="form-select" id="cert-style" name="style">
+                    {% for s in styles %}<option value="{{ s }}" {% if s == style %}selected{% endif %}>{{ s|capitalize }}</option>{% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-outline-primary">Save template</button>
+        </form>
+        {% endif %}
+        <img src="/certificates/events/{{ event.id }}/preview.png" alt="Preview of this event's certificate with sample data" class="img-fluid border rounded" loading="lazy">
+    </div>
+</div>
+
+{% if corrections %}
+<div class="card mb-3" id="corrections">
+    <div class="card-body">
+        <h2 class="h5">Name corrections asked for</h2>
+        <ul class="list-unstyled mb-0">
+        {% for r in corrections %}
+            <li class="mb-3">
+                <code>{{ r.number }}</code>: <strong>{{ r.old_name }}</strong> → <strong>{{ r.new_name }}</strong>
+                {% if r.reason %}<br><span class="small text-muted">{{ r.reason }}</span>{% endif %}
+                {% if can_issue %}
+                <div class="d-flex gap-2 mt-1 flex-wrap">
+                    <form method="POST" action="/certificates/events/{{ event.id }}/corrections/{{ r.id }}/approve">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm btn-primary">Approve (issue version 2)</button>
+                    </form>
+                    <form method="POST" action="/certificates/events/{{ event.id }}/corrections/{{ r.id }}/reject">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">Reject</button>
+                    </form>
+                </div>
+                {% endif %}
+            </li>
+        {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endif %}
+
+<div class="card mb-3" id="people">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h2 class="h5 mb-0">Who gets which certificate</h2>
+            <a href="/certificates/events/{{ event.id }}/list" class="btn btn-sm btn-outline-primary">All issued certificates, search and export</a>
+            <form method="POST" action="/certificates/events/{{ event.id }}/check_files">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-sm btn-outline-secondary">Check the stored files</button>
+            </form>
+        </div>
+        {% if people or others %}
+        <div class="table-responsive mt-2">
+        <table class="table table-sm align-middle">
+            <thead><tr><th scope="col">Name</th><th scope="col">Certificate</th><th scope="col">Number</th><th scope="col">Issued</th></tr></thead>
+            <tbody>
+            {% for p in people %}
+            <tr>
+                <td>{{ p.name }}{% if p.team %}<br><span class="text-muted small">{{ p.team }}</span>{% endif %}</td>
+                <td>{{ p.type_title }}{% if p.position %} ({{ p.position }}){% endif %}</td>
+                <td>{% if p.cert %}<code>{{ p.cert.number }}</code>{% if p.cert.status == 'revoked' %} <span class="badge text-bg-danger">Revoked</span>{% endif %}{% else %}<span class="text-muted">Not yet</span>{% endif %}</td>
+                <td>{% if p.cert %}{{ p.cert.issued_at.strftime('%d %b %Y') if p.cert.issued_at else '' }}
+                    {% if can_issue and p.cert.status == 'valid' %}
+                    <details class="mt-1"><summary class="small">Revoke</summary>
+                        <form method="POST" action="/certificates/events/{{ event.id }}/revoke" class="mt-1">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="number" value="{{ p.cert.number }}">
+                            <label class="form-label small" for="revoke-{{ p.cert.number }}">Reason</label>
+                            <input class="form-control form-control-sm" id="revoke-{{ p.cert.number }}" name="reason" required maxlength="500">
+                            <button type="submit" class="btn btn-sm btn-outline-danger mt-1">Revoke certificate</button>
+                        </form>
+                    </details>
+                    {% endif %}
+                    {% elif can_issue and not issue_problem %}
+                    <form method="POST" action="/certificates/events/{{ event.id }}/issue_one">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="pair" value="{{ p.pair }}">
+                        <button type="submit" class="btn btn-sm btn-outline-primary">Issue</button>
+                    </form>{% endif %}</td>
+            </tr>
+            {% endfor %}
+            {% for c in others %}
+            <tr>
+                <td>{{ c.name }}</td><td>{{ c.type_title }}</td><td><code>{{ c.number }}</code></td>
+                <td>{{ c.issued_at.strftime('%d %b %Y') if c.issued_at else '' }} <span class="text-muted small">(no longer owed)</span></td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% else %}
+        <p class="text-muted mt-2 mb-0">Nobody is owed a certificate yet: participants need to be marked Present.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

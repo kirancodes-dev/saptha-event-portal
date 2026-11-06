@@ -4,16 +4,16 @@ import hmac as _hmac  # alias to avoid shadowing module with local var
 import json
 import os
 import secrets
-import time
 from flask import (Blueprint, flash, jsonify, redirect, render_template, request, session)
 from services_payments import (PaymentError, amount_inr, attach_registration, check_order, claim_order,
                                claim_paid_order, get_order, give_back_coupon_use, mark_unmatched,
-                               note_failed_attempt, note_order, order_for_payment, record_order,
+                               note_failed_attempt, note_order, order_for_payment, priced_as, record_order,
                                record_refund, refund_reversed, release_payer_holds, server_price,
                                simulation_enabled, take_coupon_use)
 
 COUPON_GONE = 'the coupon had no uses left when this late payment arrived'  # UPG-36
-from utils import login_required, record_form_submission, safe_int
+from utils import (AlreadyRegistered, create_registration, generate_reg_id, login_required, record_form_submission,
+                   safe_int)
 
 # What a payer sees when their money arrived but the registration couldn't be
 # completed (UPG-30)
@@ -102,7 +102,7 @@ def create_order():
     try:
         coupon_val = body.get('coupon') or body.get('coupon_code', '')
         price = server_price(_db(), event_id, event_doc.to_dict() or {}, coupon_val,
-                             reg_data.get('participant_type', ''))
+                             **priced_as(reg_data))   # group fee or ticket type (UPG-155)
     except PaymentError as exc:
         return jsonify({'error': str(exc)}), exc.status
     if price['amount_paise'] < 100:
@@ -115,7 +115,7 @@ def create_order():
         return jsonify({'error': 'Online payment is not configured. Please contact the organiser.'}), 503
 
     email = (reg_data.get('lead_email') or '').lower()
-    reg_id = str(reg_data.get('reg_id') or f"REG-{int(time.time() * 1000)}")
+    reg_id = str(reg_data.get('reg_id') or generate_reg_id())
     reg_data = dict(reg_data, reg_id=reg_id)
     coupon = price.get('coupon')
     if coupon:
@@ -294,13 +294,17 @@ def price_preview():
     event_data = event_doc.to_dict() or {}
     # The pending registrant's group decides the fee (UPG-73)
     pending = session.get('pending_reg_data') or {}
-    ptype = pending.get('participant_type', '') if str(pending.get('event_id')) == event_id else ''
-    from services_payments import fee_for
-    base_fee = fee_for(event_data, ptype)
+    priced = priced_as(pending if str(pending.get('event_id')) == event_id else {})
+    from services_payments import registration_fee
+    try:
+        base_fee = registration_fee(event_data, priced['participant_type'], priced['ticket_type'],
+                                    priced['member_count'])
+    except PaymentError:
+        base_fee = 0.0
 
     if not coupon_code:
         try:
-            price = server_price(_db(), event_id, event_data, '', ptype)
+            price = server_price(_db(), event_id, event_data, '', **priced)
             return jsonify({
                 'valid': True,
                 'fee': price['fee'],
@@ -313,7 +317,7 @@ def price_preview():
             return jsonify({'valid': False, 'error': str(exc)}), exc.status
 
     try:
-        price = server_price(_db(), event_id, event_data, coupon_code, ptype)
+        price = server_price(_db(), event_id, event_data, coupon_code, **priced)
         return jsonify({
             'valid': True,
             'fee': price['fee'],
@@ -361,10 +365,10 @@ def checkout(event_id):
 
     event  = event_doc.to_dict()
     try:
-        amount = server_price(_db(), event_id, event,
-                              participant_type=reg_data.get('participant_type', ''))['amount_inr']
-    except PaymentError:
-        amount = event.get('entry_fee', 0)
+        amount = server_price(_db(), event_id, event, **priced_as(reg_data))['amount_inr']
+    except PaymentError as exc:   # e.g. the ticket type's sale ended (UPG-155)
+        flash(str(exc), "warning")
+        return redirect(f'/forms/register/{event_id}')
     user   = {
         'name':  reg_data.get('lead_name'),
         'email': reg_data.get('lead_email'),
@@ -404,7 +408,7 @@ def _complete_registration(event_id, reg_data, payment_status='Paid',
     email  = reg_data.get('lead_email')
     name   = reg_data.get('lead_name')
     phone  = reg_data.get('lead_phone', '')
-    reg_id = reg_data.get('reg_id') or f"REG-{int(time.time() * 1000)}"
+    reg_id = reg_data.get('reg_id') or generate_reg_id()
 
     try:
         blocking, held = _existing_registration(event_id, email, reg_id)
@@ -420,6 +424,12 @@ def _complete_registration(event_id, reg_data, payment_status='Paid',
                    or safe_int(event_data.get('capacity', 0)))
         if held is None and max_cap and safe_int(event_data.get('registration_count', 0)) >= max_cap:
             return {'error': 'event_full'}
+        # Its ticket type's seat, taken now, at the same instant as anyone
+        # else's (UPG-155); a held seat already has one
+        import services_ticket_types as tt
+        ticket = tt.find(event_data, reg_data.get('ticket_type_id', '')) if held is None else None
+        if ticket is not None and not tt.take_seat(event_id, ticket):
+            return {'error': 'ticket_sold_out'}
 
         reg_data.update({
             'reg_id':               reg_id,
@@ -431,7 +441,16 @@ def _complete_registration(event_id, reg_data, payment_status='Paid',
             'is_eliminated':        False,
             'current_round':        1,
         })
-        _db().collection('registrations').document(reg_id).set(reg_data)
+        if held is None:
+            try:
+                create_registration(_db(), reg_id, reg_data)   # never over another (UPG-95)
+            except AlreadyRegistered:   # another form for this person got there first (UPG-115)
+                session.pop('pending_reg_data', None)
+                if ticket is not None:
+                    tt.give_back_seat(event_id, ticket['id'])
+                return {'error': 'already_registered'}
+        else:   # the held (pending_payment) seat becomes the paid registration
+            _db().collection('registrations').document(reg_id).set(reg_data)
         if reg_data.get('form_answers'):
             record_form_submission(_db(), event_id, reg_id, email, name,
                                    reg_data['form_answers'])
@@ -661,8 +680,11 @@ def process_payment():
     if not event_doc.exists:
         flash("Event not found.", "danger")
         return redirect('/')
-    price = server_price(_db(), event_id, event_doc.to_dict() or {},
-                         participant_type=reg_data.get('participant_type', ''))
+    try:
+        price = server_price(_db(), event_id, event_doc.to_dict() or {}, **priced_as(reg_data))
+    except PaymentError as exc:   # e.g. the ticket type's sale ended (UPG-155)
+        flash(str(exc), "danger")
+        return redirect(f'/forms/register/{event_id}')
 
     result = _complete_registration(
         event_id=event_id,

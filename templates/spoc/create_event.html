@@ -273,6 +273,49 @@
                 <div><label class="form-label" for="f-fee-external">External (₹)</label><input class="form-control" type="number" min="0" id="f-fee-external" name="fee_external" value="{{ val('fee_external') }}" placeholder="Same as above"></div>
               </div>
             </details>
+            {# Ticket types: early bird, seat limits, team or per-head prices (UPG-155) #}
+            {% set tts = v.get('ticket_types') or [] %}
+            {% macro tt_row(t, n) %}
+            <fieldset class="wz-row tt-row border rounded p-2 mt-2" data-tt-row>
+              <legend class="visually-hidden">Ticket type</legend>
+              <input type="hidden" name="tt_id" value="{{ t.id or '' }}">
+              <div><label class="form-label">Name</label><input class="form-control" name="tt_name" maxlength="80" value="{{ t.name or '' }}" placeholder="e.g. Early bird"></div>
+              <div><label class="form-label">Price (₹)</label><input class="form-control" type="number" min="0" step="1" name="tt_price" value="{{ t.price if t.price is defined else '' }}"></div>
+              <div><label class="form-label">Charged</label>
+                <select class="form-select" name="tt_per">
+                  <option value="registration" {{ 'selected' if t.per != 'person' }}>Per registration (a whole team pays once)</option>
+                  <option value="person" {{ 'selected' if t.per == 'person' }}>Per person (× team members)</option>
+                </select></div>
+              <div><label class="form-label">On sale from</label><input class="form-control" type="date" name="tt_start" value="{{ t.sale_start or '' }}"></div>
+              <div><label class="form-label">Until</label><input class="form-control" type="date" name="tt_end" value="{{ t.sale_end or '' }}"></div>
+              <div><label class="form-label">Seats</label><input class="form-control" type="number" min="0" name="tt_seats" value="{{ t.seats or '' }}" placeholder="0 = no limit"></div>
+              {% set who = (t.who or [])|join(',') %}
+              <div><label class="form-label">For</label>
+                <select class="form-select" name="tt_who">
+                  {% for val_, label in [('', 'Everyone'), ('student', 'Students'), ('faculty', 'Faculty'), ('external', 'External'), ('student,faculty', 'Students and faculty'), ('faculty,external', 'Faculty and external'), ('student,external', 'Students and external')] %}
+                  <option value="{{ val_ }}" {{ 'selected' if who == val_ }}>{{ label }}</option>
+                  {% endfor %}
+                </select></div>
+              <div class="align-self-end"><button type="button" class="btn btn-outline-danger btn-sm" data-tt-remove>Remove</button></div>
+            </fieldset>
+            {% endmacro %}
+            <details id="tt-box" {{ 'open' if tts }}>
+              <summary class="form-label">Ticket types (early bird, limited seats, per-person prices)</summary>
+              <p class="wz-hint">When you add ticket types, each registrant picks one and pays its price; the fees above are then not used.</p>
+              <div id="tt-rows">{% for t in tts %}{{ tt_row(t, loop.index) }}{% endfor %}</div>
+              <template id="tt-template">{{ tt_row({}, 0) }}</template>
+              <button type="button" class="btn btn-outline-primary btn-sm mt-2" id="tt-add">Add a ticket type</button>
+            </details>
+            <details id="transfer-box" class="mt-3" {{ 'open' if val('transfers_allowed') }}>
+              <summary class="form-label">Ticket transfers</summary>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="transfers_allowed" id="tr-on" {{ 'checked' if val('transfers_allowed') }}>
+                <label class="form-check-label" for="tr-on">Let a registrant hand their ticket to someone else</label>
+              </div>
+              <label class="form-label mt-2" for="tr-hours">Transfers close this many hours before the start</label>
+              <input class="form-control" style="max-width:140px" type="number" min="0" max="720" id="tr-hours" name="transfer_cutoff_hours" value="{{ val('transfer_cutoff_hours', '24') }}">
+              <p class="wz-hint">The new holder needs an account and must be allowed to register (participant type, placement rules). A ticket can't move to someone who would pay more.</p>
+            </details>
           </div>
         </div>
       </div>

@@ -1,8 +1,8 @@
 {% extends "base_classic.html" %}
 {#- On the app layout and portal design system (UPG-63). -#}
 {% block csrf_meta %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endblock %}
-{% block title %}Round {{ cur_round }} — {{ event.title }}{% endblock %}
-{% block page_title %}Round {{ cur_round }}{% endblock %}
+{% block title %}Round {{ cur_round }} of {{ round_info.total }} — {{ event.title }}{% endblock %}
+{% block page_title %}Round {{ cur_round }} of {{ round_info.total }}{% if round_info.is_final and round_info.multi %} · Final{% endif %}{% endblock %}
 {% block page_sub %}{{ event.title }} · {{ leaderboard | length }} active participants · {{ leaderboard | selectattr('score') | list | length }} scored{% if scoring_locked %} · <span class="se-badge se-badge--warning"><i class="fas fa-lock" aria-hidden="true"></i> Scoring locked</span>{% endif %}{% endblock %}
 {% block page_actions %}<a href="/spoc/room_allocation/{{ event.id }}" class="btn btn-secondary"><i class="fas fa-door-open" aria-hidden="true"></i> Rooms</a><a href="/spoc/dashboard" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Console</a>{% endblock %}
 {% block extra_css %}
@@ -99,8 +99,8 @@ h1,h2,h3,h4,h5,h6{font-family: var(--font-heading);}
   </div>
   <div class="col-6 col-md-3">
     <div class="stat-pill">
-      <div class="stat-val" style="color:var(--brand-gold);">{{ cur_round }}</div>
-      <div class="stat-label">Current Round</div>
+      <div class="stat-val" style="color:var(--brand-gold);">{{ cur_round }} / {{ round_info.total }}</div>
+      <div class="stat-label">Round</div>
     </div>
   </div>
 </div>
@@ -170,13 +170,22 @@ h1,h2,h3,h4,h5,h6{font-family: var(--font-heading);}
   </div>
 </div>
 
-<!-- ADVANCE ROUND CARD -->
-{% if scored_count > 0 %}
+<!-- ADVANCE ROUND CARD (UPG-149: one rule, history kept, never past the final round) -->
+{% set unscored_present = leaderboard | selectattr('score', 'none') | selectattr('attendance', 'equalto', 'Present') | list | length %}
+{% if round_info.is_final %}
+<div class="advance-card" id="final-round">
+  <div class="section-title"><i class="fas fa-flag-checkered" style="color:var(--brand-gold);"></i>{% if round_info.multi %}Final round{% else %}One-round event{% endif %}</div>
+  <p style="font-size:13px;color:#475569;margin-bottom:14px;">
+    {% if round_info.multi %}Round {{ cur_round }} is the last of {{ round_info.total }} rounds. {% endif %}When the judges have scored, publish the results: the ranking uses this round's scores.
+  </p>
+  <a href="/spoc/results/{{ event.id }}" class="btn-action btn-blue"><i class="fas fa-trophy"></i> Go to results</a>
+</div>
+{% elif scored_count > 0 %}
 <div class="advance-card">
-  <div class="section-title"><i class="fas fa-arrow-circle-right" style="color:#15803d;"></i>Advance to Round {{ cur_round + 1 }}</div>
+  <div class="section-title"><i class="fas fa-arrow-circle-right" style="color:#15803d;"></i>Advance to Round {{ cur_round + 1 }} of {{ round_info.total }}</div>
   <p style="font-size:13px;color:#475569;margin-bottom:18px;">
-    Select how participants advance. Advancing participants get an email notification and their scores are reset for the next round.
-    Eliminated participants are removed from scoring.
+    Select how teams go through. Teams tied at the cut all go through. This round's scores are kept in the round history,
+    and judges start the next round with a clean sheet. Every team is emailed its result.
   </p>
 
   <div class="d-flex gap-2 mb-4" id="modeTabs">
@@ -192,6 +201,7 @@ h1,h2,h3,h4,h5,h6{font-family: var(--font-heading);}
         data-h-submit="spoc/round_panel:4">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="mode" id="modeInput" value="top_n">
+    <input type="hidden" name="round" value="{{ cur_round }}">
 
     <!-- TOP N panel -->
     <div id="panel_top_n">
@@ -225,12 +235,21 @@ h1,h2,h3,h4,h5,h6{font-family: var(--font-heading);}
       </p>
     </div>
 
+    {% if unscored_present %}
+    <div class="form-check mt-3">
+      <input class="form-check-input" type="checkbox" name="eliminate_unscored" value="yes" id="eliminateUnscored">
+      <label class="form-check-label" for="eliminateUnscored" style="font-size:13px;">
+        {{ unscored_present }} present team{{ 's' if unscored_present != 1 }} {{ 'have' if unscored_present != 1 else 'has' }} no score yet. Eliminate {{ 'them' if unscored_present != 1 else 'it' }} and advance anyway.
+      </label>
+    </div>
+    {% endif %}
+
     <div style="margin-top:20px;padding-top:16px;border-top:1px solid #f1f5f9;display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
       <button type="submit" class="btn-action btn-green">
         <i class="fas fa-arrow-circle-right"></i> Advance to Round {{ cur_round + 1 }}
       </button>
       <span style="font-size:12px;color:#94a3b8;">
-        Eliminated participants are notified. Advancing participants receive an email.
+        Teams that go through and teams that don't are both emailed. Absent, unscored teams are marked absent.
       </span>
     </div>
   </form>
@@ -240,6 +259,30 @@ h1,h2,h3,h4,h5,h6{font-family: var(--font-heading);}
   <i class="fas fa-exclamation-triangle me-2" style="color:#d97706;"></i>
   <strong style="color:#92400e;">No scored participants yet.</strong>
   <span style="color:#78350f;font-size:13px;"> Judges must score participants before you can advance the round.</span>
+</div>
+{% endif %}
+
+<!-- EARLIER ROUNDS (UPG-149: kept in each team's round history) -->
+{% if past_rounds %}
+<div class="card" id="past-rounds">
+  <div class="section-title"><i class="fas fa-history" style="color:var(--brand-navy);"></i>Earlier rounds</div>
+  {% for r in past_rounds %}
+  <div class="mb-3">
+    <div style="font-weight:700;color:var(--brand-ink);font-size:14px;">Round {{ r.round }}</div>
+    <div style="font-size:12.5px;color:#64748b;margin-bottom:6px;">{{ r.qualified }} went through · {{ r.eliminated }} didn't{% if r.absent %} · {{ r.absent }} absent{% endif %}</div>
+    <div style="overflow-x:auto;">
+      <table class="board-table">
+        <thead><tr><th>Team</th><th>Score</th><th>Result</th></tr></thead>
+        <tbody>
+          {% for row in r.top %}
+          <tr><td>{{ row.team }}</td><td>{{ row.score if row.score is not none else '—' }}</td>
+              <td>{{ {'qualified': 'Went through', 'absent': 'Absent'}.get(row.result, 'Not qualified') }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endfor %}
 </div>
 {% endif %}
 
@@ -296,9 +339,9 @@ function confirmAdvance() {
   return confirm(
     `Advance Round {{ cur_round }} → Round {{ cur_round + 1 }}?\n\n` +
     `Advancing: ${detail}\n\n` +
-    `• Advancing participants get a notification email\n` +
-    `• Their scores are reset for Round {{ cur_round + 1 }}\n` +
-    `• Eliminated participants are removed\n\n` +
+    `• Every team is emailed its result\n` +
+    `• Round {{ cur_round }} scores are kept in the round history\n` +
+    `• Teams that don't go through are eliminated\n\n` +
     `This cannot be undone.`
   );
 }

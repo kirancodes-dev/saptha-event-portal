@@ -51,7 +51,20 @@ def _outbox():
     return retry_due()
 
 
-JOBS = {'reminders': _reminders, 'lifecycle': _lifecycle, 'cleanup': _cleanup, 'outbox': _outbox}
+def _naac():
+    from models import db
+    from services_naac import daily_reminders
+    return daily_reminders(db)
+
+
+def _impact():
+    from models import db
+    from services_impact import request_testimonials
+    return request_testimonials(db)
+
+
+JOBS = {'reminders': _reminders, 'lifecycle': _lifecycle, 'cleanup': _cleanup, 'outbox': _outbox, 'naac': _naac,
+        'impact': _impact}
 
 
 @cron_bp.route('/<job>', methods=['POST'])

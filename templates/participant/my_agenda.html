@@ -1,0 +1,49 @@
+{% extends "base_classic.html" %}
+{#- My agenda (UPG-159): the sessions this person starred, with a calendar file. -#}
+{% block title %}My agenda — {{ event.title }}{% endblock %}
+{% block page_title %}My agenda{% endblock %}
+{% block page_sub %}{{ event.title }}{% if event.date %} · {{ event.date[:10] }}{% endif %}{% endblock %}
+{% block page_actions %}
+  {% if mine %}<a href="/participant/agenda/{{ event.id }}.ics" class="btn btn-primary"><i class="fas fa-calendar-plus" aria-hidden="true"></i> Add to calendar (.ics)</a>{% endif %}
+  <a href="/event/{{ event.id }}" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Event page</a>
+{% endblock %}
+{% macro session_row(s, starred) %}
+  <li class="list-group-item d-flex justify-content-between align-items-start gap-3" data-session="{{ s.id }}">
+    <div>
+      <div class="fw-bold">{{ s.time }}{% if s.end %}–{{ s.end }}{% endif %} · {{ s.title }}</div>
+      {% if s.room or s.hours %}<div class="small text-muted">{% if s.room %}<i class="fas fa-door-open" aria-hidden="true"></i> {{ s.room }}{% endif %}{% if s.room and s.hours %} · {% endif %}{% if s.hours %}{{ s.hours }} h credited if you attend{% endif %}</div>{% endif %}
+      {% if s.desc %}<div class="small">{{ s.desc }}</div>{% endif %}
+    </div>
+    <form method="POST" action="/participant/agenda/{{ event.id }}/star" class="m-0">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="session_id" value="{{ s.id }}">
+      <input type="hidden" name="on" value="{{ '0' if starred else '1' }}">
+      {% if starred %}
+      <button type="submit" class="btn btn-sm btn-outline-secondary" aria-label="Remove {{ s.title }} from my agenda"><i class="fas fa-star" aria-hidden="true"></i> Remove</button>
+      {% else %}
+      <button type="submit" class="btn btn-sm btn-gold" aria-label="Add {{ s.title }} to my agenda"><i class="far fa-star" aria-hidden="true"></i> Add</button>
+      {% endif %}
+    </form>
+  </li>
+{% endmacro %}
+{% block content %}
+  <section class="card mb-4" style="max-width:820px;" id="my-agenda">
+    <div class="card-header"><i class="fas fa-star" aria-hidden="true"></i> Sessions you're going to</div>
+    {% if mine %}
+    <ul class="list-group list-group-flush">
+      {% for s in mine %}{{ session_row(s, True) }}{% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-muted p-3 mb-0">You haven't added any sessions yet. Add them from the schedule below.</p>
+    {% endif %}
+  </section>
+
+  {% if others %}
+  <section class="card" style="max-width:820px;" id="all-sessions">
+    <div class="card-header"><i class="fas fa-calendar-check" aria-hidden="true"></i> The rest of the schedule</div>
+    <ul class="list-group list-group-flush">
+      {% for s in others %}{{ session_row(s, False) }}{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+{% endblock %}

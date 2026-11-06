@@ -1,66 +1,36 @@
 """
-routes_push.py — Web Push subscription management + send helper
+routes_push.py — browser push subscriptions (UPG-157). The sending is in
+services_push; everything here is off until the VAPID keys are set.
 """
-import json
-import os
-import datetime
 from flask import Blueprint, jsonify, request, session
-from models import db
-from utils import login_required
+
+import services_push
 
 push_bp = Blueprint('push', __name__, url_prefix='/push')
-
-VAPID_PUBLIC_KEY  = os.environ.get('VAPID_PUBLIC_KEY', '')
-VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '')
-VAPID_EMAIL       = os.environ.get('VAPID_EMAIL', 'mailto:admin@snpsu.edu.in')
 
 
 @push_bp.route('/vapid_public_key')
 def vapid_public_key():
-    return jsonify({'key': VAPID_PUBLIC_KEY})
+    return jsonify({'key': services_push.public_key() if services_push.configured() else ''})
 
 
 @push_bp.route('/subscribe', methods=['POST'])
-@login_required
 def subscribe():
-    """Save a push subscription for the logged-in user."""
-    sub = request.json
-    if not sub or not sub.get('endpoint'):
+    """Save this browser's subscription for the logged-in user."""
+    if not session.get('user_id'):
+        return jsonify({'error': 'Log in to get notifications on this device.'}), 401
+    if not services_push.configured():
+        return jsonify({'error': 'Notifications are not set up.'}), 404
+    if not services_push.subscribe(session['user_id'], request.get_json(silent=True) or {}):
         return jsonify({'error': 'Invalid subscription'}), 400
-    uid = session.get('user_id')
-    db.collection('push_subscriptions').document(uid).set({
-        'user_id':      uid,
-        'subscription': sub,
-        'updated_at':   datetime.datetime.now(datetime.timezone.utc).isoformat(),
-    })
     return jsonify({'ok': True})
 
 
 @push_bp.route('/unsubscribe', methods=['POST'])
-@login_required
 def unsubscribe():
-    uid = session.get('user_id')
-    db.collection('push_subscriptions').document(uid).delete()
+    if not session.get('user_id'):
+        return jsonify({'error': 'Log in first.'}), 401
+    endpoint = str((request.get_json(silent=True) or {}).get('endpoint') or '')
+    services_push.unsubscribe(session['user_id'], endpoint)
     return jsonify({'ok': True})
 
-
-# ── Helper: send push to one user ────────────────────────────────────
-def send_push(user_id: str, title: str, body: str, url: str = '/'):
-    """Fire a Web Push notification to a user. No-op if not subscribed or keys missing."""
-    if not VAPID_PUBLIC_KEY or not VAPID_PRIVATE_KEY:
-        return
-    try:
-        from pywebpush import webpush  # type: ignore[import-untyped]
-        doc = db.collection('push_subscriptions').document(user_id).get()
-        if not doc.exists:
-            return
-        sub = doc.to_dict().get('subscription', {})
-        webpush(
-            subscription_info=sub,
-            data=json.dumps({'title': title, 'body': body, 'url': url,
-                             'icon': '/static/snpsu-logo.png'}),
-            vapid_private_key=VAPID_PRIVATE_KEY,
-            vapid_claims={'sub': VAPID_EMAIL},
-        )
-    except Exception:
-        pass

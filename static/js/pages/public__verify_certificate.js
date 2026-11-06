@@ -5,6 +5,10 @@
     // Brand colours; skipped for reduced motion or if the library failed to load (UPG-63)
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     if (typeof confetti !== 'function') return;
+    // Our own instance without a web worker: the default one starts a blob:
+    // worker, which the CSP refuses (UPG-70)
+    const fire = typeof confetti.create === 'function' ? confetti.create(null, { resize: true, useWorker: false }) : null;
+    if (!fire) return;
     const duration = 4 * 1000;
     const animationEnd = Date.now() + duration;
     const defaults = { startVelocity: 28, spread: 360, ticks: 60, zIndex: 1000, colors: ['#00185e', '#c69d67', '#dcc199', '#3b5bc9'] };
@@ -21,8 +25,8 @@
       }
 
       const particleCount = 45 * (timeLeft / duration);
-      confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
-      confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+      fire(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+      fire(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
     }, 250);
   });
 

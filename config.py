@@ -203,6 +203,18 @@ class Config:
     LOGIN_THROTTLE_ACCOUNT_HOURLY_LIMIT = int(os.environ.get('LOGIN_THROTTLE_ACCOUNT_HOURLY_LIMIT', 20))
     LOGIN_THROTTLE_STORAGE       = 'redis' if os.environ.get('REDIS_URL') else 'database'
 
+    # Low-email mode (UPG-152). EMAIL_DAILY_LIMIT: emails a UTC day, every
+    # kind counted together (registrations and password resets included),
+    # kept under the provider's own limit (450 for 500 a day; 0 = no limit).
+    # NOTIFY_TEAM_MEMBERS: automated messages go to the team lead only unless
+    # this is true. An account a registration made may ask for
+    # PARTICIPANT_RESET_LIMIT reset emails in its first
+    # PARTICIPANT_RESET_WINDOW_HOURS; after that the organizer helps.
+    EMAIL_DAILY_LIMIT              = int(os.environ.get('EMAIL_DAILY_LIMIT', 450))
+    NOTIFY_TEAM_MEMBERS            = os.environ.get('NOTIFY_TEAM_MEMBERS', 'false').strip().lower() in ('1', 'true', 'yes')
+    PARTICIPANT_RESET_WINDOW_HOURS = int(os.environ.get('PARTICIPANT_RESET_WINDOW_HOURS', 48))
+    PARTICIPANT_RESET_LIMIT        = int(os.environ.get('PARTICIPANT_RESET_LIMIT', 1))
+
     # =========================================================
     # 5. SUPER ADMIN
     # ─────────────────────────────────────────────────────────
@@ -220,6 +232,20 @@ class Config:
     # 6. GEMINI AI
     # =========================================================
     GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+
+    # Referral rewards on the student dashboard: off until a payout process
+    # exists (UPG-105). The referral routes stay; only the section is hidden.
+    REFERRALS_ENABLED = os.environ.get('REFERRALS_ENABLED', '').strip().lower() in ('1', 'true', 'yes')
+
+    # Demo pages with no real data or backend behind them (UPG-65, D-8): the
+    # SaaS marketing pages (/platform, /pricing, /features: invented customers,
+    # prices and uptime) and the live streams and reels pages (simulated viewers,
+    # likes and chat). They answer 404 unless this is switched on.
+    DEMO_PAGES_ENABLED = os.environ.get('DEMO_PAGES_ENABLED', '').strip().lower() in ('1', 'true', 'yes')
+
+    # The teammate matchmaker suggests made-up people until it uses real
+    # profiles, so /participant/matchmaker/ answers 404 unless this is on (UPG-14)
+    FEATURE_MATCHMAKER = os.environ.get('FEATURE_MATCHMAKER', '').strip().lower() in ('1', 'true', 'yes')
 
     # =========================================================
     # 7. TWILIO WHATSAPP

@@ -18,6 +18,8 @@ except ImportError:
             def decorator(f):
                 return f
             return decorator
+        def shared_limit(self, *args, **kwargs):   # used by routes_verification (UPG-126)
+            return self.limit(*args, **kwargs)
         def exempt(self, f):
             return f
     limiter = DummyLimiter()

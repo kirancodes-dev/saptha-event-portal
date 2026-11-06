@@ -76,7 +76,11 @@
                             +{{ entry.hours_earned }} hrs
                         </td>
                         <td class="text-center">
-                            {% if entry.certificate_id %}
+                            {% if entry.certificate_number %}
+                                <a href="/certificates/c/{{ entry.certificate_number }}/pdf" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 11px;">
+                                    <i class="fas fa-award me-1" aria-hidden="true"></i> Download<span class="visually-hidden"> the certificate for {{ entry.event_title }}</span>
+                                </a>
+                            {% elif entry.certificate_id %}
                                 <a href="/participant/certificate/{{ entry.reg_id }}" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 11px;">
                                     <i class="fas fa-award me-1"></i> View
                                 </a>

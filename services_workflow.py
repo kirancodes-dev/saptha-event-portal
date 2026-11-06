@@ -345,12 +345,13 @@ class WorkflowEngine:
                         "recipient_name": recipient_name,
                         "event_title": event_title,
                         "date": date_str,
+                        "event_id": str(event_id),   # a portal-only event sends no email (UPG-195)
                     }
                     custom_rule = {
                         "title": f"Cancelled: {event_title}",
                         "message": f"Hello {recipient_name}, the event '{event_title}' scheduled for {date_str} has been cancelled.",
                         "notif_type": "system_alert",
-                        "channels": ["in_app", "email"],
+                        "channels": ["in_app", "email", "push"],   # push for subscribers (UPG-157)
                     }
                     NotificationAutomationEngine.dispatch_trigger(
                         db,
@@ -359,6 +360,10 @@ class WorkflowEngine:
                         custom_rule=custom_rule,
                         idempotency_key=f"event_cancelled_{event_id}_{email}",
                     )
+                    if _phone:   # WhatsApp too, once, if they opted in (UPG-147)
+                        from services_whatsapp import notify
+                        notify(db, 'event_cancelled', _phone, {'name': recipient_name, 'event': event_title,
+                                                               'date': date_str}, key=str(event_id))
         except Exception as e:
             import logging
             logging.getLogger(__name__).error(f"Error sending cancellation notifications: {e}")

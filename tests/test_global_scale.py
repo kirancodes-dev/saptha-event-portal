@@ -11,49 +11,6 @@ def mock_celery_tasks():
         yield (mock_email, mock_receipt, mock_ticket)
 
 
-def test_stripe_create_session_simulation_fallback(client, mock_db, sample_event):
-    """Test that Stripe create_session falls back to simulation mode when API key is missing."""
-    with client.session_transaction() as sess:
-        sess['pending_reg_data'] = {
-            'lead_email': 'student@test.edu',
-            'lead_name': 'Test Student',
-            'reg_id': 'REG-12345',
-            'amount_paid': 100
-        }
-
-    resp = client.post('/payment/stripe/create_session',
-                       data=json.dumps({'event_id': sample_event}),
-                       content_type='application/json')
-    assert resp.status_code == 200
-    data = json.loads(resp.data)
-    assert data.get('simulate') is True
-    assert data.get('event_id') == sample_event
-    assert data.get('amount') == 100
-
-
-def test_stripe_success_redirection_and_registration(client, mock_db, sample_event):
-    """Test Stripe success route processes registration and redirects to digital ticket."""
-    with client.session_transaction() as sess:
-        sess['pending_reg_data'] = {
-            'event_id': sample_event,
-            'lead_email': 'student@test.edu',
-            'lead_name': 'Test Student',
-            'lead_phone': '+919999999999',
-            'reg_id': 'REG-98765',
-            'amount_paid': 100
-        }
-
-    resp = client.get('/payment/stripe/success?session_id=cs_test_123')
-    assert resp.status_code == 302
-    assert '/ticket/REG-98765' in resp.location
-
-    # Check registration created in mock Firestore
-    reg_doc = mock_db.collection('registrations').document('REG-98765').get()
-    assert reg_doc.exists
-    assert reg_doc.to_dict().get('payment_status') == 'Paid (Stripe)'
-    assert reg_doc.to_dict().get('status') == 'Confirmed'
-
-
 def test_ai_generate_event_details(admin_client, mock_db):
     """Test AI route that generates event details structure."""
     mock_gemini = MagicMock()
@@ -252,12 +209,17 @@ def test_xp_triggers_registration_and_checkin(client, mock_db, sample_event, mon
 
 
 def test_sla_uptime_page(client, mock_db):
-    """Test public SLA Status uptime page renders successfully."""
+    """The public service status page shows only what it computes when it opens:
+    whether the database answers and which providers are configured. Its made-up
+    uptime figures, "All Systems Operational" banner and Stripe line are gone
+    (UPG-65, owner's instruction 2026-10-17)."""
     resp = client.get('/compliance/sla')
     assert resp.status_code == 200
-    assert b'All Systems Operational' in resp.data
-    assert b'Stripe Gateway' in resp.data
-    assert b'SLA Commitment' in resp.data
+    page = resp.get_data(as_text=True)
+    assert 'Checked ' in page and 'Online payments (Razorpay)' in page and 'Database' in page
+    assert ('SapthaEvent is running' in page) or ("can't reach its database" in page)
+    for invented in ('All Systems Operational', 'Stripe Gateway', 'SLA Commitment', '99.9', 'Uptime', '124 ms'):
+        assert invented not in page, invented
 
 
 def test_seo_json_ld_event_metadata(client, mock_db, sample_event):

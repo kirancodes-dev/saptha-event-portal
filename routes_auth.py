@@ -241,8 +241,9 @@ def set_password(token):
     email, user, error = load_set_password_token(token, db)
     if error:
         messages = {
-            'expired': "This link has expired. Use \"Forgot password\" to get a new one.",
-            'used':    "This link has already been used. Log in, or use \"Forgot password\".",
+            'expired': ("This password-setup link has expired: it works for 48 hours. Use \"Forgot password\" "
+                        "to get a new one, or contact the hackathon organizer for assistance."),
+            'used':    "This link has already been used. Log in with your email and password, or use \"Forgot password\".",
         }
         flash(messages.get(error, "Invalid link."), "danger")
         return redirect('/forgot_password' if error == 'expired' else '/login')
@@ -269,7 +270,8 @@ def set_password(token):
             category = category.value
         _set_session(email, user.get('name', 'User'), role, str(category), remember_me=False)
         log_action("PASSWORD_SET_LINK", f"{email} set a password via the registration link")
-        flash("✅ Password set. Welcome to SapthaEvent!", "success")
+        flash(f"✅ Password set. Welcome to SapthaEvent! Next time, log in with {email} and your new password.",
+              "success")
         return _redirect_by_role(role)
 
     return render_template('reset_password_token.html', email=email, name=user.get('name', 'User'))
@@ -360,8 +362,17 @@ def forgot_password():
 
         # Generic response in all cases — never reveal whether the email exists
         generic_msg = RESET_REQUESTED_MESSAGE  # the same for every email (UPG-35)
+        from services_accounts import ORGANIZER_MESSAGE, email_login_link, note_reset_request, reset_refusal
 
         try:
+            # Today's email limit reached (UPG-152): checked before the account,
+            # so every email gets the same answer
+            import services_email_quota as quota
+            if not quota.available():
+                log_action("RESET_REQ_EMAIL_LIMIT", f"Reset request for {email} refused: today's email limit is reached")
+                flash(ORGANIZER_MESSAGE, "danger")
+                return redirect('/forgot_password')
+
             user_doc = db.collection('users').document(email).get()
             if not user_doc.exists:
                 flash(generic_msg, "info")
@@ -378,25 +389,30 @@ def forgot_password():
                            f"SuperAdmin {email} attempted email-based reset")
                 return redirect('/forgot_password')
 
-            # Bound to the current password, so the link works once (UPG-33)
-            from services_accounts import make_reset_token
-            token = make_reset_token(email, user.get('password', ''))
-            # BASE_URL, never the request's host: a forged Host would send
-            # the victim's token to another site (BLK-16)
-            reset_url = f"{utils_email._base_url()}/reset_token/{token}"
+            # An account made by a registration: one reset email in its first
+            # 48 hours, then the organizer helps (UPG-152)
+            refusal = reset_refusal(user)
+            if refusal:
+                note_reset_request(db, email, user, f'refused_{refusal}')
+                log_action("RESET_REQ_REFUSED", f"Reset request for {email} refused: " + (
+                    "the reset was already used" if refusal == 'used' else "more than 48 hours since registering"))
+                flash(ORGANIZER_MESSAGE, "danger")
+                return redirect('/forgot_password')
 
-            user_name = user.get('name', 'User')
-            sent = send_password_reset_email(email,
-                                             user_name,
-                                             reset_url)
-            if sent:
+            # One-time and 15 minutes: bound to the current password (UPG-33),
+            # on BASE_URL, never the request's host (BLK-16)
+            status = email_login_link(db, email, user.get('name', 'User'), 'reset', send=send_password_reset_email)
+            note_reset_request(db, email, user, status)
+            if status == 'sent':
                 log_action("RESET_LINK_SENT",
                            f"Reset link emailed to {email} (role={role})")
             else:
                 log_action("RESET_LINK_FAIL",
-                           f"Email send failed for {email}")
-
-            flash(generic_msg, "info")
+                           f"Reset email to {email} not sent: {status}")
+            if status == 'limit':
+                flash(ORGANIZER_MESSAGE, "danger")
+            else:
+                flash(generic_msg, "info")
             return redirect('/forgot_password')
 
         except Exception as exc:
@@ -415,7 +431,7 @@ def reset_token(token):
     from services_accounts import load_reset_token
     email, _, error = load_reset_token(token, db)
     if error:
-        flash({'expired': "This reset link has expired. Please request a new one.",
+        flash({'expired': "This reset link has expired: reset links work for 15 minutes. Please request a new one.",
                'used':    "This reset link has already been used. Request a new one if you need it.",
                }.get(error, "Invalid reset link."), "danger")
         return redirect('/forgot_password')
@@ -451,7 +467,7 @@ def reset_token(token):
                 })
                 log_action("PASSWORD_RESET_EMAIL",
                            f"{email} reset password via email token")
-                flash("✅ Password updated. You can now log in.", "success")
+                flash("✅ Password updated. Log in with your email and your new password.", "success")
                 return redirect('/login')
             except Exception as exc:
                 current_app.logger.error("Reset-token update error: %s", exc)
@@ -503,6 +519,7 @@ def diag_email():
         f"SapthaEvent <{_os.environ.get('MAIL_USER', '(unset)')}>"
     )
 
+    import services_email_quota as _quota
     utils_email.LAST_EMAIL_ERROR = ""
     ok = utils_email._send(
         to, "SapthaEvent — Email Diagnostic",
@@ -525,6 +542,8 @@ def diag_email():
         "mail_user_set":   bool(_os.environ.get('MAIL_USER')),
         "mail_pass_set":   bool(_os.environ.get('MAIL_PASS')),
         "hint":            hints.get(provider, ""),
+        "emails_sent_today": _quota.sent_today(),   # UPG-152
+        "daily_email_limit": _quota.limit() or None,
     }
 
 

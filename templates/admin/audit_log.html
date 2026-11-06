@@ -69,6 +69,7 @@ h1,h2,h3,h4,h5 { font-family: var(--font-heading); }
     <!-- LOG TABLE -->
     <div class="log-table-wrap">
         {% if entries %}
+        <div class="table-responsive">{# the card hides overflow: scroll the table inside it on a phone (UPG-121) #}
         <table class="log-table" id="auditTable">
             <thead>
                 <tr>
@@ -129,6 +130,7 @@ h1,h2,h3,h4,h5 { font-family: var(--font-heading); }
                 {% endfor %}
             </tbody>
         </table>
+        </div>
         {% include "includes/pagination.html" %}
         {% else %}
         <div class="empty-state">

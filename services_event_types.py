@@ -401,6 +401,10 @@ def parse_form(form, *, today: Optional[datetime.date] = None, parent: Optional[
         else:
             fees[group] = amount
 
+    # Ticket types: early bird, seat limits, team or per-head prices (UPG-155)
+    import services_ticket_types
+    ticket_types = services_ticket_types.from_form(getlist, errors)
+
     # Type details
     details: Dict[str, Any] = {}
     for field in spec['details']:
@@ -477,6 +481,14 @@ def parse_form(form, *, today: Optional[datetime.date] = None, parent: Optional[
     contact_phone = re.sub(r'[^\d+ ]', '', _clean(form.get('contact_phone'), 20))
     coordinators = sorted({e.strip().lower() for e in (form.get('coordinators') or '').split(',')
                            if re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', e.strip())})
+    # Ticket transfers: off unless the organiser allows them (UPG-161)
+    try:
+        transfer_hours = int(form.get('transfer_cutoff_hours') or 24)
+    except ValueError:
+        transfer_hours = -1
+    if not 0 <= transfer_hours <= 720:
+        errors.append('Transfers must close between 0 and 720 hours before the start.')
+        transfer_hours = 24
     try:
         points = max(0.0, float(form.get('activity_points') or 0))
         hours = max(0.0, float(form.get('activity_hours') or 0))
@@ -524,7 +536,11 @@ def parse_form(form, *, today: Optional[datetime.date] = None, parent: Optional[
                    'allowed_years': years, 'max_teams': max_teams},
         'allowed_participants': audience,
         'fees': fees,
-        'pricing_type': 'paid' if any(v > 0 for v in fees.values()) else 'free',
+        'ticket_types': ticket_types,
+        'transfers_allowed': form.get('transfers_allowed') == 'on',
+        'transfer_cutoff_hours': transfer_hours,
+        'pricing_type': 'paid' if any(v > 0 for v in fees.values())
+                        or any(t['price'] > 0 for t in ticket_types) else 'free',
         'details': details,
         'judging_criteria': judging,
         'total_rounds': rounds,
@@ -638,6 +654,9 @@ def form_values(event: dict) -> Dict[str, Any]:
         'contact_phone': contact.get('phone') or organizer.get('phone', ''),
         'group_link': contact.get('group_link') or (organizer.get('group_link') if organizer.get('group_link') != '#' else ''),
         'activity_points': str(ev.get('activity_points') or 0), 'activity_hours': str(ev.get('activity_hours') or 0),
+        'ticket_types': list(ev.get('ticket_types') or []),   # UPG-155
+        'transfers_allowed': 'on' if ev.get('transfers_allowed') else '',   # UPG-161
+        'transfer_cutoff_hours': str(ev.get('transfer_cutoff_hours', 24)),
     }
     for group in ('student', 'faculty', 'external'):
         if group in fees:
@@ -654,3 +673,31 @@ def form_values(event: dict) -> Dict[str, Any]:
         if (ev.get('form_schema') or {}).get(flag):
             values[flag.replace('require_', 'req_')] = 'on'
     return values
+
+
+# ── The catalogue preset of a new event (the wizard and the API, UPG-82) ────
+PRESET_KEYS = ('workflow_config', 'evaluation_config', 'notification_rules', 'certificate_config')
+BASE_FORM_FIELDS = [
+    {'id': 'full_name', 'type': 'text', 'label': 'Full Name', 'placeholder': 'Enter your full name', 'required': True, 'options': [], 'help_text': ''},
+    {'id': 'email', 'type': 'email', 'label': 'Email Address', 'placeholder': 'you@example.com', 'required': True, 'options': [], 'help_text': ''},
+    {'id': 'phone', 'type': 'tel', 'label': 'Phone Number', 'placeholder': '10-digit mobile', 'required': True, 'options': [], 'help_text': ''},
+    {'id': 'usn', 'type': 'text', 'label': 'USN / Roll Number', 'placeholder': 'e.g. 1SN21CS001', 'required': False, 'options': [], 'help_text': ''},
+]
+
+
+def apply_preset(event_data: Dict[str, Any], spec: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Copy the type's catalogue preset settings (workflow, judging,
+    notifications, certificates; never its prices) onto a new event, and return
+    the preset's registration form fields, or [] when it has none."""
+    if not spec.get('preset'):
+        return []
+    from services_templates import TemplateService
+    preset = TemplateService.get_template(spec['preset'])
+    if not preset:
+        return []
+    for key in PRESET_KEYS:
+        if preset.get(key):
+            event_data[key] = preset[key]
+    if preset.get('form_config') and not spec.get('fest'):
+        return BASE_FORM_FIELDS + [dict(f, id=f.get('id') or f.get('field_name')) for f in preset['form_config']]
+    return []

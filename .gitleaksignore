@@ -3,6 +3,11 @@
 # docs/FEATURE_REVIEW.md. Findings are described here, values never.
 
 # ── False positives / test dummies (permanent) ──────────────────────────────
+# tests: the production boot test's strong dummy settings as first committed
+# (UPG-20); generated at run time since UPG-118, never real values
+216f7a3122dd9b6952829c74bede7527f1969840:tests/test_production_boot.py:generic-api-key:27
+216f7a3122dd9b6952829c74bede7527f1969840:tests/test_production_boot.py:generic-api-key:28
+216f7a3122dd9b6952829c74bede7527f1969840:tests/test_production_boot.py:generic-api-key:29
 # tests: deliberately too-short and placeholder SECRET_KEY values
 efc668a73dd163d74af61f18c312f885ca980bd6:tests/test_checkin_security.py:generic-api-key:319
 efc668a73dd163d74af61f18c312f885ca980bd6:tests/test_checkin_security.py:generic-api-key:325

@@ -1,0 +1,42 @@
+{% extends "layouts/fullscreen.html" %}
+{#- Projector view of live polls and questions (UPG-160). Text is set with textContent. -#}
+{% block head %}
+<title>Live polls & Q&A | {{ event.title }}</title>
+<link href="/static/css/global.css" rel="stylesheet">
+<style>
+body{background:#000a2e;color:#f1f5f9;font-family:var(--font-body);min-height:100vh;margin:0;}
+.hdr{padding:14px 32px;background:#00185e;border-bottom:3px solid #c69d67;font-family:var(--font-heading);font-size:22px;font-weight:700;}
+.wrap{display:grid;grid-template-columns:1fr 1fr;gap:28px;padding:28px 32px;}
+h2{font-size:18px;text-transform:uppercase;letter-spacing:.06em;color:#c69d67;margin:0 0 14px;}
+.poll{background:#001046;border-radius:14px;padding:18px 20px;margin-bottom:18px;}
+.poll-q{font-size:24px;font-weight:700;margin-bottom:12px;}
+.bar{position:relative;background:rgba(255,255,255,.08);border-radius:8px;margin:8px 0;height:38px;overflow:hidden;}
+.bar-fill{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,#c69d67,#ffd700);}
+.bar-text{position:relative;display:flex;justify-content:space-between;padding:8px 12px;font-size:18px;font-weight:600;color:#fff;}
+.q{background:#001046;border-radius:12px;padding:14px 18px;margin-bottom:12px;display:flex;justify-content:space-between;gap:16px;font-size:20px;}
+.q-votes{color:#ffd700;font-weight:800;white-space:nowrap;}
+.q.answered{opacity:.55;}
+.muted{color:#94a3b8;}
+</style>
+{% endblock %}
+{% block body %}
+<div class="hdr">{{ event.title }} · Live polls &amp; questions</div>
+<div class="wrap" id="screen" data-event-id="{{ event.id }}">
+  <section><h2>Poll</h2><div id="polls">
+    {% for p in snapshot.polls %}
+    <div class="poll"><div class="poll-q">{{ p.question }}</div>
+      {% for option in p.options %}{% set n = p.counts[loop.index0] %}
+      <div class="bar"><div class="bar-fill" style="width:{{ (100 * n / p.votes) | round if p.votes else 0 }}%"></div>
+        <div class="bar-text"><span>{{ option }}</span><span>{{ n }}</span></div></div>
+      {% endfor %}
+      <div class="muted">{{ p.votes }} answered</div></div>
+    {% else %}<p class="muted">No poll yet.</p>{% endfor %}
+  </div></section>
+  <section><h2>Top questions</h2><div id="questions">
+    {% for q in snapshot.questions %}
+    <div class="q{% if q.status == 'answered' %} answered{% endif %}"><span>{{ q.text }}</span><span class="q-votes">▲ {{ q.votes }}</span></div>
+    {% else %}<p class="muted">No questions yet.</p>{% endfor %}
+  </div></section>
+</div>
+<script src="/static/js/pages/interact__screen.js"></script>
+{% endblock %}

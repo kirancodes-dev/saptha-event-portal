@@ -22,9 +22,18 @@ from werkzeug.security import generate_password_hash
 logger = logging.getLogger(__name__)
 
 SET_PASSWORD_SALT = 'sapthaevent-set-password'
-SET_PASSWORD_MAX_AGE = 3 * 24 * 3600  # 3 days
+SET_PASSWORD_MAX_AGE = 48 * 3600  # 48 hours (UPG-152)
 RESET_SALT = 'sapthaevent-password-reset'
-RESET_MAX_AGE = 3600  # 1 hour
+RESET_MAX_AGE = 15 * 60  # 15 minutes (UPG-152)
+
+# An account made by an event registration records when (UPG-152): its owner
+# may ask for PARTICIPANT_RESET_LIMIT reset emails in the first
+# PARTICIPANT_RESET_WINDOW_HOURS, and is sent to the organizer after that.
+REGISTERED_AT = 'registration_account_at'
+ORGANIZER_MESSAGE = ("We could not complete your password reset. "
+                     "Please contact the hackathon organizer for assistance.")
+REGISTRATION_EMAIL_NOT_SENT = ("You're registered, but we could not send your password-setup email. "
+                               "Please contact the hackathon organizer for assistance.")
 CANCEL_SALT = 'sapthaevent-cancel-registration'
 CANCEL_MAX_AGE = 90 * 24 * 3600  # 90 days
 
@@ -82,10 +91,26 @@ def cancel_url_for(reg: dict) -> str:
 
 
 def create_unverified_account(db, email: str, name: str, phone: str = '',
-                              role: str = 'Student', **fields) -> None:
+                              role: str = 'Student', from_registration: bool = False, **fields) -> bool:
     """Create an account nobody can log in to until the emailed set-password
     link is used: for registrations (BLK-02), and for walk-ins and staff that
-    someone else creates (UPG-33). Its random password is never shown."""
+    someone else creates (UPG-33). Its random password is never shown.
+    `from_registration`: an event registration made it, so its owner's own
+    password resets are limited (UPG-152).
+    False when another request created the same account a moment earlier (two
+    tabs, UPG-115): the database's unique email refused this one."""
+    if from_registration:
+        fields[REGISTERED_AT] = _utcnow().isoformat()
+    try:
+        _write_unverified(db, email, name, phone, role, fields)
+    except Exception as exc:
+        if 'users' in str(getattr(exc, 'orig', exc)) and ('UNIQUE' in str(exc) or 'unique' in str(exc).lower()):
+            return False
+        raise
+    return True
+
+
+def _write_unverified(db, email, name, phone, role, fields):
     db.collection('users').document(email).set({
         'email':                email,
         'name':                 name,
@@ -138,20 +163,147 @@ def _load_bound_token(token: str, db, salt: str, max_age: int) -> Tuple[Optional
     return email, user, ''
 
 
-def send_set_password_link(db, email: str, name: str, reason: str = '') -> bool:
-    """Email a one-time set-password link for a newly created account.
-    `reason` completes "A SapthaEvent account was created for this email ..."."""
-    from utils_email import _base_url, send_set_password_email
-    doc = db.collection('users').document(email).get()
-    if not doc.exists:
-        return False
-    token = make_set_password_token(email, (doc.to_dict() or {}).get('password', ''))
-    url = f"{_base_url()}/set_password/{token}"  # BASE_URL, never the request's host (BLK-16)
+def _utcnow() -> datetime.datetime:
+    return datetime.datetime.now(datetime.timezone.utc)
+
+
+def _when(value) -> Optional[datetime.datetime]:
     try:
-        return bool(send_set_password_email(email, name, url, reason=reason))
-    except Exception as exc:  # never fail a registration because mail is down
-        logger.warning("Set-password email to %s failed: %s", email, exc)
-        return False
+        moment = datetime.datetime.fromisoformat(str(value))
+    except (TypeError, ValueError):
+        return None
+    return moment if moment.tzinfo else moment.replace(tzinfo=datetime.timezone.utc)
+
+
+def email_login_link(db, email: str, name: str = '', kind: str = 'set_password', reason: str = '',
+                     registration: Optional[dict] = None, by: str = '', send=None) -> str:
+    """Email a one-time link: 'set_password' (48 hours) or 'reset' (15 minutes).
+
+    Returns 'sent', 'limit' (today's email limit is reached, so nothing was
+    sent), 'failed' or 'missing' (no such account). The outcome, the time and
+    the link's expiry are kept on the account as `login_link` and written to
+    the audit log for organizers; the token never is (UPG-152). `send` replaces
+    the reset email's sender (routes_auth passes its own)."""
+    import services_email_quota as quota
+    from utils import log_action
+    from utils_email import _base_url, send_password_reset_email, send_set_password_email
+    ref = db.collection('users').document(email)
+    doc = ref.get()
+    if not doc.exists:
+        return 'missing'
+    user = doc.to_dict() or {}
+    now = _utcnow()
+    max_age = RESET_MAX_AGE if kind == 'reset' else SET_PASSWORD_MAX_AGE
+    if not quota.available():
+        status = 'limit'
+    else:
+        if kind == 'reset':
+            token = make_reset_token(email, user.get('password', ''))
+            url = f"{_base_url()}/reset_token/{token}"  # BASE_URL, never the request's host (BLK-16)
+        else:
+            token = make_set_password_token(email, user.get('password', ''))
+            url = f"{_base_url()}/set_password/{token}"
+        try:
+            if kind == 'reset':
+                ok = (send or send_password_reset_email)(email, name or user.get('name', ''), url)
+            else:
+                ok = send_set_password_email(email, name or user.get('name', ''), url, reason=reason,
+                                             registration=registration)
+        except Exception as exc:  # never fail a registration because mail is down
+            logger.warning("%s email to %s failed: %s", kind, email, exc)
+            ok = False
+        status = 'sent' if ok else ('limit' if not quota.available() else 'failed')
+    record = {'kind': kind, 'status': status, 'at': now.isoformat()}
+    if status == 'sent':
+        record['expires_at'] = (now + datetime.timedelta(seconds=max_age)).isoformat()
+    if by:
+        record['by'] = by
+    try:
+        ref.update({'login_link': record})
+    except Exception as exc:
+        logger.warning("Could not record the %s link status for %s: %s", kind, email, exc)
+    log_action(db, "LOGIN_LINK_EMAIL",
+               f"{kind} link for {email}: {status}"
+               + (f", expires {record['expires_at']}" if 'expires_at' in record else '')
+               + (f", sent by {by}" if by else ''))
+    return status
+
+
+def send_set_password_link(db, email: str, name: str, reason: str = '',
+                           registration: Optional[dict] = None) -> bool:
+    """Email a one-time set-password link for a newly created account.
+    `reason` completes "A SapthaEvent account was created for this email ...";
+    `registration` makes it the registration's only email (UPG-152)."""
+    return email_login_link(db, email, name, 'set_password', reason, registration) == 'sent'
+
+
+PARTICIPANT_ROLES = ('Student', 'Participant')
+
+
+def login_status(user: Optional[dict]) -> dict:
+    """What an organizer sees about a registrant's login email (UPG-152):
+    {'label', 'tone', 'can_send'}. Never the link itself."""
+    if not user:
+        return {'label': 'No account', 'tone': 'secondary', 'can_send': False}
+    role = str(getattr(user.get('role'), 'value', user.get('role')) or '')
+    can_send = role in PARTICIPANT_ROLES and user.get('is_active') is not False
+    link = user.get('login_link') or {}
+    last = user.get('reset_last') or {}
+    refused = str(last.get('status') or '')
+    later = str(link.get('at') or '') > str(last.get('at') or '')   # a link sent after the refusal wins
+    label, tone = 'Password set', 'success'
+    if refused.startswith('refused_') and not later:
+        label, tone = ('Reset refused: already used' if refused == 'refused_used'
+                       else 'Reset refused: 48 hours over'), 'warning'
+    elif link.get('status') == 'limit':
+        label, tone = 'Email not sent: daily limit', 'danger'
+    elif link.get('status') == 'failed':
+        label, tone = 'Email failed', 'danger'
+    elif user.get('needs_password_reset'):
+        expires = _when(link.get('expires_at'))
+        if link.get('status') == 'sent' and expires and expires > _utcnow():
+            label, tone = f"Link sent, expires {expires.strftime('%d %b %H:%M')} UTC", 'info'
+        elif link.get('status') == 'sent':
+            label, tone = 'Link expired, password not set', 'warning'
+        else:
+            label, tone = 'Password not set', 'warning'
+    return {'label': label, 'tone': tone, 'can_send': can_send}
+
+
+# ── Self-service password resets for registration accounts (UPG-152) ────────
+
+def _reset_settings() -> Tuple[int, int]:
+    cfg = current_app.config
+    return (int(cfg.get('PARTICIPANT_RESET_WINDOW_HOURS', 48)), int(cfg.get('PARTICIPANT_RESET_LIMIT', 1)))
+
+
+def reset_refusal(user: dict) -> str:
+    """Why this account's owner may not email themselves a reset link: 'used'
+    (they already had their PARTICIPANT_RESET_LIMIT), 'window' (more than
+    PARTICIPANT_RESET_WINDOW_HOURS since the registration made it), or ''.
+    Only accounts made by a registration are limited; staff and older
+    accounts keep the usual reset."""
+    started = _when((user or {}).get(REGISTERED_AT))
+    if started is None:
+        return ''
+    hours, allowed = _reset_settings()
+    if int(user.get('reset_requests') or 0) >= allowed:
+        return 'used'
+    if _utcnow() > started + datetime.timedelta(hours=hours):
+        return 'window'
+    return ''
+
+
+def note_reset_request(db, email: str, user: dict, status: str) -> None:
+    """Keep the outcome of a reset request on the account: a sent link uses
+    one of a registration account's requests (UPG-152)."""
+    updates: dict = {'reset_last': {'status': status, 'at': _utcnow().isoformat()}}
+    if status == 'sent' and (user or {}).get(REGISTERED_AT):
+        updates['reset_requests'] = int(user.get('reset_requests') or 0) + 1
+    try:
+        db.collection('users').document(email).update(updates)
+    except Exception as exc:
+        logger.warning("Could not record a reset request for %s: %s", email, exc)
 
 
 def is_safe_next(target: str) -> bool:

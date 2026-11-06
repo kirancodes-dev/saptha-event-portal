@@ -1,0 +1,36 @@
+{% extends "base_classic.html" %}
+{#- NAAC / AQAR (UPG-144): reports still to be written, and the report builder. -#}
+{% set app_active = 'naac' %}
+{% block title %}NAAC reports{% endblock %}
+{% block page_sub %}Post-event reports are due {{ days }} days after each event.{% endblock %}
+{% block page_actions %}
+{% if builder %}<a href="/naac/report" class="btn btn-primary"><i class="fas fa-table" aria-hidden="true"></i> Report builder</a>{% endif %}
+{% if admin %}<a href="/naac/categories" class="btn btn-secondary">NAAC categories</a>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="card"><div class="card-body">
+    <h2 class="h5">Reports not yet submitted</h2>
+    {% if missing %}
+    <div class="table-responsive">
+    <table class="table table-sm align-middle">
+        <thead><tr><th scope="col">Event</th><th scope="col">Date</th><th scope="col">Department</th><th scope="col">Due</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+        <tbody>
+        {% for r in missing %}
+        <tr>
+            <td><a href="/naac/events/{{ r.id }}/report">{{ r.title }}</a></td>
+            <td>{{ r.date }}</td><td>{{ r.department or '—' }}</td>
+            <td>{{ r.due }}{% if r.overdue %} <span class="badge text-bg-danger">Overdue</span>{% endif %}
+                {% if r.reminders %}<span class="text-muted small">· {{ r.reminders }} reminder{{ '' if r.reminders == 1 else 's' }}</span>{% endif %}</td>
+            <td class="text-end">{% if sees_all %}
+                <form method="POST" action="/naac/events/{{ r.id }}/remind" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="/naac/">
+                    <button type="submit" class="btn btn-sm btn-outline-primary">Send a reminder</button>
+                </form>{% endif %}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}<p class="text-muted mb-0">Every held event has its report.</p>{% endif %}
+</div></div>
+{% endblock %}

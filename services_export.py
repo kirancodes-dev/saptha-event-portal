@@ -14,7 +14,8 @@ from collections import Counter, defaultdict
 # One row per registration; a team's lead, then its other members
 COLUMNS = ['Ticket ID', 'Lead Name', 'Lead USN', 'Department', 'Year', 'Lead Email', 'Lead Phone', 'Team', 'Members',
            'Attendance', 'Check-in Time', 'Payment Status', 'Amount (Rs)', 'Score', 'Rank',
-           'Certificate ID', 'Registered At', 'Participant Type', 'Designation', 'Institution']
+           'Certificate ID', 'Registered At', 'Participant Type', 'Designation', 'Institution',
+           'Ticket Type']
 
 def _ptype(record):
     """Student, faculty or external (UPG-12); older records are students."""
@@ -72,9 +73,27 @@ def _profiles(db, regs):
     return out
 
 
-def registration_rows(db, event_id):
-    """One row per registration, in COLUMNS order."""
+def _event_sessions(db, event_id):
+    import services_sessions
+    doc = db.collection('events').document(event_id).get()
+    return services_sessions.sessions_for((doc.to_dict() or {}) if doc.exists else {})
+
+
+def registration_columns(db, event_id):
+    """COLUMNS, then one column per agenda session (UPG-159)."""
+    import services_sessions
+    return COLUMNS + [f"Session: {services_sessions.label(s)}" for s in _event_sessions(db, event_id)]
+
+
+def registration_rows(db, event_id, sessions=True):
+    """One row per registration, in registration_columns order (COLUMNS only
+    with sessions=False): a session's cell is "Yes" when it was scanned in."""
     regs = _registrations(db, event_id)
+    agenda = _event_sessions(db, event_id) if sessions else []
+    went = {}
+    if agenda:
+        import services_sessions
+        went = services_sessions.attended(event_id)
     profiles = _profiles(db, regs)
     ranks = _ranks(regs)
     rows = []
@@ -91,7 +110,8 @@ def registration_rows(db, event_id):
             '' if score is None else score, ranks.get(rid, ''),
             r.get('certificate_id', ''), r.get('registered_at', ''),
             _ptype(r), r.get('designation', ''), r.get('institution', ''),   # UPG-12
-        ])
+            r.get('ticket_type_name', ''),                                    # UPG-155
+        ] + ['Yes' if s['id'] in went.get(rid, ()) else '' for s in agenda])  # UPG-159
     return rows
 
 
@@ -137,7 +157,7 @@ def to_xlsx(sheets):
 
 
 def registrations_xlsx(db, event_id):
-    return to_xlsx([('Registrations', COLUMNS, registration_rows(db, event_id))])
+    return to_xlsx([('Registrations', registration_columns(db, event_id), registration_rows(db, event_id))])
 
 
 def all_registration_rows(db):
@@ -145,7 +165,7 @@ def all_registration_rows(db):
     rows = []
     for e in db.collection('events').stream():
         title = (e.to_dict() or {}).get('title', '')
-        rows += [[title] + row for row in registration_rows(db, e.id)]
+        rows += [[title] + row for row in registration_rows(db, e.id, sessions=False)]
     return rows
 
 
@@ -186,8 +206,19 @@ def event_report(db, event_id):
                      'average_rating': round(sum(ratings) / len(ratings), 2) if ratings else None},
         'winners': [{'rank': rank, 'name': r.get('lead_name', ''), 'team': r.get('team_name', ''),
                      'score': r.get('final_score') or _average(r)} for rank, r in winners],
+        'polls': _poll_results(event_id),                                          # UPG-160
         'generated_at': datetime.datetime.now().strftime('%Y-%m-%d %H:%M'),
     }
+
+
+def _poll_results(event_id):
+    import services_interact
+    out = []
+    for p in services_interact.polls_for(event_id):
+        res = services_interact.results(p)
+        out.append({'question': p['question'], 'answered': res['votes'],
+                    'options': [{'option': o, 'answers': n} for o, n in zip(p['options'], res['counts'])]})
+    return out
 
 
 def event_report_xlsx(db, event_id):
@@ -212,7 +243,11 @@ def event_report_xlsx(db, event_id):
          breakdown(report['by_participant_type'])),
         ('Winners', ['Rank', 'Name', 'Team', 'Score'],
          [[w['rank'], w['name'], w['team'], '' if w['score'] is None else w['score']] for w in report['winners']]),
-        ('Registrations', COLUMNS, registration_rows(db, event_id)),
+        ('Polls', ['Poll', 'Option', 'Answers', '% of those who answered', 'People who answered'],
+         [[p['question'], o['option'], o['answers'],
+           round(100 * o['answers'] / p['answered'], 1) if p['answered'] else 0, p['answered']]
+          for p in report['polls'] for o in p['options']]),                        # UPG-160
+        ('Registrations', registration_columns(db, event_id), registration_rows(db, event_id)),
     ])
 
 
@@ -246,6 +281,7 @@ def department_activity_data(db, department=None, participant_type=None):
     regs_by_student = defaultdict(list)
     for r in db.collection('registrations').stream():
         rdata = r.to_dict() or {}
+        rdata.setdefault('_doc_id', r.id)   # for session hours (UPG-159)
         email = str(rdata.get('lead_email') or '').strip().lower()
         usn = str(rdata.get('lead_usn') or '').strip().upper()
         if email:
@@ -280,7 +316,7 @@ def department_activity_data(db, department=None, participant_type=None):
         for r in matched_regs:   # each registration once (deduplicated above)
             if str(r.get('attendance') or '').strip().lower() == 'present':
                 attended_count += 1
-                points, hours = credit_for(r, events_map.get(str(r.get('event_id')), {}))
+                points, hours = credit_for(r, events_map.get(str(r.get('event_id')), {}), r.get('_doc_id', ''))
                 total_points += points
                 total_hours += hours
 

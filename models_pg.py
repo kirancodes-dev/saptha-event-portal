@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 try:
     from sqlalchemy import (
         Boolean, Column, DateTime, Enum, Float, ForeignKey,
-        Integer, String, Text, Date, Index
+        Integer, String, Text, Date, Index, text
     )
 except Exception:
     sqlalchemy = None
@@ -48,6 +48,8 @@ class UserRole(enum.Enum):
     EventOrganizer   = "EventOrganizer"
     EventCoordinator = "EventCoordinator"
     Volunteer        = "Volunteer"
+    IQACCoordinator  = "IQACCoordinator"    # NAAC reports, university-wide, read-only (UPG-144)
+    DepartmentAdmin  = "DepartmentAdmin"    # NAAC reports for their own department (UPG-144)
 
 
 class EventCategory(enum.Enum):
@@ -429,10 +431,21 @@ class Event(Base):
         }
 
 
+ACTIVE_LEAD_INDEX = "uq_registrations_active_lead"
+# Only registrations that name a person: one with no lead email (old or imported
+# rows) has nobody to be unique for
+ACTIVE_WHERE = "status NOT IN ('cancelled', 'waitlisted') AND \"leadEmail\" <> ''"
+
+
 class Registration(Base):
     __tablename__ = "registrations"
     __table_args__ = (
         Index("idx_registrations_event_attendance_status", "eventId", "attendance", "status"),
+        # One active registration per person per event, whatever the email's case:
+        # the database refuses a second, so two forms sent at once can't both
+        # register (UPG-115; migration 0007_one_active_registration)
+        Index(ACTIVE_LEAD_INDEX, "eventId", text('lower("leadEmail")'), unique=True,
+              postgresql_where=text(ACTIVE_WHERE), sqlite_where=text(ACTIVE_WHERE)),
     )
 
     id             = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -610,6 +623,15 @@ class LoginAttempt(Base):
     __table_args__ = (Index("idx_login_attempts_key_at", "key", "at"),)
 
 
+class EmailQuota(Base):
+    """Emails sent each UTC day, shared by every instance, so the app stays
+    under the mail provider's daily limit (services_email_quota, UPG-152)."""
+    __tablename__ = "email_quota"
+
+    day  = Column(String(10), primary_key=True)          # YYYY-MM-DD, UTC
+    sent = Column(Integer, nullable=False, default=0)    # recipients accepted for sending that day
+
+
 class PaymentOrder(Base):
     """A Razorpay order created by this server (BLK-03).
 
@@ -649,6 +671,97 @@ class CouponUse(Base):
     used = Column(Integer, nullable=False, default=0)
 
 
+class TicketTypeSale(Base):
+    """Seats taken of one event's ticket type (UPG-155). Taken with one
+    conditional UPDATE, so two registrations can't both get the last seat."""
+    __tablename__ = "ticket_type_sales"
+
+    key  = Column(String(300), primary_key=True)  # "<event_id>:<type id>"
+    sold = Column(Integer, nullable=False, default=0)
+
+
+class SessionAttendance(Base):
+    """One registration's attendance at one agenda session (UPG-159). The key
+    is "<reg_id>:<session id>", so a second scan can't add a second row."""
+    __tablename__ = "session_attendance"
+
+    key        = Column(String(300), primary_key=True)
+    event_id   = Column(String(128), nullable=False, index=True)
+    session_id = Column(String(64), nullable=False)
+    reg_id     = Column(String(128), nullable=False, index=True)
+    scanned_at = Column(String(40), nullable=False, default="")
+    scanned_by = Column(String(255), nullable=False, default="")
+    over_capacity = Column(Boolean, nullable=False, default=False)
+
+
+class LivePoll(Base):
+    """A poll the host runs during an event or one of its sessions (UPG-160)."""
+    __tablename__ = "live_polls"
+
+    id         = Column(String(32), primary_key=True)
+    event_id   = Column(String(128), nullable=False, index=True)
+    session_id = Column(String(64), nullable=False, default="")
+    question   = Column(String(300), nullable=False)
+    options_json = Column(Text, nullable=False)                 # ["option", ...]
+    multiple   = Column(Boolean, nullable=False, default=False)
+    status     = Column(String(10), nullable=False, default="open")   # open / closed
+    created_at = Column(String(40), nullable=False, default="")
+
+
+class LivePollVote(Base):
+    """One person's answer to a poll; the key "<poll id>:<email>" makes it one each."""
+    __tablename__ = "live_poll_votes"
+
+    key          = Column(String(300), primary_key=True)
+    poll_id      = Column(String(32), nullable=False, index=True)
+    choices_json = Column(Text, nullable=False)                 # [option index, ...]
+
+
+class LiveQuestion(Base):
+    """A question from the audience (UPG-160). Pending until the host approves
+    it when the event's Q&A is moderated; hidden ones never show."""
+    __tablename__ = "live_questions"
+
+    id         = Column(String(32), primary_key=True)
+    event_id   = Column(String(128), nullable=False, index=True)
+    session_id = Column(String(64), nullable=False, default="")
+    text       = Column(String(500), nullable=False)
+    asked_by   = Column(String(255), nullable=False)
+    status     = Column(String(10), nullable=False, default="visible")  # pending / visible / answered / hidden
+    created_at = Column(String(40), nullable=False, default="")
+
+
+class LiveQuestionVote(Base):
+    """One person's upvote of a question; the key "<question id>:<email>" makes it one each."""
+    __tablename__ = "live_question_votes"
+
+    key         = Column(String(300), primary_key=True)
+    question_id = Column(String(32), nullable=False, index=True)
+
+
+class SessionStar(Base):
+    """A session someone added to their own agenda (UPG-159). The key is
+    "<email>:<event_id>:<session id>"."""
+    __tablename__ = "session_stars"
+
+    key        = Column(String(400), primary_key=True)
+    email      = Column(String(255), nullable=False, index=True)
+    event_id   = Column(String(128), nullable=False)
+    session_id = Column(String(64), nullable=False)
+
+
+class SourceVisit(Base):
+    """How many browser sessions arrived at an event from one of its share
+    links (UPG-162). The key is "<event_id>:<code>"; only the count is kept,
+    nothing about the visitor."""
+    __tablename__ = "source_visits"
+
+    key      = Column(String(200), primary_key=True)
+    event_id = Column(String(128), nullable=False, index=True)
+    code     = Column(String(40), nullable=False)
+    visits   = Column(Integer, nullable=False, default=0)
+
+
 class SubmissionKey(Base):
     """One row per form a browser sent (its hidden submission_id), so sending
     the same registration twice creates one registration (UPG-26)."""
@@ -669,6 +782,45 @@ class NativeDocument(Base):
     doc_id          = Column(String(128), primary_key=True)
     data_json       = Column(Text, nullable=True)
     updated_at      = Column(DateTime, nullable=True, default=_utcnow)
+
+
+CURRENT_CERTIFICATE_INDEX = "uq_certificates_current"
+
+
+class Certificate(Base):
+    """One issued certificate (UPG-122): who, which event, which type, and the
+    stored PDF. `number` is random and public (it's on the certificate and in
+    its QR code); a correction keeps the number with a new `version`, and only
+    one version is current. At most one current certificate per person, event
+    and type: the partial unique index refuses a second."""
+    __tablename__ = "certificates"
+    __table_args__ = (
+        Index(CURRENT_CERTIFICATE_INDEX, "eventId", "personKey", "certType", unique=True,
+              postgresql_where=text("is_current"), sqlite_where=text("is_current")),
+        Index("uq_certificates_number_version", "number", "version", unique=True),
+    )
+
+    id             = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    number         = Column(String(32), nullable=False, index=True)
+    version        = Column(Integer, nullable=False, default=1)
+    is_current     = Column(Boolean, nullable=False, default=True)
+    status         = Column(String(20), nullable=False, default="valid")   # valid | revoked | superseded
+    event_id       = Column("eventId", String(128), nullable=False, index=True)
+    person_key     = Column("personKey", String(320), nullable=False, index=True)
+    recipient_email = Column("recipientEmail", String(255), nullable=True, index=True)
+    recipient_name = Column("recipientName", String(300), nullable=False)
+    reg_id         = Column("regId", String(128), nullable=True)
+    cert_type      = Column("certType", String(30), nullable=False)
+    position       = Column(Integer, nullable=True)
+    data_json      = Column("dataJson", Text, nullable=False, default="{}")     # wording and signatories, as issued
+    pdf_key        = Column("pdfKey", String(500), nullable=True)
+    pdf_sha256     = Column("pdfSha256", String(64), nullable=True)
+    issued_at      = Column("issuedAt", DateTime(timezone=True), nullable=False, default=_utcnow)
+    issued_by      = Column("issuedBy", String(255), nullable=True)
+    emailed_at     = Column("emailedAt", DateTime(timezone=True), nullable=True)
+    revoked_at     = Column("revokedAt", DateTime(timezone=True), nullable=True)
+    revoked_by     = Column("revokedBy", String(255), nullable=True)
+    revoked_reason = Column("revokedReason", Text, nullable=True)
 
 
 class OutboxTask(Base):

@@ -120,17 +120,19 @@ def log_action(*args, **kwargs):
     try:
         if db_client is not None:
             ip_addr = '127.0.0.1'
+            user, role = 'system', 'system'     # a background task or job (UPG-140)
             if has_request_context():
                 try:
                     ip_addr = request.remote_addr
                 except Exception:
                     pass
+                user, role = session.get('user_id', 'anonymous'), session.get('role', 'unknown')
 
             db_client.collection('audit_log').add({
                 'action':    action,
                 'details':   details,
-                'user':      session.get('user_id', 'anonymous'),
-                'role':      session.get('role', 'unknown'),
+                'user':      user,
+                'role':      role,
                 'ip':        ip_addr,
                 'timestamp': datetime.datetime.now(datetime.timezone.utc)
             })
@@ -142,10 +144,45 @@ def log_action(*args, **kwargs):
 # HELPER UTILITIES
 # =========================================================
 
-def generate_reg_id() -> str:
-    """Unique, timestamp-based registration ID."""
-    import time
-    return f"REG-{int(time.time() * 1000)}"
+def generate_reg_id(prefix: str = 'REG') -> str:
+    """A registration (or waitlist) ID that can't collide: the prefix and 20
+    hex characters of a random UUID. The old millisecond IDs repeated when two
+    people registered in the same millisecond (UPG-95)."""
+    import uuid
+    return f"{prefix}-{uuid.uuid4().hex[:20].upper()}"
+
+
+class RegistrationExists(Exception):
+    """A new registration's ID is already taken; nothing was written (UPG-95)."""
+
+
+class AlreadyRegistered(Exception):
+    """This person already holds an active registration for the event: the
+    database refused a second (UPG-115). Nothing was written."""
+
+
+def is_active_duplicate(exc) -> bool:
+    """Whether a database error is the one-active-registration index refusing."""
+    from models_pg import ACTIVE_LEAD_INDEX
+    text = str(getattr(exc, 'orig', exc))
+    return ACTIVE_LEAD_INDEX in text or ('UNIQUE constraint failed' in text and 'registrations' in text
+                                         and 'registrations.id' not in text)
+
+
+def create_registration(db, reg_id: str, data: dict, collection: str = 'registrations') -> None:
+    """Write a new registration (or waitlist entry) under reg_id, never over an
+    existing one: the database layer's set() merges into whatever is there (UPG-95).
+    Raises AlreadyRegistered when the person already holds an active
+    registration for the event (the database's unique index, UPG-115)."""
+    ref = db.collection(collection).document(reg_id)
+    if ref.get().exists:
+        raise RegistrationExists(reg_id)
+    try:
+        ref.set(data)
+    except Exception as exc:
+        if collection == 'registrations' and is_active_duplicate(exc):
+            raise AlreadyRegistered(data.get('lead_email', '')) from exc
+        raise
 
 
 def safe_int(value, default: int = 0) -> int:
@@ -190,6 +227,8 @@ ROLE_REDIRECTS = {
     'UnitAdmin':        '/spoc/dashboard',
     'EventOrganizer':   '/spoc/dashboard',
     'Judge':            '/judge/dashboard',
+    'IQACCoordinator':  '/naac/',
+    'DepartmentAdmin':  '/naac/',
     'Volunteer':        '/coordinator/scanner',
 }
 
@@ -228,3 +267,20 @@ def record_form_submission(db, event_id, reg_id, email, name, answers):
         'answers':      answers,
         'submitted_at': _dt.datetime.now(_dt.timezone.utc).isoformat(),
     })
+
+
+TO_BE_ANNOUNCED = 'Venue to be announced'
+
+
+def venue_label(event) -> str:
+    """Where an event is, for any page or email: its room or venue; "Online" for an
+    online event with neither; else "Venue to be announced". Never an invented
+    place such as "SNPSU Campus" (UPG-111)."""
+    event = event or {}
+    get = event.get if hasattr(event, 'get') else (lambda k, d=None: getattr(event, k, d))
+    place = str(get('room_name') or get('venue') or '').strip()
+    if place:
+        return place
+    if str(get('event_mode') or get('mode') or '').strip().lower() == 'online':
+        return 'Online'
+    return TO_BE_ANNOUNCED

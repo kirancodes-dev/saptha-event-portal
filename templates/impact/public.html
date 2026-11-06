@@ -1,0 +1,21 @@
+{% extends "layouts/status.html" %}
+{#- The optional public Impact page (UPG-145): the same counts and approved testimonials only. -#}
+{% set site_footer_fixed = false %}
+{% set status_tone = 'brand' %}
+{% set status_icon = 'fa-chart-line' %}
+{% block title %}Impact{% endblock %}
+{% block status %}
+  <h1>Events on SapthaEvent</h1>
+  {% for y in years %}
+  <h2 class="h6 mt-3">{{ y.year }}</h2>
+  <ul class="text-start mb-0">
+    <li>{{ y.events }} events held, {{ y.registrations }} registrations, {{ y.checkins }} check-ins</li>
+    {% if y.attendance_rate is not none %}<li>Attendance {{ y.attendance_rate }}% ({{ y.checkins }} of {{ y.expected }})</li>{% endif %}
+    <li>{{ y.certificates }} certificates issued, {{ y.units }} departments and clubs</li>
+    {% if y.external %}<li>{{ y.external }} participants from other institutions</li>{% endif %}
+  </ul>
+  {% endfor %}
+  {% if time_saved.events %}<p class="small mt-3">Organisers estimate SapthaEvent saved them {{ '%g' % time_saved.total }} hours over {{ time_saved.events }} events.</p>{% endif %}
+  {% if quotes %}<h2 class="h6 mt-3">What people said</h2>
+  {% for q in quotes %}<blockquote class="text-start small mb-2">“{{ q.comment }}” — <strong>{{ q.name }}</strong>, {{ q.role }}</blockquote>{% endfor %}{% endif %}
+{% endblock %}

@@ -1,0 +1,13 @@
+{#- Browser push opt-in (UPG-157): only when push is set up and someone is
+    logged in; the browser asks for permission only after the button is
+    pressed, never on page load. static/js/push-optin.js drives it. -#}
+{% if push_enabled and session.get('user_id') %}
+<div class="push-optin callout callout--brand text-start mt-3 mb-0" data-push-optin data-key="{{ push_public_key }}" hidden>
+  <div class="small mb-2"><i class="fas fa-bell" aria-hidden="true"></i>
+    Get the day-before reminder, any change to your events and results on this device. Emails still come as usual.</div>
+  <button type="button" class="btn btn-sm btn-outline-primary" data-push-on>Turn on notifications</button>
+  <button type="button" class="btn btn-sm btn-link" data-push-off hidden>Turn off on this device</button>
+  <span class="small ms-2" data-push-status role="status"></span>
+</div>
+<script src="/static/js/push-optin.js" defer></script>
+{% endif %}

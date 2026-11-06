@@ -26,7 +26,6 @@ try:
 except ImportError:
     A4 = landscape = HexColor = white = rl_canvas = ImageReader = None
 
-from utils_email import _send_cert_email
 
 logger = logging.getLogger(__name__)
 
@@ -174,7 +173,7 @@ def generate_certificate_pdf(
       - QR verification code bottom-right
 
     Only draws: the QR and footer show certificate_id (or the ID these details
-    hash to). issue_event_certificates records the certificate (UPG-06).
+    hash to). Certificates are issued by services_certificates (UPG-138).
     """
     import math
 
@@ -774,100 +773,3 @@ def _average_score(reg: dict) -> float:
     except (TypeError, ValueError):
         return 0.0
 
-
-def issue_event_certificates(event_id: str, base_url: str = '', db=None, top_n: int = 3) -> dict:
-    """Issue one event's certificates. Every registration marked Present that
-    has none yet gets a PDF (the event's uploaded template, else the built-in
-    design), a certificate recorded under its ID in verified_certificates, the
-    ID and verify URL on the registration, and an email with the PDF. The top
-    `top_n` scored attendees get a winner certificate instead of participation.
-    Running it again issues nothing twice.
-
-    End-event (tasks.cert_tasks.bulk_generate_certificates) and the SPOC's
-    bulk button both come here.
-    """
-    import base64
-    from utils_email import _base_url
-
-    db = db or _app_db()
-    base_url = (base_url or _base_url()).rstrip('/')
-    results = {'issued': 0, 'emailed': 0, 'already_issued': 0, 'not_present': 0, 'failed': 0}
-
-    ev_doc = db.collection('events').document(event_id).get()
-    if not ev_doc.exists:
-        raise ValueError(f"Event {event_id} not found")
-    event = ev_doc.to_dict() or {}
-    title = event.get('title', 'Event')
-    try:
-        template_id = int(event.get('cert_template_id', 1) or 1)
-    except (TypeError, ValueError):
-        template_id = 1
-    issued_by = event.get('cert_issued_by') or 'Dean of Student Affairs'
-    pos = event.get('cert_name_pos') or {}
-    x_pct, y_pct = pos.get('x', 50), pos.get('y', 42)
-
-    templates = {}
-
-    def template(kind):
-        if kind not in templates:
-            templates[kind] = None
-            try:
-                doc = db.collection('cert_templates').document(f'{event_id}_{kind}').get()
-                if doc.exists:
-                    templates[kind] = base64.b64decode((doc.to_dict() or {})['data'])
-            except Exception as exc:
-                logger.warning("Certificate template %s for %s not loaded: %s", kind, event_id, exc)
-        return templates[kind]
-
-    regs = [(d.id, d.to_dict() or {}) for d in db.collection('registrations').where('event_id', '==', event_id).stream()]
-    present = [(rid, r) for rid, r in regs if r.get('attendance') == 'Present']
-    results['not_present'] = len(regs) - len(present)
-    scored = sorted((r for r in present if _average_score(r[1]) > 0), key=lambda r: -_average_score(r[1]))
-    rank_of = {rid: idx for idx, (rid, _) in enumerate(scored[:top_n], start=1)}
-
-    for doc_id, reg in present:
-        if reg.get('certificate_id'):
-            results['already_issued'] += 1
-            continue
-        try:
-            name = reg.get('lead_name') or 'Participant'
-            email = reg.get('lead_email') or reg.get('email') or ''
-            reg_label = reg.get('reg_id') or doc_id
-            rank = rank_of.get(doc_id, 0)
-            score = _average_score(reg) if rank else 0.0
-            cert_type = 'winner' if rank else 'participation'
-            cert_id = certificate_id_for(reg_label, name, title, cert_type, rank, score)
-            verify_url = f"{base_url}/verify/{cert_id}"
-
-            custom = template(f'winner_{rank}' if rank else 'participation')
-            if custom:
-                pdf = generate_from_image_template(custom, name, cert_id, base_url, x_pct, y_pct)
-            else:
-                pdf = generate_certificate_pdf(
-                    student_name=name, event_title=title, reg_id=reg_label, cert_type=cert_type,
-                    rank=rank, score=score, event_date=str(event.get('date', '')), base_url=base_url,
-                    template_id=template_id, issued_by=issued_by, certificate_id=cert_id)
-
-            issued_at = datetime.now().isoformat()
-            db.collection('verified_certificates').document(cert_id).set({
-                'hash': cert_id, 'reg_id': reg_label, 'event_id': event_id,
-                'student_name': name, 'event_title': title, 'cert_type': cert_type,
-                'rank': rank, 'score': score, 'issued_at': issued_at,
-                'college_name': 'Sapthagiri NPS University', 'status': 'Verified',
-            })
-            db.collection('registrations').document(doc_id).update({
-                'certificate_id': cert_id,
-                'certificate_verify_url': verify_url,
-                'certificate_type': cert_type,
-                'certificate_issued_at': issued_at,
-            })
-            results['issued'] += 1
-            if email and _send_cert_email(email, name, title, cert_type, rank, score, pdf, reg_label,
-                                          certificate_id=cert_id):
-                results['emailed'] += 1
-        except Exception as exc:
-            logger.error("Certificate for %s (event %s) failed: %s", doc_id, event_id, exc)
-            results['failed'] += 1
-
-    logger.info("Certificates for event %s: %s", event_id, results)
-    return results

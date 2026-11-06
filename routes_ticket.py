@@ -39,9 +39,32 @@ def _get_serializer():
     return URLSafeSerializer(secret, salt='qr-ticket-salt')
 
 
-def generate_ticket_token(reg_id: str, event_id: str, lead_name: str) -> str:
+def generate_ticket_token(reg_id: str, event_id: str, lead_name: str, gen: int = 0) -> str:
+    """The signed ticket token. `gen` is the registration's ticket generation:
+    0 until the ticket is first transferred (the token is then exactly as
+    before UPG-161), and one more on each transfer, so older tokens stop working."""
     s = _get_serializer()
-    return s.dumps([str(reg_id), str(event_id), str(lead_name)])
+    payload = [str(reg_id), str(event_id), str(lead_name)]
+    if int(gen or 0):
+        payload.append(int(gen))
+    return s.dumps(payload)
+
+
+def ticket_token_for(reg_id: str, reg: dict) -> str:
+    """The current ticket token of a registration (UPG-161)."""
+    return generate_ticket_token(reg_id, reg.get('event_id', ''), reg.get('lead_name', ''),
+                                 reg.get('ticket_gen') or 0)
+
+
+def token_is_current(reg: dict, extra: dict) -> bool:
+    """False for a ticket replaced by a transfer (UPG-161)."""
+    try:
+        return int((extra or {}).get('gen') or 0) == int((reg or {}).get('ticket_gen') or 0)
+    except (TypeError, ValueError):
+        return False
+
+
+TRANSFERRED_MESSAGE = "This ticket was transferred to someone else; it no longer works."
 
 
 def verify_ticket_token(token: str):
@@ -64,7 +87,8 @@ def _parse_signed_token(token: str) -> Tuple[bool, Optional[str], Optional[str],
     # Format 1: itsdangerous URLSafeSerializer token
     token_data = verify_ticket_token(token)
     if token_data and isinstance(token_data, (list, tuple)) and len(token_data) >= 3:
-        return True, str(token_data[0]), str(token_data[1]), str(token_data[2]), {}
+        extra = {'gen': token_data[3]} if len(token_data) >= 4 else {}
+        return True, str(token_data[0]), str(token_data[1]), str(token_data[2]), extra
 
     # Format 2: TicketService HMAC-SHA256 token (<b64>.<sig>)
     try:
@@ -120,14 +144,22 @@ def _token_from_scan(scanned: str) -> str:
     return scanned
 
 
+def _ist_today() -> str:
+    """Today's date where the university is (attendance is counted per day there)."""
+    import datetime as _dt
+    return _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=5, minutes=30))).date().isoformat()
+
+
 def check_in(reg_id: str, actor, expected_event_id: Optional[str] = None,
-             source: str = 'scan') -> Tuple[Dict[str, Any], int]:
+             source: str = 'scan', token_extra: Optional[dict] = None) -> Tuple[Dict[str, Any], int]:
     """Mark one registration present. Returns (JSON body, HTTP status).
 
     The registration's event must exist and the actor needs check_in on it.
     A second check-in changes nothing and reports the first time. Payment
     must allow entry (payment_allows_entry). `expected_event_id` is the
-    event the scanner is working; another event's ticket is refused."""
+    event the scanner is working; another event's ticket is refused.
+    `token_extra` is what the scanned token carried: a ticket replaced by a
+    transfer is refused (UPG-161)."""
     from services_permission import can
 
     def answer(status, message, http, **extra):
@@ -163,14 +195,29 @@ def check_in(reg_id: str, actor, expected_event_id: Optional[str] = None,
         'room':        reg.get('assigned_room') or reg.get('allocated_room') or '',
         'members':     [{'name': m.get('name', ''), 'usn': m.get('usn', ''), 'attendance': m.get('attendance', '')}
                         for m in (reg.get('members') or [])],
+        'badge_url':   f"/ticket/{reg_id}/badge.pdf",   # print at the door (UPG-158)
     }
     details.update(lead_name=details['name'], team_name=details['team'])
+
+    if token_extra is not None and not token_is_current(reg, token_extra):
+        log_action(db, "CHECKIN_REFUSED", f"Reg {reg_id}: a transferred ticket was scanned ({source})")
+        return answer('transferred', TRANSFERRED_MESSAGE, 409, **details)
 
     if str(reg.get('status') or '').strip().lower() in ('cancelled', 'refunded'):
         return answer('cancelled', f"This registration was {str(reg.get('status')).lower()}; no entry.", 409, **details)
 
+    # Each day attended is recorded, so a multi-day event can certify people who
+    # came on enough of its days (UPG-122). A second scan on the same day changes nothing.
+    today = _ist_today()
+    days = list(reg.get('attendance_days') or [])
     if str(reg.get('attendance') or '').strip().lower() == 'present':
         first = reg.get('checkin_time') or ''
+        if days and today not in days:
+            db.collection('registrations').document(reg_id).update({'attendance_days': days + [today]})
+            log_action(db, "CHECKIN", f"Reg {reg_id} checked in for another day, {today} ({source})")
+            return answer('success', f'Entry granted (day {len(days) + 1}).', 200, checkin_time=first, **details)
+        if not days:   # checked in before days were recorded: today counts as that day
+            db.collection('registrations').document(reg_id).update({'attendance_days': [today]})
         message = f"Already checked in at {first[:5]}." if first else "Already checked in."
         return answer('already_in', message, 200, checkin_time=first, **details)
 
@@ -181,9 +228,10 @@ def check_in(reg_id: str, actor, expected_event_id: Optional[str] = None,
     # Activity points and hours aren't written here: the ledger credits a
     # registration once from its attendance (services_ledger, UPG-11).
     db.collection('registrations').document(reg_id).update({
-        'attendance':    'Present',
-        'checkin_time':  checkin_time,
-        'checked_in_by': user_email,
+        'attendance':      'Present',
+        'checkin_time':    checkin_time,
+        'checked_in_by':   user_email,
+        'attendance_days': sorted(set(days + [today])),
     })
     if reg.get('ticket_id'):
         try:
@@ -209,13 +257,63 @@ def api_checkin():
     Takes the scanned ticket link or token, never a registration ID."""
     data = request.get_json(silent=True) or request.form
     token = _token_from_scan(data.get('token', ''))
-    is_valid, reg_id, token_event_id, _, _ = _parse_signed_token(token)
+    is_valid, reg_id, token_event_id, _, extra = _parse_signed_token(token)
     if not is_valid or not reg_id:
         return jsonify({'status': 'invalid', 'success': False,
                         'message': "Not a valid ticket. Scan the ticket's QR code; registration IDs aren't accepted."}), 400
     body, status = check_in(reg_id, session, expected_event_id=(data.get('event_id') or '').strip() or None,
-                            source=(data.get('source') or 'scan')[:20])
+                            source=(data.get('source') or 'scan')[:20], token_extra=extra)
     return jsonify(body), status
+
+
+@ticket_bp.route('/api/session_checkin', methods=['POST'])
+def api_session_checkin():
+    """A scan in the scanner's session mode (UPG-159): the same signed ticket,
+    recorded at one agenda session. The person is checked in to the event
+    first, through the shared check-in, if they aren't yet (so the gate's
+    rules hold). A session at capacity answers 409 session_full and records
+    nothing, unless the scanner admits them anyway (allow_over)."""
+    import services_sessions
+    data = request.get_json(silent=True) or request.form
+    token = _token_from_scan(data.get('token', ''))
+    is_valid, reg_id, _, _, extra = _parse_signed_token(token)
+    if not is_valid or not reg_id:
+        return jsonify({'status': 'invalid', 'success': False,
+                        'message': "Not a valid ticket. Scan the ticket's QR code."}), 400
+    event_id = (data.get('event_id') or '').strip()
+    if not event_id:
+        return jsonify({'status': 'invalid', 'success': False, 'message': 'Choose the event first.'}), 400
+    ev_doc = _db().collection('events').document(event_id).get()
+    sess = services_sessions.find(ev_doc.to_dict() or {}, data.get('session_id')) if ev_doc.exists else None
+    if sess is None:
+        return jsonify({'status': 'invalid', 'success': False,
+                        'message': 'That session is not on the schedule. Reload the scanner.'}), 404
+
+    # The event's check-in first: permission, the right event, payment, cancellation
+    body, status = check_in(reg_id, session, expected_event_id=event_id, source='session scan', token_extra=extra)
+    if status != 200:
+        return jsonify(body), status
+    entered_event = body['status'] == 'success'
+    allow_over = str(data.get('allow_over') or '').lower() in ('1', 'true', 'yes')
+    first = services_sessions.scanned_at(reg_id, sess['id'])
+    if first is None:
+        if services_sessions.is_full(event_id, sess) and not allow_over:
+            return jsonify(dict(body, status='session_full', success=False, entered_event=entered_event,
+                                session=services_sessions.label(sess),
+                                message=f"{sess.get('title')} is full ({sess.get('capacity')} seats). "
+                                        "Admit anyway only if there's room.")), 409
+        first = services_sessions.attend(event_id, sess['id'], reg_id, session.get('user_id') or '',
+                                         over_capacity=allow_over)
+    if first is not None:   # scanned into this session before (or by another scanner just now)
+        return jsonify(dict(body, status='already_in', success=True, already_present=True,
+                            entered_event=entered_event, session=services_sessions.label(sess),
+                            message=f"Already in {sess.get('title')}" + (f" since {first[:5]}." if first else "."))), 200
+    log_action(_db(), "SESSION_CHECKIN", f"Reg {reg_id} into session {sess['id']} of {event_id}"
+               + (" (over capacity)" if allow_over else ""))
+    return jsonify(dict(body, status='success', success=True, already_present=False, entered_event=entered_event,
+                        session=services_sessions.label(sess), seats_taken=services_sessions.count(event_id, sess['id']),
+                        capacity=sess.get('capacity') or None,
+                        message=f"In {sess.get('title')}." + (" Also checked in to the event." if entered_event else ""))), 200
 
 
 # =========================================================
@@ -265,24 +363,147 @@ def view_ticket(reg_id):
     qr_b64 = verify_url = None
     if show_qr:
         # Generate cryptographically signed token for QR code
-        token = generate_ticket_token(reg_id, reg.get('event_id', ''), reg.get('lead_name', ''))
+        token = ticket_token_for(reg_id, reg)
         verify_url = f"{_base_url()}/ticket/verify/{token}"
         qr_b64     = generate_qr_base64(verify_url)
 
     # A placement drive shows the student's current round and result (UPG-57)
     from services_placement import current_round, is_placement
     placement_status = current_round(event, reg) if is_placement(event) else None
+    from services_rounds import status_for   # a multi-round competition (UPG-149)
+    round_status = None if placement_status is not None else status_for(event, reg)
+
+    # Add to Apple / Google Wallet, each only once its keys are set (UPG-156)
+    import services_wallet
+    active = str(reg.get('status') or '').lower() != 'cancelled'
+    wallet = {'apple': bool(show_qr and active and services_wallet.apple_configured()),
+              'google': bool(show_qr and active and services_wallet.google_configured())}
 
     return render_template(
         'participant/ticket.html',
         reg=reg,
+        reg_id=reg_id,
         event=event,
         qr_b64=qr_b64,
         verify_url=verify_url,
         show_qr=show_qr,
         event_date=event_date_str,
         placement_status=placement_status,
+        round_status=round_status,
+        wallet=wallet,
     )
+
+
+# =========================================================
+# 1b. WALLET PASSES (UPG-156)
+#    The same people as the ticket page, from the same day as its QR; the
+#    pass carries the ticket's verify link with its signed token.
+# =========================================================
+def _wallet_ticket(reg_id):
+    """(reg, event, verify_url) for a pass the user may have, else aborts."""
+    user_email = (session.get('user_id') or '').lower()
+    reg_doc = _db().collection('registrations').document(reg_id).get()
+    if not reg_doc.exists:
+        abort(404)
+    reg = reg_doc.to_dict() or {}
+    event_doc = _db().collection('events').document(reg.get('event_id', '')).get()
+    event = (event_doc.to_dict() or {}) if event_doc.exists else {}
+    is_owner = (reg.get('lead_email') or '').lower() == user_email or any(
+        (m.get('email') or '').lower() == user_email for m in reg.get('members') or [])
+    is_staff = _can_manage_event(session.get('user_id'), session.get('role', ''), event,
+                                 session.get('category', 'General'))
+    if not (is_owner or is_staff):
+        abort(403)
+    if str(reg.get('status') or '').lower() == 'cancelled':
+        abort(404)
+    event_date = str(event.get('date', ''))[:10]
+    if not is_staff and event_date:
+        try:
+            event_d = datetime.date.fromisoformat(event_date)
+            today_d = datetime.date.fromisoformat(_ist_today())
+            if not (event_d - datetime.timedelta(days=1)) <= today_d <= event_d:
+                abort(403)   # the QR, and so the pass, opens the day before
+        except ValueError:
+            pass
+    token = ticket_token_for(reg_id, reg)
+    return reg, event, f"{_base_url()}/ticket/verify/{token}"
+
+
+# =========================================================
+# 1c. NAME BADGES (UPG-158) — the event's check-in staff only
+# =========================================================
+def _staff_event_or_abort(event_id):
+    from services_permission import can
+    doc = _db().collection('events').document(event_id).get() if event_id else None
+    if doc is None or not doc.exists:
+        abort(404)
+    event = dict(doc.to_dict() or {}, id=event_id)
+    if not can(session, 'check_in', event, db=_db()):
+        abort(403)
+    return event
+
+
+def _badge_pdf(body, name):
+    from flask import Response
+    return Response(body, mimetype='application/pdf', headers={
+        'Content-Disposition': f'inline; filename="{name}.pdf"', 'Cache-Control': 'no-store'})
+
+
+def _qr_text(reg_id, reg):
+    token = ticket_token_for(reg_id, reg)
+    return f"{_base_url()}/ticket/verify/{token}"
+
+
+@ticket_bp.route('/badges/<event_id>.pdf')
+@login_required
+def event_badges_pdf(event_id):
+    """Every confirmed registration's badges, 8 to an A4 page, then staff badges."""
+    import services_badges
+    event = _staff_event_or_abort(event_id)
+    badges = services_badges.event_badges(_db(), event_id, event, _qr_text)
+    log_action(_db(), "BADGES_PRINTED", f"{session.get('user_id')} printed {len(badges)} badges for {event_id}")
+    return _badge_pdf(services_badges.render(badges, event), f"badges-{event_id}")
+
+
+@ticket_bp.route('/<reg_id>/badge.pdf')
+@login_required
+def registration_badge_pdf(reg_id):
+    """One registration's badges (a team's members each), for the door."""
+    import services_badges
+    reg_doc = _db().collection('registrations').document(reg_id).get()
+    if not reg_doc.exists:
+        abort(404)
+    reg = reg_doc.to_dict() or {}
+    event = _staff_event_or_abort(str(reg.get('event_id') or ''))
+    if str(reg.get('status') or '').strip().lower() in ('cancelled', 'refunded'):
+        abort(404)
+    badges = services_badges.participant_badges(reg_id, reg, event, _qr_text(reg_id, reg))
+    return _badge_pdf(services_badges.render(badges, event, single=True), f"badge-{reg.get('reg_id') or reg_id}")
+
+
+@ticket_bp.route('/<reg_id>/wallet/apple.pkpass')
+@login_required
+def apple_wallet_pass(reg_id):
+    import services_wallet
+    if not services_wallet.apple_configured():
+        abort(404)
+    reg, event, verify_url = _wallet_ticket(reg_id)
+    body = services_wallet.build_pkpass(reg_id, reg, event, verify_url)
+    from flask import Response
+    return Response(body, mimetype='application/vnd.apple.pkpass', headers={
+        'Content-Disposition': f'attachment; filename="ticket-{reg.get("reg_id") or reg_id}.pkpass"',
+        'Cache-Control': 'no-store'})
+
+
+@ticket_bp.route('/<reg_id>/wallet/google')
+@login_required
+def google_wallet_pass(reg_id):
+    import services_wallet
+    if not services_wallet.google_configured():
+        abort(404)
+    reg, event, verify_url = _wallet_ticket(reg_id)
+    return redirect(services_wallet.google_save_url(reg_id, reg, reg.get('event_id', ''), event, verify_url,
+                                                    origin=_base_url().rstrip('/')))
 
 
 # =========================================================
@@ -328,7 +549,7 @@ def qr_image(reg_id):
                 pass
 
     # Generate cryptographically signed token for QR code
-    token = generate_ticket_token(reg_id, reg.get('event_id', ''), reg.get('lead_name', ''))
+    token = ticket_token_for(reg_id, reg)
     verify_url = f"{_base_url()}/ticket/verify/{token}"
     return generate_qr_response(verify_url)
 
@@ -383,6 +604,16 @@ def verify_ticket(token):
     # --- GET: Read-only validation (name + event only; never mutates data) ---
     if request.method == 'GET':
         if db_exists and reg:
+            if not token_is_current(reg, extra):   # UPG-161
+                return render_template(
+                    'coordinator/verify_result.html',
+                    status='invalid',
+                    message=TRANSFERRED_MESSAGE,
+                    reg={'lead_name': '', 'reg_id': reg_id},
+                    event={'title': event.get('title', 'Event') if event else 'Event'},
+                    can_checkin=False,
+                    token=token
+                ), 409
             if not payment_allows_entry(reg, event):
                 return render_template(
                     'coordinator/verify_result.html',
@@ -433,7 +664,7 @@ def verify_ticket(token):
         flash("Please log in as staff to check in attendees.", "danger")
         return redirect('/login')
 
-    result, http = check_in(reg_id, session, source='verify page')
+    result, http = check_in(reg_id, session, source='verify page', token_extra=extra)
     if http == 403:
         abort(403)
     page_status = {'success': 'success', 'already_in': 'already_in', 'unpaid': 'unpaid'}.get(result['status'], 'invalid')
@@ -532,6 +763,8 @@ def api_verify(token):
             }), 200
 
         if reg:
+            if not token_is_current(reg, extra):   # UPG-161
+                return jsonify({'status': 'transferred', 'message': TRANSFERRED_MESSAGE}), 409
             if not payment_allows_entry(reg, event):
                 return jsonify({'status': 'unpaid', 'message': 'Payment pending — entry not allowed'}), 402
 
@@ -565,7 +798,7 @@ def api_verify(token):
     actor = {'user_id': user_email, 'role': user_role, 'category': user_cat}
 
     if reg:  # the shared check-in (UPG-02)
-        body, http = check_in(reg_id, actor, source='api verify')
+        body, http = check_in(reg_id, actor, source='api verify', token_extra=extra)
         return jsonify(body), http
 
     if ticket_data:  # a wallet ticket with no registration behind it

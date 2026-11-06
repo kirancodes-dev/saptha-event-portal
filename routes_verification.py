@@ -1,9 +1,55 @@
 # routes_verification.py — Cryptographic Certificate & Registration Verification Blueprint
+#
+# /verify/<number> is the public page of a certificate number (UPG-126): valid,
+# revoked or replaced, with the name, event, date, type and college, never
+# personal data; /verify/<number>/v<n> shows one version. Older IDs (the
+# verified_certificates hashes and registration IDs printed on earlier
+# certificates) keep their own pages at the same address. Every lookup is
+# rate-limited per address (VERIFY_RATE_LIMIT, default 30 a minute).
 import logging
+import os
+
 from flask import Blueprint, render_template
+
+from extensions import limiter
 
 verification_bp = Blueprint('verification', __name__)
 logger = logging.getLogger(__name__)
+
+
+def verify_limit() -> str:
+    return os.environ.get('VERIFY_RATE_LIMIT') or '30 per minute'
+
+
+verify_rate = limiter.shared_limit(verify_limit, scope='certificate-verify')
+
+
+def _number_page(number, version=None):
+    import services_certificates as certs
+    view = certs.public_view(number, version)
+    return render_template('certificates/verify.html', view=view, number=str(number).strip().upper()), (200 if view else 404)
+
+
+@verification_bp.route('/verify/<number>/file', methods=['POST'])
+@verify_rate
+def verify_file(number):
+    """Is the PDF someone holds the current version of this number? (UPG-127)"""
+    from flask import request
+    import services_certificate_changes as changes
+    import services_certificates as certs
+    upload = request.files.get('file')
+    data = upload.read(5 * 1024 * 1024 + 1) if upload else b''
+    result = changes.check_file(number, data) if data and len(data) <= 5 * 1024 * 1024 else {'state': 'unknown'}
+    view = certs.public_view(number, result.get('version')) if result.get('version') else certs.public_view(number)
+    return render_template('certificates/verify.html', view=view, number=str(number).strip().upper(),
+                           file_check=result), (200 if view else 404)
+
+
+@verification_bp.route('/verify/<number>/v<int:version>')
+@verify_rate
+def verify_version(number, version):
+    """One version of a certificate: a replaced one says so (UPG-126)."""
+    return _number_page(number, version)
 
 def _db():
     try:
@@ -19,7 +65,11 @@ def _db():
         return None
 
 @verification_bp.route('/verify/<cert_hash>')
+@verify_rate
 def verify_certificate(cert_hash):
+    import services_certificates as certs
+    if certs.looks_like_number(cert_hash):
+        return _number_page(cert_hash)
     db_conn = _db()
     if not db_conn:
         return render_template('public/verify_certificate.html',
@@ -69,6 +119,7 @@ def verify_certificate(cert_hash):
 
 
 @verification_bp.route('/verify/<cert_hash>/preview')
+@verify_rate
 def verify_certificate_preview(cert_hash):
     db_conn = _db()
     if not db_conn:
@@ -84,11 +135,11 @@ def verify_certificate_preview(cert_hash):
             cert_type = cert_data.get('cert_type', 'participation')
             rank = cert_data.get('rank', 0)
             score = cert_data.get('score', 0)
-            event = {
-                'title': event_title,
-                'date': cert_data.get('issued_at', '')[:10],
-                'venue': 'Main Campus'
-            }
+            source = {}
+            if cert_data.get('event_id'):
+                source_doc = db_conn.collection('events').document(cert_data['event_id']).get()
+                source = source_doc.to_dict() or {} if source_doc.exists else {}
+            event = dict(source, title=event_title, date=cert_data.get('issued_at', '')[:10])
             return render_template('public/certificate_preview_embed.html',
                                    student_name=student_name,
                                    event=event,
@@ -122,6 +173,7 @@ def verify_certificate_preview(cert_hash):
 
 
 @verification_bp.route('/verify/<cert_hash>/download')
+@verify_rate
 def verify_certificate_download(cert_hash):
     db_conn = _db()
     if not db_conn:

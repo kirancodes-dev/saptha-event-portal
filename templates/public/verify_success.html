@@ -358,6 +358,7 @@
 </style>
 {% endblock %}
 {% block body %}
+{% include "includes/back_link.html" %}
 <header class="vs-brand"><a href="/" aria-label="SapthaEvent home"><img src="/static/img/snpsu-logo-reversed.png" alt="Sapthagiri NPS University" class="brand-logo" width="143" height="36"></a></header>
 
 <main class="container" id="main-content">
@@ -487,14 +488,16 @@
         </div>
 
         <!-- Need Help -->
+        {% if support_email %}
         <div class="col-12">
           <div class="action-card">
             <h3 class="action-card-title"><i class="far fa-circle-question"></i> Need help?</h3>
             <p class="help-text m-0">
-              For any questions regarding your certificate details, contact the issuing organization at <strong>support@snpsu.edu.in</strong>.
+              For any questions about your certificate, contact <a href="mailto:{{ support_email }}">{{ support_email }}</a>.
             </p>
           </div>
         </div>
+        {% endif %}
       </div>
     </div>
   </div>

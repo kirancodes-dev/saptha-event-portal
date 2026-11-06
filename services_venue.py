@@ -563,12 +563,14 @@ def notify_event_details_changed(
                     "event_title": event_title,
                     "venue_name": display_venue,
                     "start_time": display_time,
+                    "link": f"/event/{event_id}",
+                    "event_id": str(event_id),   # a portal-only event sends no email (UPG-195)
                 }
                 custom_rule = {
                     "title": f"Update: {event_title}",
                     "message": f"Hello {recipient_name}, important schedule change for '{event_title}': {change_summary}.",
                     "notif_type": "event_reminder",
-                    "channels": ["in_app", "email"],
+                    "channels": ["in_app", "email", "push"],   # push for subscribers (UPG-157)
                 }
                 # Stable across processes (hash() isn't): the same change is sent once
                 change_id = hashlib.sha256(
@@ -582,6 +584,12 @@ def notify_event_details_changed(
                     custom_rule=custom_rule,
                     idempotency_key=idempotency_key,
                 )
+                if _phone:   # WhatsApp too, once, if they opted in (UPG-147)
+                    from services_whatsapp import notify
+                    from utils_email import _base_url
+                    notify(db, 'event_changed', _phone, {
+                        'name': recipient_name, 'event': event_title, 'change': change_summary,
+                        'event_link': f"{_base_url().rstrip('/')}/event/{event_id}"}, key=f"{event_id}:{change_id}")
                 count += 1
         return count
     except Exception as e:

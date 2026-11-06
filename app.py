@@ -9,7 +9,7 @@ except ImportError:
     firebase_admin = None
     credentials = None
     firestore = None
-from flask import Flask, render_template, session, redirect, request, jsonify, Response, g, flash
+from flask import Flask, render_template, session, redirect, request, jsonify, Response, g, flash, send_from_directory
 try:
     from flask_mail import Mail
 except ImportError:
@@ -54,7 +54,8 @@ except ImportError:
     def load_dotenv(*args, **kwargs): pass
 
 from config import Config, check_production_settings
-from utils import ROLE_REDIRECTS  # single source of truth
+from utils import ROLE_REDIRECTS, log_action  # single source of truth
+from log_redact import redact  # link tokens out of the logs (UPG-152)
 
 # =========================================================
 # WERKZEUG SCRYPT FIX — macOS Python 3.9 uses LibreSSL which
@@ -148,7 +149,7 @@ csrf = CSRFProtect(app)
 @app.errorhandler(CSRFError)
 def handle_csrf_error(e):
     logger.warning("CSRF validation failed: %s path=%s ip=%s",
-                   e.description, request.path, request.remote_addr)
+                   e.description, redact(request.path), request.remote_addr)
     if request.accept_mimetypes.best == 'application/json' or request.is_json:
         return jsonify({'error': 'csrf_validation_failed', 'detail': e.description}), 400
     from flask import flash
@@ -317,11 +318,18 @@ from routes_portfolio   import portfolio_bp    # noqa: E402
 from routes_sponsors    import sponsors_bp     # noqa: E402
 from routes_teams          import teams_bp           # noqa: E402
 from routes_placement      import placement_bp       # noqa: E402  (UPG-57)
+from routes_certificates   import certificates_bp    # noqa: E402  (UPG-123)
+from routes_verification   import verify_limit       # noqa: E402  (UPG-126)
+from routes_naac           import naac_bp            # noqa: E402  (UPG-144)
+from routes_impact         import impact_bp          # noqa: E402  (UPG-145)
+from routes_reach          import reach_bp           # noqa: E402  (UPG-146)
+from routes_whatsapp       import whatsapp_bp, webhook as whatsapp_webhook  # noqa: E402  (UPG-147)
 from routes_sports         import sports_bp          # noqa: E402  (UPG-13)
 from routes_push           import push_bp           # noqa: E402
 from routes_checkin        import checkin_bp        # noqa: E402
 from routes_spoc           import spoc_bp           # noqa: E402
 from routes_live           import live_bp           # noqa: E402
+from routes_interact       import interact_bp       # noqa: E402  (polls and Q&A, UPG-160)
 from routes_verification   import verification_bp   # noqa: E402
 from routes_matchmaker     import matchmaker_bp     # noqa: E402
 from routes_dynamic_pricing import dynamic_pricing_bp # noqa: E402
@@ -344,11 +352,19 @@ app.register_blueprint(portfolio_bp)
 app.register_blueprint(sponsors_bp)
 app.register_blueprint(teams_bp)
 app.register_blueprint(placement_bp)
+app.register_blueprint(certificates_bp)
+app.register_blueprint(naac_bp)
+app.register_blueprint(impact_bp)
+app.register_blueprint(reach_bp)
+app.register_blueprint(whatsapp_bp)
+from services_reach import powered_by as _powered_by, share_meta as _share_meta  # noqa: E402  (UPG-146)
+app.jinja_env.globals.update(powered_by=_powered_by, share_meta=_share_meta)
 app.register_blueprint(sports_bp)
 app.register_blueprint(push_bp)
 app.register_blueprint(checkin_bp)
 app.register_blueprint(spoc_bp)
 app.register_blueprint(live_bp)
+app.register_blueprint(interact_bp)
 app.register_blueprint(verification_bp)
 app.register_blueprint(matchmaker_bp)
 app.register_blueprint(dynamic_pricing_bp)
@@ -421,6 +437,8 @@ csrf.exempt(price_preview)
 csrf.exempt(razorpay_webhook)
 # The scheduler calls the cron endpoint with a shared secret, not a session (UPG-07)
 csrf.exempt(cron_bp)
+# The WhatsApp provider calls its webhook with its own signature, not a session (UPG-147)
+csrf.exempt(whatsapp_webhook)
 
 
 @app.context_processor
@@ -443,6 +461,9 @@ def inject_auth_features():
         'twofa_available': twofa_available,
         # Help and privacy requests (D-4, UPG-42); unset, pages show no address
         'support_email': (os.environ.get('SUPPORT_EMAIL') or '').strip(),
+        # Browser push opt-in, only once VAPID keys are set (UPG-157)
+        'push_enabled': (push_on := __import__('services_push').configured()),
+        'push_public_key': __import__('services_push').public_key() if push_on else '',
     }
 
 
@@ -885,6 +906,8 @@ def event_details(event_id):
             from services_permission import can
             if not can(session, 'edit_event', event, db=db):
                 return render_template('404.html'), 404
+        import services_share   # the share link the visitor came from (UPG-162)
+        services_share.capture(session, event_id, event, request.args)
         event.setdefault('title',              'Event')
         event.setdefault('description',        '')
         event.setdefault('overview',           '')
@@ -904,7 +927,8 @@ def event_details(event_id):
             }
         event.setdefault('date',               'TBD')
         event.setdefault('deadline',           '')
-        event.setdefault('venue',              'SNPSU Campus')
+        if not event.get('venue'):
+            event['venue'] = venue_label(event)   # its room, "Online" or "Venue to be announced" (UPG-65, UPG-111)
         event.setdefault('category',           'General')
         event.setdefault('entry_fee',          0)
         event.setdefault('is_team_event',      False)
@@ -933,18 +957,18 @@ def event_details(event_id):
 
         if 'limits' not in event or not isinstance(event['limits'], dict):
             event['limits'] = {
-                'max_participants': 200,
+                'max_participants': 0,   # no limit set: no seat count shown, not an invented 200 (UPG-65)
                 'team_min': event.get('min_team_size', 1),
                 'team_max': event.get('max_team_size', 1)
             }
         else:
-            event['limits'].setdefault('max_participants', 200)
+            event['limits'].setdefault('max_participants', 0)
             event['limits'].setdefault('team_min', event.get('min_team_size', 1))
             event['limits'].setdefault('team_max', event.get('max_team_size', 1))
 
         reg_count = event.get('registration_count', 0)
         limits    = event['limits']
-        max_p     = limits.get('max_participants', 200)
+        max_p     = limits.get('max_participants', 0)
 
         is_registered = False
         prefill = None
@@ -1165,7 +1189,7 @@ def get_calendar_json():
                 'url': f"/forms/register/{ev.get('id')}",
                 'color': color_map.get(cat, '#1a2557'),
                 'category': cat,
-                'venue': ev.get('room_name') or ev.get('venue', 'SNPSU'),
+                'venue': venue_label(ev),
                 'google_calendar_url': ev.get('google_calendar_url'),
                 'ics_url': ev.get('ics_url'),
                 'event_mode': ev.get('event_mode', 'offline'),
@@ -1201,7 +1225,7 @@ def events_calendar():
                 'url':      f"/forms/register/{d.get('id')}",
                 'color':    color_map.get(cat, '#1a2557'),
                 'category': cat,
-                'venue':    d.get('room_name') or d.get('venue', 'SNPSU'),
+                'venue':    venue_label(d),
                 'google_calendar_url': d.get('google_calendar_url'),
                 'ics_url': d.get('ics_url'),
             })
@@ -1236,6 +1260,10 @@ def calendar_feed_url():
 
 
 app.jinja_env.globals.update(calendar_feed_url=calendar_feed_url)
+from utils import venue_label  # noqa: E402
+app.jinja_env.globals.update(venue_label=venue_label)  # never an invented place (UPG-111)
+from utils_links import page_back, role_home  # noqa: E402
+app.jinja_env.globals.update(page_back=page_back, role_home=role_home)  # Back on every page (UPG-103)
 
 
 @app.route('/calendar/feed/rotate', methods=['POST'])
@@ -1303,12 +1331,17 @@ def personal_calendar_feed():
 # CERTIFICATE VERIFICATION
 # =========================================================
 @app.route('/verify', methods=['GET', 'POST'])
+@limiter.shared_limit(verify_limit, scope='certificate-verify', methods=['POST'])
 def verify_lookup():
-    """Public lookup form: paste a certificate ID and redirect to verifier."""
+    """Public lookup form: paste a certificate number and go to its page (UPG-126)."""
     if request.method == 'POST':
+        from urllib.parse import quote
+        import services_certificates
         cert_id = (request.form.get('cert_id') or '').strip()
         if cert_id:
-            return redirect(f'/verify/{cert_id}')
+            if services_certificates.looks_like_number(cert_id):
+                cert_id = cert_id.upper()
+            return redirect(f"/verify/{quote(cert_id, safe='-_.')}")
     return render_template('public/verify_lookup.html')
 
 
@@ -1319,11 +1352,35 @@ def verify_lookup():
 # REQUEST LOGGING MIDDLEWARE
 # =========================================================
 @app.before_request
+def end_sessions_of_deactivated_accounts():
+    """Every request re-checks the signed-in account: a Super Admin's
+    deactivation ends sessions that are already open, not just the next login
+    (UPG-76). One user lookup per request; static files and health checks skip it."""
+    email = session.get('user_id')
+    if not email or request.path.startswith('/static/') or request.path in ('/health', '/health/ready', '/favicon.ico'):
+        return None
+    try:
+        doc = db.collection('users').document(str(email).lower()).get()
+        user = (doc.to_dict() or {}) if doc.exists else {}
+    except Exception:
+        logger.exception("Account check failed for %s", email)
+        return None   # a database hiccup shouldn't sign everyone out
+    if user.get('is_active') is not False:
+        return None
+    session.clear()
+    log_action(db, "SESSION_ENDED_DEACTIVATED", f"Open session of deactivated account {email} ended")
+    if request.path.startswith('/api/') or request.accept_mimetypes.best == 'application/json':
+        return jsonify({'error': 'account_deactivated'}), 401
+    flash('This account has been deactivated. Contact the portal administrator.', 'danger')
+    return redirect('/login')
+
+
+@app.before_request
 def log_request():
     """Log all incoming requests"""
     g.start_time = datetime.datetime.now()
     if request.path not in ['/health', '/health/ready', '/favicon.ico']:
-        logger.info(f"→ {request.method} {request.path} from {request.remote_addr}")
+        logger.info(f"→ {request.method} {redact(request.path)} from {request.remote_addr}")   # no link tokens (UPG-152)
 
 @app.after_request
 def log_response(response):
@@ -1331,7 +1388,7 @@ def log_response(response):
     if hasattr(g, 'start_time'):
         duration = (datetime.datetime.now() - g.start_time).total_seconds()
         if request.path not in ['/health', '/health/ready', '/favicon.ico']:
-            logger.info(f"← {response.status_code} {request.method} {request.path} ({duration:.3f}s)")
+            logger.info(f"← {response.status_code} {request.method} {redact(request.path)} ({duration:.3f}s)")
     return response
 @app.after_request
 def apply_security_headers(response):
@@ -1351,18 +1408,27 @@ def apply_security_headers(response):
 # =========================================================
 @app.errorhandler(404)
 def not_found(e):
-    logger.warning(f"404 Not Found: {request.path}")
+    logger.warning(f"404 Not Found: {redact(request.path)}")
     return render_template('404.html'), 404
 
 @app.errorhandler(429)
 def rate_limited(e):
-    logger.warning(f"429 Rate Limit: {request.remote_addr} on {request.path}")
+    logger.warning(f"429 Rate Limit: {request.remote_addr} on {redact(request.path)}")
     return render_template('429.html'), 429
 
 @app.errorhandler(500)
 def server_error(e):
     logger.error(f"500 Server Error: {e}", exc_info=True)
     return render_template('500.html'), 500
+
+
+# =========================================================
+# GOOGLE SEARCH CONSOLE — site ownership file (UPG-107)
+# =========================================================
+@app.route('/google8e55d49885709546.html')
+def google_site_verification():
+    """Google Search Console's ownership check, served at the site root (UPG-107)."""
+    return send_from_directory(app.static_folder, 'google8e55d49885709546.html', mimetype='text/html')
 
 
 # =========================================================

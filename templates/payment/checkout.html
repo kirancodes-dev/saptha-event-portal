@@ -9,7 +9,7 @@
         /* Checkout (UPG-63) */
         .checkout-card { max-width: 920px; margin: 0 auto; background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; }
         .left-panel { background: var(--brand-navy); color: #fff; padding: 32px; border-right: 3px solid var(--brand-gold); }
-        .left-panel h2, .left-panel h3 { color: #fff; }
+        .left-panel h1, .left-panel h2, .left-panel h3 { color: #fff; }
         .left-panel .lbl { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .06em; color: rgba(255,255,255,.65); margin-bottom: 2px; }
         .left-panel .muted { color: rgba(255,255,255,.7); }
         .left-panel .rule { border-top: 1px solid rgba(255,255,255,.18); }
@@ -224,7 +224,7 @@
                 currency:    'INR',
                 order_id:    data.order_id,
                 name:        'SapthaEvent — Sapthagiri NPS University',
-                description: "{{ event.title }}",
+                description: {{ event.title|tojson }},   {# a JSON literal, safe in a script (UPG-96) #}
                 image:       '/static/snpsu-logo.png',
                 prefill:     { name: data.name, email: data.email },
                 theme:       { color: '#00185e' },

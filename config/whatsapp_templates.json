@@ -1,0 +1,23 @@
+{
+  "_note": "WhatsApp message templates (UPG-147), ready to submit for approval in Meta's WhatsApp Manager (or Twilio's Content Template Builder). Each body uses numbered variables {{1}}, {{2}}…; 'variables' names what goes into each, in order. Keep the name, category and language identical when you submit; see docs/DEPLOY.md, 'WhatsApp'.",
+  "registration_confirmed": {
+    "category": "UTILITY", "language": "en",
+    "body": "Hi {{1}}, you're registered for {{2}} on {{3}}. Your ticket: {{4}}\nReply STOP to stop WhatsApp messages.",
+    "variables": ["name", "event", "date", "ticket_link"]
+  },
+  "event_reminder": {
+    "category": "UTILITY", "language": "en",
+    "body": "Hi {{1}}, a reminder: {{2}} is tomorrow, {{3}}, at {{4}}. Your ticket: {{5}}\nReply STOP to stop WhatsApp messages.",
+    "variables": ["name", "event", "date", "venue", "ticket_link"]
+  },
+  "event_changed": {
+    "category": "UTILITY", "language": "en",
+    "body": "Hi {{1}}, {{2}} has changed: {{3}}. Details: {{4}}\nReply STOP to stop WhatsApp messages.",
+    "variables": ["name", "event", "change", "event_link"]
+  },
+  "event_cancelled": {
+    "category": "UTILITY", "language": "en",
+    "body": "Hi {{1}}, {{2}}, planned for {{3}}, has been cancelled. Any payment is refunded to its original method.\nReply STOP to stop WhatsApp messages.",
+    "variables": ["name", "event", "date"]
+  }
+}

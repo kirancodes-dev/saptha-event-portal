@@ -77,3 +77,6 @@ static/uploads/
 *.pptx
 static/uploads/
 test_event_id.txt
+
+# Integrity-checked copies of the CDN files, for browser tests (tests/headless.py)
+tests/.cdn-cache/

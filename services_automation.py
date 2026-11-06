@@ -115,8 +115,9 @@ class NotificationAutomationEngine:
         try:
             doc = db.collection("notification_preferences").document(user_email.strip().lower()).get()
             if not doc.exists:
-                # Default preferences
-                return True if channel in ("in_app", "email") else False
+                # Default preferences; push reaches only browsers the user
+                # subscribed, which is its opt-in (UPG-157)
+                return True if channel in ("in_app", "email", "push") else False
 
             prefs = doc.to_dict() or {}
             # Channel enable flags
@@ -195,8 +196,14 @@ class NotificationAutomationEngine:
             except Exception as e:
                 logger.error("Failed to create in-app notification: %s", e)
 
-        # 2. Email Dispatch
-        if "email" in channels:
+        # 2. Email Dispatch (not for a portal-only event: the in-app notice is it, UPG-195)
+        portal_only = False
+        if "email" in channels and context.get("event_id"):
+            import services_hackathon
+            portal_only = not services_hackathon.email_allowed_for(context["event_id"], "change", db=db)
+            if portal_only:
+                skipped_channels.append("email (portal-only event)")
+        if "email" in channels and not portal_only:
             if cls.check_user_preferences(db, clean_email, "email", notif_type):
                 try:
                     from utils_email import send_email_notification
@@ -223,7 +230,7 @@ class NotificationAutomationEngine:
                 # No Twilio settings: the channel is off, not a fallback (UPG-49)
                 skipped_channels.append("whatsapp (not configured)")
             elif phone and cls.check_user_preferences(db, clean_email, "whatsapp", notif_type):
-                if send_whatsapp_message(phone, message):
+                if send_whatsapp_message(phone, message, consented=True):   # their own opt-in (UPG-147)
                     dispatched_channels.append("whatsapp")
                 else:
                     logger.warning("WhatsApp to %s failed for %s", clean_email, notif_type)
@@ -233,8 +240,16 @@ class NotificationAutomationEngine:
 
         # 4. Web Push Notification
         if "push" in channels:
-            if cls.check_user_preferences(db, clean_email, "push", notif_type):
-                dispatched_channels.append("push")
+            import services_push
+            if not services_push.configured():
+                skipped_channels.append("push (not configured)")
+            elif cls.check_user_preferences(db, clean_email, "push", notif_type):
+                # A copy of the notice to the user's browsers (UPG-157)
+                if services_push.send(clean_email, title, message,
+                                      context.get("link") or context.get("ticket_url") or "/"):
+                    dispatched_channels.append("push")
+                else:
+                    skipped_channels.append("push (no subscription)")
             else:
                 skipped_channels.append("push (opted-out)")
 

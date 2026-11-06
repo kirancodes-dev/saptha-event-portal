@@ -4,7 +4,7 @@
     Awesome name) and fill `title`, `status` and optionally `extra_css`,
     `extra_js`. -#}
 {% extends "layouts/standalone.html" %}
-{% set site_footer_fixed = true %}
+{% if site_footer_fixed is not defined %}{% set site_footer_fixed = true %}{% endif %}{#- a longer page sets it false -#}
 {% block head %}
 <meta name="theme-color" content="#00185e">
 <title>{% block title %}SapthaEvent{% endblock %} | SapthaEvent</title>

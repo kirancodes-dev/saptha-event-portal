@@ -172,6 +172,19 @@ h1,h2,h3,h4,h5,h6{font-family: var(--font-heading);}
   </div>
 </div>
 
+{% if sessions %}
+<!-- SESSION MODE (UPG-159): scan people into one agenda session -->
+<div class="tabs-container">
+  <label for="scanMode" class="topbar-sub d-block mb-1">Scanning for</label>
+  <select id="scanMode" class="form-select form-select-sm" data-scan-mode>
+    <option value="">Event entry</option>
+    {% for s in sessions %}
+    <option value="{{ s.id }}">Session: {{ s.time }} {{ s.title }}{% if s.room %} ({{ s.room }}){% endif %}{% if s.capacity %} · {{ s.capacity }} seats{% endif %}</option>
+    {% endfor %}
+  </select>
+</div>
+{% endif %}
+
 <!-- SCANNER TAB VIEW -->
 <div id="scanView">
   {% if not scanning_open %}
@@ -242,6 +255,8 @@ h1,h2,h3,h4,h5,h6{font-family: var(--font-heading);}
   <div class="rp-detail" id="rpDetail"></div>
   <div class="rp-name" id="rpName"></div>
   <div class="rp-time" id="rpTime"></div>
+  <a class="btn btn-light btn-sm mt-2" id="rpBadge" target="_blank" rel="noopener" hidden>
+    <i class="fas fa-id-badge me-1" aria-hidden="true"></i>Print badge</a>
 </div>
 
 <!-- LOG -->
@@ -471,19 +486,25 @@ async function onQRDetected(decoded) {
   triggerCooldown(3000);
 
   try {
-    const resp = await fetch('/ticket/api/checkin', {
+    // Session mode (UPG-159): the same ticket, recorded at the chosen session
+    const sessionId = document.getElementById('scanMode')?.value || '';
+    const post = (extra) => fetch(sessionId ? '/ticket/api/session_checkin' : '/ticket/api/checkin', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-CSRFToken': CSRF_TOKEN,
       },
-      body: JSON.stringify({ token: decoded, event_id: EVENT_ID, source: 'spoc scanner' }),
+      body: JSON.stringify(Object.assign({ token: decoded, event_id: EVENT_ID, session_id: sessionId,
+                                           source: 'spoc scanner' }, extra || {})),
     });
-    const data = await resp.json();
+    let data = await (await post()).json();
+    if (data.status === 'session_full' && confirm(data.message + '\n\nAdmit anyway?')) {
+      data = await (await post({ allow_over: true })).json();
+    }
     showResult(data.status, data);
     addLog(data.status, data);
 
-    if (data.status === 'success') {
+    if (data.status === 'success' && (!sessionId || data.entered_event)) {
       // Find and update item locally if it exists
       const item = registrations.find(r => r.id === data.reg_id || r.reg_id === data.reg_id);
       if (item) {
@@ -525,6 +546,9 @@ function showResult(status, data) {
   name.textContent = '';
   time.textContent = '';
 
+  const badge = document.getElementById('rpBadge');   // UPG-158
+  badge.hidden = !((status === 'success' || status === 'already_in') && data?.badge_url);
+  if (!badge.hidden) badge.href = data.badge_url;
   if (status === 'success') {
     panel.classList.add('result-panel', 'rp-success');
     icon.innerHTML  = '<i class="fas fa-circle-check" aria-hidden="true"></i>';
@@ -542,7 +566,8 @@ function showResult(status, data) {
   } else {
     panel.classList.add('result-panel', 'rp-invalid');
     icon.innerHTML  = '<i class="fas fa-circle-xmark" aria-hidden="true"></i>';
-    stat.textContent  = {unpaid: 'Payment Pending', wrong_event: 'Different Event', forbidden: 'Not Allowed'}[status] || 'Invalid Ticket';
+    stat.textContent  = {unpaid: 'Payment Pending', wrong_event: 'Different Event', forbidden: 'Not Allowed',
+                         session_full: 'Session Full'}[status] || 'Invalid Ticket';
     detail.textContent = data?.message || 'This QR code is not valid for this event.';
   }
 

@@ -51,6 +51,7 @@ h1,h2,h3,h4,h5,h6{font-family: var(--font-heading);}
 .status-banner.loading{background:#eff6ff;color:#1e40af;}
 .status-banner.success{background:#f0fdf4;color:#166534;}
 .status-banner.error{background:#fef2f2;color:#991b1b;}
+.status-banner.info{background:#eff6ff;color:#1e3a8a;border:1px solid #bfdbfe;}
 .status-banner.applied{background:#f0fdf4;border:1.5px solid #86efac;color:#166534;}
 /* ── MATCH CARDS ── */
 .match-group{background:#fff;border-radius:12px;border:1px solid #e2e8f0;margin-bottom:14px;overflow:hidden;}
@@ -192,9 +193,15 @@ h1,h2,h3,h4,h5,h6{font-family: var(--font-heading);}
             </div>
           </div>
 
+          {% if not ai_configured %}
+          <div class="status-banner info" role="status" style="display:flex;">
+            <i class="fas fa-info-circle" style="font-size:18px;flex-shrink:0;" aria-hidden="true"></i>
+            <div>{{ "AI matching isn't set up; assign judges manually." }}</div>
+          </div>
+          {% endif %}
           <button class="btn-ai" id="runBtn"
                   data-h-click="coordinator/ai_matching:2"
-                  {% if not judges or not teams %}disabled{% endif %}>
+                  {% if not judges or not teams or not ai_configured %}disabled{% endif %}>
             <i class="fas fa-brain"></i>
             Generate Match Plan
           </button>
@@ -316,6 +323,13 @@ async function runMatching() {
     const res  = await fetch(`/ai/match_judges/${EVENT_ID}`, {method: 'POST'});
     const data = await res.json();
 
+    if (data.status === 'not_configured') {   // no AI provider: a notice, not a failure (UPG-109)
+      banner.className = 'status-banner info';
+      banner.innerHTML = `<i class="fas fa-info-circle" style="font-size:18px;flex-shrink:0;" aria-hidden="true"></i><div>${escapeHtml(data.message)}</div>`;
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-brain"></i> Generate Match Plan';
+      return;
+    }
     if (data.status !== 'ok') {
       banner.className = 'status-banner error';
       banner.innerHTML = `<i class="fas fa-exclamation-circle" style="font-size:18px;flex-shrink:0;" aria-hidden="true"></i><div><div style="font-weight:600;margin-bottom:2px;">Matching failed</div><div style="font-size:12px;">${escapeHtml(data.message)}</div></div>`;

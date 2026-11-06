@@ -879,10 +879,12 @@ def send_bulk_email():
         # Send individually and count successes
         from utils_email import _html_wrapper, _send
         import utils_email as _ue
+        from markupsafe import escape
+        # What the admin typed is text, never markup; pre-line keeps its line breaks (UPG-77)
         html_body = _html_wrapper(
             f'<div style="color:#475569;font-size:14px;line-height:1.8;'
-            f'white-space:pre-line;">{message}</div>',
-            subject
+            f'white-space:pre-line;">{escape(message)}</div>',
+            str(escape(subject))
         )
         # Email, the in-app bell, or both (UPG-75)
         channel = request.form.get('channel', 'email')
@@ -1422,7 +1424,8 @@ def delete_room(room_id):
 # Super Admin through everywhere); these pages make it usable.
 # =========================================================
 ASSIGNABLE_ROLES = [('Student', 'Student / participant'), ('EventCoordinator', 'Event coordinator'),
-                    ('ClubSPOC', 'Club SPOC'), ('Judge', 'Judge'), ('SuperAdmin', 'Super Admin')]
+                    ('ClubSPOC', 'Club SPOC'), ('Judge', 'Judge'), ('IQACCoordinator', 'IQAC coordinator'),
+                    ('DepartmentAdmin', 'Department admin'), ('SuperAdmin', 'Super Admin')]
 SPOC_CATEGORIES = ('Technical', 'Cultural', 'Sports', 'Management', 'All')
 EVENT_STATUSES = ('draft', 'pending_approval', 'published', 'registration_open', 'registration_closed',
                   'in_progress', 'evaluation', 'active', 'completed', 'certified', 'cancelled', 'archived')

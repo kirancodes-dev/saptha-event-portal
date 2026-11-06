@@ -134,7 +134,7 @@
                                         {% for key in avatar_presets %}
                                         <div>
                                             <input class="preset-opt" type="radio" name="preset" id="preset-{{ key }}" value="{{ key }}" {% if avatar == 'preset:' ~ key %}checked{% endif %} required>
-                                            <label class="preset-label" for="preset-{{ key }}" title="{{ key|capitalize }}"><img src="/static/img/avatars/{{ key }}.svg" alt="{{ key|capitalize }} avatar" width="128" height="128"></label>
+                                            <label class="preset-label" for="preset-{{ key }}" title="{{ key|capitalize }}"><img src="/static/img/avatars/{{ key }}.svg" alt="{{ key|capitalize }} avatar" width="128" height="128" loading="lazy"></label>
                                         </div>
                                         {% endfor %}
                                     </div>
@@ -187,6 +187,12 @@
                             <button type="submit" class="btn btn-primary">Save Changes</button>
                         </div>
                     </form>
+                    <form method="POST" action="/whatsapp/preference" class="mt-3 d-flex gap-2 align-items-center flex-wrap" id="whatsapp-preference">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="whatsapp" value="{{ 'off' if user.whatsapp_opt_in else 'on' }}">
+                        <span class="small">WhatsApp updates about your events: <strong>{{ 'on' if user.whatsapp_opt_in else 'off' }}</strong></span>
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">Turn {{ 'off' if user.whatsapp_opt_in else 'on' }}</button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -217,6 +223,8 @@
                             <button type="submit" class="btn btn-gold">Update Password</button>
                         </div>
                     </form>
+
+                    {% include 'includes/push_optin.html' %}
 
                     {% if twofa_available %}
                     <div class="mt-4 pt-3 border-top">

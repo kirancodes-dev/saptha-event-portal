@@ -108,7 +108,7 @@ def test_saving_a_field_with_no_id_is_refused(real_app, owner):
 
 def test_a_student_registers_for_the_seeded_conference_through_the_ui(real_app, monkeypatch):
     flask_app, db = real_app
-    from seed_events_universal import seed_universal_portal
+    from seeds.events_universal import seed_universal_portal
     seeded = seed_universal_portal(db)
     conference = next(e for e in seeded['events'] if e.get('event_type') == 'conference')
     event_id = conference['id']

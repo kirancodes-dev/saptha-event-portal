@@ -1,0 +1,297 @@
+{% extends "base_classic.html" %}
+{#- The SPOC's hackathon page: problem statements (UPG-190), the submission
+    form and its deadline (UPG-191), updates and participant emails (UPG-195). -#}
+{% block csrf_meta %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endblock %}
+{% block title %}Run the hackathon — {{ event.title }}{% endblock %}
+{% block page_title %}Run the hackathon{% endblock %}
+{% block page_sub %}{{ event.title }} · {{ problems | length }} problem statement{{ '' if problems | length == 1 else 's' }} · {{ submissions | length }} submission{{ '' if submissions | length == 1 else 's' }}{% endblock %}
+{% block page_actions %}<a href="/spoc/round_panel/{{ event.id }}" class="btn btn-secondary"><i class="fas fa-trophy" aria-hidden="true"></i> Rounds</a><a href="/spoc/dashboard" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Console</a>{% endblock %}
+{% block extra_css %}
+<style>
+.hk-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:20px 22px;margin-bottom:18px;}
+.hk-card h2{font-size:14px;font-weight:700;color:var(--brand-ink,#1a2557);text-transform:uppercase;letter-spacing:.4px;margin:0 0 14px;display:flex;align-items:center;gap:8px;}
+.hk-nav{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;}
+.hk-table{width:100%;font-size:13px;border-collapse:collapse;}
+.hk-table th{background:#f8fafc;text-align:left;padding:8px 10px;font-size:12px;color:#475569;}
+.hk-table td{padding:8px 10px;border-top:1px solid #f1f5f9;vertical-align:top;}
+.hk-row{display:grid;grid-template-columns:2fr 1.4fr 1.6fr auto auto;gap:8px;align-items:center;margin-bottom:8px;}
+@media (max-width: 720px){.hk-row{grid-template-columns:1fr;}}
+.hk-note{font-size:12px;color:#64748b;}
+</style>
+{% endblock %}
+{% block content %}
+<nav class="hk-nav" aria-label="Sections">
+  <a class="btn btn-sm btn-outline-secondary" href="#emails">Emails</a>
+  <a class="btn btn-sm btn-outline-secondary" href="#problems">Problem statements</a>
+  <a class="btn btn-sm btn-outline-secondary" href="#form">Submission form</a>
+  <a class="btn btn-sm btn-outline-secondary" href="#deadline">Deadline</a>
+  <a class="btn btn-sm btn-outline-secondary" href="#updates">Updates</a>
+  <a class="btn btn-sm btn-outline-secondary" href="#submissions">Submissions</a>
+  <a class="btn btn-sm btn-outline-secondary" href="#evaluation">AI evaluation</a>
+  <a class="btn btn-sm btn-outline-secondary" href="#ranking">Ranking &amp; shortlist</a>
+</nav>
+
+<section class="hk-card" id="emails" aria-labelledby="emailsHead">
+  <h2 id="emailsHead"><i class="fas fa-envelope" aria-hidden="true"></i> Participant emails</h2>
+  <form method="POST" action="/spoc/hackathon/{{ event.id }}/emails" class="d-flex flex-wrap gap-3 align-items-end">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div>
+      <label class="form-label fw-semibold" for="emailMode">What participants get by email</label>
+      <select class="form-select" id="emailMode" name="mode">
+        <option value="portal" {% if email_mode == 'portal' %}selected{% endif %}>Portal only: registration, password and the final result</option>
+        <option value="all" {% if email_mode == 'all' %}selected{% endif %}>Every notice by email</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" type="submit">Save</button>
+  </form>
+  <p class="hk-note mt-2 mb-0">Portal only keeps you inside the free email quota: tickets, reminders, round results, broadcasts and certificates appear on the team's hackathon page instead. Staff emails are unchanged.
+    {% if not group_link %}<br><strong>No WhatsApp group link is set.</strong> Add it in the event's details (Contact) so the registration email and the hackathon page show it.{% endif %}</p>
+</section>
+
+<section class="hk-card" id="problems" aria-labelledby="problemsHead">
+  <h2 id="problemsHead"><i class="fas fa-lightbulb" aria-hidden="true"></i> Problem statements</h2>
+  {% if problems %}
+  <div class="table-responsive"><table class="hk-table">
+    <thead><tr><th>Title</th><th>Track</th><th>Release</th><th>PDF</th><th><span class="visually-hidden">Actions</span></th></tr></thead>
+    <tbody>
+    {% for p in problems %}
+      <tr>
+        <td><strong>{{ p.title }}</strong></td>
+        <td>{{ p.track or '—' }}</td>
+        <td>{% if is_released(p) %}<span class="se-badge se-badge--success">Released</span>{% else %}<span class="se-badge se-badge--warning">Scheduled</span>{% endif %}<br><span class="hk-note">{{ show(p.release_at) }}</span></td>
+        <td>{% if p.pdf_key %}<a href="/hackathon/{{ event.id }}/problem/{{ p.id }}/pdf" target="_blank" rel="noopener">{{ p.pdf_name }}</a>{% else %}—{% endif %}</td>
+        <td class="text-nowrap">{% if not is_released(p) %}
+          <form method="POST" action="/spoc/hackathon/{{ event.id }}/problems/{{ p.id }}/release" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-success" type="submit">Release now</button></form>
+          <form method="POST" action="/spoc/hackathon/{{ event.id }}/problems/{{ p.id }}/delete" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-danger" type="submit">Remove</button></form>
+        {% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="text-muted">No problem statements yet. Teams see "coming soon" until you release one.</p>{% endif %}
+
+  <form method="POST" action="/spoc/hackathon/{{ event.id }}/problems" enctype="multipart/form-data" class="mt-3">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="row g-2">
+      <div class="col-md-8"><label class="form-label fw-semibold" for="psTitle">Title</label><input class="form-control" id="psTitle" name="title" maxlength="200" required></div>
+      <div class="col-md-4"><label class="form-label fw-semibold" for="psTrack">Track (optional)</label><input class="form-control" id="psTrack" name="track" maxlength="100" placeholder="e.g. HealthTech"></div>
+      <div class="col-12"><label class="form-label fw-semibold" for="psDesc">Description</label><textarea class="form-control" id="psDesc" name="description" rows="4" maxlength="10000" required></textarea></div>
+      <div class="col-md-4"><label class="form-label fw-semibold" for="psPdf">PDF (optional, up to 10 MB)</label><input class="form-control" type="file" id="psPdf" name="pdf" accept="application/pdf,.pdf"></div>
+      <div class="col-md-4"><label class="form-label fw-semibold" for="psRelease">Release</label>
+        <select class="form-select" id="psRelease" name="release"><option value="now">Now</option><option value="later">At a set time</option></select></div>
+      <div class="col-md-4"><label class="form-label fw-semibold" for="psAt">Release time ({{ event.timezone or 'Asia/Kolkata' }})</label><input class="form-control" type="datetime-local" id="psAt" name="release_at"></div>
+    </div>
+    <button class="btn btn-primary mt-3" type="submit"><i class="fas fa-plus" aria-hidden="true"></i> Add problem statement</button>
+    <p class="hk-note mt-2 mb-0">Only registered teams see a problem statement, and only after its release time. A released one can't be removed.</p>
+  </form>
+</section>
+
+<section class="hk-card" id="form" aria-labelledby="formHead">
+  <h2 id="formHead"><i class="fas fa-list-check" aria-hidden="true"></i> Submission form</h2>
+  <form method="POST" action="/spoc/hackathon/{{ event.id }}/form" id="hkFormBuilder">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="row g-2 mb-3">
+      <div class="col-md-6"><label class="form-label fw-semibold" for="opensAt">Opens ({{ event.timezone or 'Asia/Kolkata' }})</label><input class="form-control" type="datetime-local" id="opensAt" name="opens_at" value="{{ local(form.opens_at) }}" required></div>
+      <div class="col-md-6"><label class="form-label fw-semibold" for="closesAt">Closes (the deadline)</label><input class="form-control" type="datetime-local" id="closesAt" name="closes_at" value="{{ local(form.closes_at) }}" required></div>
+    </div>
+    <div id="hkFields">
+      {% set rows = fields if fields else [{'id': '', 'label': 'Project title', 'kind': 'text', 'required': true}, {'id': '', 'label': 'Problem statement', 'kind': 'problem', 'required': true}, {'id': '', 'label': 'GitHub repository', 'kind': 'link', 'required': true}, {'id': '', 'label': 'Presentation (PDF)', 'kind': 'pdf', 'required': true, 'max_mb': default_pdf}, {'id': '', 'label': 'Deployed app link', 'kind': 'link', 'required': false}] %}
+      {% for f in rows %}{% set n = loop.index0 %}
+      <div class="hk-row" data-field-row>
+        <input type="hidden" name="field_{{ n }}_id" value="{{ f.id }}">
+        <input class="form-control" name="field_{{ n }}_label" value="{{ f.label }}" placeholder="Question" aria-label="Field {{ loop.index }} question" maxlength="120">
+        <select class="form-select" name="field_{{ n }}_kind" aria-label="Field {{ loop.index }} type">
+          {% for k, label in kinds.items() %}<option value="{{ k }}" {% if f.kind == k %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+        <input class="form-control" name="field_{{ n }}_help" value="{{ f.help or '' }}" placeholder="Help text (optional)" aria-label="Field {{ loop.index }} help" maxlength="300">
+        <label class="small text-nowrap"><input type="checkbox" name="field_{{ n }}_required" {% if f.required %}checked{% endif %}> Required</label>
+        <label class="small text-nowrap">PDF MB <input class="form-control form-control-sm d-inline-block" style="width:64px" type="number" min="1" max="{{ max_pdf }}" name="field_{{ n }}_max_mb" value="{{ f.max_mb or default_pdf }}"></label>
+      </div>
+      {% endfor %}
+    </div>
+    <button class="btn btn-sm btn-outline-secondary" type="button" id="hkAddField"><i class="fas fa-plus" aria-hidden="true"></i> Add field</button>
+    <p class="hk-note mt-2">Clear a question to remove that field. Types: short text, long text, link, PDF upload (the size limit is per field, at most {{ max_pdf }} MB) and one problem-statement choice. Uploaded PDFs are private: only the team and the event's staff can open them.</p>
+    <button class="btn btn-primary" type="submit"><i class="fas fa-save" aria-hidden="true"></i> Save the form</button>
+  </form>
+</section>
+
+<section class="hk-card" id="deadline" aria-labelledby="deadlineHead">
+  <h2 id="deadlineHead"><i class="fas fa-hourglass-half" aria-hidden="true"></i> Deadline</h2>
+  {% if form.closes_at %}
+  <p>Submissions are <strong>{{ {'not_open': 'not open yet', 'open': 'open', 'closed': 'closed', 'not_set': 'not set up'}[window] }}</strong>. They close <strong>{{ show(form.closes_at) }}</strong>.</p>
+  <form method="POST" action="/spoc/hackathon/{{ event.id }}/extend" class="row g-2 align-items-end">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="col-md-3"><label class="form-label fw-semibold" for="extBy">Extend by</label>
+      <select class="form-select" id="extBy" name="minutes">
+        {% for m in choices %}<option value="{{ m }}">{{ duration(m) }}</option>{% endfor %}
+        <option value="custom">Other…</option>
+      </select></div>
+    <div class="col-md-2"><label class="form-label" for="extH">Other: hours</label><input class="form-control" type="number" min="0" max="168" id="extH" name="custom_hours" value="0"></div>
+    <div class="col-md-2"><label class="form-label" for="extM">minutes</label><input class="form-control" type="number" min="0" max="59" id="extM" name="custom_minutes" value="0"></div>
+    <div class="col-md-3"><label class="form-label" for="extReason">Reason (shown to teams)</label><input class="form-control" id="extReason" name="reason" maxlength="300"></div>
+    <div class="col-md-2"><button class="btn btn-warning w-100" type="submit">Extend deadline</button></div>
+  </form>
+  <p class="hk-note mt-2">The time is added to the current deadline, even after it has passed (teams can submit again until the new one). Every team sees the new deadline on their page.</p>
+  {% if extensions %}
+  <table class="hk-table mt-2"><thead><tr><th>When</th><th>By</th><th>New deadline</th><th>Reason</th></tr></thead><tbody>
+    {% for x in extensions %}<tr><td>{{ show(x.at) }}</td><td>{{ duration(x.minutes) }}</td><td>{{ show(x.to) }}</td><td>{{ x.reason or '—' }}</td></tr>{% endfor %}
+  </tbody></table>
+  {% endif %}
+  {% else %}<p class="text-muted mb-0">Save the submission form with its open and close times first.</p>{% endif %}
+</section>
+
+<section class="hk-card" id="updates" aria-labelledby="updatesHead">
+  <h2 id="updatesHead"><i class="fas fa-bullhorn" aria-hidden="true"></i> Updates for teams</h2>
+  <form method="POST" action="/spoc/hackathon/{{ event.id }}/update" class="mb-3">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input class="form-control mb-2" name="title" maxlength="200" placeholder="Title" aria-label="Update title" required>
+    <textarea class="form-control mb-2" name="message" rows="3" maxlength="2000" placeholder="Message (optional)" aria-label="Update message"></textarea>
+    <button class="btn btn-primary" type="submit">Post update</button>
+    <span class="hk-note ms-2">Shown on every registered team's hackathon page; no email is sent.</span>
+  </form>
+  {% for u in updates[:30] %}
+  <div class="border-start border-3 ps-2 mb-2"><span class="hk-note">{{ show(u.at) }}</span><br><strong>{{ u.title }}</strong>{% if u.message %}<div class="small" style="white-space:pre-line">{{ u.message }}</div>{% endif %}</div>
+  {% else %}<p class="text-muted mb-0">No updates yet.</p>{% endfor %}
+</section>
+
+<section class="hk-card" id="submissions" aria-labelledby="subsHead">
+  <h2 id="subsHead"><i class="fas fa-inbox" aria-hidden="true"></i> Submissions ({{ submissions | length }})</h2>
+  {% if submissions %}
+  <div class="table-responsive"><table class="hk-table">
+    <thead><tr><th>Team</th><th>Title</th><th>Problem</th><th>Last saved</th><th>Answers</th></tr></thead>
+    <tbody>
+    {% for s in submissions %}
+      <tr>
+        <td><strong>{{ s.team_name }}</strong></td>
+        <td>{{ s.project_title }}</td>
+        <td>{{ problem_titles.get(s.problem_id, '—') if s.problem_id else '—' }}</td>
+        <td>{{ show(s.updated_at) }}</td>
+        <td>{% for f in fields %}{% set a = (s.answers or {}).get(f.id) %}{% if a %}
+          <div><span class="hk-note">{{ f.label }}:</span>
+          {% if f.kind == 'pdf' %}<a href="/hackathon/{{ event.id }}/file/{{ s.registration_id }}/{{ f.id }}" target="_blank" rel="noopener">{{ a.name }}</a>
+          {% elif f.kind == 'link' %}<a href="{{ a }}" target="_blank" rel="noopener noreferrer">{{ a | truncate(60) }}</a>
+          {% elif f.kind == 'problem' %}{{ problem_titles.get(a, a) }}
+          {% else %}{{ a | truncate(120) }}{% endif %}</div>
+        {% endif %}{% endfor %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="text-muted mb-0">No submissions yet.</p>{% endif %}
+</section>
+
+<section class="hk-card" id="evaluation" aria-labelledby="evalHead">
+  <h2 id="evalHead"><i class="fas fa-robot" aria-hidden="true"></i> AI evaluation</h2>
+  {% if not ai_on %}
+  <p class="mb-0" data-ai-off>{{ ai_off }}</p>
+  {% else %}
+  <p class="hk-note">After the deadline, AI reads each submission (text answers, the chosen problem statement and the first pages of each PDF; links aren't opened) and scores it against the criteria below. The score only helps you sort; it never eliminates anyone, and judges and teams don't see it.</p>
+  <form method="POST" action="/spoc/hackathon/{{ event.id }}/ai/criteria" class="mb-3">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="row g-2">
+      {% for i in range(max_criteria) %}{% set c = criteria[i] if i < criteria | length else none %}
+      <div class="col-md-4"><input class="form-control" name="criterion_{{ i }}" value="{{ c.label if c else '' }}" maxlength="80" placeholder="Criterion {{ i + 1 }}" aria-label="Criterion {{ i + 1 }}"></div>
+      {% endfor %}
+    </div>
+    <button class="btn btn-sm btn-outline-primary mt-2" type="submit" {% if ai.scored %}disabled{% endif %}>Save criteria</button>
+    <span class="hk-note ms-2">Each scored 0-10; the total is out of 100.{% if ai.scored %} Criteria are fixed once a submission is scored.{% endif %}</span>
+  </form>
+  <div id="hkAi" data-next-url="/spoc/hackathon/{{ event.id }}/ai/next" data-status="{{ ai.status }}">
+    <p class="mb-2" id="hkAiProgress" aria-live="polite">
+      <strong>{{ ai.scored }}</strong> of {{ ai.total }} scored{% if ai.not_scored %}, <strong>{{ ai.not_scored }}</strong> not scored{% endif %}{% if ai.status == 'running' %} · {{ ai.pending }} to go{% endif %}.
+      <span class="hk-note">AI calls used: {{ ai.calls }} of {{ ai.cap }}.</span>
+    </p>
+    {% if window != 'closed' %}
+      <p class="text-muted mb-0">AI scoring starts after the submission deadline.</p>
+    {% elif ai.status == 'running' %}
+      <form method="POST" action="/spoc/hackathon/{{ event.id }}/ai/next" class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-primary" type="submit" id="hkAiContinue">Continue scoring</button>
+      </form>
+      <span class="hk-note ms-2">Keep this page open while it runs; it continues where it stopped if you leave.</span>
+    {% else %}
+      <form method="POST" action="/spoc/hackathon/{{ event.id }}/ai/start" class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-primary" type="submit" {% if not ai.total %}disabled{% endif %}>
+          {% if ai.scored or ai.not_scored %}Score the rest again{% else %}Start AI scoring{% endif %}</button>
+      </form>
+      {% if ai.status == 'capped' %}<span class="text-danger ms-2">Stopped at the limit of {{ ai.cap }} AI calls for this event.</span>{% endif %}
+    {% endif %}
+  </div>
+  {% endif %}
+</section>
+
+<section class="hk-card" id="ranking" aria-labelledby="rankHead">
+  <h2 id="rankHead"><i class="fas fa-list-ol" aria-hidden="true"></i> Ranking &amp; shortlist</h2>
+  {% if unsent_results %}
+  <form method="POST" action="/spoc/hackathon/{{ event.id }}/results/resend" class="alert alert-warning d-flex flex-wrap gap-2 align-items-center">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <span>{{ unsent_results }} team lead(s) haven't had their result email yet (the daily email limit).</span>
+    <button class="btn btn-sm btn-warning" type="submit">Send the remaining result emails</button>
+  </form>
+  {% endif %}
+  {% if shortlist %}
+  <div class="alert alert-success mb-3" data-shortlist>
+    <strong>Finalists announced</strong> ({{ show(shortlist.at) }}): {{ shortlist.finalists | join(', ') }}.
+    {% if undo_ok %}
+    <form method="POST" action="/spoc/hackathon/{{ event.id }}/shortlist/undo" class="d-inline ms-2">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-sm btn-outline-danger" type="submit">Undo the shortlist</button>
+    </form>
+    {% else %}<br><span class="hk-note">{{ undo_why }}</span>{% endif %}
+  </div>
+  {% endif %}
+  {% if ranking %}
+  <p class="hk-note mb-2">Sort: {% if sort == 'ai' %}<a href="?sort=rank#ranking">by ranking (your score, else AI)</a> · <strong>by AI total</strong>{% else %}<strong>by ranking (your score, else AI)</strong> · <a href="?sort=ai#ranking">by AI total</a>{% endif %}. Your score (0-100) overrides the AI total.</p>
+  <form method="POST" action="/spoc/hackathon/{{ event.id }}/shortlist/preview" id="hkShortlist">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  </form>
+  <div class="table-responsive"><table class="hk-table" id="hkRanking">
+    <thead><tr><th>{% if not shortlist %}<span class="visually-hidden">Pick</span>{% endif %}</th><th>Rank</th><th>Team</th><th>Problem</th><th>AI total</th><th>AI reason</th><th>Your score &amp; note</th></tr></thead>
+    <tbody>
+    {% for r in ranking %}
+      <tr data-reg="{{ r.reg_id }}">
+        <td>{% if not shortlist and r.submitted %}<input type="checkbox" name="pick" value="{{ r.reg_id }}" form="hkShortlist" aria-label="Pick {{ r.team }}">{% endif %}</td>
+        <td>{{ r.rank or '—' }}{% if r.tied %} <span class="se-badge se-badge--warning">tie</span>{% endif %}</td>
+        <td><strong>{{ r.team }}</strong>{% if r.submitted %}<br><a href="/hackathon/{{ event.id }}/review/{{ r.reg_id }}" target="_blank" rel="noopener">Open submission</a>{% else %}<br><span class="hk-note">No submission</span>{% endif %}</td>
+        <td>{{ problem_titles.get(r.sub.problem_id, '—') if r.sub and r.sub.problem_id else '—' }}</td>
+        <td data-ai-total>{% if r.ai_total is not none %}{{ r.ai_total }}{% elif r.ai.status == 'not_scored' %}<span class="text-danger">Not scored</span><br><span class="hk-note">{{ r.ai.error }}</span>{% else %}—{% endif %}
+          {% if ai_on and r.submitted and window == 'closed' and r.ai %}<form method="POST" action="/spoc/hackathon/{{ event.id }}/ai/{{ r.sub_id }}/rerun"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-link btn-sm p-0" type="submit">Re-run</button></form>{% endif %}</td>
+        <td class="small">{% if r.ai.reason %}{{ r.ai.reason }}{% if r.ai.scores %}<br><span class="hk-note">{% for c in r.ai.criteria or criteria %}{{ c.label }} {{ r.ai.scores.get(c.id, '—') }}{% if not loop.last %} · {% endif %}{% endfor %}</span>{% endif %}{% else %}—{% endif %}</td>
+        <td>{% if r.submitted %}
+          <form method="POST" action="/spoc/hackathon/{{ event.id }}/review/{{ r.reg_id }}" class="d-flex flex-wrap gap-1">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input class="form-control form-control-sm" style="width:80px" type="number" min="0" max="100" step="0.1" name="score" value="{{ r.spoc_score if r.spoc_score is not none else '' }}" aria-label="Your score for {{ r.team }}">
+            <input class="form-control form-control-sm" style="min-width:140px;flex:1" name="note" maxlength="500" value="{{ r.review.note or '' }}" placeholder="Note" aria-label="Your note for {{ r.team }}">
+            <button class="btn btn-sm btn-outline-primary" type="submit">Save</button>
+          </form>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% if not shortlist and not event.results_published %}
+  <div class="d-flex flex-wrap gap-2 align-items-end mt-3">
+    <div><label class="form-label fw-semibold" for="slN">Shortlist the top</label>
+      <input class="form-control" type="number" min="1" id="slN" name="n" value="3" form="hkShortlist" style="width:90px"></div>
+    <button class="btn btn-primary" type="submit" name="mode" value="top_n" form="hkShortlist">Preview the top N</button>
+    <button class="btn btn-outline-primary" type="submit" name="mode" value="pick" form="hkShortlist">Preview the ticked teams</button>
+  </div>
+  <p class="hk-note mt-2 mb-0">Nothing changes until you confirm on the next page. Teams that didn't submit can't go through. Every team sees its result on its hackathon page (no email); you can undo until judges start scoring the finale.</p>
+  {% endif %}
+  {% else %}<p class="text-muted mb-0">No teams in round {{ round }}.</p>{% endif %}
+</section>
+
+<template id="hkFieldTemplate">
+  <div class="hk-row" data-field-row>
+    <input type="hidden" data-name="id" value="">
+    <input class="form-control" data-name="label" placeholder="Question" aria-label="Question" maxlength="120">
+    <select class="form-select" data-name="kind" aria-label="Type">
+      {% for k, label in kinds.items() %}<option value="{{ k }}">{{ label }}</option>{% endfor %}
+    </select>
+    <input class="form-control" data-name="help" placeholder="Help text (optional)" aria-label="Help text" maxlength="300">
+    <label class="small text-nowrap"><input type="checkbox" data-name="required"> Required</label>
+    <label class="small text-nowrap">PDF MB <input class="form-control form-control-sm d-inline-block" style="width:64px" type="number" min="1" max="{{ max_pdf }}" data-name="max_mb" value="{{ default_pdf }}"></label>
+  </div>
+</template>
+{% endblock %}
+{% block extra_js %}<script src="/static/js/pages/hackathon__manage.js"></script>{% endblock %}

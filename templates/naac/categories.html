@@ -1,0 +1,17 @@
+{% extends "base_classic.html" %}
+{#- The NAAC categories organisers choose from (UPG-144). -#}
+{% block title %}NAAC categories{% endblock %}
+{% block page_sub %}Rename one by editing it, remove one by clearing it, or add a new one.{% endblock %}
+{% block page_actions %}<a href="/naac/" class="btn btn-secondary">NAAC reports</a>{% endblock %}
+{% block content %}
+<form method="POST" class="card"><div class="card-body">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% for n in names %}
+    <label class="visually-hidden" for="cat-{{ loop.index }}">Category {{ loop.index }}</label>
+    <input class="form-control mb-2" id="cat-{{ loop.index }}" name="name" value="{{ n }}" maxlength="80">
+    {% endfor %}
+    <label class="form-label mt-2" for="cat-new">Add a category</label>
+    <input class="form-control" id="cat-new" name="new" maxlength="80">
+    <button type="submit" class="btn btn-primary mt-3">Save categories</button>
+</div></form>
+{% endblock %}

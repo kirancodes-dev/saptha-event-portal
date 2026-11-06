@@ -36,8 +36,6 @@ document.addEventListener('DOMContentLoaded', () => {
         { name: 'My tickets and registrations', url: '/participant/dashboard' },
         { name: 'Leaderboard and activity points', url: '/gamification/leaderboard' },
         { name: 'Campus wayfinder', url: '/platform/wayfinder' },
-        { name: 'Live event streams', url: '/live/streams' },
-        { name: 'Highlight reels', url: '/live/reels' },
         { name: 'Service status', url: '/compliance/sla' },
         { name: 'Privacy settings', url: '/compliance/settings' },
         { name: 'Log out', url: '/logout' }

@@ -249,19 +249,6 @@ button.hsc-cat { font-family: inherit; line-height: 1.2; }
 .btn-voice-search { border-radius: 50%; width: 32px; height: 32px; min-height: 32px; display: flex; align-items: center; justify-content: center; }
 .btn-voice-search:hover { color: var(--brand-ink) !important; background: var(--brand-navy-50); }
 .btn-voice-search.listening { color: var(--danger) !important; background: var(--danger-soft); }
-
-/* Chat assistant prompt bubble */
-.chat-prompt-bubble {
-    position: absolute; bottom: 70px; right: 0;
-    background: var(--brand-navy); color: #fff;
-    padding: 9px 14px; border-radius: var(--radius);
-    box-shadow: var(--shadow-md);
-    white-space: nowrap; display: flex; align-items: center; gap: 8px;
-    font-size: var(--fs-sm); font-weight: 600; z-index: 1000;
-}
-.chat-prompt-close { background: transparent; border: 0; color: rgba(255, 255, 255, 0.8); font-size: 0.8rem; padding: 0 4px; cursor: pointer; }
-.chat-prompt-close:hover { color: #fff; }
-.chat-prompt-arrow { position: absolute; bottom: -6px; right: 22px; width: 12px; height: 12px; background: var(--brand-navy); transform: rotate(45deg); }
 </style>
 
 
@@ -280,7 +267,7 @@ button.hsc-cat { font-family: inherit; line-height: 1.2; }
     "url": "https://snpsu.edu.in",
     "logo": "/static/snpsu-logo.png"
   },
-  "features": ["Event Registration", "QR Ticket Generation", "Email Alerts", "WhatsApp Notifications", "AI Assistant"],
+  "features": ["Event Registration", "QR Ticket Generation", "Email Alerts", "WhatsApp Notifications"],
   "image": "/static/snpsu-logo.png"
 }
 </script>
@@ -858,45 +845,7 @@ button.hsc-cat { font-family: inherit; line-height: 1.2; }
   </div>
 </footer>
 
-<!-- ═══ AI CHATBOT ═══ -->
-<div class="chat-fab">
-  <div class="chat-win" id="chatWin">
-    <div class="chat-head">
-      <div class="chat-av">🤖</div>
-      <div>
-        <p class="chat-head-name">Sparky — AI Assistant</p>
-        <p class="chat-head-sub">Ask about any SNPSU event</p>
-      </div>
-      <button data-h-click="index:55" class="ms-auto btn-close btn-close-white" style="opacity:.55;" aria-label="Close chat"></button>
-    </div>
-    <div class="chat-msgs" id="chatMsgs">
-      <div class="bw">
-        <div class="bb bot">Hello! 👋 I'm Sparky, the SapthaEvent AI assistant. Ask me about upcoming events, registration deadlines, entry fees, or venue details.</div>
-      </div>
-    </div>
-    <div class="chat-row">
-      <label for="chatInp" class="visually-hidden">Ask Sparky about events</label>
-      <input type="text" class="chat-inp" id="chatInp"
-             placeholder="Ask about events…"
-             aria-label="Ask Sparky AI about events"
-             aria-describedby="chatHint"
-             data-h-keydown="index:56">
-      <span id="chatHint" class="visually-hidden">Press Enter to send your message to the AI assistant.</span>
-      <button class="chat-send" data-h-click="index:57" aria-label="Send message"><i class="fas fa-paper-plane" aria-hidden="true"></i></button>
-    </div>
-  </div>
-  <div class="chat-prompt-bubble" id="chatPromptBubble" style="display: none;">
-    <span class="chat-prompt-text">Need help? Ask Sparky! 🤖</span>
-    <button class="chat-prompt-close" data-h-click="index:58" aria-label="Dismiss help prompt">
-      <i class="fas fa-times"></i>
-    </button>
-    <div class="chat-prompt-arrow"></div>
-  </div>
-  <button class="chat-btn" data-h-click="index:59" aria-label="Open AI Assistant, Sparky">
-    <i class="fas fa-robot" id="chatIcon" aria-hidden="true"></i>
-    <span class="chat-ai-dot">AI</span>
-  </button>
-</div>
+{# The "Sparky" AI chat widget is off the home page (UPG-205, owner 2026-11-06) #}
 
 <!-- Bootstrap JS -->
 {% include "layouts/_bootstrap_js.html" %}

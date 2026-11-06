@@ -287,6 +287,21 @@
     drawFields(); fieldRows.lastChild.querySelector('input').focus();
   });
 
+  // ── Ticket types (UPG-155) ─────────────────────────────────────────────
+  var ttRows = document.getElementById('tt-rows');
+  var ttTemplate = document.getElementById('tt-template');
+  if (ttRows && ttTemplate) {
+    document.getElementById('tt-add').addEventListener('click', function () {
+      if (ttRows.querySelectorAll('[data-tt-row]').length >= 10) return;
+      ttRows.appendChild(ttTemplate.content.cloneNode(true));
+      ttRows.lastElementChild.querySelector('input[name="tt_name"]').focus();
+    });
+    ttRows.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-tt-remove]');
+      if (btn) btn.closest('[data-tt-row]').remove();
+    });
+  }
+
   // ── Summary (step 7) ───────────────────────────────────────────────────
   function buildSummary() {
     var s = spec();
@@ -314,7 +329,11 @@
       row('Seats', v('f-capacity') && v('f-capacity') !== '0' ? v('f-capacity') : 'No limit');
       var p = v('f-participation');
       row('Taking part as', p === 'Individual' ? 'Individuals' : p + ' (' + v('f-team-min') + '–' + v('f-team-max') + ' members)');
-      row('Fee', +v('f-fee') > 0 ? '₹' + v('f-fee') : 'Free');
+      var tickets = ttRows ? $$('#tt-rows [data-tt-row]').map(function (r) {
+        var n = r.querySelector('[name="tt_name"]').value.trim(), pr = +r.querySelector('[name="tt_price"]').value || 0;
+        return n ? n + ' (' + (pr > 0 ? '₹' + pr : 'free') + ')' : '';
+      }).filter(Boolean) : [];
+      row(tickets.length ? 'Tickets' : 'Fee', tickets.length ? tickets.join(', ') : (+v('f-fee') > 0 ? '₹' + v('f-fee') : 'Free'));
       var crits = readJson('crit-json');
       if (!$('#competition-block').hidden) {
         row('Rounds', v('f-rounds'));

@@ -563,12 +563,14 @@ def notify_event_details_changed(
                     "event_title": event_title,
                     "venue_name": display_venue,
                     "start_time": display_time,
+                    "link": f"/event/{event_id}",
+                    "event_id": str(event_id),   # a portal-only event sends no email (UPG-195)
                 }
                 custom_rule = {
                     "title": f"Update: {event_title}",
                     "message": f"Hello {recipient_name}, important schedule change for '{event_title}': {change_summary}.",
                     "notif_type": "event_reminder",
-                    "channels": ["in_app", "email"],
+                    "channels": ["in_app", "email", "push"],   # push for subscribers (UPG-157)
                 }
                 # Stable across processes (hash() isn't): the same change is sent once
                 change_id = hashlib.sha256(

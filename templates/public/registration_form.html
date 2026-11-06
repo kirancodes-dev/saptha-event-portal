@@ -267,6 +267,7 @@
       <form method="POST" action="/forms/submit/{{ event.id }}" id="reg-form" novalidate>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="submission_id" value="{{ submission_id }}">
+        {% if share_src %}<input type="hidden" name="src" value="{{ share_src }}">{% endif %}
         {% set step = namespace(n=0) %}
 
         {# 1. Who is registering (UPG-12) and who they are #}
@@ -315,6 +316,40 @@
           {% endif %}
           <div class="reg-grid">
             {% for field in sections.participant %}{{ render_field(field) }}{% endfor %}
+          </div>
+        </fieldset>
+        {% endif %}
+
+        {# The ticket type (UPG-155): price, early-bird dates and seats left #}
+        {% if ticket_types %}
+        {% set step.n = step.n + 1 %}
+        <fieldset class="reg-section" data-section="ticket">
+          <legend><span class="reg-step">{{ step.n }}</span> Ticket</legend>
+          <div class="form-group">
+            <span class="group-label" id="ticket_type-label">Choose your ticket<span class="req">*</span></span>
+            <div class="choice-list mt-1" role="radiogroup" aria-labelledby="ticket_type-label"
+                 {% if field_errors.get('ticket_type') %}aria-describedby="ticket_type-error"{% endif %}>
+              {% set picked = values.get('ticket_type', '') %}
+              {% for t in ticket_types %}
+              {% set unavailable = t.sold_out or not t.on_sale %}
+              <label class="choice-item" data-ticket="{{ t.id }}">
+                <input type="radio" name="ticket_type" value="{{ t.id }}" required
+                       {% if unavailable %}disabled{% elif picked == t.id %}checked{% endif %}>
+                <span>
+                  <strong>{{ t.name }}</strong> —
+                  {% if t.price > 0 %}₹{{ '%g'|format(t.price) }}{% if t.per == 'person' %} per person{% elif sections.team %} per team{% endif %}{% else %}Free{% endif %}
+                  <small class="text-muted d-block">
+                    {% if t.sold_out %}Sold out
+                    {% elif not t.on_sale and t.sale_start %}On sale from {{ t.sale_start }}
+                    {% elif not t.on_sale %}No longer on sale
+                    {% else %}{% if t.sale_end %}Until {{ t.sale_end }}{% endif %}{% if t.seats_left is not none %}{% if t.sale_end %} · {% endif %}{{ t.seats_left }} left{% endif %}{% endif %}
+                    {% if t.who %} · for {{ t.who|map('title')|join(', ') }} only{% endif %}
+                  </small>
+                </span>
+              </label>
+              {% endfor %}
+            </div>
+            {% if field_errors.get('ticket_type') %}<div class="field-error" id="ticket_type-error" role="alert">{{ field_errors['ticket_type'] }}</div>{% endif %}
           </div>
         </fieldset>
         {% endif %}

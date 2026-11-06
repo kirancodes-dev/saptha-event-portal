@@ -11,7 +11,7 @@ Fixes & additions in this version
 import datetime
 import json
 
-from flask import (Blueprint, current_app, flash, jsonify, redirect, render_template,
+from flask import (Blueprint, abort, current_app, flash, jsonify, redirect, render_template,
                    request, session)
 try:
     from google.cloud import firestore
@@ -109,6 +109,9 @@ def dashboard():
         r['ai_summary']   = r.get('ai_summary')   # Gemini performance summary
         from services_rounds import status_for   # "Round 2 of 3" (UPG-149)
         r['round_status'] = status_for(evt, r)
+        import services_hackathon   # the team lead's hackathon page (UPG-196)
+        r['hackathon_page'] = (services_hackathon.is_hackathon(evt)
+                               and str(r.get('lead_email') or '').lower() == str(session.get('user_id') or '').lower())
 
         # Certificate eligible: attended + event completed or certified
         r['cert_eligible'] = (
@@ -505,10 +508,9 @@ def public_register(event_id):
 
         # New email: unverified account + one-time set-password link
         is_new_user = not session_email and not without_login
-        if is_new_user:
+        if is_new_user:   # the link goes in the registration's one email below (UPG-152)
             from services_accounts import create_unverified_account, send_set_password_link
-            create_unverified_account(db, email, full_name, phone)
-            send_set_password_link(db, email, full_name)
+            create_unverified_account(db, email, full_name, phone, from_registration=True)
 
         reg_id   = generate_reg_id()   # UPG-95
         members  = [{'role': 'Team Leader', 'name': full_name,
@@ -548,6 +550,8 @@ def public_register(event_id):
 
         if fee > 0:
             session['pending_reg_data'] = reg_data
+            if is_new_user:
+                send_set_password_link(db, email, full_name)
             return redirect(f'/payment/checkout/{event_id}')
 
         reg_data.update({'status': 'Confirmed', 'payment_status': 'Free', 'amount_paid': 0})
@@ -568,8 +572,21 @@ def public_register(event_id):
         db.collection('events').document(event_id).update({
             'registration_count': firestore.Increment(1)
         })
-        send_ticket_email(email, full_name, event_data.get('title', ''),
-                          reg_id, is_new_user=is_new_user, cancel_url=cancel_url_for(reg_data))
+        import services_hackathon   # a portal-mode hackathon: the instructions, no ticket email (UPG-195)
+        instructions = services_hackathon.registration_instructions(event_data, event_id)
+        if is_new_user:   # one email: the set-password link with the registration (UPG-152)
+            send_set_password_link(db, email, full_name, registration={
+                'event_title': event_data.get('title', ''), 'event_date': event_data.get('date', ''),
+                'venue': event_data.get('venue', ''), 'reg_id': reg_id, 'instructions': instructions})
+        elif instructions:
+            from utils_email import send_registration_confirmed_email
+            send_registration_confirmed_email(email, full_name, event_data.get('title', ''),
+                                              event_date=event_data.get('date', ''),
+                                              venue=event_data.get('venue', ''),
+                                              cancel_url=cancel_url_for(reg_data), instructions=instructions)
+        else:
+            send_ticket_email(email, full_name, event_data.get('title', ''),
+                              reg_id, cancel_url=cancel_url_for(reg_data))
         log_action(db, "REGISTRATION_CONFIRMED", f"{email} registered for {event_id}")
         if session_email:
             return redirect(f'/ticket/{reg_id}')
@@ -626,6 +643,14 @@ def cancel_registration_record(reg_id, reg, actor, reason=''):
     db.collection('events').document(event_id).update({
         'registration_count': firestore.Increment(-1)
     })
+
+    # Its ticket type's seat is free again (UPG-155)
+    if reg.get('ticket_type_id'):
+        try:
+            import services_ticket_types
+            services_ticket_types.give_back_seat(event_id, reg['ticket_type_id'])
+        except Exception:
+            current_app.logger.warning("Could not free the ticket-type seat of %s", reg_id, exc_info=True)
 
     # Trigger waitlist promotion
     try:
@@ -922,7 +947,7 @@ def participation_ledger():
 
         # Once per registration, from its current attendance (services_ledger)
         from services_ledger import credit_for
-        points_earned, hours_earned = credit_for(reg, event)
+        points_earned, hours_earned = credit_for(reg, event, reg_id)
 
         total_points += points_earned
         total_hours += hours_earned
@@ -970,3 +995,102 @@ def participation_ledger():
         current_page='ledger',
     )
 
+
+
+# ── My agenda: starred sessions (UPG-159) ──────────────────────────────────
+
+def _agenda_event_or_404(event_id):
+    """The event, if the signed-in user may see it: it's listed for them, or
+    they registered for it."""
+    from services_event_types import is_listed
+    doc = db.collection('events').document(event_id).get()
+    if not doc.exists:
+        abort(404)
+    event = dict(doc.to_dict() or {}, id=event_id)
+    email = (session.get('user_id') or '').lower()
+    user = db.collection('users').document(email).get()
+    dept = ((user.to_dict() or {}).get('department') or '') if user.exists else ''
+    if not is_listed(event, viewer_dept=dept):
+        mine = db.collection('registrations').where('event_id', '==', event_id) \
+                 .where('lead_email', '==', email).limit(1).stream()
+        if not list(mine):
+            abort(404)
+    return event
+
+
+@participant_bp.route('/agenda/<event_id>')
+@login_required
+def my_agenda(event_id):
+    import services_sessions
+    event = _agenda_event_or_404(event_id)
+    sessions = services_sessions.sessions_for(event)
+    starred = services_sessions.starred(session.get('user_id'), event_id)
+    return render_template('participant/my_agenda.html', event=event,
+                           mine=[s for s in sessions if s['id'] in starred],
+                           others=[s for s in sessions if s['id'] not in starred])
+
+
+@participant_bp.route('/agenda/<event_id>/star', methods=['POST'])
+@login_required
+def star_session(event_id):
+    import services_sessions
+    event = _agenda_event_or_404(event_id)
+    sess = services_sessions.find(event, request.form.get('session_id'))
+    if sess is None:
+        abort(404)
+    services_sessions.star(session.get('user_id'), event_id, sess['id'], on=request.form.get('on') != '0')
+    return redirect(f'/participant/agenda/{event_id}')
+
+
+@participant_bp.route('/agenda/<event_id>.ics')
+@login_required
+def my_agenda_ics(event_id):
+    import services_sessions
+    from flask import Response
+    event = _agenda_event_or_404(event_id)
+    starred = services_sessions.starred(session.get('user_id'), event_id)
+    body = services_sessions.ics(event_id, event, [s for s in services_sessions.sessions_for(event) if s['id'] in starred])
+    return Response(body, mimetype='text/calendar',
+                    headers={'Content-Disposition': f'attachment; filename=my-agenda-{event_id}.ics'})
+
+
+# ── Transfer a ticket (UPG-161) ────────────────────────────────────────────
+
+@participant_bp.route('/transfer/<reg_id>', methods=['GET', 'POST'])
+@login_required
+def transfer_ticket(reg_id):
+    import services_transfer as transfers
+    reg_doc = db.collection('registrations').document(reg_id).get()
+    if not reg_doc.exists:
+        abort(404)
+    reg = reg_doc.to_dict() or {}
+    me = (session.get('user_id') or '').strip().lower()
+    people = {(reg.get('lead_email') or '').lower()} | {(m.get('email') or '').lower() for m in reg.get('members') or []}
+    if me not in people:
+        abort(403)
+    event_id = str(reg.get('event_id') or '')
+    ev_doc = db.collection('events').document(event_id).get()
+    event = dict(ev_doc.to_dict() or {}, id=event_id) if ev_doc.exists else {}
+    allowed, reason = transfers.open_for(event, reg, me)
+
+    if request.method == 'POST':
+        if not allowed:
+            flash(reason, 'danger')
+            return redirect(f'/participant/transfer/{reg_id}'), 303
+        if request.form.get('confirm') != 'yes':
+            flash("Tick the box to confirm: your ticket stops working once it's transferred.", 'danger')
+            return redirect(f'/participant/transfer/{reg_id}'), 303
+        try:
+            recipient = transfers.check_recipient(db, event_id, event, reg, request.form.get('email', ''))
+        except transfers.TransferRefused as exc:
+            flash(str(exc), 'danger')
+            return redirect(f'/participant/transfer/{reg_id}'), 303
+        new = transfers.transfer(db, reg_id, reg, event, recipient, me)
+        transfers.notify(reg_id, event, me, reg.get('lead_name', ''), new['lead_email'], new['lead_name'])
+        flash(f"Done: your ticket now belongs to {new['lead_name']}. We've emailed you both.", 'success')
+        return redirect('/participant/dashboard')
+
+    limit = transfers.cutoff(event)
+    return render_template('participant/transfer.html', reg=reg, reg_id=reg_id, event=event,
+                           allowed=allowed, reason=reason,
+                           closes=limit.strftime('%d %b %Y, %H:%M') if limit else '')

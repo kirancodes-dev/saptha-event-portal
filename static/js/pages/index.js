@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded',function(){
     if(skeleton)skeleton.remove();
   }
   initVoiceSearch();
-  initChatPrompt();
 });
 
 // ── INTERSECTION OBSERVER FOR SCROLL ANIMATIONS ────
@@ -224,34 +223,6 @@ function stopListening() {
   }
 }
 
-// ── CHATBOT PROMPT HELPER FUNCTIONS ────────────
-function initChatPrompt() {
-  if (localStorage.getItem('sparky_prompt_dismissed') === 'true') {
-    return;
-  }
-  setTimeout(function() {
-    const bubble = document.getElementById('chatPromptBubble');
-    const chatWin = document.getElementById('chatWin');
-    if (bubble && chatWin && !chatWin.classList.contains('open')) {
-      bubble.style.display = 'flex';
-    }
-  }, 2000);
-}
-
-function dismissChatPrompt(e) {
-  if (e) e.stopPropagation();
-  const bubble = document.getElementById('chatPromptBubble');
-  if (bubble) {
-    bubble.style.opacity = '0';
-    bubble.style.transform = 'scale(0.8)';
-    bubble.style.transition = 'all 0.3s ease';
-    setTimeout(() => {
-      bubble.style.display = 'none';
-    }, 300);
-  }
-  localStorage.setItem('sparky_prompt_dismissed', 'true');
-}
-
 // ── UNIFIED FILTERING, SEARCH, AND PAGINATION ──
 let activeCategory = 'all';
 let searchKeyword = '';
@@ -462,58 +433,6 @@ function initCategoryScrollAffordance() {
   
   // Initial run after render completes
   setTimeout(updateScrollHints, 500);
-}
-
-// ── CHATBOT ────────────────────────────────────
-var chatOpen = false;
-function toggleChat(){
-  chatOpen = !chatOpen;
-  document.getElementById('chatWin').classList.toggle('open', chatOpen);
-  document.getElementById('chatIcon').className = chatOpen ? 'fas fa-times' : 'fas fa-robot';
-  if(chatOpen) {
-    document.getElementById('chatInp').focus();
-    dismissChatPrompt();
-  }
-}
-async function sendChat(){
-  var inp = document.getElementById('chatInp');
-  var msg = inp.value.trim();
-  if(!msg) return;
-  inp.value = '';
-  addBubble(msg, 'user');
-  var t = addTyping();
-  try{
-    var r = await fetch('/chatbot/ask', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({message:msg})
-    });
-    var d = await r.json();
-    t.remove();
-    addBubble(d.reply || 'Sorry, I could not get a response. Please try again.', 'bot');
-  } catch(err){
-    t.remove();
-    addBubble('Something went wrong. Please try again in a moment.', 'bot');
-  }
-}
-function addBubble(text, role){
-  var msgs = document.getElementById('chatMsgs');
-  var wrap = document.createElement('div');
-  wrap.className = 'bw ' + role;
-  // The visitor's message and the AI's reply are text (BLK-19)
-  wrap.innerHTML = '<div class="bb ' + escapeHtml(role) + '">' + escapeHtml(text) + '</div>';
-  msgs.appendChild(wrap);
-  msgs.scrollTop = msgs.scrollHeight;
-  return wrap;
-}
-function addTyping(){
-  var msgs = document.getElementById('chatMsgs');
-  var wrap = document.createElement('div');
-  wrap.className = 'bw';
-  wrap.innerHTML = '<div class="bb bot"><div class="tdots"><span></span><span></span><span></span></div></div>';
-  msgs.appendChild(wrap);
-  msgs.scrollTop = msgs.scrollHeight;
-  return wrap;
 }
 
 // ── FORM VALIDATION ENHANCEMENT ────────────────

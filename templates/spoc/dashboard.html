@@ -1785,6 +1785,9 @@ h1, h2, h3, h4, h5, h6 {
                     <a href="/spoc/room_allocation/{{ event.id }}" class="action-btn btn-outline justify-content-start">
                       <i class="fas fa-table"></i> View Auto-Allocated Rooms
                     </a>
+                    <a href="/spoc/hackathon/{{ event.id }}" class="action-btn btn-blue-outline justify-content-start">
+                      <i class="fas fa-code"></i> Run hackathon: problems, submissions, deadline
+                    </a>
                     <a href="/spoc/round_panel/{{ event.id }}" class="action-btn btn-blue-outline justify-content-start">
                       <i class="fas fa-layer-group"></i> Round &amp; Elimination Manager
                     </a>
@@ -1893,6 +1896,15 @@ h1, h2, h3, h4, h5, h6 {
                     </a>
                     <a href="/spoc/export_csv/{{ event.id }}" class="action-btn btn-outline justify-content-start">
                       <i class="fas fa-file-csv"></i> Export Registrations (CSV)
+                    </a>
+                    <a href="/ticket/badges/{{ event.id }}.pdf" target="_blank" rel="noopener" class="action-btn btn-outline justify-content-start">
+                      <i class="fas fa-id-badge"></i> Print Name Badges (PDF)
+                    </a>
+                    <a href="/interact/{{ event.id }}/host" class="action-btn btn-outline justify-content-start">
+                      <i class="fas fa-square-poll-vertical"></i> Live Polls &amp; Q&amp;A
+                    </a>
+                    <a href="/spoc/event/{{ event.id }}/share" class="action-btn btn-outline justify-content-start">
+                      <i class="fas fa-share-nodes"></i> Share Links &amp; Sources
                     </a>
                     <a href="/spoc/judging/audit/{{ event.id }}" class="action-btn btn-purple-outline justify-content-start">
                       <i class="fas fa-scale-balanced"></i> Run Judging Strictness Audit

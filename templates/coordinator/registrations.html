@@ -30,6 +30,7 @@
           <th>Status</th>
           <th>Payment</th>
           <th>Attendance</th>
+          <th>Login email</th>
         </tr>
       </thead>
       <tbody>
@@ -50,6 +51,19 @@
           <td><span class="badge bg-secondary">{{ reg.status or 'confirmed' }}</span></td>
           <td>{{ reg.payment_status or reg.paymentStatus or 'unpaid' }}</td>
           <td>{{ reg.attendance or 'Pending' }}</td>
+          <td data-login-status>
+            {#- UPG-152: the lead's set-password or reset email, and a new link from the organizer -#}
+            {% if reg.login %}
+            <span class="badge text-bg-{{ reg.login.tone }}">{{ reg.login.label }}</span>
+            {% if reg.login.can_send %}
+            <form method="post" action="/coordinator/registrations/{{ event.id }}/login_link" class="mt-1">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="reg_id" value="{{ reg.reg_id or reg.id }}">
+              <button type="submit" class="btn btn-sm btn-outline-secondary">Send password link</button>
+            </form>
+            {% endif %}
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>

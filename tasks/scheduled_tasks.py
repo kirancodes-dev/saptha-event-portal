@@ -96,20 +96,34 @@ def send_24h_reminders(self):
                 # The entry ticket (with the QR) to the lead and every team
                 # member, once each (UPG-48); ticket_sent_to remembers who has it
                 from services_recipients import registration_people
+                import services_hackathon
+                # A portal-only event: the ticket is on the portal, no email (UPG-195)
+                by_email = services_hackathon.email_allowed(event, 'ticket')
+                if not by_email:
+                    services_hackathon.notify(db, event, reg, f"Tomorrow: {event_title}",
+                                              f"Your entry ticket with its QR is ready. {venue}".strip(),
+                                              link=f"/ticket/{reg_id}", kind='event_reminder')
                 already = set(reg.get('ticket_sent_to') or [])
                 for email, name, phone in registration_people(reg):
                     if email in already:
                         continue
-                    send_ticket_email_task.delay(
-                        to_email=email,
-                        name=name,
-                        event_title=event_title,
-                        reg_id=reg_id,
-                        event_date=event_date,
-                        venue=venue,
-                        with_qr=True,
-                    )
-                    queued_emails += 1
+                    if by_email:
+                        send_ticket_email_task.delay(
+                            to_email=email,
+                            name=name,
+                            event_title=event_title,
+                            reg_id=reg_id,
+                            event_date=event_date,
+                            venue=venue,
+                            with_qr=True,
+                        )
+                        queued_emails += 1
+                    try:   # a copy on the person's browsers, once (UPG-157)
+                        import services_push
+                        services_push.send_once(db, email, f"reminder_{reg_id}", f"Tomorrow: {event_title}",
+                                                f"Your entry ticket is ready. {venue}".strip(), f"/ticket/{reg_id}")
+                    except Exception:
+                        logger.warning("Reminder push failed for %s", email, exc_info=True)
                     if phone:   # the task sends the template once, opted-in only, under the cap (UPG-147)
                         send_reminder_whatsapp_task.delay(
                             phone=phone,
@@ -293,6 +307,14 @@ def send_3day_reminders(self):
 
                 # The lead and every team member, once each (UPG-48)
                 from services_recipients import registration_people
+                import services_hackathon
+                if not services_hackathon.email_allowed(event, 'reminder'):
+                    # A portal-only event: a portal notice, no email (UPG-195)
+                    services_hackathon.notify(db, event, reg, f"In 3 days: {event_title}",
+                                              f"{event_title} is on {event_date} at {venue}.",
+                                              link=f"/event/{event_id}", kind='event_reminder')
+                    db.collection('registrations').document(reg_id).update({'early_reminder_sent': True})
+                    continue
                 already = set(reg.get('early_reminder_sent_to') or [])
                 for email, name, _phone in registration_people(reg):
                     if email in already:

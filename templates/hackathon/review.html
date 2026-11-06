@@ -1,0 +1,42 @@
+{% extends "base_classic.html" %}
+{#- One team's submission (UPG-194): for the finale's judges (without the AI
+    score) and the event's staff (with it). -#}
+{% block title %}{{ reg.team_name or reg.lead_name or 'Team' }} — {{ event.title }}{% endblock %}
+{% block page_title %}{{ reg.team_name or reg.lead_name or 'Team' }}{% endblock %}
+{% block page_sub %}{{ event.title }} · submission{% endblock %}
+{% block page_actions %}{% if staff %}<a href="/spoc/hackathon/{{ event.id }}#ranking" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Ranking</a>{% else %}<a href="/judge/event/{{ event.id }}" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Teams to score</a>{% endif %}{% endblock %}
+{% block extra_css %}
+<style>
+.hk-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:20px 22px;margin-bottom:18px;}
+.hk-card h2{font-size:14px;font-weight:700;color:var(--brand-ink,#1a2557);text-transform:uppercase;letter-spacing:.4px;margin:0 0 14px;}
+.hk-answer{white-space:pre-line;overflow-wrap:anywhere;}
+</style>
+{% endblock %}
+{% block content %}
+<section class="hk-card" aria-labelledby="subHead">
+  <h2 id="subHead">Submission</h2>
+  {% if submission %}
+  <p class="text-muted small">Last saved {{ show(submission.updated_at) }}.</p>
+  <dl class="mb-0">
+    {% for f in fields %}{% set a = (submission.answers or {}).get(f.id) %}{% if a %}
+    <dt class="small text-muted">{{ f.label }}</dt>
+    <dd>{% if f.kind == 'pdf' %}<a href="/hackathon/{{ event.id }}/file/{{ reg_id }}/{{ f.id }}" target="_blank" rel="noopener"><i class="fas fa-file-pdf" aria-hidden="true"></i> {{ a.name }}</a>
+      {% elif f.kind == 'link' %}<a href="{{ a }}" target="_blank" rel="noopener noreferrer" class="hk-answer">{{ a }}</a>
+      {% elif f.kind == 'problem' %}{{ problem_titles.get(a, a) }}
+      {% else %}<span class="hk-answer">{{ a }}</span>{% endif %}</dd>
+    {% endif %}{% endfor %}
+  </dl>
+  {% else %}<p class="text-muted mb-0">This team didn't submit.</p>{% endif %}
+</section>
+
+{% if staff and ai %}
+<section class="hk-card" aria-labelledby="aiHead" data-ai>
+  <h2 id="aiHead"><i class="fas fa-robot" aria-hidden="true"></i> AI evaluation (only you see this)</h2>
+  {% if ai.status == 'scored' %}
+  <p class="mb-1"><strong>{{ ai.total }} / 100</strong> · {{ ai.model }} · {{ show(ai.at) }}</p>
+  <p class="mb-1">{{ ai.reason }}</p>
+  <p class="small text-muted mb-0">{% for c in ai.criteria or criteria %}{{ c.label }}: {{ ai.scores.get(c.id, '—') }}{% if not loop.last %} · {% endif %}{% endfor %}</p>
+  {% else %}<p class="mb-0">Not scored: {{ ai.error }}</p>{% endif %}
+</section>
+{% endif %}
+{% endblock %}

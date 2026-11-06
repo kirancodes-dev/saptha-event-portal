@@ -9,6 +9,7 @@ Blueprint prefix: /waitlist
 import logging
 import datetime
 import uuid
+from typing import Optional
 
 from flask import Blueprint, request, session, jsonify
 try:
@@ -178,15 +179,22 @@ def view_waitlist(event_id):
     return jsonify({"waitlist": waitlist, "total": len(waitlist)})
 
 
-def promotion_terms(ev: dict, reg_id: str) -> dict:
+def promotion_terms(ev: dict, reg_id: str, reg_data: Optional[dict] = None) -> dict:
     """How a waitlist promotion is recorded and announced (BLK-03).
 
     A paid event's seat is held as pending_payment with a pay link and is
     confirmed only after a verified payment; a free event is confirmed.
     Used by auto_promote and tasks.waitlist_tasks.promote_from_waitlist.
+    An event with ticket types is paid when the chosen type costs something
+    (UPG-155).
     """
     title = ev.get("title", "Event")
     is_paid = safe_int(ev.get("fee", 0)) > 0 or safe_int(ev.get("entry_fee", 0)) > 0
+    import services_ticket_types as tt
+    if tt.types_for(ev):
+        ticket = tt.find(ev, (reg_data or {}).get("ticket_type_id", ""))
+        members = (reg_data or {}).get("member_count") or len((reg_data or {}).get("members") or []) or 1
+        is_paid = ticket is not None and tt.price(ticket, members) > 0
     pay_path = f"/payment/pay/{reg_id}"
     from utils_email import _base_url
     base_url = _base_url()
@@ -233,7 +241,7 @@ def auto_promote(db, event_id: str):
 
         reg_data = wl.get("reg_data") or {}
         reg_id = reg_data.get("reg_id") or str(uuid.uuid4())
-        terms = promotion_terms(dict(ev, id=event_id), reg_id)
+        terms = promotion_terms(dict(ev, id=event_id), reg_id, reg_data)
         status, payment_status = terms["status"], terms["payment_status"]
         if reg_data:
             reg_data.update({
@@ -269,6 +277,13 @@ def auto_promote(db, event_id: str):
             db.collection("waitlists").document(wl_id).update({"status": "already_registered"})
             return auto_promote(db, event_id)
 
+        # The promoted seat counts against its ticket type (UPG-155); the
+        # event's own seat limit already let them in
+        import services_ticket_types as tt
+        promoted_ticket = tt.find(ev, reg_data.get("ticket_type_id", ""))
+        if promoted_ticket is not None:
+            tt.take_seat(event_id, dict(promoted_ticket, seats=0))
+
         # Free promotions are confirmed immediately, so issue the same signed
         # ticket that a normal registration receives.  Paid promotions remain
         # pending payment and receive their ticket after payment is verified.
@@ -280,7 +295,7 @@ def auto_promote(db, event_id: str):
                 registration_id=reg_id,
                 user_email=reg_data.get("lead_email") or email,
                 lead_name=reg_data.get("lead_name") or name,
-                ticket_type=(reg_data.get("ticket_tier")
+                ticket_type=(reg_data.get("ticket_type_name") or reg_data.get("ticket_tier")
                              or reg_data.get("ticket_type")
                              or "General"),
             )
@@ -305,27 +320,29 @@ def auto_promote(db, event_id: str):
         except Exception:
             pass
 
-        # Send email notification
-        try:
-            from tasks.email_tasks import send_generic_email_task
-            email_body = (
-                f"Hi {name},\n\n"
-                f"A seat has opened up and you've been promoted from the waitlist for "
-                f"{ev.get('title', 'Event')}!\n\n"
-                f"{terms['email_line']}"
-                f"Registration ID: {reg_id}\n"
-                f"Event Date: {ev.get('date', '')}\n"
-                f"Venue: {venue_label(ev)}\n\n"
-                f"See you there!\n— SapthaEvent Team"
-            )
-            send_generic_email_task.delay(
-                to_email=email,
-                subject=terms["subject"],
-                body_text=email_body,
-                body=email_body,
-            )
-        except Exception:
-            pass
+        # Send email notification (not for a portal-only event: the notice above, UPG-195)
+        import services_hackathon
+        if services_hackathon.email_allowed(ev, 'waitlist'):
+            try:
+                from tasks.email_tasks import send_generic_email_task
+                email_body = (
+                    f"Hi {name},\n\n"
+                    f"A seat has opened up and you've been promoted from the waitlist for "
+                    f"{ev.get('title', 'Event')}!\n\n"
+                    f"{terms['email_line']}"
+                    f"Registration ID: {reg_id}\n"
+                    f"Event Date: {ev.get('date', '')}\n"
+                    f"Venue: {venue_label(ev)}\n\n"
+                    f"See you there!\n— SapthaEvent Team"
+                )
+                send_generic_email_task.delay(
+                    to_email=email,
+                    subject=terms["subject"],
+                    body_text=email_body,
+                    body=email_body,
+                )
+            except Exception:
+                pass
 
         logger.info("Waitlist promotion: %s for event %s", email, event_id)
         return {

@@ -164,19 +164,4 @@ Object.assign(window.SE_H = window.SE_H || {}, {
   "index:54": function (event) { with (document) { with (this.form || {}) { with (this) {
     this.parentElement.style.display='none'
   } } } },
-  "index:55": function (event) { with (document) { with (this.form || {}) { with (this) {
-    toggleChat()
-  } } } },
-  "index:56": function (event) { with (document) { with (this.form || {}) { with (this) {
-    if(event.key==='Enter')sendChat()
-  } } } },
-  "index:57": function (event) { with (document) { with (this.form || {}) { with (this) {
-    sendChat()
-  } } } },
-  "index:58": function (event) { with (document) { with (this.form || {}) { with (this) {
-    dismissChatPrompt(event)
-  } } } },
-  "index:59": function (event) { with (document) { with (this.form || {}) { with (this) {
-    toggleChat()
-  } } } },
 });

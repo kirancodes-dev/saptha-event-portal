@@ -165,7 +165,9 @@ def test_top_n_lets_every_team_tied_at_the_cut_through(hack):
 
 # ── Criterion 5: one email per person ──────────────────────────────────────────
 
-def test_every_person_on_each_team_gets_one_result_email(hack):
+def test_every_person_on_each_team_gets_one_result_email(hack, monkeypatch):
+    import app as app_module   # team members get emails only when the owner turns it on (UPG-152)
+    monkeypatch.setitem(app_module.app.config, 'NOTIFY_TEAM_MEMBERS', True)
     h = hack
     eid = h['event'](rounds=2)
     member_in, member_out = f"{_unique('min')}@test.edu", f"{_unique('mout')}@test.edu"

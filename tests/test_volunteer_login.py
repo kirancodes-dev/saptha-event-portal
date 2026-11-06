@@ -9,11 +9,15 @@ import datetime
 from tests.test_integration_flow import PASSWORD, _create_event, _login, _unique, _user
 
 
-def test_the_login_form_offers_every_role_an_account_can_have(real_app):
+def test_the_login_form_offers_the_five_roles_the_owner_chose(real_app):
+    # UPG-120 added "Volunteer" to the menu; the owner took it off again for
+    # now (UPG-204, 2026-11-06). A volunteer's login still works when the role
+    # is posted, which the next test checks.
     flask_app, _ = real_app
     page = flask_app.test_client().get('/login').get_data(as_text=True)
-    for role in ('Student', 'EventCoordinator', 'ClubSPOC', 'Judge', 'Volunteer', 'SuperAdmin'):
+    for role in ('Student', 'EventCoordinator', 'ClubSPOC', 'Judge', 'SuperAdmin'):
         assert f'<option value="{role}">' in page, role
+    assert '<option value="Volunteer">' not in page
 
 
 def test_a_volunteer_logs_in_and_lands_on_the_scanner(real_app):

@@ -239,6 +239,7 @@ def create_event():
     values = request.form.to_dict()
     values['allowed_participants'] = request.form.getlist('allowed_participants')
     values['allowed_years'] = request.form.getlist('allowed_years')
+    values['ticket_types'] = data.get('ticket_types') or []   # UPG-155
 
     # Room conflict check on create (UPG-09)
     room_id = (request.form.get('room_id') or '').strip()
@@ -437,6 +438,7 @@ def event_setup(event_id):
         values = request.form.to_dict()
         values['allowed_participants'] = request.form.getlist('allowed_participants')
         values['allowed_years'] = request.form.getlist('allowed_years')
+        values['ticket_types'] = data.get('ticket_types') or []   # UPG-155
         return _render_wizard(values=values, errors=errors, parent=parent, editing=ev, status=400)
 
     contact = data.pop('contact')
@@ -560,7 +562,8 @@ def _export_name(event, suffix):
 def export_csv(event_id):
     import services_export
     event = _event_or_abort(event_id, 'export_data')
-    return Response(services_export.to_csv(services_export.registration_rows(db, event_id)), mimetype='text/csv',
+    return Response(services_export.to_csv(services_export.registration_rows(db, event_id),
+                                            services_export.registration_columns(db, event_id)), mimetype='text/csv',
                     headers={'Content-Disposition': f'attachment; filename={_export_name(event, "Registrations.csv")}'})
 
 
@@ -668,6 +671,7 @@ def event_results(event_id):
 @login_required
 @role_required('ClubSPOC')
 def scan_page(event_id):
+    import services_sessions
     from services_permission import can
     event_doc = db.collection('events').document(event_id).get()
     if not event_doc.exists:
@@ -707,6 +711,7 @@ def scan_page(event_id):
         today=today_str,
         scanning_open=(event_date_str == today_str),
         registrations=registrations,
+        sessions=services_sessions.sessions_for(event),   # session mode (UPG-159)
     )
 
 
@@ -1012,13 +1017,10 @@ def manage_agenda(event_id):
         return redirect('/spoc/dashboard')
 
     if request.method == 'POST':
-        times  = request.form.getlist('time[]')
-        titles = request.form.getlist('title[]')
-        descs  = request.form.getlist('desc[]')
-        agenda = []
-        for t, ti, d in zip(times, titles, descs):
-            if t.strip() and ti.strip():
-                agenda.append({'time': t.strip(), 'title': ti.strip(), 'desc': d.strip()})
+        # Each item is a session with an ID, and optionally an end, room,
+        # capacity and hours, for session check-in (UPG-159)
+        import services_sessions
+        agenda = services_sessions.parse_agenda(request.form)
         db.collection('events').document(event_id).update({'agenda': agenda})
         flash("Schedule saved!", "success")
         return redirect(f'/spoc/agenda/{event_id}')
@@ -1041,6 +1043,13 @@ def publish_results(event_id):
             'results_published': True
         })
         flash("Results have been published to the student portal!", "success")
+        _push_results(event_id)
+        import services_hackathon
+        event = db.collection('events').document(event_id).get().to_dict() or {}
+        if services_hackathon.portal_only(event):   # ranks on the page, one email per team lead (UPG-194)
+            import services_hackathon_eval
+            flash(services_hackathon_eval.publish_results(db, event_id, {**event, 'id': event_id},
+                                                          session.get('user_id', ''))['message'], 'info')
         from services_certificate_runs import on_results_published   # position certificates (UPG-124)
         note = on_results_published(db, event_id, session.get('user_id', ''))
         if note:
@@ -1049,6 +1058,18 @@ def publish_results(event_id):
         flash(f"Error: {e}", "danger")
 
     return redirect(f'/spoc/results/{event_id}')
+
+
+def _push_results(event_id):
+    """Results are out: a push to each registrant's browsers, once (UPG-157)."""
+    try:
+        import services_push
+        ev = (db.collection('events').document(event_id).get().to_dict() or {})
+        title = ev.get('title', 'Event')
+        services_push.push_to_registrants(db, event_id, 'results', f"Results are out: {title}",
+                                          "See where your team placed.", f"/event/{event_id}")
+    except Exception:
+        current_app.logger.warning("Results push failed for %s", event_id, exc_info=True)
 
 
 # --- 12. AI EVENT INTELLIGENCE REPORT ---
@@ -1224,6 +1245,16 @@ def blast_email(event_id):
 
     if len(body) > 5000:
         flash("Message body too long (max 5000 characters).", "warning")
+        return redirect('/spoc/dashboard')
+
+    import services_hackathon
+    if not services_hackathon.email_allowed(event, 'broadcast'):   # an update on the portal (UPG-195)
+        services_hackathon.post_update(db, event_id, event, subject, body, kind='announcement',
+                                       by=session.get('user_id', ''))
+        log_action(db, "BLAST_EMAIL", f"SPOC {session.get('user_id')} posted '{subject}' to the "
+                                      f"portal of event {event_id} (portal-only emails)")
+        flash("This event sends no bulk email: your message is posted as an update on the hackathon page.",
+              "success")
         return redirect('/spoc/dashboard')
 
     from utils_email import _send, _html_wrapper
@@ -1800,6 +1831,13 @@ def send_room_emails(event_id):
         name  = d.get('lead_name', 'Participant')
         if not room or not email:
             skipped += 1
+            continue
+        import services_hackathon
+        if not services_hackathon.email_allowed(event, 'room'):   # a portal notice instead (UPG-195)
+            services_hackathon.notify(db, {**event, 'id': event_id}, d, f"Your room: {room}",
+                                      f"{event.get('title', 'Event')}: your team is in {room}.",
+                                      link=f"/hackathon/{event_id}")
+            sent += 1
             continue
         try:
             send_room_assignment_email(
@@ -2466,3 +2504,58 @@ def spoc_marketing_event_writer():
 
 
 
+
+
+# =========================================================
+# 27. SHARE LINKS: WHERE REGISTRATIONS COME FROM (UPG-162)
+# =========================================================
+def _share_url(event_id, code):
+    from utils_email import _base_url
+    return f"{_base_url()}/event/{event_id}?src={code}"
+
+
+@spoc_bp.route('/event/<event_id>/share')
+@login_required
+def share_links(event_id):
+    """The event's named share links, a poster QR for each, and registrations
+    and conversion per source."""
+    event = _event_or_abort(event_id, 'view_analytics')
+    from services_permission import can
+    import services_share
+    rows = services_share.report(db, event_id, event)
+    links = [dict(link, url=_share_url(event_id, link['code'])) for link in services_share.links_for(event)]
+    return render_template('spoc/share_links.html', event=event, links=links, rows=rows,
+                           most=max([r['registrations'] for r in rows] + [1]),
+                           can_edit=can(session, 'edit_event', event, db=db))
+
+
+@spoc_bp.route('/event/<event_id>/share', methods=['POST'])
+@login_required
+def share_links_save(event_id):
+    event = _event_or_abort(event_id, 'edit_event')
+    import services_share
+    if request.form.get('action') == 'remove':
+        services_share.remove_link(db, event_id, event, (request.form.get('code') or '').strip().lower())
+        flash("Link removed. Registrations that came through it keep their source.", "success")
+    else:
+        try:
+            code = services_share.add_link(db, event_id, event, request.form.get('label', ''),
+                                           request.form.get('code', ''))
+            log_action(db, "SHARE_LINK_ADDED", f"Event {event_id}: link {code}")
+            flash("Link added: share it, or print its QR on the poster.", "success")
+        except services_share.ShareError as exc:
+            flash(str(exc), "warning")
+    return redirect(f'/spoc/event/{event_id}/share')
+
+
+@spoc_bp.route('/event/<event_id>/share/<code>/qr.png')
+@login_required
+def share_link_qr(event_id, code):
+    event = _event_or_abort(event_id, 'view_analytics')
+    import services_share
+    if not any(link['code'] == code for link in services_share.links_for(event)):
+        abort(404)
+    from utils_qr import generate_qr_response
+    resp = generate_qr_response(_share_url(event_id, code), box_size=12, border=3)
+    resp.headers['Content-Disposition'] = f'inline; filename="{event_id}-{code}-qr.png"'
+    return resp

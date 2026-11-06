@@ -59,6 +59,18 @@
     </div>
     {% else %}
     <div id="scanner-view" class="w-100 scan-narrow">
+        {% if sessions %}
+        <!-- Session mode (UPG-159): scan people into one agenda session -->
+        <div class="mb-3">
+            <label for="scanMode" class="form-label small fw-bold">Scanning for</label>
+            <select id="scanMode" class="form-select" data-scan-mode>
+                <option value="">Event entry</option>
+                {% for s in sessions %}
+                <option value="{{ s.id }}">Session: {{ s.time }} {{ s.title }}{% if s.room %} ({{ s.room }}){% endif %}{% if s.capacity %} · {{ s.capacity }} seats{% endif %}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
         <div id="reader" class="shadow-lg">
             <div id="cam-placeholder">
                 <i class="fas fa-camera fa-2x mb-3" aria-hidden="true"></i>
@@ -82,6 +94,8 @@
         <div class="bg-white text-dark p-4 rounded-4 shadow-lg attendance-card">
             <h2 class="h4 fw-bold mb-1" id="t_team">Team name</h2>
             <p class="fw-bold mb-1" id="t_status"></p>
+            <a id="t_badge" class="btn btn-outline-primary btn-sm mb-2" target="_blank" rel="noopener" hidden>
+              <i class="fas fa-id-badge me-1" aria-hidden="true"></i>Print badge</a>
             <p class="text-muted border-bottom pb-3 mb-3">Ticket ID: <span id="t_id" class="fw-bold"></span></p>
 
             <!-- Room assignment banner -->
@@ -252,12 +266,18 @@
             if(!rawInput) return;
             let data;
             try {
-                const response = await fetch('/ticket/api/checkin', {
+                // Session mode (UPG-159): the same ticket, recorded at the chosen session
+                const sessionId = document.getElementById('scanMode')?.value || '';
+                const post = (extra) => fetch(sessionId ? '/ticket/api/session_checkin' : '/ticket/api/checkin', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ token: rawInput.trim(), event_id: EVENT_ID, source: 'coordinator scanner' })
+                    body: JSON.stringify(Object.assign({ token: rawInput.trim(), event_id: EVENT_ID,
+                                                         session_id: sessionId, source: 'coordinator scanner' }, extra || {}))
                 });
-                data = await response.json();
+                data = await (await post()).json();
+                if (data.status === 'session_full' && confirm(data.message + '\n\nAdmit anyway?')) {
+                    data = await (await post({ allow_over: true })).json();
+                }
             } catch (err) {
                 playScanSound('error');
                 alert("Network error. Try again.");
@@ -271,10 +291,14 @@
                 document.getElementById('attendance-view').classList.remove('d-none');
 
                 document.getElementById('t_team').innerText = (data.team && data.team !== 'Individual') ? data.team : data.name;
-                document.getElementById('t_status').innerText = data.status === 'success'
+                document.getElementById('t_status').innerText = data.session
+                    ? data.message
+                    : data.status === 'success'
                     ? 'Checked in at ' + (data.checkin_time || '').slice(0, 5)
                     : '' + data.message;
                 document.getElementById('t_id').innerText = data.reg_id;
+                const badge = document.getElementById('t_badge');   // UPG-158
+                if (data.badge_url) { badge.href = data.badge_url; badge.hidden = false; } else { badge.hidden = true; }
                 document.getElementById('submit_reg_id').value = data.reg_id;
 
                 // Show assigned room if available

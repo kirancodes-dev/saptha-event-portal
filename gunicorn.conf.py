@@ -45,6 +45,28 @@ errorlog   = '-'
 loglevel   = os.environ.get('LOG_LEVEL', 'info').lower()
 access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s %(D)sus'
 
+
+# The access log must not record the token in a set-password, reset or
+# cancel link (UPG-152): the request line, path and query are redacted.
+import sys as _sys
+_sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # for log_redact
+try:
+    from gunicorn.glogging import Logger as _GunicornLogger
+
+    from log_redact import redact as _redact
+
+    class RedactingLogger(_GunicornLogger):
+        def atoms(self, resp, req, environ, request_time):
+            atoms = super().atoms(resp, req, environ, request_time)
+            for key in ('r', 'U', 'q'):
+                if key in atoms:
+                    atoms[key] = _redact(atoms[key])
+            return atoms
+
+    logger_class = RedactingLogger
+except ImportError:      # gunicorn not installed (tests, local tools)
+    pass
+
 # ── Process title ─────────────────────────────────────────
 proc_name = 'sapthaevent-web'
 

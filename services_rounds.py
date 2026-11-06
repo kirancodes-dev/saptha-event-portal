@@ -168,23 +168,74 @@ def advance(db, *, event_id: str, event: dict, mode: str, top_n=0, cutoff=None,
         return {**refused, 'message': "No team reaches that mark, so nobody would go through. Nothing changed."}
 
     go_ids = {t['id'] for t in go}
-    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    results = {}
+    for t in teams:
+        if t['id'] in go_ids:
+            results[t['id']] = 'qualified'
+        elif t['score'] is None and not t['present']:
+            results[t['id']] = 'absent'
+        else:
+            results[t['id']] = 'eliminated'   # scored below the mark, or present and unscored
 
     # The event moves first, so a second submit of the same page is refused
     # by the round check above.
     db.collection('events').document(event_id).update({'active_round': nxt, 'scoring_locked': False})
+    advanced, eliminated = _apply(db, teams, results, cur, nxt, actor)
 
+    portal = _notify(event, advanced, eliminated, cur, nxt, db=db, event_id=event_id)
+    note = f" {len(absent)} absent." if absent else ''
+    told = ("Every team sees the result on its hackathon page." if portal
+            else "Every team has been emailed.")
+    return {'ok': True, 'round': nxt, 'advanced': advanced, 'eliminated': eliminated,
+            'message': f"Round {nxt} of {info['total']} started: {len(advanced)} team(s) went through, "
+                       f"{len(eliminated)} didn't.{note} {told}"}
+
+
+def advance_to(db, *, event_id: str, event: dict, go_ids, scores: dict | None = None,
+               expected_round=None, actor: str = '', texts: dict | None = None,
+               event_fields: dict | None = None) -> dict:
+    """Close the current round with a list of teams the organiser chose (the
+    hackathon shortlist, UPG-193): those go through, the rest of the round is
+    eliminated, with round history and the same notices as `advance`. The
+    event gets a round more when it had none left. `scores` is what the
+    history records as each team's score (the ranking the choice was made on).
+    Returns the same dict as `advance`; when `ok` is False nothing changed."""
+    info = round_info(event)
+    cur, nxt = info['current'], info['current'] + 1
+    refused = {'ok': False, 'round': cur, 'advanced': [], 'eliminated': []}
+    if expected_round not in (None, '') and _int(expected_round, -1) != cur:
+        return {**refused, 'message': f"This page was for round {expected_round}, but the event is "
+                                      f"now on round {cur}. Nothing changed; reload to see the latest."}
+    teams = round_teams(db, event_id, event)
+    go_ids = {str(i) for i in go_ids or ()}
+    if not any(t['id'] in go_ids for t in teams):
+        return {**refused, 'message': "Choose at least one team that is still in this round."}
+    results = {t['id']: 'qualified' if t['id'] in go_ids else 'eliminated' for t in teams}
+
+    fields = {'active_round': nxt, 'scoring_locked': False, **(event_fields or {})}
+    if info['total'] < nxt:
+        fields['total_rounds'] = nxt
+    db.collection('events').document(event_id).update(fields)
+    advanced, eliminated = _apply(db, teams, results, cur, nxt, actor, scores=scores or {}, kind='shortlist')
+
+    portal = _notify(event, advanced, eliminated, cur, nxt, db=db, event_id=event_id, texts=texts)
+    told = ("Every team sees the result on its hackathon page." if portal
+            else "Every team has been emailed.")
+    return {'ok': True, 'round': nxt, 'advanced': advanced, 'eliminated': eliminated,
+            'message': f"{len(advanced)} team(s) go through to round {nxt}; {len(eliminated)} didn't. {told}"}
+
+
+def _apply(db, teams, results, cur, nxt, actor, scores=None, kind=''):
+    """Write each team's result: history first, then through or out."""
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
     advanced, eliminated = [], []
     for t in teams:
-        reg = t['reg']
-        if t['id'] in go_ids:
-            result = 'qualified'
-        elif t['score'] is None and not t['present']:
-            result = 'absent'
-        else:
-            result = 'eliminated'   # scored below the mark, or present and unscored
-        entry = {'round': cur, 'score': t['score'], 'judges': t['judges'],
-                 'scores': reg.get('scores') or {}, 'result': result, 'at': now, 'by': actor}
+        reg, result = t['reg'], results[t['id']]
+        entry = {'round': cur, 'score': t['score'] if scores is None else scores.get(t['id']),
+                 'judges': t['judges'], 'scores': reg.get('scores') or {}, 'result': result,
+                 'at': now, 'by': actor}
+        if kind:
+            entry['kind'] = kind
         past = [h for h in (reg.get('round_history') or []) if isinstance(h, dict)]
         update: dict = {'round_history': past + [entry]}
         if result == 'qualified':
@@ -197,19 +248,35 @@ def advance(db, *, event_id: str, event: dict, mode: str, top_n=0, cutoff=None,
             update.update({'is_eliminated': True, 'eliminated_in_round': cur})
             eliminated.append(t)
         db.collection('registrations').document(t['id']).update(update)
-
-    _notify(event, advanced, eliminated, cur, nxt)
-    note = f" {len(absent)} absent." if absent else ''
-    return {'ok': True, 'round': nxt, 'advanced': advanced, 'eliminated': eliminated,
-            'message': f"Round {nxt} of {info['total']} started: {len(advanced)} team(s) went through, "
-                       f"{len(eliminated)} didn't.{note} Every team has been emailed."}
+    return advanced, eliminated
 
 
-def _notify(event, advanced, eliminated, cur, nxt):
-    """One email per person on each team (services_recipients)."""
+def _notify(event, advanced, eliminated, cur, nxt, db=None, event_id='', texts=None):
+    """One email per person on each team (services_recipients); for a
+    portal-only event, a portal notice per person and a line on the
+    hackathon's updates instead (UPG-195). Returns True when no email went.
+    `texts` replaces the portal wording: {'through': (title, message),
+    'out': (title, message), 'update': (title, message)}."""
+    import services_hackathon
+    title = event.get('title', 'Event')
+    if db is not None and not services_hackathon.email_allowed(event, 'round'):
+        link = f"/hackathon/{event_id}"
+        texts = texts or {}
+        through = texts.get('through') or (f"Through to round {nxt}: {title}",
+                                           f"Your team is through to round {nxt}. Check the hackathon page for what's next.")
+        out = texts.get('out') or (f"Round {cur} result: {title}",
+                                   f"Your team didn't go through after round {cur}. Thank you for taking part.")
+        update = texts.get('update') or (f"Round {cur} results are out",
+                                         f"{len(advanced)} team(s) are through to round {nxt}. "
+                                         "Your page shows your team's result.")
+        for t in advanced:
+            services_hackathon.notify(db, {**event, 'id': event_id}, t['reg'], through[0], through[1], link=link)
+        for t in eliminated:
+            services_hackathon.notify(db, {**event, 'id': event_id}, t['reg'], out[0], out[1], link=link)
+        services_hackathon.post_update(db, event_id, event, update[0], update[1], kind='round')
+        return True
     from services_recipients import registration_people
     from utils_email import send_advancement_email, send_round_not_qualified_email
-    title = event.get('title', 'Event')
     for t in advanced:
         for email, name, _ in registration_people(t['reg']):
             try:

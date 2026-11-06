@@ -93,7 +93,9 @@ def test_the_super_admin_assigns_the_two_roles_and_they_land_on_naac(world):
         resp = client.get('/', follow_redirects=False)
         assert resp.status_code == 302 and resp.headers['Location'].endswith('/naac/'), role
         assert client.get('/naac/').status_code == 200
-    assert 'IQAC coordinator' in d['app'].test_client().get('/login').get_data(as_text=True)
+    # The owner took the role off the login menu for now (UPG-204, 2026-11-06);
+    # the logins above post it directly, which the server still accepts
+    assert 'IQAC coordinator' not in d['app'].test_client().get('/login').get_data(as_text=True)
 
 
 # ── Criterion 2 ─────────────────────────────────────────────────────────────

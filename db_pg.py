@@ -255,15 +255,18 @@ def init_db():
 
 
 @contextmanager
-def get_session():
-    """Context manager yielding a SQLAlchemy session with auto-commit/rollback and read-replica routing."""
+def get_session(primary: bool = False):
+    """Context manager yielding a SQLAlchemy session with auto-commit/rollback and read-replica routing.
+
+    A GET request reads from the replica when one is configured; pass
+    primary=True for a write made during a GET (UPG-162's visit counter)."""
     if _SessionLocal is None:
         _build_engine()
 
     use_replica = False
     try:
         from flask import has_request_context, request
-        if has_request_context() and request.method in ('GET', 'HEAD', 'OPTIONS'):
+        if not primary and has_request_context() and request.method in ('GET', 'HEAD', 'OPTIONS'):
             use_replica = True
     except ImportError:
         pass

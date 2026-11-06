@@ -208,6 +208,9 @@ def request_testimonials(db) -> dict:
                     str(reg.get('participant_type') or '').lower(), 'Student')
                 attendees.append((str(reg['lead_email']).lower(), reg.get('lead_name') or 'Participant', role))
         random.shuffle(attendees)
+        import services_hackathon   # a portal-only event emails its organiser only (UPG-195)
+        if not services_hackathon.email_allowed(ev, 'feedback'):
+            attendees = []
         people += [p for p in attendees if p[0] != organiser][:sample_size()]
         base = _base_url().rstrip('/')
         for email, name, role in people:

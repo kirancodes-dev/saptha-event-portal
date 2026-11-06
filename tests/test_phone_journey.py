@@ -78,6 +78,11 @@ def _routes(context, base):
 
 def _login_in_browser(page, base, email, role):
     page.goto(f'{base}/login')
+    # Volunteer, IQAC coordinator and department admin are off the menu
+    # (UPG-204) but the server still accepts them, so for those roles the
+    # test adds the option back and posts the same form
+    if not page.locator(f'#roleSelect option[value="{role}"]').count():
+        page.eval_on_selector('#roleSelect', '(el, r) => el.add(new Option(r, r))', role)
     page.select_option('#roleSelect', role)
     page.fill('#emailInput', email)
     page.fill('#passwordInput', PASSWORD)

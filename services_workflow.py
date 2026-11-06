@@ -345,12 +345,13 @@ class WorkflowEngine:
                         "recipient_name": recipient_name,
                         "event_title": event_title,
                         "date": date_str,
+                        "event_id": str(event_id),   # a portal-only event sends no email (UPG-195)
                     }
                     custom_rule = {
                         "title": f"Cancelled: {event_title}",
                         "message": f"Hello {recipient_name}, the event '{event_title}' scheduled for {date_str} has been cancelled.",
                         "notif_type": "system_alert",
-                        "channels": ["in_app", "email"],
+                        "channels": ["in_app", "email", "push"],   # push for subscribers (UPG-157)
                     }
                     NotificationAutomationEngine.dispatch_trigger(
                         db,

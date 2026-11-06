@@ -1,0 +1,95 @@
+{% extends "base_classic.html" %}
+{#- Host controls for live polls and Q&A (UPG-160). -#}
+{% block title %}Host polls & Q&A — {{ event.title }}{% endblock %}
+{% block page_title %}Polls &amp; Q&amp;A{% endblock %}
+{% block page_sub %}{{ event.title }}{% endblock %}
+{% block page_actions %}
+  <a href="/interact/{{ event.id }}/screen" target="_blank" rel="noopener" class="btn btn-primary"><i class="fas fa-display" aria-hidden="true"></i> Projector view</a>
+  <a href="/interact/{{ event.id }}/host" class="btn btn-secondary"><i class="fas fa-rotate" aria-hidden="true"></i> Refresh</a>
+{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-6">
+    <section class="card mb-4">
+      <div class="card-header"><i class="fas fa-plus" aria-hidden="true"></i> Open a poll</div>
+      <form method="POST" action="/interact/{{ event.id }}/polls" class="p-3">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="form-label" for="poll-q">Question</label>
+        <input id="poll-q" name="question" class="form-control mb-2" maxlength="300" required>
+        <label class="form-label" for="poll-o">Options, one per line (2 to 8)</label>
+        <textarea id="poll-o" name="options" class="form-control mb-2" rows="4" required></textarea>
+        <div class="form-check mb-2">
+          <input class="form-check-input" type="checkbox" name="multiple" id="poll-m">
+          <label class="form-check-label" for="poll-m">People may pick more than one</label>
+        </div>
+        {% if sessions %}
+        <select name="session_id" class="form-select form-select-sm mb-2" aria-label="Session">
+          <option value="">Whole event</option>
+          {% for s in sessions %}<option value="{{ s.id }}">{{ s.time }} {{ s.title }}</option>{% endfor %}
+        </select>
+        {% endif %}
+        <button type="submit" class="btn btn-gold">Open poll</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="card-header"><i class="fas fa-square-poll-vertical" aria-hidden="true"></i> Polls</div>
+      <ul class="list-group list-group-flush">
+        {% for p in polls %}
+        <li class="list-group-item" data-poll="{{ p.id }}">
+          <div class="d-flex justify-content-between gap-2">
+            <strong>{{ p.question }}</strong>
+            <form method="POST" action="/interact/poll/{{ p.id }}/status" class="m-0">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="status" value="{{ 'closed' if p.status == 'open' else 'open' }}">
+              <button class="btn btn-sm {{ 'btn-outline-danger' if p.status == 'open' else 'btn-outline-success' }}">{{ 'Close' if p.status == 'open' else 'Reopen' }}</button>
+            </form>
+          </div>
+          <div class="small text-muted mb-1">{{ p.votes }} answered · {{ p.status }}</div>
+          {% for option in p.options %}
+          <div class="small">{{ option }}: <strong>{{ p.counts[loop.index0] }}</strong></div>
+          {% endfor %}
+        </li>
+        {% else %}
+        <li class="list-group-item text-muted">No polls yet.</li>
+        {% endfor %}
+      </ul>
+    </section>
+  </div>
+
+  <div class="col-lg-6">
+    <section class="card">
+      <div class="card-header justify-content-between">
+        <span><i class="fas fa-circle-question" aria-hidden="true"></i> Questions</span>
+        <form method="POST" action="/interact/{{ event.id }}/settings" class="m-0 d-flex align-items-center gap-2">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="form-check form-switch m-0">
+            <input class="form-check-input" type="checkbox" name="qa_moderated" id="qa-mod" {% if event.qa_moderated %}checked{% endif %}>
+            <label class="form-check-label small" for="qa-mod">Approve before showing</label>
+          </div>
+          <button class="btn btn-sm btn-secondary">Save</button>
+        </form>
+      </div>
+      <ul class="list-group list-group-flush">
+        {% for q in questions %}
+        <li class="list-group-item" data-question="{{ q.id }}">
+          <div>{{ q.text }}</div>
+          <div class="small text-muted mb-1">{{ q.votes }} upvotes · {{ q.status }}</div>
+          <div class="d-flex gap-1 flex-wrap">
+            {% for target, label in [('visible', 'Show'), ('answered', 'Answered'), ('hidden', 'Hide')] if target != q.status %}
+            <form method="POST" action="/interact/question/{{ q.id }}/status" class="m-0">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="status" value="{{ target }}">
+              <button class="btn btn-sm btn-outline-secondary">{{ label }}</button>
+            </form>
+            {% endfor %}
+          </div>
+        </li>
+        {% else %}
+        <li class="list-group-item text-muted">No questions yet.</li>
+        {% endfor %}
+      </ul>
+    </section>
+  </div>
+</div>
+{% endblock %}

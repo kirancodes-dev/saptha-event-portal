@@ -55,6 +55,7 @@ except ImportError:
 
 from config import Config, check_production_settings
 from utils import ROLE_REDIRECTS, log_action  # single source of truth
+from log_redact import redact  # link tokens out of the logs (UPG-152)
 
 # =========================================================
 # WERKZEUG SCRYPT FIX — macOS Python 3.9 uses LibreSSL which
@@ -148,7 +149,7 @@ csrf = CSRFProtect(app)
 @app.errorhandler(CSRFError)
 def handle_csrf_error(e):
     logger.warning("CSRF validation failed: %s path=%s ip=%s",
-                   e.description, request.path, request.remote_addr)
+                   e.description, redact(request.path), request.remote_addr)
     if request.accept_mimetypes.best == 'application/json' or request.is_json:
         return jsonify({'error': 'csrf_validation_failed', 'detail': e.description}), 400
     from flask import flash
@@ -328,6 +329,7 @@ from routes_push           import push_bp           # noqa: E402
 from routes_checkin        import checkin_bp        # noqa: E402
 from routes_spoc           import spoc_bp           # noqa: E402
 from routes_live           import live_bp           # noqa: E402
+from routes_interact       import interact_bp       # noqa: E402  (polls and Q&A, UPG-160)
 from routes_verification   import verification_bp   # noqa: E402
 from routes_matchmaker     import matchmaker_bp     # noqa: E402
 from routes_dynamic_pricing import dynamic_pricing_bp # noqa: E402
@@ -362,6 +364,7 @@ app.register_blueprint(push_bp)
 app.register_blueprint(checkin_bp)
 app.register_blueprint(spoc_bp)
 app.register_blueprint(live_bp)
+app.register_blueprint(interact_bp)
 app.register_blueprint(verification_bp)
 app.register_blueprint(matchmaker_bp)
 app.register_blueprint(dynamic_pricing_bp)
@@ -458,6 +461,9 @@ def inject_auth_features():
         'twofa_available': twofa_available,
         # Help and privacy requests (D-4, UPG-42); unset, pages show no address
         'support_email': (os.environ.get('SUPPORT_EMAIL') or '').strip(),
+        # Browser push opt-in, only once VAPID keys are set (UPG-157)
+        'push_enabled': (push_on := __import__('services_push').configured()),
+        'push_public_key': __import__('services_push').public_key() if push_on else '',
     }
 
 
@@ -900,6 +906,8 @@ def event_details(event_id):
             from services_permission import can
             if not can(session, 'edit_event', event, db=db):
                 return render_template('404.html'), 404
+        import services_share   # the share link the visitor came from (UPG-162)
+        services_share.capture(session, event_id, event, request.args)
         event.setdefault('title',              'Event')
         event.setdefault('description',        '')
         event.setdefault('overview',           '')
@@ -1372,7 +1380,7 @@ def log_request():
     """Log all incoming requests"""
     g.start_time = datetime.datetime.now()
     if request.path not in ['/health', '/health/ready', '/favicon.ico']:
-        logger.info(f"→ {request.method} {request.path} from {request.remote_addr}")
+        logger.info(f"→ {request.method} {redact(request.path)} from {request.remote_addr}")   # no link tokens (UPG-152)
 
 @app.after_request
 def log_response(response):
@@ -1380,7 +1388,7 @@ def log_response(response):
     if hasattr(g, 'start_time'):
         duration = (datetime.datetime.now() - g.start_time).total_seconds()
         if request.path not in ['/health', '/health/ready', '/favicon.ico']:
-            logger.info(f"← {response.status_code} {request.method} {request.path} ({duration:.3f}s)")
+            logger.info(f"← {response.status_code} {request.method} {redact(request.path)} ({duration:.3f}s)")
     return response
 @app.after_request
 def apply_security_headers(response):
@@ -1400,12 +1408,12 @@ def apply_security_headers(response):
 # =========================================================
 @app.errorhandler(404)
 def not_found(e):
-    logger.warning(f"404 Not Found: {request.path}")
+    logger.warning(f"404 Not Found: {redact(request.path)}")
     return render_template('404.html'), 404
 
 @app.errorhandler(429)
 def rate_limited(e):
-    logger.warning(f"429 Rate Limit: {request.remote_addr} on {request.path}")
+    logger.warning(f"429 Rate Limit: {request.remote_addr} on {redact(request.path)}")
     return render_template('429.html'), 429
 
 @app.errorhandler(500)

@@ -5,6 +5,8 @@ the confirmation (when listed and when joining by code), the day-before ticket
 through the cron endpoint, and the change and cancellation notices, each once,
 whatever the case of their email.
 """
+import pytest
+
 from tests import test_notices
 from tests.test_integration_flow import _create_event, _login, _unique, _user
 from tests.test_notices import CRON, _day, _to
@@ -12,6 +14,14 @@ from tests.test_notices import CRON, _day, _to
 site = test_notices.site
 brevo = test_notices.brevo
 offline = test_notices.offline
+
+
+@pytest.fixture(autouse=True)
+def _team_members_notified(monkeypatch):
+    """Since UPG-152 only the lead is emailed unless NOTIFY_TEAM_MEMBERS is on;
+    these tests are about what members get when it is."""
+    import app as app_module
+    monkeypatch.setitem(app_module.app.config, 'NOTIFY_TEAM_MEMBERS', True)
 
 
 def _team(d, date):

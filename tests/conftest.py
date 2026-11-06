@@ -24,6 +24,8 @@ OUTBOUND_CREDENTIALS = (
     'GEMINI_API_KEY', 'GOOGLE_API_KEY',
     'RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'STRIPE_SECRET_KEY',
     'VAPID_PRIVATE_KEY', 'VAPID_PUBLIC_KEY',
+    'APPLE_PASS_TYPE_ID', 'APPLE_TEAM_ID', 'APPLE_PASS_CERT', 'APPLE_PASS_KEY', 'APPLE_PASS_KEY_PASSWORD',
+    'APPLE_WWDR_CERT', 'GOOGLE_WALLET_ISSUER_ID', 'GOOGLE_WALLET_SERVICE_ACCOUNT',
     'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_STORAGE_BUCKET_NAME', 'GCS_BUCKET_NAME',
     'STORAGE_TYPE', 'SUPABASE_URL', 'SUPABASE_KEY', 'SENTRY_DSN',
     'OAUTH_GOOGLE_CLIENT_ID', 'OAUTH_GOOGLE_CLIENT_SECRET',
@@ -253,6 +255,23 @@ def _fresh_login_throttle():
     if throttle is not None and app_module is not None:
         with app_module.app.app_context():
             throttle.reset_all()
+    yield
+
+
+@pytest.fixture(autouse=True)
+def _fresh_email_quota():
+    """The database outlives each test, so one test's emails would count
+    towards the next test's daily limit (UPG-152). Start each with none."""
+    if sys.modules.get('app') is not None and sys.modules.get('models_pg') is not None:
+        try:
+            from sqlalchemy.orm import Session
+
+            from db_pg import get_engine
+            from models_pg import EmailQuota
+            with Session(get_engine()) as s, s.begin():
+                s.query(EmailQuota).delete()
+        except Exception:   # a test without the SQL database
+            pass
     yield
 
 

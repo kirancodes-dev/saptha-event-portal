@@ -66,6 +66,7 @@ h1,h2,h3,h4,h5,h6{font-family: var(--font-heading);}
                 &nbsp;·&nbsp; {{ team.members|length }} members
                 {% endif %}
               </div>
+              {% if is_hackathon %}<a class="small" href="/hackathon/{{ event.id }}/review/{{ team.id }}" target="_blank" rel="noopener"><i class="fas fa-folder-open me-1" aria-hidden="true"></i>View submission</a>{% endif %}
               {% if team.my_score and team.my_score.remarks %}
               <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;font-style:italic;">
                 "{{ team.my_score.remarks }}"

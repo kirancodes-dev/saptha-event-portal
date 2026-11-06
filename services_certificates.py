@@ -642,6 +642,9 @@ def deliver(cert: dict) -> None:
     """Queue the certificate's email (sent once; the outbox retries a failure)."""
     if not cert.get('email'):
         return
+    import services_hackathon   # a portal-only event: the certificate is in the portal (UPG-195)
+    if not services_hackathon.email_allowed_for(cert.get('event_id'), 'certificate'):
+        return
     try:
         from tasks.email_tasks import send_certificate_email
         send_certificate_email.delay(cert['id'])

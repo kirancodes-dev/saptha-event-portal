@@ -499,6 +499,13 @@ def _send(to_email, subject: str, html: str,
       2. RESEND_API_KEY → Resend HTTP API (free but verified emails only)
       3. neither        → Gmail SMTP      (blocked on Railway)
     """
+    # The daily limit (UPG-152): every recipient counts; at the limit nothing is sent
+    import services_email_quota as quota
+    count = 1 if isinstance(to_email, str) else len(to_email or [])
+    counted = bool(mail_provider())
+    if counted and not quota.reserve(count):
+        return False
+
     ok = False
     if os.environ.get('BREVO_API_KEY'):
         ok = _send_via_brevo(to_email, subject, html, attachments)
@@ -511,6 +518,8 @@ def _send(to_email, subject: str, html: str,
         to_list = [to_email] if isinstance(to_email, str) else to_email
         for email in to_list:
             _update_delivery_status(email, 'Sent', reg_id)
+    elif counted:
+        quota.release(count)
 
     return ok
 
@@ -531,12 +540,37 @@ def _cancel_block(cancel_url: str) -> str:
         </p>"""
 
 
+def _instructions_block(instructions: dict | None) -> str:
+    """A portal-mode hackathon's registration email (UPG-195): join the
+    WhatsApp group, and check the portal, where every update appears."""
+    if not instructions:
+        return ''
+    portal = instructions.get('portal_url') or ''
+    group = instructions.get('group_link') or ''
+    wa = (f"""<li style="margin-bottom:8px;"><strong>Join the WhatsApp group:</strong>
+              <a href="{_e(group)}" style="color:#15803d;font-weight:700;">{_e(group)}</a></li>""" if group else '')
+    return f"""
+        <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:16px;margin:16px 0;">
+          <p style="color:#92400e;font-size:14px;margin:0 0 10px;font-weight:700;">📌 What to do next</p>
+          <ol style="color:#475569;font-size:14px;margin:0;padding-left:18px;line-height:1.6;">
+            {wa}
+            <li style="margin-bottom:8px;"><strong>Check your hackathon page regularly:</strong>
+              <a href="{_e(portal)}" style="color:#1a2557;font-weight:700;">{_e(portal)}</a><br>
+              Problem statements, the submission form, deadlines, shortlists and all
+              news appear there. <strong>We won't email them.</strong></li>
+            <li>Log in as <strong>Student</strong> with this email. Only the team lead submits.</li>
+          </ol>
+          <p style="color:#64748b;font-size:12px;margin:10px 0 0;">The only other emails you'll get are a
+             password reset if you ask for one, and the final result, to the team lead.</p>
+        </div>"""
+
+
 def send_registration_confirmed_email(to_email: str, name: str, event_title: str,
                                        event_date: str = '', venue: str = '',
                                        is_new_user: bool = False,
                                        raw_password: str | None = None,
                                        added_by: str = '', team_name: str = '',
-                                       cancel_url: str = '') -> bool:
+                                       cancel_url: str = '', instructions: dict | None = None) -> bool:
     """
     Sent immediately at registration. Simple confirmation — no QR, no ticket ID.
     The actual entry ticket (with QR) is sent 1 day before the event.
@@ -565,6 +599,11 @@ def send_registration_confirmed_email(to_email: str, name: str, event_title: str
         details += f"<tr><td style='color:#64748b;padding:4px 0;width:30%;'>Date</td><td style='font-weight:600;color:#1a2557;'>📅 {_e(event_date)}</td></tr>"
     if venue:
         details += f"<tr><td style='color:#64748b;padding:4px 0;'>Venue</td><td style='font-weight:600;color:#1a2557;'>📍 {_e(venue)}</td></tr>"
+    # A portal-only hackathon's next steps replace the ticket line (UPG-195)
+    next_steps = _instructions_block(instructions) or """<p style="color:#475569;font-size:13px;">
+          Your entry QR ticket will be emailed to you <strong>1 day before the event</strong>.
+          Keep an eye on your inbox!
+        </p>"""
     html = _html_wrapper(f"""
         <p style="color:#475569;">Dear <strong>{_e(name)}</strong>,</p>
         <p style="color:#475569;">{
@@ -580,10 +619,7 @@ def send_registration_confirmed_email(to_email: str, name: str, event_title: str
           </table>
         </div>
         {credentials_block}
-        <p style="color:#475569;font-size:13px;">
-          Your entry QR ticket will be emailed to you <strong>1 day before the event</strong>.
-          Keep an eye on your inbox!
-        </p>
+        {next_steps}
         {_cancel_block(cancel_url)}
     """, f"Registration Confirmed — {_e(event_title)}")
 
@@ -734,12 +770,22 @@ def send_credentials_email(to_email: str, name: str, role: str,
     return _send(to_email, f"🔐 Your SapthaEvent Login — {role}", html)
 
 
+def _for_how_long(seconds: int) -> str:
+    """'15 minutes', '48 hours': how long an emailed link works."""
+    if seconds % 3600 == 0:
+        hours = seconds // 3600
+        return f"{hours} hour{'' if hours == 1 else 's'}"
+    minutes = max(1, seconds // 60)
+    return f"{minutes} minute{'' if minutes == 1 else 's'}"
+
+
 def send_password_reset_email(to_email: str, name: str, reset_url: str) -> bool:
+    from services_accounts import RESET_MAX_AGE
     html = _html_wrapper(f"""
         <p style="color:#475569;">Dear <strong>{_e(name or 'User')}</strong>,</p>
         <p style="color:#475569;">We received a request to reset your
            SapthaEvent password. Click the button below to set a new one.
-           This link expires in <strong>1 hour</strong>.</p>
+           This link works once and expires in <strong>{_for_how_long(RESET_MAX_AGE)}</strong>.</p>
         <p style="text-align:center;margin:24px 0;">
           <a href="{_e(reset_url)}"
              style="background:#1a2557;color:#fff;padding:12px 32px;
@@ -761,16 +807,39 @@ def send_password_reset_email(to_email: str, name: str, reset_url: str) -> bool:
     return _send(to_email, "🔐 Reset your SapthaEvent password", html)
 
 
+def _registration_block(registration: dict) -> str:
+    """The registration a new account's single email confirms (UPG-152)."""
+    rows = ''
+    for label, key in (('Event', 'event_title'), ('Date', 'event_date'), ('Venue', 'venue'),
+                       ('Team', 'team_name'), ('Registration ID', 'reg_id')):
+        if registration.get(key):
+            rows += (f"<tr><td style='color:#64748b;padding:4px 0;width:35%;'>{label}</td>"
+                     f"<td style='font-weight:600;color:#1a2557;'>{_e(registration[key])}</td></tr>")
+    heading = registration.get('heading') or 'Registration confirmed'
+    return f"""
+        <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:16px;margin:16px 0;">
+          <p style="color:#166534;font-size:13px;margin:0 0 10px;font-weight:700;">✅ {_e(heading)}</p>
+          <table style="width:100%;font-size:14px;border-collapse:collapse;">{rows}</table>
+        </div>"""
+
+
 def send_set_password_email(to_email: str, name: str, set_password_url: str,
-                            reason: str = '') -> bool:
+                            reason: str = '', registration: dict | None = None) -> bool:
     """New account (a registration, a walk-in, or staff someone appointed):
-    one-time link to choose a password. No password is ever emailed (UPG-33)."""
+    one-time link to choose a password. No password is ever emailed (UPG-33).
+    With `registration`, this is the only email a new registrant gets: it
+    confirms the registration too (UPG-152)."""
+    from services_accounts import SET_PASSWORD_MAX_AGE
     reason = reason or 'when you registered for an event'
+    title = (registration or {}).get('event_title', '')
     html = _html_wrapper(f"""
         <p style="color:#475569;">Dear <strong>{_e(name or 'User')}</strong>,</p>
+        {_registration_block(registration) if registration else ''}
+        {_instructions_block((registration or {}).get('instructions'))}
         <p style="color:#475569;">A SapthaEvent account was created for this
-           email {_e(reason)}. Choose a password to open your dashboard. This link
-           works once and expires in <strong>3 days</strong>.</p>
+           email {_e(reason)}. Choose a password, then log in with this email
+           and that password. This link works once and expires in
+           <strong>{_for_how_long(SET_PASSWORD_MAX_AGE)}</strong>.</p>
         <p style="text-align:center;margin:24px 0;">
           <a href="{_e(set_password_url)}"
              style="background:#1a2557;color:#fff;padding:12px 32px;
@@ -789,7 +858,18 @@ def send_set_password_email(to_email: str, name: str, set_password_url: str,
         </p>
     """, "Set Your Password")
     _log_link_without_mail('set-password', to_email, set_password_url)
-    return _send(to_email, "🔐 Set your SapthaEvent password", html)
+    subject = "🔐 Set your SapthaEvent password"
+    atts = None
+    if registration:
+        subject = f"Registration Confirmed — {title}" if title else subject
+        if registration.get('event_date'):
+            try:
+                ics = generate_ics_content(title, registration['event_date'], registration.get('venue', ''))
+                atts = [{'filename': 'invite.ics', 'name': 'invite.ics',
+                         'content': base64.b64encode(ics).decode(), 'data': ics}]
+            except Exception as exc:
+                logger.warning("Failed to create the calendar invite for a registration email: %s", exc)
+    return _send(to_email, subject, html, attachments=atts)
 
 
 def send_payment_receipt_email(to_email: str, name: str, event_title: str, amount,
@@ -863,6 +943,31 @@ def send_result_email(to_email: str, name: str, event_title: str,
            Your certificate is in a separate email.</p>
     """, f"🏆 Results — {_e(event_title)}")
     return _send(to_email, f"🏆 Results — {event_title}", html)
+
+
+def send_hackathon_result_email(to_email: str, name: str, event_title: str, team_name: str,
+                                result: str, rank=None, score=None, portal_url: str = '') -> bool:
+    """The one result email a hackathon team's lead gets (UPG-194): the
+    team's outcome and a link to the hackathon page, where the winners and
+    certificates are."""
+    rank_line = f"Rank {_e(rank)}" + (f" · score {_e(score)}" if score is not None else '') if rank else ''
+    link = (f'<p style="text-align:center;margin:20px 0;"><a href="{_e(portal_url)}" '
+            'style="background:#1a2557;color:#fff;padding:12px 22px;border-radius:8px;'
+            'text-decoration:none;font-weight:700;">Open the hackathon page</a></p>') if portal_url else ''
+    html = _html_wrapper(f"""
+        <p style="color:#475569;">Dear <strong>{_e(name)}</strong>,</p>
+        <p style="color:#475569;">The results of <strong>{_e(event_title)}</strong> are out.</p>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;
+                    padding:20px;text-align:center;margin:16px 0;">
+          <p style="color:#64748b;margin:0 0 4px;">Team {_e(team_name)}</p>
+          <p style="font-size:24px;font-weight:800;color:#1a2557;margin:0;">{_e(result)}</p>
+          {f'<p style="color:#475569;margin:6px 0 0;">{rank_line}</p>' if rank_line else ''}
+        </div>
+        <p style="color:#475569;">The winners, your team's certificates and the rest of the
+           results are on the hackathon page. Please share this with your team.</p>
+        {link}
+    """, f"Results — {_e(event_title)}")
+    return _send(to_email, f"Results — {event_title}", html)
 
 
 def send_email_notification(to_email: str, subject: str, message: str,

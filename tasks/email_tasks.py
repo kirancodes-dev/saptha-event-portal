@@ -132,13 +132,13 @@ def ticket_qr_png(reg_id: str) -> bytes | None:
     try:
         import base64
         from models import db
-        from routes_ticket import _base_url, generate_ticket_token
+        from routes_ticket import _base_url, ticket_token_for
         from utils_qr import generate_qr_base64
         doc = db.collection('registrations').document(reg_id).get()
         reg = (doc.to_dict() or {}) if doc.exists else {}
         if not reg:
             return None
-        token = generate_ticket_token(reg_id, reg.get('event_id', ''), reg.get('lead_name', ''))
+        token = ticket_token_for(reg_id, reg)
         return base64.b64decode(generate_qr_base64(f"{_base_url()}/ticket/verify/{token}"))
     except Exception as exc:
         logger.warning("ticket QR for %s failed: %s", reg_id, exc)

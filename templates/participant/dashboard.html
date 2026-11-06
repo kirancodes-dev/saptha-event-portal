@@ -317,6 +317,9 @@
           {% endif %}
 
           <div class="d-flex flex-wrap gap-2 pt-2 border-top">
+            {% if reg.hackathon_page %}
+            <a href="/hackathon/{{ reg.event_id }}" class="btn btn-gold btn-sm" data-hackathon-page><i class="fas fa-code" aria-hidden="true"></i> Hackathon page</a>
+            {% endif %}
             <a href="/ticket/{{ reg.id }}" class="btn btn-primary btn-sm"><i class="fas fa-qrcode" aria-hidden="true"></i> View ticket</a>
             <a href="/participant/badge/{{ reg.id }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-id-badge" aria-hidden="true"></i> Badge</a>
             <a href="/event/{{ reg.event_id }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-info-circle" aria-hidden="true"></i> Event info</a>

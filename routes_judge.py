@@ -176,10 +176,12 @@ def event_teams(event_id):
         teams.append(d)
 
     teams.sort(key=lambda x: x.get('team_name', ''))
+    import services_hackathon   # a link to each team's submission (UPG-194)
     return render_template('judge/teams.html',
                             event=event, teams=teams,
                             judge_email=judge_email,
-                            open_hall=open_hall)
+                            open_hall=open_hall,
+                            is_hackathon=services_hackathon.has_form(event))
 
 
 # =========================================================

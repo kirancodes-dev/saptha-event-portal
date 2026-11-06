@@ -401,6 +401,12 @@
                                 <div class="value">{{ reg.get('team_name', 'Individual') }}
                                     {% if reg.get('team_code') %}<a href="/teams/{{ reg.get('reg_id') }}" style="font-size:12px;">Team page</a>{% endif %}</div>
                             </div>
+                            {% if event.get('transfers_allowed') and (reg.get('lead_email') or '')|lower == (session.get('user_id') or '')|lower
+                                  and (reg.get('attendance') or '')|lower != 'present' %}
+                            {#- Hand the ticket to someone else (UPG-161) -#}
+                            <div class="info-item"><div class="label">Can't go?</div><div class="value"><a class="btn btn-outline-secondary btn-sm" href="/participant/transfer/{{ reg_id }}" data-transfer-link>
+                                <i class="fas fa-right-left me-1" aria-hidden="true"></i> Transfer ticket</a></div></div>
+                            {% endif %}
                             <div class="info-item">
                                 <div class="label">Members</div>
                                 <div class="value">{{ reg.get('member_count', 1) }} Person{{ 's' if reg.get('member_count', 1) > 1 else '' }}</div>
@@ -447,6 +453,29 @@
                                      alt="Ticket QR code for {{ reg.get('reg_id') }}">
                             </div>
                             <div class="ticket-id">{{ reg.get('reg_id') or reg.get('id') or '—' }}</div>
+                            {% if wallet and (wallet.apple or wallet.google) %}
+                            <div class="wallet-buttons d-flex flex-wrap justify-content-center gap-2 mt-3" data-wallet>
+                                {% if wallet.apple %}
+                                <a class="btn btn-dark btn-sm" href="/ticket/{{ reg_id }}/wallet/apple.pkpass" data-wallet-apple>
+                                    <i class="fab fa-apple me-1" aria-hidden="true"></i> Add to Apple Wallet</a>
+                                {% endif %}
+                                {% if wallet.google %}
+                                <a class="btn btn-outline-dark btn-sm" href="/ticket/{{ reg_id }}/wallet/google" data-wallet-google>
+                                    <i class="fab fa-google me-1" aria-hidden="true"></i> Save to Google Wallet</a>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                            {% if (reg.get('attendance') or '')|lower == 'present' and reg.get('event_id') %}
+                            {#- At the event: live polls and questions (UPG-160), and the personal agenda (UPG-159) -#}
+                            <div class="d-flex flex-wrap justify-content-center gap-2 mt-3" data-live-links>
+                                <a class="btn btn-primary btn-sm" href="/interact/{{ reg.get('event_id') }}">
+                                    <i class="fas fa-square-poll-vertical me-1" aria-hidden="true"></i> Polls &amp; questions</a>
+                                {% if event.get('agenda') %}
+                                <a class="btn btn-outline-primary btn-sm" href="/participant/agenda/{{ reg.get('event_id') }}">
+                                    <i class="far fa-star me-1" aria-hidden="true"></i> My agenda</a>
+                                {% endif %}
+                            </div>
+                            {% endif %}
                         </div>
                         {% else %}
                         <div style="text-align:center;padding:20px 0;">

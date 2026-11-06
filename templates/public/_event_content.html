@@ -143,12 +143,17 @@
                 {% for item in event.agenda %}
                 <div class="agenda-item">
                     <span class="agenda-dot" aria-hidden="true"></span>
-                    <div class="agenda-time">{{ item.time }}</div>
+                    <div class="agenda-time">{{ item.time }}{% if item.end %}–{{ item.end }}{% endif %}</div>
                     <div class="agenda-name">{{ item.title }}</div>
+                    {% if item.room %}<div class="agenda-desc"><i class="fas fa-door-open" aria-hidden="true"></i> {{ item.room }}</div>{% endif %}
                     {% if item.desc %}<div class="agenda-desc">{{ item.desc }}</div>{% endif %}
                 </div>
                 {% endfor %}
             </div>
+            {% if event.id and event.agenda | selectattr('id') | list %}
+            <a href="/participant/agenda/{{ event.id }}" class="btn btn-outline-primary btn-sm mt-2">
+                <i class="far fa-star" aria-hidden="true"></i> Build my agenda</a>
+            {% endif %}
         </section>
         {% endif %}
 

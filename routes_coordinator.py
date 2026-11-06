@@ -147,6 +147,12 @@ def view_registrations(event_id):
         from utils_pagination import paginate_items
         page = paginate_items(registrations, search_fields=(
             'lead_name', 'name', 'lead_email', 'student_email', 'usn', 'team_name', 'lead_phone'))
+        # Each lead's login email, for helping someone told to contact the organizer (UPG-152)
+        from services_accounts import login_status
+        for reg in page.items:
+            lead = str(reg.get('lead_email') or reg.get('student_email') or '').strip().lower()
+            doc = db.collection('users').document(lead).get() if lead else None
+            reg['login'] = login_status((doc.to_dict() or {}) if doc is not None and doc.exists else None)
         return render_template('coordinator/registrations.html',
             event=event, registrations=page.items, page=page, total=len(registrations))
     except Exception as exc:
@@ -154,6 +160,47 @@ def view_registrations(event_id):
             abort(403)
         flash(f"Error loading registrations: {exc}", "danger")
         return redirect('/coordinator/dashboard')
+
+
+@coord_bp.route('/registrations/<event_id>/login_link', methods=['POST'])
+@login_required
+@role_required(COORD_ROLES)
+def send_login_link(event_id):
+    """The organizer emails a registrant's lead a new one-time set-password
+    link (48 hours): the help behind "contact the hackathon organizer"
+    (UPG-152). Counts against the daily email limit; participant accounts
+    only."""
+    from flask import abort
+    from services_accounts import email_login_link, login_status
+    from services_permission import can
+    event_doc = db.collection('events').document(event_id).get()
+    if not event_doc.exists:
+        abort(404)
+    event = dict(event_doc.to_dict() or {}, id=event_id)
+    if not can(session, 'manage_registrations', event, db=db):
+        abort(403)
+    back = f'/coordinator/registrations/{event_id}'
+    reg_doc = db.collection('registrations').document((request.form.get('reg_id') or '').strip()).get()
+    reg = (reg_doc.to_dict() or {}) if reg_doc.exists else {}
+    if str(reg.get('event_id') or '') != str(event_id):
+        flash("That registration isn't for this event.", "danger")
+        return redirect(back)
+    lead = str(reg.get('lead_email') or reg.get('student_email') or '').strip().lower()
+    user_doc = db.collection('users').document(lead).get() if lead else None
+    user = (user_doc.to_dict() or {}) if user_doc is not None and user_doc.exists else None
+    if not login_status(user)['can_send']:
+        flash("A password link can be sent only to a participant's account.", "warning")
+        return redirect(back)
+    status = email_login_link(db, lead, (user or {}).get('name', ''), 'set_password',
+                              reason="earlier, and the event's organizer has sent you a new link",
+                              by=session.get('user_id', ''))
+    if status == 'sent':
+        flash(f"✅ A one-time password link (valid 48 hours) was emailed to {lead}.", "success")
+    elif status == 'limit':
+        flash("Today's email limit is reached, so nothing was sent. Try again tomorrow.", "danger")
+    else:
+        flash(f"The email to {lead} couldn't be sent. Check the mail settings and try again.", "danger")
+    return redirect(back)
 
 
 # 3. CREATE EVENT: retired (UPG-78). This used to save a live event straight
@@ -337,9 +384,14 @@ def trigger_reminders(event_id):
             body = (f"ROUND {round_num} ALERT\n\nHello {lead_name},\n\n"
                     f"You are in Round {round_num} of '{event_data['title']}'.\n"
                     f"Room: {room}\nJudge: {judge}\n\nBest of luck!")
-            send_broadcast_email([lead_email], f"Round {round_num} Details",
-                                  body, event_data['title'])
-            email_count += 1
+            import services_hackathon
+            if services_hackathon.email_allowed(event_data, 'room'):
+                send_broadcast_email([lead_email], f"Round {round_num} Details",
+                                      body, event_data['title'])
+                email_count += 1
+            else:   # a portal notice instead (UPG-195)
+                services_hackathon.notify(db, {**event_data, 'id': event_id}, d, f"Round {round_num} details",
+                                          body, link=f"/hackathon/{event_id}")
             if phone and _wa(send_room_assignment_whatsapp, phone, lead_name,
                              event_data['title'], round_num, room, judge):
                 wa_count += 1
@@ -396,7 +448,13 @@ def broadcast_message(event_id):
         email_list  = list({r.to_dict().get('lead_email') for r in regs
                             if r.to_dict().get('lead_email')})
         phone_list  = list({_phone(r.to_dict()) for r in regs if _phone(r.to_dict())})
-        send_broadcast_email(email_list, subject, message, event_title)
+        import services_hackathon
+        event_data = event_doc.to_dict() or {}
+        if services_hackathon.email_allowed(event_data, 'broadcast'):
+            send_broadcast_email(email_list, subject, message, event_title)
+        else:   # an update on the hackathon page instead (UPG-195)
+            services_hackathon.post_update(db, event_id, event_data, subject, message, kind='announcement',
+                                           by=session.get('user_id', ''))
         wa_sent = 0
         if _WA:
             try:
@@ -439,14 +497,23 @@ def publish_results(event_id):
             })
 
         winners = [w for w in leaderboard if w['rank'] <= 3]
+        import services_hackathon
+        portal = services_hackathon.portal_only(event_data)   # one result email per team lead (UPG-194)
         for winner in winners:
-            send_result_email(str(winner['email']), str(winner['lead_name']), event_title, winner['rank'], winner['score'])
+            if not portal:
+                send_result_email(str(winner['email']), str(winner['lead_name']), event_title, winner['rank'], winner['score'])
             if winner.get('phone'):
                 _wa(send_result_whatsapp, winner['phone'], winner['lead_name'],
                     event_title, winner['rank'], winner['score'])
 
         event_ref.update({'status': 'completed', 'winners': winners, 'results_published': True,   # as the SPOC's (UPG-139)
                           'completed_at': datetime.datetime.now(datetime.timezone.utc)})
+        from routes_spoc import _push_results   # results by push too (UPG-157)
+        _push_results(event_id)
+        if portal:
+            import services_hackathon_eval
+            flash(services_hackathon_eval.publish_results(
+                db, event_id, {**event_data, 'id': event_id}, session.get('user_id', ''))['message'], 'info')
 
         # Kick off AI summaries in background (best-effort — won't block publish)
         try:
@@ -487,7 +554,8 @@ def export_registrations(event_id):
     import services_export
     from routes_spoc import _export_name
     event = _event_or_abort(event_id, 'export_data')
-    return Response(services_export.to_csv(services_export.registration_rows(db, event_id)), mimetype='text/csv',
+    return Response(services_export.to_csv(services_export.registration_rows(db, event_id),
+                                            services_export.registration_columns(db, event_id)), mimetype='text/csv',
                     headers={"Content-Disposition": f"attachment; filename={_export_name(event, 'Registrations.csv')}"})
 
 
@@ -574,7 +642,9 @@ def process_walkin():
         except Exception:
             qr_bytes = None
 
-        send_ticket_email(email, name, event_title, reg_id, qr_bytes=qr_bytes or b'')
+        import services_hackathon   # no ticket email for a portal-only event (UPG-195)
+        if services_hackathon.email_allowed(event_doc, 'ticket'):
+            send_ticket_email(email, name, event_title, reg_id, qr_bytes=qr_bytes or b'')
         if is_new:
             send_set_password_link(db, email, name,
                                    reason=f"when you registered at the desk for {event_title}")
@@ -642,6 +712,7 @@ def scanner_selector():
 @login_required
 @role_required(['EventCoordinator', 'Volunteer', 'SuperAdmin', 'Super Admin'])   # volunteers scan where assigned (UPG-120)
 def scan_page(event_id):
+    import services_sessions
     doc = db.collection('events').document(event_id).get()
     if not doc.exists:
         return redirect('/coordinator/scanner')
@@ -661,7 +732,8 @@ def scan_page(event_id):
                             event_title=d.get('title'),
                             event_date=event_date_str,
                             today=today_str,
-                            scanning_open=scanning_open)
+                            scanning_open=scanning_open,
+                            sessions=services_sessions.sessions_for(d))   # session mode (UPG-159)
 
 
 @coord_bp.route('/scan-hud/<event_id>')

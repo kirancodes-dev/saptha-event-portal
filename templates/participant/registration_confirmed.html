@@ -41,12 +41,19 @@
 
   {# New account: the set-password link was emailed (no password is ever shown) #}
   {% if is_new_user %}
-  <div class="callout callout--warning text-start mt-3 mb-0">
+  <div class="callout callout--warning text-start mt-3 mb-0" data-login-email="{{ login_email or 'sent' }}">
     <strong><i class="fas fa-envelope" aria-hidden="true"></i> Set your password</strong>
     <div class="d-flex justify-content-between gap-2 mt-2 small"><span>Email</span><span class="fw-bold font-monospace" id="cred-email">{{ user_email }}</span></div>
-    <div class="small mt-2">We've emailed you a one-time link to set your password. Use it to open your dashboard and ticket.</div>
+    {% if login_email in ('limit', 'failed') %}
+    {#- UPG-152: today's email limit was reached, or the mail provider failed -#}
+    <div class="small mt-2" role="alert">We could not send your password-setup email. Please contact the hackathon organizer for assistance; your registration is saved.</div>
+    {% else %}
+    <div class="small mt-2">We've emailed you a one-time link to set your password; it expires in 48 hours. After that, log in with this email and your new password to open your dashboard and ticket.</div>
+    {% endif %}
   </div>
   {% endif %}
+
+  {% include 'includes/push_optin.html' %}
 
   <div class="status-actions">
     <a href="/participant/dashboard" class="btn btn-primary"><i class="fas fa-tachometer-alt" aria-hidden="true"></i> Go to my dashboard</a>

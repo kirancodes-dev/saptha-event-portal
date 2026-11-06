@@ -53,8 +53,8 @@ db = DynamicDBProxy()
 from utils import (login_required, role_required, log_action, safe_int, record_form_submission,
                    create_registration, generate_reg_id, AlreadyRegistered)
 from utils_email import send_registration_confirmed_email
-from services_accounts import (cancel_url_for, create_unverified_account, load_cancel_token, resolve_registrant,
-                               send_set_password_link)
+from services_accounts import (REGISTRATION_EMAIL_NOT_SENT, cancel_url_for, create_unverified_account,
+                               email_login_link, load_cancel_token, resolve_registrant)
 
 from extensions import limiter
 
@@ -246,6 +246,18 @@ def registration_schema(event_id: str, event: dict) -> dict:
     schema = _get_form(event_id) or _simple_schema_fallback(is_team=team_limits(event)[1] > 1)
     schema['fields'] = schema['fields'] + team_fields(event, {f['id'] for f in schema['fields']})
     return schema
+
+
+def _email_new_account(email: str, name: str, reason: str = '', registration=None) -> str:
+    """A new account's one email: the one-time set-password link, with the
+    registration's confirmation when given (UPG-152). Returns 'sent', 'limit'
+    or 'failed', and tells the visitor what happened."""
+    status = email_login_link(db, email, name, 'set_password', reason, registration)
+    if status == 'sent':
+        flash("🆕 We've emailed you a link to set your password. It works once, for 48 hours.", "info")
+    else:   # today's email limit is reached, or the mail provider failed
+        flash(REGISTRATION_EMAIL_NOT_SENT, "warning")
+    return status
 
 
 def submitted_members(form, lead_email: str, hi: int):
@@ -546,6 +558,9 @@ def registration_page(event_id):
     if registration_closed(event):
         return render_template('public/registration_closed.html', event=event)
 
+    import services_share   # the share link the visitor came from, kept on the form (UPG-162)
+    share_src = services_share.capture(session, event_id, event, request.args)
+
     # Capacity check
     max_cap = safe_int((event.get('limits') or {}).get('max_participants', 0)) or safe_int(event.get('capacity', 0))
     is_waitlist = False
@@ -594,7 +609,17 @@ def registration_page(event_id):
         values=state.get('values') or {},
         field_errors=state.get('errors') or {},
         submission_id=uuid.uuid4().hex,   # one registration per form, however often it's sent
+        ticket_types=_ticket_types_offered(event, event_id),   # UPG-155
+        share_src=share_src,
     )
+
+
+def _ticket_types_offered(event, event_id):
+    """The ticket types the form lists (UPG-155); [] for an event without them."""
+    import services_ticket_types as tt
+    if not tt.types_for(event):
+        return []
+    return tt.offered(event, event_id)
 
 
 # =========================================================
@@ -657,6 +682,13 @@ def submit_form(event_id):
                 field_errors.append(('institution', 'Please give your institution.'))
         if ptype not in NEEDS_AFFILIATION:
             designation = institution = ''
+        # The ticket type: on sale today, for this participant type, a seat
+        # left (UPG-155). Events without ticket types skip this.
+        import services_ticket_types as tt
+        ticket_id = (request.form.get('ticket_type') or '').strip()
+        ticket, ticket_error = tt.check_choice(event_data, event_id, ticket_id, ptype)
+        if ticket_error:
+            field_errors.append(('ticket_type', ticket_error))
         if field_errors:
             for _, err in field_errors:
                 flash(err, 'danger')
@@ -740,10 +772,11 @@ def submit_form(event_id):
             # A set-password link, never a password (UPG-33); faculty and external
             # participants keep the participant role and their own type (UPG-12)
             created = create_unverified_account(db, email, full_name, phone, participant_type=ptype,
-                                                designation=designation, institution=institution)
-            if created:   # else another tab made the account a moment ago and sent the link (UPG-115)
-                send_set_password_link(db, email, full_name)
-                flash("🆕 We've emailed you a link to set your password.", "info")
+                                                designation=designation, institution=institution,
+                                                from_registration=True)
+            # The link goes in the registration's one email, sent below once
+            # the outcome is known (UPG-152); if not created, another tab made
+            # the account a moment ago and sends it (UPG-115)
             is_new_user = created
         elif session_email:
             # An existing account takes the type the first time it's given (UPG-12);
@@ -781,6 +814,12 @@ def submit_form(event_id):
             'designation':     designation,
             'institution':     institution,
         }
+        if ticket is not None:   # UPG-155
+            reg_data.update(ticket_type_id=ticket['id'], ticket_type_name=ticket['name'])
+        import services_share
+        source = services_share.for_submission(session, event_id, event_data, request.form)
+        if source:   # the share link it came from (UPG-162); carried through payment and the waitlist
+            reg_data['source'] = source
         if request.form.get('whatsapp_opt_in') == 'yes':   # saved with the time (UPG-147)
             reg_data.update(whatsapp_opt_in=True,
                             whatsapp_opt_in_at=datetime.datetime.now(datetime.timezone.utc).isoformat())
@@ -791,8 +830,9 @@ def submit_form(event_id):
             reg_data['team_code'] = new_team_code(db)  # others join with it (UPG-08)
 
         # Free vs paid fee calculation
-        from services_payments import fee_for
-        fee = fee_for(event_data, ptype)   # the registrant's group fee when set (UPG-73)
+        # The ticket type's price (UPG-155), else the registrant's group fee (UPG-73)
+        from services_payments import registration_fee
+        fee = registration_fee(event_data, ptype, ticket_id, len(members))
 
         # Capacity check — if event is at capacity, add to waitlists instead
         max_cap = safe_int((event_data.get('limits') or {}).get('max_participants', 0)) or safe_int(event_data.get('capacity', 0))
@@ -839,6 +879,9 @@ def submit_form(event_id):
             create_registration(db, wl_id, wl_entry, collection='waitlists')
 
             finish_submission(sub_key, 'waitlist')
+            if is_new_user:
+                _email_new_account(email, full_name,
+                                   reason=f"when you joined the waitlist for {event_data.get('title', 'an event')}")
             from services_waitlist import place_in_line
             place = place_in_line(db, event_id, email) or wl_count + 1   # join order (UPG-114)
             flash(f"This event is full! You've joined the waitlist at position #{place}. We'll email you if a spot opens.", "info")
@@ -853,6 +896,8 @@ def submit_form(event_id):
             })
             session['pending_reg_data'] = reg_data
             finish_submission(sub_key, 'pending_payment')
+            if is_new_user:
+                _email_new_account(email, full_name)
             return redirect(f'/payment/checkout/{event_id}')
 
         reg_data.update({
@@ -860,14 +905,30 @@ def submit_form(event_id):
             'payment_status': 'Free',
             'amount_paid':    0
         })
-        create_registration(db, reg_id, reg_data)   # never over another (UPG-95)
+        # A free ticket type's seat, taken at once (UPG-155)
+        if ticket is not None and not tt.take_seat(event_id, ticket):
+            from services_idempotency import release_submission
+            release_submission(sub_key)
+            if is_new_user:   # the account exists now; its link mustn't be lost
+                _email_new_account(email, full_name)
+            flash(f"{ticket['name']} sold out just now; please choose another ticket.", 'warning')
+            session['form_state'] = {'event_id': event_id, 'values': answers,
+                                     'errors': {'ticket_type': f"{ticket['name']} is sold out."}}
+            return redirect(f'/forms/register/{event_id}')
+        try:
+            create_registration(db, reg_id, reg_data)   # never over another (UPG-95)
+        except AlreadyRegistered:
+            if ticket is not None:
+                tt.give_back_seat(event_id, ticket['id'])
+            raise
         # Paid registrations record this once payment completes (routes_payment)
         record_form_submission(db, event_id, reg_id, email, full_name, answers)
 
         # Issue digital ticket with signed HMAC-SHA256 QR token
         try:
             from services_ticket import TicketService
-            tier = answers.get('ticket_tier') or answers.get('ticket_type') or 'General'
+            tier = (ticket['name'] if ticket is not None else '') \
+                or answers.get('ticket_tier') or answers.get('ticket_type') or 'General'
             TicketService.issue_ticket(
                 db,
                 event_id=event_id,
@@ -894,16 +955,33 @@ def submit_form(event_id):
             except Exception as e:
                 logger.warning("Could not increment registration_count: %s", e)
 
-        # Notifications — confirmation only; QR ticket sent 1 day before event
-        send_registration_confirmed_email(
-            email, full_name, event_data.get('title', ''),
-            event_date=event_data.get('date', ''),
-            venue=event_data.get('venue', ''),
-            is_new_user=is_new_user,
-            cancel_url=cancel_url_for(reg_data),
-        )
-        # Each team member the lead listed hears they were added (UPG-48)
-        for m in reg_data.get('members') or []:
+        # One email, to the lead (UPG-152): a new account's set-password link
+        # carries the confirmation; anyone else gets the confirmation. The
+        # QR ticket follows 1 day before the event.
+        # A portal-mode hackathon's email also says: join the WhatsApp group,
+        # check the hackathon page (UPG-195)
+        import services_hackathon
+        instructions = services_hackathon.registration_instructions(event_data, event_id)
+        login_email = ''
+        if is_new_user:
+            login_email = _email_new_account(email, full_name, registration={
+                'event_title': event_data.get('title', ''), 'event_date': event_data.get('date', ''),
+                'venue': event_data.get('venue', ''), 'team_name': team_name if team_max > 1 else '',
+                'reg_id': reg_id, 'instructions': instructions})
+        else:
+            send_registration_confirmed_email(
+                email, full_name, event_data.get('title', ''),
+                event_date=event_data.get('date', ''),
+                venue=event_data.get('venue', ''),
+                cancel_url=cancel_url_for(reg_data),
+                instructions=instructions,
+            )
+        # Each team member the lead listed hears they were added (UPG-48),
+        # only when team members get emails (NOTIFY_TEAM_MEMBERS, UPG-152)
+        # and the event isn't portal-only (UPG-195)
+        from services_recipients import notify_team_members
+        members_emailed = notify_team_members() and services_hackathon.email_allowed(event_data, 'team')
+        for m in (reg_data.get('members') or []) if members_emailed else []:
             m_email = str((m or {}).get('email') or '').strip().lower()
             if m_email and m_email != email:
                 send_registration_confirmed_email(
@@ -932,6 +1010,7 @@ def submit_form(event_id):
             'venue':       event_data.get('venue', ''),
             'is_new_user': is_new_user,
             'user_email':  email,
+            'login_email': login_email,   # 'sent', 'limit' or 'failed' for a new account (UPG-152)
         }
         finish_submission(sub_key, reg_id)
         return redirect('/registration/confirmed')

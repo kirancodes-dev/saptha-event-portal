@@ -13,9 +13,13 @@
         <h2 class="h6 mt-4 mb-2">Members</h2>
         <ul class="list-unstyled mb-0">
             {% for m in reg.members %}
-            <li class="d-flex justify-content-between align-items-center gap-2 py-2 border-bottom">
-                <span><span class="fw-semibold text-strong">{{ m.name }}</span> <span class="text-subtle small">{{ m.email }}{% if m.usn %} · {{ m.usn }}{% endif %}</span>
-                    {% if m.role == 'Lead' %}<span class="se-badge se-badge--gold se-badge--plain ms-1">Lead</span>{% endif %}</span>
+            {% set key = (m.email or '')|lower|trim %}
+            {% set st = statuses.get(key) if statuses else None %}
+            <li class="py-2 border-bottom" data-member="{{ key }}">
+              <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap">
+                <span><span class="fw-semibold text-strong">{{ m.name }}</span> <span class="text-subtle small" style="word-break:break-all;">{{ m.email }}{% if m.usn %} · {{ m.usn }}{% endif %}</span>
+                    {% if m.role == 'Lead' %}<span class="se-badge se-badge--gold se-badge--plain ms-1">Lead</span>{% endif %}
+                    {% if st %}<span class="se-badge se-badge--{{ st.tone }} se-badge--plain ms-1" data-status="{{ st.key }}">{{ st.label }}</span>{% endif %}</span>
                 {% if is_lead and m.role != 'Lead' %}
                 <form method="POST" action="/teams/{{ reg_id }}/remove" class="m-0">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -23,9 +27,32 @@
                     <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
                 </form>
                 {% endif %}
+              </div>
+              {% if is_lead and st and st.key != 'confirmed' %}
+              <div class="d-flex flex-wrap gap-2 align-items-start mt-2">
+                <form method="POST" action="/teams/{{ reg_id }}/members/resend" class="m-0">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="email" value="{{ m.email }}">
+                    <button type="submit" class="btn btn-sm btn-outline-primary"{% if not resends.get(key) %} disabled{% endif %}>Resend link</button>
+                    <span class="text-subtle small ms-1">{{ resends.get(key, 0) }} of 3 resends left today</span>
+                </form>
+                <details class="m-0">
+                    <summary class="btn btn-sm btn-outline-secondary">Correct the email</summary>
+                    <form method="POST" action="/teams/{{ reg_id }}/members/email" class="d-flex flex-wrap gap-2 mt-2">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="email" value="{{ m.email }}">
+                        <label class="visually-hidden" for="ne-{{ loop.index }}">New email for {{ m.name }}</label>
+                        <input type="email" id="ne-{{ loop.index }}" name="new_email" class="form-control form-control-sm" style="max-width:260px;" required placeholder="name@example.com">
+                        <button type="submit" class="btn btn-sm btn-primary">Save and send a new link</button>
+                    </form>
+                </details>
+              </div>
+              {% endif %}
             </li>
             {% endfor %}
         </ul>
+        {% if statuses %}<p class="text-subtle small mt-2 mb-0">Each member gets an email to confirm and set a password; once confirmed they can sign in and see their own certificate.</p>{% endif %}
+
 
         {% if is_lead %}
         <h2 class="h6 mt-4 mb-2">Invite code</h2>

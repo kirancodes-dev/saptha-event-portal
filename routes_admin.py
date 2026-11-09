@@ -1681,9 +1681,18 @@ def set_attendance(reg_id):
         flash("Choose present, absent or pending.", "warning")
         return _back('/admin/registrations')
     ref = db.collection('registrations').document(reg_id)
-    if not ref.get().exists:
+    snap = ref.get()
+    if not snap.exists:
         flash("Registration not found.", "warning")
         return _back('/admin/registrations')
+    if value == 'Present':   # the SPOC's entry list (UPG-214)
+        import services_entry
+        reg = snap.to_dict() or {}
+        ev = db.collection('events').document(str(reg.get('event_id') or '')).get()
+        if ev.exists and not services_entry.may_enter(ev.to_dict() or {}, reg):
+            flash("This team isn't on the event's entry list: select it on the event's "
+                  "Registrations & Teams page first.", "warning")
+            return _back('/admin/registrations')
     updates = {'attendance': value, 'attended': value == 'Present'}
     if value == 'Present':
         updates['checkin_time'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")

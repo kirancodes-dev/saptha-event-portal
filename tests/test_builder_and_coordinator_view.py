@@ -79,7 +79,9 @@ def test_builder_says_what_every_form_gets_and_team_rows_come_from_the_event(s):
     team = s['spoc'].get(f"/forms/builder/{s['team']}").get_data(as_text=True)
     solo = s['spoc'].get(f"/forms/builder/{s['solo']}").get_data(as_text=True)
     for page in (team, solo):
-        assert 'Name, email, phone and USN are always asked' in page
+        # UPG-212 (owner, 2026-11-09): only name and email are fixed; phone and USN are the SPOC's choice
+        assert 'Name and email are always asked and required' in page
+        assert 'Name, email, phone and USN are always asked' not in page
         assert 'Leave blank if solo' not in page        # no optional team name in the template
         assert "window.addEventListener('beforeunload'" in page
         assert 'loadSimpleTemplate(false)' in page      # no saved form: start from the standard one

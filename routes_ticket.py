@@ -206,6 +206,13 @@ def check_in(reg_id: str, actor, expected_event_id: Optional[str] = None,
     if str(reg.get('status') or '').strip().lower() in ('cancelled', 'refunded'):
         return answer('cancelled', f"This registration was {str(reg.get('status')).lower()}; no entry.", 409, **details)
 
+    # The SPOC's entry list (UPG-214): a team not on it is turned away, quietly
+    import services_entry
+    if not services_entry.may_enter(event, reg):
+        services_entry.note_refused(db, reg_id, reg)
+        log_action(db, "CHECKIN_REFUSED", f"Reg {reg_id}: not on the entry list ({source})")
+        return answer('not_selected', services_entry.REFUSED, 409, **details)
+
     # Each day attended is recorded, so a multi-day event can certify people who
     # came on enough of its days (UPG-122). A second scan on the same day changes nothing.
     today = _ist_today()

@@ -178,7 +178,10 @@ def test_a_hackathon_registration_is_one_email_with_the_whatsapp_and_portal_inst
         'privacy_consent': 'yes', 'full_name': 'Nia Lead', 'email': lead, 'phone': '9876543210', 'usn': '1SN22CS300',
         'team_name': 'New Team', 'member_1_name': 'Mo Mate', 'member_1_email': mate, 'member_1_usn': '1SN22CS301'})
     assert resp.status_code == 302, resp.data[:300]
-    assert [m['to'] for m in h['sent']] == [lead]
+    # The lead's one email; since UPG-207 (owner, 2026-11-09) the member the
+    # lead listed also gets one, their confirmation link, and nothing else
+    assert [m['to'] for m in h['sent']] == [lead, mate]
+    assert '/teams/confirm/' in h['sent'][1]['html'] and 'chat.whatsapp.com' not in h['sent'][1]['html']
     html = h['sent'][0]['html']
     assert 'https://chat.whatsapp.com/HackGroup123' in html
     assert f'/hackathon/{eid}' in html and "won't email them" in html.replace('&#x27;', "'").replace('&#39;', "'")
@@ -193,7 +196,8 @@ def test_a_hackathon_registration_is_one_email_with_the_whatsapp_and_portal_inst
         'team_name': 'Old Team', 'member_1_name': 'Mia Mate', 'member_1_email': f"{_unique('m2')}@test.edu",
         'member_1_usn': '1SN22CS303'})
     assert resp.status_code == 302
-    assert [m['to'] for m in h['sent']] == [old]
+    assert [m['to'] for m in h['sent']][:1] == [old] and len(h['sent']) == 2   # and the member's link (UPG-207)
+    assert '/teams/confirm/' in h['sent'][1]['html']
     assert 'https://chat.whatsapp.com/HackGroup123' in h['sent'][0]['html']
     assert 'emailed to you <strong>1 day before' not in h['sent'][0]['html']
     assert db is h['db']

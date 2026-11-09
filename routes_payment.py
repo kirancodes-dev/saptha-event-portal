@@ -490,6 +490,11 @@ def _complete_registration(event_id, reg_data, payment_status='Paid',
                 reg_id=reg_id, event_date=event_date, venue=venue,
             )
 
+        # Each member the lead listed: a link to confirm and set a password,
+        # once the team is paid for (UPG-207)
+        import services_team_confirm   # never raises: the lead or organiser can resend
+        services_team_confirm.after_registration(_db(), reg_id, reg_data, event_data)
+
         # BLK-02: completing a payment never logs anyone in
         session.pop('pending_reg_data', None)
 

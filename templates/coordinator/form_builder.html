@@ -281,10 +281,30 @@ h1,h2,h3,h4,h5{font-family: var(--font-heading);}
         </div>
         <div class="col-12">
           <p class="fb-note mb-0"><i class="fas fa-circle-info me-1" aria-hidden="true"></i>
-            Name, email, phone and USN are always asked: they're added if the form leaves them out.
-            {%- if team[1] > 1 %} This is a team event ({{ team[0] }}–{{ team[1] }} people), so the team name and a name, email and USN row for each member are added below your questions.{% endif %}
+            Name and email are always asked and required: the account, ticket and certificate use them. They open the form; everything else appears exactly in the order you set here.
+            Every other question is yours to add, remove, reorder or make required; the registration form shows exactly this.
+            {%- if team[1] > 1 %} This is a team event ({{ team[0] }}–{{ team[1] }} people), so the team name and a row for each member are added below your questions: choose what members are asked under Team members.{% endif %}
           </p>
         </div>
+        {% if team[1] > 1 %}
+        {#- UPG-212: what each team member is asked besides name and email -#}
+        <div class="col-12" data-member-fields>
+          <label class="prop-label">Team members (each member gives their name and email)</label>
+          <div class="d-flex flex-wrap gap-3">
+            <label class="small">Member USN
+              <select id="member-usn" class="prop-input" data-member-field="usn">
+                <option value="off">Don't ask</option><option value="optional">Optional</option><option value="required">Required</option>
+              </select>
+            </label>
+            <label class="small">Member phone
+              <select id="member-phone" class="prop-input" data-member-field="phone">
+                <option value="off">Don't ask</option><option value="optional">Optional</option><option value="required">Required</option>
+              </select>
+            </label>
+          </div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Required applies to the members the team must have ({{ team[0] - 1 }} besides the lead); extra members are optional.</div>
+        </div>
+        {% endif %}
         <!-- AI prompt builder -->
         <div class="col-12 mt-3 pt-3 border-top border-secondary border-opacity-10">
           <label class="prop-label"><i class="fas fa-wand-magic-sparkles text-primary me-1"></i>Generate Form from AI Prompt</label>
@@ -379,6 +399,23 @@ let dragSrcIndex = null;
 const EVENT_ID   = "{{ event.id }}";
 const IS_TEAM    = {{ 'true' if team[1] > 1 else 'false' }};
 const existingForm = {{ form_json | safe }};
+// Name and email can't be removed or made optional (UPG-212)
+const LOCKED_IDS = ['full_name', 'name', 'participant_name', 'email', 'email_address'];
+function isLocked(f) { return LOCKED_IDS.includes(f.id); }
+// Name and email open the form on the page, so they stay at the top here too (UPG-216)
+function pinLocked(list) { return list.filter(isLocked).concat(list.filter(f => !isLocked(f))); }
+// Name and email first, and no team-member rows (they come from the team size)
+function withIdentity(list) {
+  const kept = (list || []).filter(f => !/^member_\d+_/.test(f.id || '') && f.id !== 'team_members');
+  const has = ids => kept.some(f => ids.includes(f.id));
+  const top = [];
+  if (!has(['full_name', 'name', 'participant_name']))
+    top.push({ id:'full_name', type:'text', label:'Full Name', placeholder:'Enter your full name', required:true, options:[], help_text:'' });
+  if (!has(['email', 'email_address']))
+    top.push({ id:'email', type:'email', label:'Email Address', placeholder:'you@example.com', required:true, options:[], help_text:'' });
+  return top.concat(kept);
+}
+let memberFields = Object.assign({usn: 'optional', phone: 'off'}, (existingForm && existingForm.member_fields) || {});
 
 // ── INIT ───────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -392,6 +429,10 @@ document.addEventListener('DOMContentLoaded', () => {
     loadSimpleTemplate(false);
   }
   setFormType(formType, false);
+  document.querySelectorAll('[data-member-field]').forEach(sel => {
+    sel.value = memberFields[sel.dataset.memberField] || 'off';
+    sel.addEventListener('change', () => { memberFields[sel.dataset.memberField] = sel.value; });
+  });
   renderCanvas();
   savedState = currentState();
 });
@@ -400,7 +441,7 @@ document.addEventListener('DOMContentLoaded', () => {
 let savedState = '';
 function currentState() {
   return JSON.stringify([formType, document.getElementById('form-title').value,
-                         document.getElementById('form-desc').value, fields]);
+                         document.getElementById('form-desc').value, fields, memberFields]);
 }
 window.addEventListener('beforeunload', e => {
   if (currentState() !== savedState) { e.preventDefault(); e.returnValue = ''; }
@@ -476,13 +517,14 @@ function renderCanvas() {
 
   // Remove existing field cards
   canvas.querySelectorAll('.field-card').forEach(el => el.remove());
+  fields = pinLocked(fields);
 
   fields.forEach((f, idx) => {
     const card = document.createElement('div');
     card.className = 'field-card' + (f.id === selectedId ? ' selected' : '');
     card.dataset.id    = f.id;
     card.dataset.index = idx;
-    card.draggable     = true;
+    card.draggable     = !isLocked(f);
 
     card.addEventListener('dragstart', e => {
       dragSrcIndex = idx;
@@ -517,10 +559,10 @@ function renderCanvas() {
         <div class="field-type-badge">${escapeHtml(typeLabel(f.type))}${escapeHtml(f.help_text ? ' · ' + f.help_text : '')}</div>
       </div>
       <div class="field-actions">
-        <button title="Duplicate" aria-label="Duplicate ${escapeHtml(f.label || f.type)}" data-h-click="se:call" data-call="duplicateField" data-args="${escapeHtml(JSON.stringify([f.id]))}"><i class="fas fa-copy"></i></button>
-        <button title="Move up" aria-label="Move ${escapeHtml(f.label || f.type)} up" data-h-click="se:call" data-call="moveField" data-args="${escapeHtml(JSON.stringify([f.id, -1]))}"><i class="fas fa-arrow-up"></i></button>
-        <button title="Move down" aria-label="Move ${escapeHtml(f.label || f.type)} down" data-h-click="se:call" data-call="moveField" data-args="${escapeHtml(JSON.stringify([f.id, 1]))}"><i class="fas fa-arrow-down"></i></button>
-        <button class="del" title="Delete" aria-label="Delete ${escapeHtml(f.label || f.type)}" data-h-click="se:call" data-call="deleteField" data-args="${escapeHtml(JSON.stringify([f.id]))}"><i class="fas fa-trash"></i></button>
+        ${isLocked(f) ? '<span class="field-type-badge" title="The account, ticket and certificate use it; they open the form">Always asked, always first</span>' : `<button title="Duplicate" aria-label="Duplicate ${escapeHtml(f.label || f.type)}" data-h-click="se:call" data-call="duplicateField" data-args="${escapeHtml(JSON.stringify([f.id]))}"><i class="fas fa-copy"></i></button>`}
+        ${isLocked(f) ? '' : `<button title="Move up" aria-label="Move ${escapeHtml(f.label || f.type)} up" data-h-click="se:call" data-call="moveField" data-args="${escapeHtml(JSON.stringify([f.id, -1]))}"><i class="fas fa-arrow-up"></i></button>
+        <button title="Move down" aria-label="Move ${escapeHtml(f.label || f.type)} down" data-h-click="se:call" data-call="moveField" data-args="${escapeHtml(JSON.stringify([f.id, 1]))}"><i class="fas fa-arrow-down"></i></button>`}
+        ${isLocked(f) ? '' : `<button class="del" title="Delete" aria-label="Delete ${escapeHtml(f.label || f.type)}" data-h-click="se:call" data-call="deleteField" data-args="${escapeHtml(JSON.stringify([f.id]))}"><i class="fas fa-trash"></i></button>`}
       </div>
       ${f.required ? '<span class="required-dot" title="Required"></span>' : ''}
     `;
@@ -553,6 +595,8 @@ function selectField(id) {
 
 // ── FIELD OPERATIONS ───────────────────────────────────
 function deleteField(id) {
+  const target = fields.find(f => f.id === id);
+  if (target && isLocked(target)) { toast('Name and email are always asked.', 'error'); return; }
   fields = fields.filter(f => f.id !== id);
   if (selectedId === id) { selectedId = null; renderProps(); }
   renderCanvas();
@@ -572,13 +616,14 @@ function moveField(id, dir) {
   const idx = fields.findIndex(f => f.id === id);
   const newIdx = idx + dir;
   if (newIdx < 0 || newIdx >= fields.length) return;
+  if (isLocked(fields[idx]) || isLocked(fields[newIdx])) return;   // name and email stay first
   const tmp = fields[idx]; fields[idx] = fields[newIdx]; fields[newIdx] = tmp;
   renderCanvas();
 }
 
 function clearAll() {
-  if (!confirm('Remove all fields? This cannot be undone.')) return;
-  fields = []; selectedId = null;
+  if (!confirm('Remove all your questions? Name and email stay. This cannot be undone.')) return;
+  fields = fields.filter(isLocked); selectedId = null;
   renderCanvas(); renderProps();
 }
 
@@ -633,9 +678,9 @@ function renderProps() {
     </div>
     <div class="prop-group">
       <label class="prop-toggle">
-        <input type="checkbox" ${f.required ? 'checked' : ''}
+        <input type="checkbox" ${f.required || isLocked(f) ? 'checked' : ''} ${isLocked(f) ? 'disabled' : ''}
                data-h-change="coordinator/form_builder:prop-checked" data-prop="required">
-        Required field
+        Required field${isLocked(f) ? ' (always: the account, ticket and certificate use it)' : ''}
       </label>
     </div>`;
   }
@@ -792,7 +837,9 @@ async function saveForm() {
         form_type:  formType,
         form_title: title,
         form_desc:  desc,
-        fields:     fields
+        fields:     fields,
+        chosen:     true,
+        member_fields: memberFields
       })
     });
     const data = await res.json();
@@ -830,7 +877,7 @@ async function generateFromAI() {
     });
     const data = await res.json();
     if (data.status === 'ok') {
-      fields = data.fields;
+      fields = withIdentity(data.fields);
       renderCanvas();
       selectedId = null;
       renderProps();

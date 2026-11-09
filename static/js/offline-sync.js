@@ -57,6 +57,43 @@ function csrfToken() {
     return meta ? meta.getAttribute('content') : '';
 }
 
+// The SPOC's entry list (UPG-214), kept on this device so a scan made without
+// a connection can still turn away a team that isn't on it.
+const ENTRY_KEY = 'sapthaEntryList:';
+
+window.saveEntryList = function(eventId, list) {
+    try {
+        localStorage.setItem(ENTRY_KEY + eventId, JSON.stringify({ on: !!list.on, blocked: list.blocked || [] }));
+    } catch (err) { /* storage full or off: online checks still apply */ }
+};
+
+// The registration ID a scanned ticket carries: the signed token is
+// base64url(JSON [reg_id, event_id, name]) + "." + signature.
+function ticketRegId(scanned) {
+    let token = String(scanned || '').trim();
+    const at = token.indexOf('/ticket/verify/');
+    if (at !== -1) token = token.slice(at + '/ticket/verify/'.length).split(/[?#/]/)[0];
+    const dot = token.lastIndexOf('.');
+    if (dot <= 0 || token.startsWith('.')) return '';   // no payload, or a compressed one
+    let payload = token.slice(0, dot).replace(/-/g, '+').replace(/_/g, '/');
+    while (payload.length % 4) payload += '=';
+    try {
+        const bytes = Uint8Array.from(atob(payload), (c) => c.charCodeAt(0));
+        const data = JSON.parse(new TextDecoder().decode(bytes));
+        return Array.isArray(data) && data.length ? String(data[0]) : '';
+    } catch (err) {
+        return '';
+    }
+}
+
+window.offlineEntryBlocked = function(scanned, eventId) {
+    let list = null;
+    try { list = JSON.parse(localStorage.getItem(ENTRY_KEY + eventId) || 'null'); } catch (err) { list = null; }
+    if (!list || !list.on || !Array.isArray(list.blocked)) return false;
+    const regId = ticketRegId(scanned);
+    return !!regId && list.blocked.indexOf(regId) !== -1;
+};
+
 // Keep a scan for later; the same ticket is queued once
 window.queueOfflineCheckin = async function(token, eventId) {
     try {

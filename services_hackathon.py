@@ -27,8 +27,9 @@ log = logging.getLogger(__name__)
 
 PORTAL, ALL = 'portal', 'all'
 EMAIL_MODES = (PORTAL, ALL)
-# What still goes by email in portal mode (owner, 2026-11-05)
-PORTAL_MODE_EMAILS = frozenset({'registration', 'password', 'result'})
+# What still goes by email in portal mode (owner, 2026-11-05); a team
+# member's confirmation link too, so they can sign in (UPG-207)
+PORTAL_MODE_EMAILS = frozenset({'registration', 'password', 'result', 'member_confirm'})
 
 FIELD_KINDS = {
     'text': 'Short text',

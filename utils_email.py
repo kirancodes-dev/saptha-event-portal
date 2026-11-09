@@ -872,6 +872,39 @@ def send_set_password_email(to_email: str, name: str, set_password_url: str,
     return _send(to_email, subject, html, attachments=atts)
 
 
+def send_member_confirm_email(to_email: str, name: str, lead: str, team: str, event_title: str,
+                              url: str, needs_password: bool = True) -> bool:
+    """A team member the lead listed: confirm the email and get a portal
+    login, to see the team and their own certificate (UPG-207). One link,
+    48 hours; a newer one replaces it."""
+    from services_team_confirm import MAX_AGE
+    action = ("Confirm and set your password" if needs_password else "Sign in to confirm")
+    what = ("Confirm it's you by choosing a password; then log in with this email and that password."
+            if needs_password else
+            "You already have a SapthaEvent account: sign in from this link to confirm it's you.")
+    html = _html_wrapper(f"""
+        <p style="color:#475569;">Dear <strong>{_e(name or 'Participant')}</strong>,</p>
+        <p style="color:#475569;"><strong>{_e(lead)}</strong> added you to
+           {f'team <strong>{_e(team)}</strong> for ' if team else ''}<strong style="color:#1a2557;">{_e(event_title)}</strong>.</p>
+        <p style="color:#475569;">{_e(what)} You'll then see the team, and your own certificate
+           once it's issued. This link expires in <strong>{_for_how_long(MAX_AGE)}</strong>.</p>
+        <p style="text-align:center;margin:24px 0;">
+          <a href="{_e(url)}"
+             style="background:#1a2557;color:#fff;padding:12px 32px;border-radius:8px;
+                    text-decoration:none;font-weight:700;display:inline-block;">{_e(action)} →</a>
+        </p>
+        <p style="color:#64748b;font-size:12px;">
+          If the button doesn't work, copy this link into your browser:<br>
+          <span style="word-break:break-all;color:#1a2557;">{_e(url)}</span>
+        </p>
+        <p style="color:#ef4444;font-size:12px;margin-top:18px;">
+          Not you? Ignore this email and tell the team lead; nothing happens unless the link is used.
+        </p>
+    """, "Confirm your team place")
+    _log_link_without_mail('team member confirmation', to_email, url)
+    return _send(to_email, f"Confirm your place in {team or 'the team'} — {event_title}", html)
+
+
 def send_payment_receipt_email(to_email: str, name: str, event_title: str, amount,
                                reg_id: str, payment_id: str = '', paid_on: str = '') -> bool:
     """The receipt after a verified payment (UPG-30)."""

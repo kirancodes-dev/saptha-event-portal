@@ -46,15 +46,16 @@ def _event(db, event_id: str) -> dict:
     return doc.to_dict() or {}
 
 
-def ready_to_issue(event: dict) -> Optional[str]:
-    """None when the event's certificates can be issued, else what's missing."""
+def ready_to_issue(event: dict, kinds: Optional[Iterable[str]] = None) -> Optional[str]:
+    """None when the event's certificates (or these types) can be issued, else
+    what's missing. With the organiser's own design, its type needs no
+    signatory (UPG-206)."""
     import services_certificates as certs
-    from services_signatories import missing_message, ready
+    from services_signatories import missing_message
     if not certs.event_ended(event):
         return "Certificates can be issued once the event has ended."
-    signatories = event.get('cert_signatories') or []
-    if not ready(signatories):
-        return missing_message(signatories)
+    if not any(certs.can_issue_type(event, k) for k in (kinds or certs.TYPES)):
+        return missing_message(event.get('cert_signatories') or [])
     return None
 
 
@@ -64,11 +65,12 @@ def start(db, event_id: str, actor: str, kinds: Optional[Iterable[str]] = None, 
     import services_certificates as certs
     from utils import log_action
     event = _event(db, event_id)
-    problem = ready_to_issue(event)
+    problem = ready_to_issue(event, kinds)
     if problem:
         raise certs.CertificateError(problem)
     wanted = set(kinds) if kinds else None
-    owed = [r for r in certs.recipients(db, event_id, event) if not wanted or r['cert_type'] in wanted]
+    owed = [r for r in certs.recipients(db, event_id, event) if (not wanted or r['cert_type'] in wanted)
+            and certs.can_issue_type(event, r['cert_type'])]     # without a signatory, only the own design's type
     size = chunk_size()
     chunks = [{'pairs': [_pair(r) for r in owed[i:i + size]], 'status': 'pending',
                'issued': 0, 'already': 0, 'failed': 0, 'errors': []} for i in range(0, len(owed), size)]
@@ -191,7 +193,7 @@ def on_results_published(db, event_id: str, actor: str) -> Optional[str]:
         event = _event(db, event_id)
         if event.get('cert_auto_issue') is False:
             return None
-        problem = ready_to_issue(event)
+        problem = ready_to_issue(event, certs.POSITION_TYPES)
         if problem:
             return f"Position certificates weren't issued: {problem}"
         run = start(db, event_id, actor, kinds=certs.POSITION_TYPES, reason='results published')

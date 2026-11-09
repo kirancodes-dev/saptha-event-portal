@@ -6,8 +6,9 @@ ten teams register through the public form, two problem statements (one now,
 one at a set time), the form opens, teams submit and edit, the deadline is
 extended for a late team, the form closes, AI scores every submission (Gemini
 replaced), the SPOC shortlists four, a judge scores the finalists, the SPOC
-publishes. Each lead gets exactly two emails (registration, result); members
-get none; everything else reaches them on the team page.
+publishes. Each lead gets exactly two emails (registration, result); each
+member gets one, the link to confirm and get a login (UPG-207); everything
+else reaches them on the team page.
 """
 import json
 
@@ -58,9 +59,17 @@ def test_ten_teams_run_the_whole_hackathon_with_two_emails_each(hack, monkeypatc
         assert reg_id, name
         teams[name] = {'lead': lead, 'mate': mate, 'id': reg_id, 'reg_id': reg_id, 'client': _login(h['app'], lead, 'Student')}
     registration = list(sent)
-    assert sorted(m['to'] for m in registration) == sorted(t['lead'] for t in teams.values())
-    for m in registration:
+    # UPG-207 (owner, 2026-11-09): each member now also gets one email, the link to
+    # confirm and get a login; the leads' registration emails are checked as before.
+    mates = {t['mate'] for t in teams.values()}
+    to_leads = [m for m in registration if m['to'] not in mates]
+    to_mates = [m for m in registration if m['to'] in mates]
+    assert sorted(m['to'] for m in to_leads) == sorted(t['lead'] for t in teams.values())
+    for m in to_leads:
         assert 'https://chat.whatsapp.com/HackGroup123' in m['html'] and f'/hackathon/{eid}' in m['html']
+    assert sorted(m['to'] for m in to_mates) == sorted(mates)
+    for m in to_mates:
+        assert '/teams/confirm/' in m['html'] and 'chat.whatsapp.com' not in m['html']
 
     # ── Problem statements: one now, one at 12:00 IST ────────────────────────
     assert h['problem'](eid, 'Clean water').status_code == 302
@@ -143,11 +152,12 @@ def test_ten_teams_run_the_whole_hackathon_with_two_emails_each(hack, monkeypatc
     assert sorted(m['to'] for m in results) == sorted(t['lead'] for t in teams.values())
     assert all(m['subject'].startswith('Results') for m in results)
 
-    # The whole run: 20 emails, two per lead, none to a member
-    assert len(sent) == 20, [(m['to'], m['subject']) for m in sent]
+    # The whole run: two emails per lead, and (UPG-207) only the confirmation link to each member
+    assert len(sent) == 30, [(m['to'], m['subject']) for m in sent]
     for t in teams.values():
         assert sum(m['to'] == t['lead'] for m in sent) == 2
-    assert not {t['mate'] for t in teams.values()} & {m['to'] for m in sent}
+        assert [m['subject'] for m in sent if m['to'] == t['mate']] == [
+            m['subject'] for m in to_mates if m['to'] == t['mate']]
 
     # Every team sees its outcome on its page
     expected_outcomes = {'Foxtrot': 'Winner', 'Charlie': 'Runner-up', 'Bravo': 'Second runner-up',
@@ -158,4 +168,4 @@ def test_ten_teams_run_the_whole_hackathon_with_two_emails_each(hack, monkeypatc
 
     # Publishing again sends nothing more
     owner.post(f'/spoc/publish_results/{eid}')
-    assert len(sent) == 20
+    assert len(sent) == 30

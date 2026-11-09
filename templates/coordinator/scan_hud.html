@@ -221,6 +221,11 @@
         <span>Checked in</span>
         <span class="counter-badge"><span id="count-in">{{ event.checkin_count or 0 }}</span> / <span id="count-total">{{ event.registration_count or event.capacity or '—' }}</span></span>
     </div>
+    {#- UPG-214: the SPOC's entry list -#}
+    <div class="hud-counter" id="entry-hud" data-entry-hud {% if not entry.on %}hidden{% endif %}>
+        <span>Entry list</span>
+        <span class="counter-badge"><span id="entry-selected">{{ entry.selected }}</span> selected · <span id="entry-in">{{ entry.checked_in }}</span> in · <span id="entry-refused">{{ entry.refused }}</span> turned away</span>
+    </div>
 </div>
 
 <!-- Viewfinder -->
@@ -348,7 +353,12 @@ async function processScan(decodedText) {
         });
         data = await resp.json();
     } catch (err) {
-        // No connection: keep the scan on this device and send it later
+        // No connection: the entry list saved on this phone first (UPG-214)
+        if (window.offlineEntryBlocked && window.offlineEntryBlocked(decodedText, EVENT_ID)) {
+            showFeedback('danger', 'Not On Entry List', 'Not on the entry list – no entry. (Offline: checked against the list saved on this phone.)');
+            return;
+        }
+        // Then keep the scan on this device and send it later
         if (window.queueOfflineCheckin && await window.queueOfflineCheckin(decodedText, EVENT_ID)) {
             showFeedback('warning', 'Offline Check-In Queued', 'Saved on this device. It will be sent when back online.');
         } else {
@@ -364,6 +374,10 @@ async function processScan(decodedText) {
         showFeedback('success', 'Entry Granted', 'Attendee verified and marked present.', data.name, data.team);
     } else if (data.status === 'already_in') {
         showFeedback('warning', 'Already Checked In', data.message, data.name);
+    } else if (data.status === 'not_selected') {
+        const refusedEl = document.getElementById('entry-refused');
+        if (refusedEl) refusedEl.textContent = parseInt(refusedEl.textContent || '0', 10) + 1;
+        showFeedback('danger', 'Not On Entry List', data.message, data.name, data.team);
     } else if (data.status === 'unpaid') {
         showFeedback('danger', 'Payment Pending', 'Outstanding ticket fee required at registration desk.');
     } else {
@@ -415,6 +429,26 @@ window.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('online', updateNetStatus);
     window.addEventListener('offline', updateNetStatus);
     updateNetStatus();
+
+    // The SPOC's entry list (UPG-214): fetched now and every minute, kept on the phone
+    async function refreshEntryList() {
+        if (!navigator.onLine) return;
+        try {
+            const resp = await fetch(`/coordinator/scan-hud/${encodeURIComponent(EVENT_ID)}/entry.json`, {credentials: 'same-origin'});
+            if (!resp.ok) return;
+            const list = await resp.json();
+            if (window.saveEntryList) window.saveEntryList(EVENT_ID, list);
+            const box = document.getElementById('entry-hud');
+            if (box) box.hidden = !list.on;
+            for (const [id, key] of [['entry-selected', 'selected'], ['entry-in', 'checked_in'], ['entry-refused', 'refused']]) {
+                const el = document.getElementById(id);
+                if (el) el.textContent = list[key];
+            }
+        } catch (e) { /* keep the saved list */ }
+    }
+    refreshEntryList();
+    setInterval(refreshEntryList, 60000);
+    window.addEventListener('online', refreshEntryList);
     updateSyncCount();
     window.addEventListener('offline-checkins-synced', updateSyncCount);
 });

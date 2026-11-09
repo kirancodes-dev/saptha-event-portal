@@ -113,6 +113,9 @@ def _token_made_ago(flask_app, monkeypatch, make, seconds):
 
 def test_a_new_team_registration_sends_one_email_to_the_lead_only(low):
     event_id, title = low['event']()
+    # With member confirmation off (UPG-207 is on by default; its emails are
+    # tested in tests/test_team_member_confirm.py) only the lead is emailed
+    low['db'].collection('events').document(event_id).update({'member_confirm': False})
     mates = low['mates']()
     lead, client = low['register'](event_id, mates=mates)
 
@@ -153,6 +156,7 @@ def test_team_members_get_emails_only_when_the_owner_turns_it_on(low, monkeypatc
 
     monkeypatch.setitem(low['app'].config, 'NOTIFY_TEAM_MEMBERS', True)
     event_id, _ = low['event']()
+    low['db'].collection('events').document(event_id).update({'member_confirm': False})   # UPG-207 off
     mates = low['mates']()
     lead, _ = low['register'](event_id, mates=mates)
     assert sorted(m['to'] for m in low['sent']) == sorted([lead] + mates)

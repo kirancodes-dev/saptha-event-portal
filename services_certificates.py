@@ -187,7 +187,7 @@ def registered_people(db, event_id: str) -> List[dict]:
         if not _active(reg):
             continue
         for name, email, usn, member in _people(reg, d.id):
-            out.append({'name': name, 'email': email, 'reg_id': d.id, 'lead': member is None,
+            out.append({'name': name, 'email': email, 'reg_id': d.id, 'lead': member is None, 'usn': usn,
                         'person_key': person_key(email, usn, name, d.id),
                         'designation': (reg.get('designation') if member is None else member.get('designation')) or '',
                         'institution': (reg.get('institution') if member is None else member.get('institution')) or '',
@@ -205,7 +205,7 @@ def award(db, event_id: str, person: str, kind: str, note: str = '', actor: str 
     if not doc.exists:
         raise CertificateError('Event not found.')
     event = doc.to_dict() or {}
-    problem = ready_to_issue(event)
+    problem = ready_to_issue(event, [kind])
     if problem:
         raise CertificateError(problem)
     who = next((p for p in registered_people(db, event_id) if p['person_key'] == person), None)
@@ -238,7 +238,7 @@ def recipients(db, event_id: str, event: Optional[dict] = None) -> List[dict]:
             continue
         place = ranks.get(str(reg_id))
         for name, email, usn, member in _people(reg, reg_id):
-            common = {'name': name, 'email': email, 'reg_id': reg_id, 'lead': member is None,
+            common = {'name': name, 'email': email, 'reg_id': reg_id, 'lead': member is None, 'usn': usn,
                       'person_key': person_key(email, usn, name, reg_id),
                       'designation': (reg.get('designation') if member is None else member.get('designation')) or '',
                       'institution': (reg.get('institution') if member is None else member.get('institution')) or '',
@@ -443,10 +443,17 @@ def wording(event: dict, recipient: dict) -> dict:
             'designation': recipient.get('designation') or '', 'institution': recipient.get('institution') or '',
             'team': recipient.get('team') or '', 'role': recipient.get('role') or '',
             'hours': recipient.get('hours'), 'points': recipient.get('points'),
-            'position': recipient.get('position'),
+            'position': recipient.get('position'), 'usn': recipient.get('usn') or '',
             'signatories': [{k: sig.get(k) for k in ('id', 'name', 'title', 'order', 'image_key')}
                             for sig in sorted(event.get('cert_signatories') or [], key=lambda x: x.get('order', 0))],
-            'style': event.get('cert_style') or 'classic'}
+            'style': event.get('cert_style') or 'classic',
+            'design': _design_snapshot(event, kind)}
+
+
+def _design_snapshot(event: dict, kind: str) -> Optional[dict]:
+    """The organiser's own design as issued, for the type it covers (UPG-206)."""
+    import services_certificate_design as design
+    return design.snapshot(event) if design.covers(event, kind) else None
 
 
 def _ordinal(n: int) -> str:
@@ -470,6 +477,11 @@ def render(event: dict, cert: dict) -> bytes:
     import certificate_pdf
     from services_signatories import image_bytes
     data = cert['data']
+    if data.get('design'):           # the organiser's own design, as issued (UPG-206)
+        import services_certificate_design as design
+        return certificate_pdf.render_design(number=cert['number'], name=cert['name'], data=data,
+                                             design=data['design'], image=design.image(data['design']),
+                                             verify_url=verify_url(cert['number']))
     signatories = data.get('signatories') or []
     issued = cert.get('issued_at') or datetime.datetime.now(datetime.timezone.utc)
     return certificate_pdf.render(number=cert['number'], name=cert['name'], data=data, cert_type=cert['cert_type'],
@@ -539,12 +551,24 @@ def file_check(cert: dict) -> str:
     return 'ok' if hashlib.sha256(data).hexdigest() == cert['pdf_sha256'] else 'changed'
 
 
-def require_signatories(event: dict) -> None:
-    """No certificate without a signatory who has signed (UPG-123)."""
+def can_issue_type(event: dict, kind: str) -> bool:
+    """A type can be issued once a signatory has signed (UPG-123), or when it is
+    drawn on the organiser's own design, which carries its signatures (UPG-206)."""
+    import services_certificate_design as design
+    from services_signatories import ready
+    return ready(event.get('cert_signatories') or []) or design.covers(event, kind)
+
+
+def require_signatories(event: dict, kind: Optional[str] = None) -> None:
+    """No certificate without a signatory who has signed (UPG-123), except on
+    the organiser's own design (UPG-206)."""
     from services_signatories import missing_message, ready
     signatories = event.get('cert_signatories') or []
-    if not ready(signatories):
-        raise CertificateError(missing_message(signatories))
+    if ready(signatories):
+        return
+    if kind is not None and can_issue_type(event, kind):
+        return
+    raise CertificateError(missing_message(signatories))
 
 
 def issue_one(event_id: str, event: dict, recipient: dict, actor: str = '') -> Optional[dict]:
@@ -703,12 +727,15 @@ def issue_event(db, event_id: str, actor: str = '', only: Optional[Iterable[str]
     if not doc.exists:
         raise CertificateError('Event not found.')
     event = doc.to_dict() or {}
-    require_signatories(event)
-    counts = {'issued': 0, 'already': 0, 'failed': 0}
     wanted = set(only) if only else None
+    if not any(can_issue_type(event, k) for k in (wanted or TYPES)):
+        require_signatories(event)
+    counts = {'issued': 0, 'already': 0, 'failed': 0}
     for r in recipients(db, event_id, event):
         if wanted and r['cert_type'] not in wanted:
             continue
+        if not can_issue_type(event, r['cert_type']):
+            continue      # needs a signatory: only the own design's type is issued (UPG-206)
         try:
             if issue_one(event_id, event, r, actor):
                 counts['issued'] += 1

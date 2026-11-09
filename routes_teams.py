@@ -7,7 +7,7 @@ code; anyone else joins with it, which adds them to the registration's
 `members`, so tickets, check-in and judging see them. Team size stays within
 the event's limits. The lead can remove a member and replace the code.
 """
-from flask import Blueprint, flash, redirect, render_template, request, session
+from flask import Blueprint, abort, flash, redirect, render_template, request, session
 
 from models import db
 from utils import login_required, role_required, log_action
@@ -136,8 +136,11 @@ def join_team():
 
     profile_doc = db.collection('users').document(me).get()
     profile = (profile_doc.to_dict() or {}) if profile_doc.exists else {}
+    # Signed in to join, so already confirmed (UPG-207)
+    import datetime
     member = {'role': 'Member', 'email': me, 'name': profile.get('name') or session.get('name', ''),
-              'usn': (profile.get('usn') or '').upper(), 'phone': profile.get('phone', '')}
+              'usn': (profile.get('usn') or '').upper(), 'phone': profile.get('phone', ''),
+              'confirmed_at': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'confirmed_by': 'invite'}
     # The checks above are re-made atomically while adding (UPG-52)
     added = _add_member(reg_id, member, team_max)
     if added == 'full':
@@ -174,8 +177,124 @@ def view_team(reg_id):
         flash("You don't have access to this team.", "warning")
         return redirect('/participant/dashboard')
     team_min, team_max = team_limits(event or {})
+    import services_team_confirm as confirm
+    statuses = {_email(m): confirm.status(m) for m in confirm.others(reg)} if confirm.enabled(event or {}) else {}
+    resends = {_email(m): confirm.resends_left(m) for m in confirm.others(reg)}
     return render_template('teams/view.html', reg=reg, reg_id=reg_id, event=event, is_lead=_is_lead(reg),
-                           team_min=team_min, team_max=team_max)
+                           team_min=team_min, team_max=team_max, statuses=statuses, resends=resends)
+
+
+# ── Members confirm their email (UPG-207) ──────────────────────────────────
+
+def _lead_team(reg_id):
+    """(registration, event) when the signed-in person leads this team; 403 otherwise."""
+    reg, event = _team(reg_id)
+    if reg is None or not _is_lead(reg):
+        abort(403)
+    return reg, event
+
+
+@teams_bp.route('/<reg_id>/members/resend', methods=['POST'])
+@login_required
+def resend_confirmation(reg_id):
+    import services_team_confirm as confirm
+    reg, event = _lead_team(reg_id)
+    email = (request.form.get('email') or '').strip().lower()
+    try:
+        outcome = confirm.resend(db, reg_id, reg, event, email, by=_me())
+    except confirm.ConfirmError as exc:
+        flash(str(exc), 'warning')
+        return redirect(f'/teams/{reg_id}')
+    flash({'sent': f"A new link was sent to {email}; the earlier one no longer works.",
+           'limit': "Today's email limit is reached, so nothing was sent. Try again tomorrow.",
+           }.get(outcome, f"The email to {email} couldn't be sent. Try again later."),
+          'success' if outcome == 'sent' else 'warning')
+    return redirect(f'/teams/{reg_id}')
+
+
+@teams_bp.route('/<reg_id>/members/email', methods=['POST'])
+@login_required
+def correct_member_email(reg_id):
+    import services_team_confirm as confirm
+    reg, event = _lead_team(reg_id)
+    old = (request.form.get('email') or '').strip().lower()
+    new = (request.form.get('new_email') or '').strip().lower()
+    try:
+        outcome = confirm.correct_email(db, reg_id, reg, event, old, new, by=_me())
+    except confirm.ConfirmError as exc:
+        flash(str(exc), 'warning')
+        return redirect(f'/teams/{reg_id}')
+    flash(f"Email changed to {new}. " + ({'sent': "A link was sent there; the old one no longer works.",
+                                         'limit': "Today's email limit is reached: resend the link tomorrow."}
+                                        .get(outcome, "The email couldn't be sent: resend the link later.")),
+          'success' if outcome == 'sent' else 'warning')
+    return redirect(f'/teams/{reg_id}')
+
+
+@teams_bp.route('/confirm/<token>', methods=['GET', 'POST'])
+def confirm_member(token):
+    """A member's emailed link: choose a password (a new account), or sign
+    in (an existing one), and the member is confirmed."""
+    import services_team_confirm as confirm
+    from services_accounts import is_safe_next
+    reg_id, reg, member, error = confirm.load_token(db, token)
+    if error:
+        flash({'expired': "This link has expired: it works for 48 hours. Ask your team lead to resend it.",
+               'replaced': "This link no longer works: a newer one was sent, or your team lead changed the email. "
+                           "Use the latest email, or ask your team lead."}
+              .get(error, "This link isn't valid."), 'danger')
+        return redirect('/login')
+    email = _email(member)
+    if member.get('confirmed_at'):
+        flash("You've already confirmed. Log in to see your team.", 'info')
+        return redirect(f'/teams/{reg_id}' if _me() == email else '/login')
+    doc = db.collection('users').document(email).get()
+    user = (doc.to_dict() or {}) if doc.exists else {}
+    if not user:
+        flash("This link isn't valid.", 'danger')
+        return redirect('/login')
+
+    if not user.get('needs_password_reset'):
+        # An account with a password: confirm by signing in as it
+        if _me() == email:
+            confirm.confirm(db, reg_id, email, 'sign-in')
+            flash(f"Confirmed: you're on team {reg.get('team_name') or ''}.", 'success')
+            return redirect(f'/teams/{reg_id}')
+        if _me():
+            flash(f"This link is for {email}. Log out, then open it again.", 'warning')
+            return redirect('/participant/dashboard')
+        target = f'/teams/confirm/{token}'
+        flash(f"Log in as {email} to confirm your place in the team.", 'info')
+        return redirect('/login?next=' + target if is_safe_next(target) else '/login')
+
+    if request.method == 'POST':
+        from werkzeug.security import generate_password_hash
+
+        from routes_auth import _login_role, _set_session
+        from utils import validate_password_strength
+        new_pw = request.form.get('new_password', '')
+        ok, pw_err = validate_password_strength(new_pw)
+        if new_pw != request.form.get('confirm_password', ''):
+            flash("Passwords do not match.", 'danger')
+            return redirect(request.path)
+        if not ok:
+            flash(pw_err, 'danger')
+            return redirect(request.path)
+        db.collection('users').document(email).update({
+            'password': generate_password_hash(new_pw, method='pbkdf2:sha256'),
+            'needs_password_reset': False, 'email_verified': True})
+        confirm.confirm(db, reg_id, email, 'link')
+        category = user.get('category', 'General')
+        _set_session(email, user.get('name', 'Participant'), _login_role(user.get('role', 'Student')) or 'Student',
+                     str(getattr(category, 'value', category)), remember_me=False)
+        flash(f"Confirmed and your password is set. Next time, log in with {email}.", 'success')
+        return redirect(f'/teams/{reg_id}')
+    return render_template('reset_password_token.html', email=email, name=member.get('name') or user.get('name'),
+                           heading='Confirm your team place',
+                           intro=f"{reg.get('lead_name') or 'Your team lead'} added you to team "
+                                 f"{reg.get('team_name') or ''} for {reg.get('event_title') or 'an event'}. "
+                                 "Choose a password to confirm; you'll sign in with this email:",
+                           button='Confirm and set password')
 
 
 @teams_bp.route('/<reg_id>/remove', methods=['POST'])

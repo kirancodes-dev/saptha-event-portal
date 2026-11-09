@@ -1264,9 +1264,12 @@ def blast_email(event_id):
     sent   = 0
     failed = 0
 
+    import services_entry
     for r in regs:
         d = r.to_dict() or {}
         if audience == 'confirmed' and d.get('status') not in ('Confirmed', 'Paid', 'Free'):
+            continue
+        if services_entry.left_out(event, d):   # not on the SPOC's entry list (UPG-214)
             continue
         email = d.get('lead_email', '')
         name  = d.get('lead_name', 'Participant')

@@ -17,6 +17,94 @@
     </div>
   </div>
 
+  {% if team_event %}
+  {#- UPG-207: team members confirm their email to get their own login -#}
+  <div class="alert alert-light border d-flex flex-wrap align-items-center justify-content-between gap-2" data-member-confirm>
+    <div class="small">
+      <strong>Team members' confirmation:</strong>
+      {% if not member_confirm %}off. Members the lead lists get no email and no login.
+      {% elif waiting.waiting %}{{ waiting.waiting }} member{{ '' if waiting.waiting == 1 else 's' }} waiting{% if waiting.unsent %}, {{ waiting.unsent }} never sent a link{% if waiting.held %} ({{ waiting.held }} held back by the daily email limit){% endif %}{% endif %}.
+      {% else %}every member has confirmed.{% endif %}
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+    {% if member_confirm and waiting.unsent %}
+    <form method="post" action="/coordinator/registrations/{{ event.id }}/member_links" class="m-0">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-sm btn-primary">Send confirmation links to waiting members</button>
+    </form>
+    {% endif %}
+    {% if may_switch %}
+    <form method="post" action="/coordinator/registrations/{{ event.id }}/member_confirm" class="m-0">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="on" value="{{ '0' if member_confirm else '1' }}">
+      <button type="submit" class="btn btn-sm btn-outline-secondary">{{ 'Turn off' if member_confirm else 'Turn on' }}</button>
+    </form>
+    {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {#- UPG-214: the SPOC quietly chooses which teams may attend; nobody is told -#}
+  <div class="card border mb-3" data-entry-list>
+    <div class="card-body py-2">
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+        <div class="small">
+          <strong>Entry list:</strong>
+          {% if entry.on %}on. Only the teams selected may enter; the scanner turns the others away. Nobody is told.
+          {% else %}off. Every registered team may enter.{% endif %}
+          <div data-entry-counts>Selected {{ entry.selected }} · Not selected {{ entry.not_selected }} · Checked in {{ entry.checked_in }} · Turned away at the door {{ entry.refused }}{% if entry.limit %} · Hall seats {{ entry.limit }}{% endif %}</div>
+          {% if entry.over %}<div class="text-danger fw-semibold" data-entry-over>{{ entry.selected }} selected is more than the hall's {{ entry.limit }} seats.</div>{% endif %}
+        </div>
+        {% if may_select %}
+        <form method="post" action="/coordinator/registrations/{{ event.id }}/entry" class="d-flex flex-wrap align-items-end gap-2 m-0" data-entry-switch>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="action" value="switch">
+          <div>
+            <label class="form-label small mb-0" for="entry-limit">Hall seats (optional)</label>
+            <input type="number" min="0" id="entry-limit" name="limit" value="{{ entry.limit or '' }}" class="form-control form-control-sm" style="width:7rem">
+          </div>
+          {% if entry.on %}
+          <button type="submit" name="on" value="1" class="btn btn-sm btn-outline-primary">Save seats</button>
+          <button type="submit" name="on" value="0" class="btn btn-sm btn-outline-secondary">Turn off</button>
+          {% else %}
+          <button type="submit" name="on" value="1" class="btn btn-sm btn-primary">Turn on: only selected teams may enter</button>
+          {% endif %}
+        </form>
+        {% endif %}
+      </div>
+      {% if may_select %}
+      <div class="d-flex flex-wrap align-items-end gap-2 mt-2" data-entry-actions>
+        <form method="post" action="/coordinator/registrations/{{ event.id }}/entry" id="entry-form" class="d-flex flex-wrap gap-2 m-0">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" name="action" value="select" class="btn btn-sm btn-success">Select ticked</button>
+          <button type="submit" name="action" value="unselect" class="btn btn-sm btn-outline-danger">Take ticked off</button>
+          <button type="submit" name="action" value="select_all" class="btn btn-sm btn-outline-success">Select all</button>
+          <button type="submit" name="action" value="unselect_all" class="btn btn-sm btn-outline-secondary">Take all off</button>
+          <button type="submit" name="action" value="shortlist" class="btn btn-sm btn-outline-primary">Select the teams still in the competition</button>
+        </form>
+        <form method="post" action="/coordinator/registrations/{{ event.id }}/entry" enctype="multipart/form-data" class="d-flex flex-wrap align-items-end gap-2 m-0">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="action" value="csv">
+          <div>
+            <label class="form-label small mb-0" for="entry-csv">Select from a CSV (team names, emails or ticket IDs)</label>
+            <input type="file" id="entry-csv" name="file" accept=".csv,text/csv,text/plain" class="form-control form-control-sm" required>
+          </div>
+          <button type="submit" class="btn btn-sm btn-outline-success">Select these</button>
+        </form>
+      </div>
+      {% endif %}
+      <div class="small mt-2" data-entry-filters>
+        Show:
+        {% set base = request.path ~ '?' ~ ({'q': page.q} if page.q else {})|urlencode %}
+        <a href="{{ base }}" class="{{ 'fw-bold' if not entry_filter and not pay_filter }}">all</a> ·
+        <a href="{{ base }}&entry=selected" class="{{ 'fw-bold' if entry_filter == 'selected' }}">selected</a> ·
+        <a href="{{ base }}&entry=not_selected" class="{{ 'fw-bold' if entry_filter == 'not_selected' }}">not selected</a> ·
+        <a href="{{ base }}&pay=paid" class="{{ 'fw-bold' if pay_filter == 'paid' }}">paid</a> ·
+        <a href="{{ base }}&pay=unpaid" class="{{ 'fw-bold' if pay_filter == 'unpaid' }}">not paid</a>
+      </div>
+    </div>
+  </div>
+
   {% set search_label = 'Search by name, email, USN, team or phone' %}
   {% include "includes/list_search.html" %}
   {% if registrations %}
@@ -37,18 +125,46 @@
         {% for reg in registrations %}
         <tr>
           <td>
+            {% if may_select and not reg.cancelled %}
+            <input type="checkbox" class="form-check-input me-1" name="reg_id" value="{{ reg.id }}" form="entry-form" aria-label="Tick {{ reg.team_name or reg.lead_name }}" data-entry-tick>
+            {% endif %}
+            {% if not reg.cancelled %}<span class="badge {{ 'text-bg-success' if reg.on_list else 'text-bg-light border' }}" data-entry-state="{{ 'selected' if reg.on_list else 'not_selected' }}">{{ 'Selected' if reg.on_list else 'Not selected' }}</span>{% endif %}
             <div class="fw-semibold">{{ reg.lead_name or reg.name or '—' }}</div>
             <div class="text-muted small">{{ reg.usn or '' }}</div>
           </td>
           <td>
             {{ reg.team_name or '—' }}
             {% if reg.members %}<div class="text-muted small">{{ reg.members|length }} member{{ '' if reg.members|length == 1 else 's' }}</div>{% endif %}
+            {% for m, st in reg.member_status or [] %}
+            <div class="small" data-member-status="{{ st.key }}">{{ m.name }} <span class="badge text-bg-{{ 'secondary' if st.tone == 'neutral' else st.tone }}">{{ st.label }}</span></div>
+            {% endfor %}
           </td>
           <td>
             <div class="small">{{ reg.lead_email or reg.student_email or '—' }}</div>
             <div class="text-muted small">{{ reg.lead_phone or '' }}</div>
           </td>
-          <td><span class="badge bg-secondary">{{ reg.status or 'confirmed' }}</span></td>
+          <td data-reg-status>
+            <span class="badge {{ 'bg-danger' if reg.cancelled else 'bg-secondary' }}">{{ reg.status or 'confirmed' }}</span>
+            {% if reg.cancelled and reg.cancel_reason %}<div class="text-muted small">{{ reg.cancel_reason }}</div>{% endif %}
+            {#- UPG-211: the hosting SPOC cancels a team until it is checked in -#}
+            {% if may_cancel and not reg.cancelled %}
+              {% if reg.checked_in %}
+              <div class="text-muted small mt-1">Checked in: can't be cancelled</div>
+              {% else %}
+              <details class="mt-1" data-cancel-team>
+                <summary class="small text-danger">Cancel {{ 'team' if reg.members else 'registration' }}</summary>
+                <form method="post" action="/coordinator/registrations/{{ event.id }}/cancel_team" class="mt-1">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="reg_id" value="{{ reg.id }}">
+                  <label class="form-label small mb-0" for="reason-{{ reg.id }}">Reason (the team sees it)</label>
+                  <input type="text" id="reason-{{ reg.id }}" name="reason" class="form-control form-control-sm" maxlength="300" required>
+                  <button type="submit" class="btn btn-sm btn-danger mt-1">Cancel {{ reg.team_name or 'it' }}</button>
+                  <div class="text-muted small">Its seat is freed and its ticket stops working. This can't be undone.</div>
+                </form>
+              </details>
+              {% endif %}
+            {% endif %}
+          </td>
           <td>{{ reg.payment_status or reg.paymentStatus or 'unpaid' }}</td>
           <td>{{ reg.attendance or 'Pending' }}</td>
           <td data-login-status>

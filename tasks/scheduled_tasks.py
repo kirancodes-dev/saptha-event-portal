@@ -20,6 +20,7 @@ from models import db
 # `active` is the old single "running" status (UPG-43).
 from services_workflow import EVENT_DAY_STATUSES as RUNNING, REGISTRATION_OPEN_STATUSES as REGISTRATION_OPEN
 from utils import venue_label  # never an invented place (UPG-111)
+import services_entry
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +92,8 @@ def send_24h_reminders(self):
                 if reg.get('status', '') not in ('Confirmed', 'Paid', 'Free', ''):
                     continue
                 if reg.get('is_eliminated'):
+                    continue
+                if services_entry.left_out(event, reg):   # not on the SPOC's entry list (UPG-214)
                     continue
 
                 # The entry ticket (with the QR) to the lead and every team
@@ -303,6 +306,8 @@ def send_3day_reminders(self):
                 if reg.get('status', '') not in ('Confirmed', 'Paid', 'Free', ''):
                     continue
                 if reg.get('is_eliminated'):
+                    continue
+                if services_entry.left_out(event, reg):   # not on the SPOC's entry list (UPG-214)
                     continue
 
                 # The lead and every team member, once each (UPG-48)

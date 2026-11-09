@@ -108,10 +108,31 @@ IDENTITY_FIELDS = (
 )
 
 
-def normalise_fields(fields) -> list:
+# Name and email are always asked: the account, ticket and certificate use them.
+# A form the SPOC built in the builder (`chosen`) gets only these two; older
+# forms also get phone and USN back, as before (UPG-212).
+FIXED_IDENTITY = IDENTITY_FIELDS[:2]
+
+# What each team member is asked besides name and email, as the SPOC chose (UPG-212)
+MEMBER_DETAILS = (('usn', 'USN', 'text'), ('phone', 'Phone', 'tel'))
+MEMBER_CHOICES = ('off', 'optional', 'required')
+DEFAULT_MEMBER_FIELDS = {'usn': 'optional', 'phone': 'off'}
+CHOICE_TYPES = ('select', 'radio', 'checkbox_group')
+
+
+def member_settings(schema) -> dict:
+    """{'usn': 'off'|'optional'|'required', 'phone': ...} for a form."""
+    chosen = (schema or {}).get('member_fields') if isinstance(schema, dict) else None
+    chosen = chosen if isinstance(chosen, dict) else {}
+    return {key: chosen.get(key) if chosen.get(key) in MEMBER_CHOICES else DEFAULT_MEMBER_FIELDS[key]
+            for key, _, _ in MEMBER_DETAILS}
+
+
+def normalise_fields(fields, chosen: bool = False) -> list:
     """Every field gets an `id` (template and seeded forms store `field_name`),
     the identity fields come first unless the form already asks for them, and
-    each id appears once (UPG-01)."""
+    each id appears once (UPG-01). A form built in the builder (`chosen`) gets
+    name and email only, always required (UPG-212)."""
     out, seen = [], set()
     for i, raw in enumerate(fields or []):
         if not isinstance(raw, dict):
@@ -130,11 +151,22 @@ def normalise_fields(fields) -> list:
             continue
         seen.add(field['id'])
         out.append(field)
-    missing = [dict(standard) for ids, standard in IDENTITY_FIELDS if not seen.intersection(ids)]
+    standards = FIXED_IDENTITY if chosen else IDENTITY_FIELDS
+    missing = [dict(standard) for ids, standard in standards if not seen.intersection(ids)]
+    if chosen:
+        fixed = {fid for ids, _ in FIXED_IDENTITY for fid in ids}
+        out = [dict(f, required=True) if f['id'] in fixed else f for f in out]
     return missing + out
 
 
-def _get_form(event_id: str) -> Optional[dict]:
+def _get_form(event_id: str, event: Optional[dict] = None) -> Optional[dict]:
+    """The event's saved form. Whether the SPOC built it in the builder, and
+    what team members are asked, are kept on the event (`form_chosen`,
+    `form_member_fields`, UPG-212), and so are its title and description
+    (`form_title`, `form_desc`, UPG-216): the SQL store keeps only a form's fields."""
+    if event is None:
+        event_doc = db.collection('events').document(event_id).get()
+        event = (event_doc.to_dict() or {}) if event_doc.exists else {}
     doc = db.collection('event_forms').document(event_id).get()
     if not doc.exists:
         return None
@@ -142,7 +174,13 @@ def _get_form(event_id: str) -> Optional[dict]:
     if isinstance(data, list):
         data = {'fields': data, 'form_title': 'Registration Form', 'form_desc': ''}
     if isinstance(data, dict):
-        data['fields'] = normalise_fields(data.get('fields') or [])
+        data['chosen'] = bool(event.get('form_chosen'))
+        # The title and description the SPOC gave it, kept on the event (UPG-216)
+        for key in ('form_title', 'form_desc'):
+            if isinstance(event.get(key), str):
+                data[key] = event[key]
+        data['member_fields'] = member_settings({'member_fields': event.get('form_member_fields')})
+        data['fields'] = normalise_fields(data.get('fields') or [], chosen=data['chosen'])
         return data
     return None
 
@@ -160,9 +198,10 @@ def team_limits(event: dict) -> tuple:
     return max(lo, 1), max(hi, lo, 1)
 
 
-def team_fields(event: dict, existing_ids=()) -> list:
-    """The team name and one name / email / USN row per possible member,
-    required up to the team's minimum."""
+def team_fields(event: dict, existing_ids=(), member_fields=None) -> list:
+    """The team name and one name / email row per possible member, required
+    up to the team's minimum, with the USN and phone as the SPOC chose
+    (`member_settings`; USN optional and no phone by default, UPG-212)."""
     lo, hi = team_limits(event)
     if hi <= 1:
         return []
@@ -172,12 +211,15 @@ def team_fields(event: dict, existing_ids=()) -> list:
                        'required': True, 'options': [], 'help_text': ''})
     fields.append({'id': 'team_members', 'type': 'heading', 'options': [],
                    'label': f'Team members: {lo}–{hi} people including you'})
+    settings = member_settings({'member_fields': member_fields})
+    asked = [('name', 'Name', 'text', 'required'), ('email', 'Email', 'email', 'required')] + [
+        (key, label, ftype, settings[key]) for key, label, ftype in MEMBER_DETAILS if settings[key] != 'off']
     for i in range(1, hi):
-        for key, label, ftype in (('name', 'Name', 'text'), ('email', 'Email', 'email'), ('usn', 'USN', 'text')):
+        for key, label, ftype, setting in asked:
             fid = f'member_{i}_{key}'
             if fid not in existing_ids:
                 fields.append({'id': fid, 'type': ftype, 'label': f'Member {i + 1} {label}', 'placeholder': '',
-                               'required': i < lo and key != 'usn', 'options': [], 'help_text': ''})
+                               'required': i < lo and setting == 'required', 'options': [], 'help_text': ''})
     return fields
 
 
@@ -188,12 +230,15 @@ IDENTITY_FIELD_IDS = frozenset((
 ))
 
 
-def form_sections(fields) -> dict:
+def form_sections(fields, chosen: bool = False) -> dict:
     """The form's fields in the page's sections: {'participant', 'details', 'team'}.
     A heading, paragraph or divider goes with the field after it, so a builder
-    heading stays above the questions it introduces."""
+    heading stays above the questions it introduces. In a form the SPOC built
+    (`chosen`) only the who-you-are questions they put at the top open the
+    form; every other question stays where they put it (UPG-216)."""
     groups: dict = {'participant': [], 'details': [], 'team': []}
     pending: list = []
+    leading = True   # still in the run of who-you-are questions at the top
     for f in fields or []:
         if f.get('id') == 'team_members':   # team_fields' own heading always belongs to the team
             groups['team'].append(f)
@@ -204,10 +249,11 @@ def form_sections(fields) -> dict:
         fid = str(f.get('id') or '')
         if fid == 'team_name' or fid.startswith('member_'):
             key = 'team'
-        elif fid in IDENTITY_FIELD_IDS:
+        elif fid in IDENTITY_FIELD_IDS and not (chosen and (pending or not leading)):
             key = 'participant'
         else:
             key = 'details'
+            leading = False
         groups[key] += pending + [f]
         pending = []
     groups['details'] += pending
@@ -243,8 +289,9 @@ def team_blocks(team) -> dict:
 def registration_schema(event_id: str, event: dict) -> dict:
     """The form a registrant fills: the event's form (or the default one)
     plus the team fields its limits call for."""
-    schema = _get_form(event_id) or _simple_schema_fallback(is_team=team_limits(event)[1] > 1)
-    schema['fields'] = schema['fields'] + team_fields(event, {f['id'] for f in schema['fields']})
+    schema = _get_form(event_id, event) or _simple_schema_fallback(is_team=team_limits(event)[1] > 1)
+    schema['fields'] = schema['fields'] + team_fields(event, {f['id'] for f in schema['fields']},
+                                                      member_settings(schema))
     return schema
 
 
@@ -351,6 +398,14 @@ def _field_errors(schema: dict, form_data: dict) -> list:
             except re.error:
                 pass
 
+        # A choice must be one the SPOC offered (UPG-212)
+        options = [str(o) for o in field.get('options') or [] if str(o).strip()]
+        if ftype in CHOICE_TYPES and value and options:
+            chosen = value if isinstance(value, list) else [value]
+            if any(str(v) not in options for v in chosen):
+                errors.append(f"Choose from the options given for '{label}'.")
+                continue
+
         if ftype == 'email' and value:
             if not re.match(r'^[^@]+@[^@]+\.[^@]+$', str(value)):
                 errors.append(f"'{label}' must be a valid email address.")
@@ -438,7 +493,7 @@ def builder(event_id):
     event['id'] = event_id
     if not _allowed(event_id, event, 'edit_event'):
         abort(403)
-    existing    = _get_form(event_id)
+    existing    = _get_form(event_id, event)
 
     return render_template(
         'coordinator/form_builder.html',
@@ -479,6 +534,33 @@ def _builder_back_url(event_id: str) -> str:
     return '/coordinator/dashboard'
 
 
+def _builder_problem(fields_raw) -> str:
+    """Why a form from the builder can't be saved, or '' (UPG-212)."""
+    if not isinstance(fields_raw, list):
+        return "The form's fields are missing."
+    seen = set()
+    for i, f in enumerate(fields_raw, start=1):
+        if not isinstance(f, dict):
+            return f"Field {i} isn't a field."
+        ftype, fid = f.get('type', 'text'), str(f.get('id') or f.get('field_name') or '')
+        name = f.get('label') or ftype
+        if ftype not in SUPPORTED_FIELD_TYPES:
+            return f"Field {i} ('{name}') has a type the form can't show: {ftype}."
+        if ftype in LAYOUT_TYPES:
+            continue
+        if not str(f.get('label') or '').strip():
+            return f"Field {i} needs a label, so people know what to answer."
+        if fid in seen:
+            return f"Two fields share the id '{fid}'."
+        seen.add(fid)
+        if fid == 'team_members' or _MEMBER_FIELD.match(fid):
+            return (f"'{name}': team members' questions come from the event's team size; "
+                    "choose them under Team members.")
+        if ftype in CHOICE_TYPES and not [o for o in f.get('options') or [] if str(o).strip()]:
+            return f"'{name}' needs at least one option."
+    return ''
+
+
 # =========================================================
 # 2. SAVE FORM (AJAX — from builder or wizard)
 # =========================================================
@@ -497,6 +579,12 @@ def save_form(event_id):
         fields_raw = payload.get('fields', [])
         form_title = payload.get('form_title', 'Registration Form').strip()
         form_desc  = payload.get('form_desc', '').strip()
+        # The builder sends `chosen`: the form is exactly what the SPOC built (UPG-212)
+        chosen     = bool(payload.get('chosen'))
+        if chosen:
+            problem = _builder_problem(fields_raw)
+            if problem:
+                return jsonify({'status': 'error', 'message': problem}), 400
 
         clean_fields = []
         for i, f in enumerate(fields_raw):
@@ -505,13 +593,16 @@ def save_form(event_id):
                 # Its answers would have no name to be stored under (UPG-01)
                 return jsonify({'status': 'error', 'message':
                                 f"Field {i + 1} ('{f.get('label') or f.get('type') or 'untitled'}') has no id."}), 400
+            options = f.get('options', [])
+            if chosen and f.get('type') in CHOICE_TYPES:
+                options = list(dict.fromkeys(str(o).strip()[:80] for o in options if str(o).strip()))
             clean_fields.append({
                 'id':          fid or f"layout_{i}",
                 'type':        f.get('type', 'text'),
                 'label':       f.get('label', f'Field {i+1}'),
                 'placeholder': f.get('placeholder', ''),
                 'required':    bool(f.get('required', False)),
-                'options':     f.get('options', []),
+                'options':     options,
                 'min':         f.get('min', ''),
                 'max':         f.get('max', ''),
                 'help_text':   f.get('help_text', ''),
@@ -530,7 +621,13 @@ def save_form(event_id):
         db.collection('event_forms').document(event_id).set(schema)
         db.collection('events').document(event_id).update({
             'has_custom_form': True,
-            'form_type':       form_type
+            'form_type':       form_type,
+            # UPG-212: built in the builder (only name and email fixed) and the members' questions
+            'form_chosen':     chosen,
+            'form_member_fields': member_settings({'member_fields': payload.get('member_fields')}),
+            # UPG-216: the title and description, which the SQL store drops from the form
+            'form_title':      form_title[:200] or 'Registration Form',
+            'form_desc':       form_desc[:1000],
         })
 
         log_action(db, "FORM_SAVED",
@@ -601,7 +698,7 @@ def registration_page(event_id):
         back_url=back_url,
         event=event,
         schema=schema,
-        sections=(sections := form_sections(schema.get('fields'))),   # the full-page layout (UPG-150)
+        sections=(sections := form_sections(schema.get('fields'), schema.get('chosen'))),   # the full-page layout (UPG-150)
         team_blocks=team_blocks(sections['team']),                    # one block per member
         team_size=team_limits(event),
         is_registered=is_registered,
@@ -979,6 +1076,10 @@ def submit_form(event_id):
         # Each team member the lead listed hears they were added (UPG-48),
         # only when team members get emails (NOTIFY_TEAM_MEMBERS, UPG-152)
         # and the event isn't portal-only (UPG-195)
+        # Each member also gets a link to confirm and set a password (UPG-207);
+        # with NOTIFY_TEAM_MEMBERS off (the default) it's their only email
+        import services_team_confirm
+        services_team_confirm.after_registration(db, reg_id, reg_data, event_data)
         from services_recipients import notify_team_members
         members_emailed = notify_team_members() and services_hackathon.email_allowed(event_data, 'team')
         for m in (reg_data.get('members') or []) if members_emailed else []:

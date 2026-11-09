@@ -11,6 +11,8 @@ import io
 import re
 from collections import Counter, defaultdict
 
+import services_entry
+
 # One row per registration; a team's lead, then its other members
 COLUMNS = ['Ticket ID', 'Lead Name', 'Lead USN', 'Department', 'Year', 'Lead Email', 'Lead Phone', 'Team', 'Members',
            'Attendance', 'Check-in Time', 'Payment Status', 'Amount (Rs)', 'Score', 'Rank',
@@ -79,10 +81,31 @@ def _event_sessions(db, event_id):
     return services_sessions.sessions_for((doc.to_dict() or {}) if doc.exists else {})
 
 
+def _member_confirm(db, event_id):
+    """Does the event ask team members to confirm their email (UPG-207)?"""
+    import services_team_confirm
+    doc = db.collection('events').document(event_id).get()
+    return services_team_confirm.enabled((doc.to_dict() or {}) if doc.exists else {})
+
+
+def _confirm_label(member):
+    """A member's confirmation in the Members cell: " [Confirmed]" or " [Waiting]"."""
+    return ' [Confirmed]' if member.get('confirmed_at') else ' [Waiting]'
+
+
+def _entry_event(db, event_id):
+    """The event, when its entry list is on (UPG-214); else None."""
+    doc = db.collection('events').document(event_id).get()
+    event = (doc.to_dict() or {}) if doc.exists else {}
+    return event if services_entry.on(event) else None
+
+
 def registration_columns(db, event_id):
-    """COLUMNS, then one column per agenda session (UPG-159)."""
+    """COLUMNS, then one column per agenda session (UPG-159), then "Selected
+    to attend" when the event's entry list is on (UPG-214)."""
     import services_sessions
-    return COLUMNS + [f"Session: {services_sessions.label(s)}" for s in _event_sessions(db, event_id)]
+    return COLUMNS + [f"Session: {services_sessions.label(s)}" for s in _event_sessions(db, event_id)] + \
+        (['Selected to attend'] if _entry_event(db, event_id) else [])
 
 
 def registration_rows(db, event_id, sessions=True):
@@ -90,12 +113,14 @@ def registration_rows(db, event_id, sessions=True):
     with sessions=False): a session's cell is "Yes" when it was scanned in."""
     regs = _registrations(db, event_id)
     agenda = _event_sessions(db, event_id) if sessions else []
+    confirming = _member_confirm(db, event_id)
     went = {}
     if agenda:
         import services_sessions
         went = services_sessions.attended(event_id)
     profiles = _profiles(db, regs)
     ranks = _ranks(regs)
+    listed = _entry_event(db, event_id) if sessions else None
     rows = []
     for rid, r in sorted(regs, key=lambda x: str(x[1].get('registered_at') or '')):
         department, year = department_and_year(r, profiles.get((r.get('lead_email') or '').lower()))
@@ -104,14 +129,16 @@ def registration_rows(db, event_id, sessions=True):
         rows.append([
             r.get('reg_id') or rid, r.get('lead_name', ''), r.get('lead_usn', ''), department, year,
             r.get('lead_email', ''), r.get('lead_phone') or r.get('phone', ''),
-            r.get('team_name', ''), '; '.join(f"{m.get('name', '')} ({m.get('usn', '')})" for m in others),
+            r.get('team_name', ''), '; '.join(f"{m.get('name', '')} ({m.get('usn', '')})"
+                                              + (_confirm_label(m) if confirming else '') for m in others),
             r.get('attendance', 'Pending'), r.get('checkin_time', ''),
             r.get('payment_status', ''), r.get('amount_paid', 0) or 0,
             '' if score is None else score, ranks.get(rid, ''),
             r.get('certificate_id', ''), r.get('registered_at', ''),
             _ptype(r), r.get('designation', ''), r.get('institution', ''),   # UPG-12
             r.get('ticket_type_name', ''),                                    # UPG-155
-        ] + ['Yes' if s['id'] in went.get(rid, ()) else '' for s in agenda])  # UPG-159
+        ] + ['Yes' if s['id'] in went.get(rid, ()) else '' for s in agenda]  # UPG-159
+            + ([('Yes' if services_entry.may_enter(listed, r) else 'No')] if listed else []))  # UPG-214
     return rows
 
 
@@ -199,6 +226,8 @@ def event_report(db, event_id):
                   'venue': event.get('venue', '')},
         'registered': len(regs),
         'present': sum(1 for _, r in regs if r.get('attendance') == 'Present'),
+        # Teams the SPOC didn't put on the entry list weren't expected (UPG-214)
+        'not_selected': sum(1 for _, r in regs if not services_entry.inactive(r) and services_entry.left_out(event, r)),
         'by_department': {k: dict(v) for k, v in sorted(by_dept.items())},
         'by_year': {k: dict(v) for k, v in sorted(by_year.items())},
         'by_participant_type': {k: dict(v) for k, v in sorted(by_type.items())},   # UPG-12
@@ -224,10 +253,12 @@ def _poll_results(event_id):
 def event_report_xlsx(db, event_id):
     report = event_report(db, event_id)
     ev = report['event']
-    present_pct = round(100 * report['present'] / report['registered'], 1) if report['registered'] else 0
+    expected = report['registered'] - report['not_selected']   # not-selected teams aren't absent (UPG-214)
+    present_pct = round(100 * report['present'] / expected, 1) if expected > 0 else 0
     summary = [
         ['Event', ev['title']], ['Date', ev['date']], ['Venue', ev['venue']],
         ['Registered', report['registered']], ['Present', report['present']],
+    ] + ([['Not selected to attend', report['not_selected']]] if report['not_selected'] else []) + [
         ['Attendance %', present_pct],
         ['Feedback responses', report['feedback']['responses']],
         ['Average feedback rating', '' if report['feedback']['average_rating'] is None

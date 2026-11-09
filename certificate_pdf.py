@@ -284,6 +284,81 @@ def render(*, number: str, name: str, data: dict, cert_type: str, signatories: L
     return buf.getvalue()
 
 
+def fit_box(text: str, max_width: float, size: float, bold: bool) -> tuple:
+    """(size, lines) for text in a box: one line down to 60% of the set size,
+    then two lines, then smaller, so it never leaves the box's width."""
+    floor = max(6.0, size * 0.6)
+    one = fit_size(text, max_width, size, minimum=floor, bold=bold)
+    if text_width(text, one, bold) <= max_width:
+        return one, [text]
+    two = one
+    while two >= 6:
+        lines = _wrap(text, max_width, two, bold=bold)
+        if len(lines) <= 2 and all(text_width(line, two, bold) <= max_width for line in lines):
+            return two, lines
+        two -= 1
+    return fit_size(text, max_width, floor, minimum=3, bold=bold), [text]
+
+
+QR_SIZE = 62          # about 22 mm
+QR_MARGIN = 24        # about 8.5 mm from the page's edges
+
+
+def qr_box(corner: str, W: float, H: float) -> tuple:
+    """(x, y) of the QR code's bottom-left corner, in points from the page's bottom left."""
+    left = corner in ('bl', 'tl')
+    top = corner in ('tr', 'tl')
+    x = QR_MARGIN if left else W - QR_MARGIN - QR_SIZE
+    y = H - QR_MARGIN - QR_SIZE if top else QR_MARGIN + 10      # room for the number under it
+    return x, y
+
+
+def render_design(*, number: str, name: str, data: dict, design: dict, image: bytes, verify_url: str) -> bytes:
+    """A certificate on the organiser's own design (UPG-206): the design full
+    page, the name (and any other boxes switched on) where the organiser
+    placed them, and the number with a small QR code in the chosen corner."""
+    from services_certificate_design import FIELDS, values
+    _register_fonts()
+    W, H = landscape(A4) if design.get('orientation') != 'portrait' else A4
+    buf = io.BytesIO()
+    c = rl_canvas.Canvas(buf, pagesize=(W, H))
+    c.setTitle(f"{data.get('title', 'Certificate')} — {name}")
+    c.setAuthor(branding()['name'])
+    c.setSubject(f'Certificate {number}')
+    c.drawImage(ImageReader(io.BytesIO(image)), 0, 0, width=W, height=H)
+
+    texts = values(name, data)
+    for key in FIELDS:
+        box = (design.get('fields') or {}).get(key) or {}
+        text = str(texts.get(key) or '').strip()
+        if not box.get('on') or not text:
+            continue
+        width = W * float(box['w']) / 100
+        left = W * float(box['x']) / 100
+        middle = H - H * float(box['y']) / 100            # the box's centre line
+        bold = bool(box.get('bold'))
+        size, lines = fit_box(text, width, float(box['size']), bold)
+        gap = size * 1.15
+        align = box.get('align') if box.get('align') in ('left', 'center', 'right') else 'center'
+        x = left if align == 'left' else left + width if align == 'right' else left + width / 2
+        first = middle + gap * (len(lines) - 1) / 2 - size * 0.35
+        for i, line in enumerate(lines):
+            draw_text(c, x, first - gap * i, line, size, bold=bold, align=align,
+                      color=_color(str(box.get('color') or ''), '#1a1a1a'))
+
+    qx, qy = qr_box((design.get('qr') or {}).get('corner') or 'br', W, H)
+    label = f'No. {number}'
+    size = fit_size(label, QR_SIZE + 2 * QR_MARGIN - 8, 7, minimum=5, bold=False)
+    half = max(QR_SIZE, text_width(label, size)) / 2 + 3
+    c.setFillColor(HexColor('#ffffff'))
+    c.rect(qx + QR_SIZE / 2 - half, qy - 12, 2 * half, QR_SIZE + 15, fill=1, stroke=0)
+    c.drawImage(_qr(verify_url), qx, qy, width=QR_SIZE, height=QR_SIZE)
+    draw_text(c, qx + QR_SIZE / 2, qy - 9, label, size, color=HexColor('#333a4d'))
+    c.showPage()
+    c.save()
+    return buf.getvalue()
+
+
 def to_png(pdf: bytes, scale: float = 2.0) -> bytes:
     """The certificate's first page as a PNG (for previews and LinkedIn)."""
     import pypdfium2 as pdfium

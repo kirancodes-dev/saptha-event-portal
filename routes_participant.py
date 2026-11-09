@@ -587,6 +587,9 @@ def public_register(event_id):
         else:
             send_ticket_email(email, full_name, event_data.get('title', ''),
                               reg_id, cancel_url=cancel_url_for(reg_data))
+        # Each member the lead listed: a link to confirm and set a password (UPG-207)
+        import services_team_confirm
+        services_team_confirm.after_registration(db, reg_id, reg_data, event_data)
         log_action(db, "REGISTRATION_CONFIRMED", f"{email} registered for {event_id}")
         if session_email:
             return redirect(f'/ticket/{reg_id}')

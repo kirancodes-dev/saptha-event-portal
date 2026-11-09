@@ -304,9 +304,12 @@ class NotificationAutomationEngine:
         else:
             docs = db.collection("registrations").where("event_id", "==", event_id).stream()
 
+        import services_entry
         results = []
         for d in docs:
             r = d.to_dict()
+            if services_entry.left_out(event_data, r or {}):   # not on the SPOC's entry list (UPG-214)
+                continue
             ctx = {
                 "event_id": event_id,
                 "event_title": event_data.get("title", ""),

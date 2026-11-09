@@ -552,6 +552,9 @@ def notify_event_details_changed(
             rd = r.to_dict()
             if (rd.get("status") or "").strip().lower() == "cancelled":
                 continue
+            import services_entry   # not on the SPOC's entry list: told nothing more (UPG-214)
+            if services_entry.left_out(new_data, rd):
+                continue
             # The lead and every team member, once each (UPG-48)
             for email, recipient_name, _phone in registration_people(rd):
                 if email in notified_emails:

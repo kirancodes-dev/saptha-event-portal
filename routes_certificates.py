@@ -64,7 +64,8 @@ def manage(event_id):
     issued = {(c['person_key'], c['cert_type']): c for c in certs.for_event(event_id)}
     owed = certs.recipients(db, event_id, event)
     people = [dict(r, pair=f"{r['person_key']}|{r['cert_type']}", cert=issued.get((r['person_key'], r['cert_type'])),
-                   type_title=certs.TYPES[r['cert_type']]['title']) for r in owed]
+                   type_title=certs.TYPES[r['cert_type']]['title'], blocked=not certs.can_issue_type(event, r['cert_type']))
+              for r in owed]
     owed_keys = {(r['person_key'], r['cert_type']) for r in owed}
     others = [dict(c, type_title=certs.TYPES.get(c['cert_type'], {}).get('title', c['cert_type']))
               for key, c in issued.items() if key not in owed_keys]     # issued earlier, no longer owed
@@ -80,7 +81,30 @@ def manage(event_id):
                            running=any(r['status'] in ('queued', 'running') for r in event_runs),
                            people=people, others=others, issued_count=len(issued),
                            corrections=changes.for_event(db, event_id),
-                           registered=certs.registered_people(db, event_id))
+                           registered=certs.registered_people(db, event_id),
+                           award_problem=runs.ready_to_issue(event, certs.AWARD_TYPES), **_design_context(event))
+
+
+def _design_context(event):
+    """The own-design card (UPG-206)."""
+    import services_certificate_design as design
+    import services_certificates as certs
+    kind = certs.attendance_type(event)
+    return {'design': design.get(event), 'design_type': certs.TYPES[kind]['title'], 'design_fields': design.FIELDS,
+            'design_labels': design.LABELS, 'design_corners': design.CORNERS, 'design_best': design.BEST,
+            'design_max_mb': design.MAX_BYTES // (1024 * 1024), 'sample_values': _sample_values(event)}
+
+
+def _sample_values(event):
+    """What the preview prints: the longest registered name (so the organiser sees
+    the hardest case fit), and real or sample values for the other boxes."""
+    import services_certificate_design as design
+    import services_certificates as certs
+    people = certs.registered_people(db, event['id'])
+    longest = max(people, key=lambda p: len(p['name'] or ''), default=None)
+    pick = (lambda k: max((str(p.get(k) or '') for p in people), key=len, default='') or design.SAMPLES[k])
+    return {'name': longest['name'] if longest else SAMPLE['name'], 'team': pick('team'), 'usn': pick('usn'),
+            'college': pick('institution') if any(p.get('institution') for p in people) else design.SAMPLES['college']}
 
 
 def _can(event, permission):
@@ -212,6 +236,15 @@ def preview(event_id):
               'designation': '', 'institution': '', 'hours': float(event.get('activity_hours') or 0) or None,
               'points': float(event.get('activity_points') or 0) or None}
     data = certs.wording(event, sample)
+    if data.get('design'):           # the organiser's own design (UPG-206), with the longest real name
+        import services_certificate_design as design
+        values = _sample_values(event)
+        data = dict(data, team=values['team'], usn=values['usn'], institution=values['college'])
+        pdf = certificate_pdf.render_design(number=SAMPLE['number'], name=values['name'], data=data,
+                                            design=data['design'], image=design.image(data['design']),
+                                            verify_url=certs.verify_url(SAMPLE['number']))
+        return Response(certificate_pdf.to_png(pdf, scale=1.4), mimetype='image/png',
+                        headers={'Cache-Control': 'private, no-store'})
     signatories = sigs.listing(db, event_id, event)
     pdf = certificate_pdf.render(number=SAMPLE['number'], name=SAMPLE['name'], data=data, cert_type=kind,
                                  signatories=signatories, verify_url=certs.verify_url(SAMPLE['number']),
@@ -219,6 +252,67 @@ def preview(event_id):
                                  signature_bytes=sigs.image_bytes(signatories))
     return Response(certificate_pdf.to_png(pdf, scale=1.4), mimetype='image/png',
                     headers={'Cache-Control': 'private, no-store'})
+
+
+# ── The organiser's own design (UPG-206) ────────────────────────────────────
+
+@certificates_bp.route('/events/<event_id>/design', methods=['POST'])
+@login_required
+def upload_design(event_id):
+    import services_certificate_design as design
+    _event_or_abort(event_id, 'edit_event')
+    upload = request.files.get('design')
+    try:
+        saved = design.upload(db, event_id, upload.read() if upload else b'',
+                              filename=getattr(upload, 'filename', '') or '', actor=session.get('user_id', ''))
+        flash("Design uploaded. Now place the name on it and save.", 'success')
+        if saved['low_res']:
+            flash(f"This design is {saved['width']} × {saved['height']} px and may print blurry; "
+                  f"{design.BEST[0]} × {design.BEST[1]} px is best.", 'warning')
+    except design.DesignError as exc:
+        flash(str(exc), 'danger')
+    return redirect(f'/certificates/events/{event_id}#design')
+
+
+@certificates_bp.route('/events/<event_id>/design/settings', methods=['POST'])
+@login_required
+def design_settings(event_id):
+    import services_certificate_design as design
+    event = _event_or_abort(event_id, 'edit_event')
+    try:
+        design.save_settings(db, event_id, event, request.form, actor=session.get('user_id', ''))
+        flash("Placement saved. Certificates issued from now on use it.", 'success')
+    except design.DesignError as exc:
+        flash(str(exc), 'danger')
+    return redirect(f'/certificates/events/{event_id}#design')
+
+
+@certificates_bp.route('/events/<event_id>/design/delete', methods=['POST'])
+@login_required
+def remove_design(event_id):
+    import services_certificate_design as design
+    _event_or_abort(event_id, 'edit_event')
+    design.remove(db, event_id, actor=session.get('user_id', ''))
+    flash("Your design is removed; the built-in template is used again. Certificates already issued keep theirs.",
+          'success')
+    return redirect(f'/certificates/events/{event_id}#design')
+
+
+@certificates_bp.route('/events/<event_id>/design.jpg')
+@login_required
+def design_image(event_id):
+    """The uploaded design, for the event's organisers only (never a public URL)."""
+    import services_certificate_design as design
+    from utils_storage import StorageError
+    event = _event_or_abort(event_id, 'edit_event', 'issue_certificates')
+    current = design.get(event)
+    if current is None:
+        abort(404)
+    try:
+        data = design.image(current)
+    except StorageError:
+        abort(404)
+    return Response(data, mimetype='image/jpeg', headers={'Cache-Control': 'private, no-store'})
 
 
 # ── Issuing (UPG-124) ───────────────────────────────────────────────────────
@@ -274,12 +368,12 @@ def issue_one(event_id):
     import services_certificates as certs
     from utils import log_action
     event = _event_or_abort(event_id, 'issue_certificates')
-    problem = runs.ready_to_issue(event)
+    pair = request.form.get('pair', '')
+    owed = next((r for r in certs.recipients(db, event_id, event) if f"{r['person_key']}|{r['cert_type']}" == pair), None)
+    problem = runs.ready_to_issue(event, [owed['cert_type']] if owed else None)
     if problem:
         flash(problem, 'danger')
         return _back(event_id)
-    pair = request.form.get('pair', '')
-    owed = next((r for r in certs.recipients(db, event_id, event) if f"{r['person_key']}|{r['cert_type']}" == pair), None)
     if owed is None:
         flash("That person isn't owed that certificate (check their attendance first).", 'danger')
         return _back(event_id)

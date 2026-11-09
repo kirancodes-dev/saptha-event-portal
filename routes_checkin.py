@@ -20,7 +20,7 @@ except ImportError:
 
 from models import db
 from services_workflow import is_event_day_status
-from utils import login_required, role_required
+from utils import log_action, login_required, role_required
 
 logger = logging.getLogger(__name__)
 
@@ -149,6 +149,14 @@ def submit_self_checkin(event_id):
     if reg.get('attendance') == 'Present':
         return render_template('public/checkin_already.html',
                                event=event, name=reg.get('lead_name', ''))
+
+    # The SPOC's entry list (UPG-214): no reason given to the student
+    import services_entry
+    if not services_entry.may_enter(event, reg):
+        services_entry.note_refused(_db(), reg_id, reg)
+        log_action(_db(), "CHECKIN_REFUSED", f"Reg {reg_id}: not on the entry list (self check-in)")
+        flash(services_entry.SEE_DESK, "warning")
+        return redirect(f'/checkin/{event_id}')
 
     checkin_time = datetime.datetime.now().strftime("%H:%M:%S")
     _db().collection('registrations').document(reg_id).update({

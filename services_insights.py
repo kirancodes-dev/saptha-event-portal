@@ -14,6 +14,8 @@ import collections
 import datetime
 from typing import Optional
 
+import services_entry
+
 PERIODS = {'7': 7, '30': 30, '90': 90, '365': 365, 'all': None}
 PERIOD_LABELS = {'7': 'Last 7 days', '30': 'Last 30 days', '90': 'Last 90 days',
                  '365': 'Last 12 months', 'all': 'All time'}
@@ -138,7 +140,10 @@ def build(events: list, regs: list, *, period: str = '30', category: str = '',
             continue
         states = collections.Counter(reg_state(r) for r in er)
         att = sum(1 for r in er if attended(r))
-        confirmed = states['confirmed']
+        # Teams the SPOC left off the entry list weren't expected: not no-shows (UPG-214)
+        not_selected = sum(1 for r in er if reg_state(r) == 'confirmed' and not attended(r)
+                           and services_entry.left_out(ev, r))
+        confirmed = states['confirmed'] - not_selected
         held = date and date <= today.isoformat()
         capacity = 0
         for key in ('capacity', 'max_participants'):
@@ -153,7 +158,8 @@ def build(events: list, regs: list, *, period: str = '30', category: str = '',
             'status': str(ev.get('status') or ''),
             'date': date,
             'registered': len(er),
-            'confirmed': confirmed,
+            'confirmed': states['confirmed'],
+            'not_selected': not_selected,
             'waitlisted': states['waitlisted'],
             'pending': states['pending'],
             'cancelled': states['cancelled'],
@@ -162,7 +168,7 @@ def build(events: list, regs: list, *, period: str = '30', category: str = '',
             # Confirmed for an event that hasn't happened yet: with attended, no-show
             # and other (waitlisted, pending, cancelled) these add up to `registered`
             'upcoming': 0 if held else max(confirmed - att, 0),
-            'other': states['waitlisted'] + states['pending'] + states['cancelled'],
+            'other': states['waitlisted'] + states['pending'] + states['cancelled'] + not_selected,
             'attendance_rate': _pct(att, confirmed) if held else None,
             'revenue': round(sum(paid_amount(r) for r in er), 2),
             'capacity': capacity,
@@ -180,7 +186,7 @@ def build(events: list, regs: list, *, period: str = '30', category: str = '',
     now = totals(cur)
     before = totals(prev) if prev is not None else None
     held_rows = [x for x in rows if x['attendance_rate'] is not None]
-    held_confirmed = sum(x['confirmed'] for x in held_rows)
+    held_confirmed = sum(x['confirmed'] - x['not_selected'] for x in held_rows)   # UPG-214
     kpis = {
         'registrations': now['registrations'],
         'registrations_delta': _delta(now['registrations'], before and before['registrations']),

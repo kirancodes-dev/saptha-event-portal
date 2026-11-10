@@ -131,6 +131,8 @@
             {% if not reg.cancelled %}<span class="badge {{ 'text-bg-success' if reg.on_list else 'text-bg-light border' }}" data-entry-state="{{ 'selected' if reg.on_list else 'not_selected' }}">{{ 'Selected' if reg.on_list else 'Not selected' }}</span>{% endif %}
             <div class="fw-semibold">{{ reg.lead_name or reg.name or '—' }}</div>
             <div class="text-muted small">{{ reg.usn or '' }}</div>
+            {#- UPG-225: the organiser corrects the details -#}
+            {% if not reg.cancelled %}<a href="/coordinator/registrations/{{ event.id }}/edit/{{ reg.id }}" class="small" data-edit-details>Edit details</a>{% endif %}
           </td>
           <td>
             {{ reg.team_name or '—' }}

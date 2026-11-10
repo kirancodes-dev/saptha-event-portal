@@ -294,6 +294,75 @@ def switch_member_confirm(event_id):
     return redirect(f'/coordinator/registrations/{event_id}')
 
 
+def _registration_of(event_id):
+    """The event, for an organiser's action on one of its registrations:
+    404 for no event, 403 without manage_registrations."""
+    from flask import abort
+    from services_permission import can
+    event_doc = db.collection('events').document(event_id).get()
+    if not event_doc.exists:
+        abort(404)
+    event = dict(event_doc.to_dict() or {}, id=event_id)
+    if not can(session, 'manage_registrations', event, db=db):
+        abort(403)
+    return event
+
+
+@coord_bp.route('/registrations/<event_id>/edit/<reg_id>', methods=['GET', 'POST'])
+@login_required
+@role_required(COORD_ROLES)
+def edit_registration(event_id, reg_id):
+    """The event's organisers correct a registration's details (UPG-225), also
+    after check-in; never a cancelled one."""
+    import services_registration_edit as edit
+    from routes_participant import registration_edit_page
+    event = _registration_of(event_id)
+    back = f'/coordinator/registrations/{event_id}'
+    doc = db.collection('registrations').document(reg_id).get()
+    reg = (doc.to_dict() or {}) if doc.exists else {}
+    if str(reg.get('event_id') or '') != str(event_id):
+        flash("That registration isn't for this event.", "danger")
+        return redirect(back)
+    if edit.cancelled(reg):
+        flash("This registration is cancelled, so its details can't be changed.", "warning")
+        return redirect(back)
+    return registration_edit_page(reg_id, reg, event, organiser=True, back=back,
+                                  member_email_action=f'/coordinator/registrations/{event_id}/member_email')
+
+
+@coord_bp.route('/registrations/<event_id>/member_email', methods=['POST'])
+@login_required
+@role_required(COORD_ROLES)
+def correct_member_email(event_id):
+    """The organiser corrects a waiting member's email (UPG-225), as the lead
+    does on the team page (UPG-207): the new address gets a link."""
+    import services_registration_edit as edit
+    import services_team_confirm as confirm
+    event = _registration_of(event_id)
+    reg_id = (request.form.get('reg_id') or '').strip()
+    doc = db.collection('registrations').document(reg_id).get() if reg_id else None
+    reg = (doc.to_dict() or {}) if doc is not None and doc.exists else {}
+    if str(reg.get('event_id') or '') != str(event_id) or edit.cancelled(reg):
+        flash("That registration isn't an active one of this event.", "danger")
+        return redirect(f'/coordinator/registrations/{event_id}')
+    page = f'/coordinator/registrations/{event_id}/edit/{reg_id}'
+    if not confirm.enabled(event):
+        flash("Member confirmation is off for this event, so a member's email isn't corrected here.", "warning")
+        return redirect(page)
+    old = (request.form.get('email') or '').strip().lower()
+    new = (request.form.get('new_email') or '').strip().lower()
+    try:
+        outcome = confirm.correct_email(db, reg_id, reg, event, old, new, by=session.get('user_id', ''))
+    except confirm.ConfirmError as exc:
+        flash(str(exc), 'warning')
+        return redirect(page)
+    flash(f"Email changed to {new}. " + ({'sent': "A link was sent there; the old one no longer works.",
+                                         'limit': "Today's email limit is reached: send the link again tomorrow."}
+                                        .get(outcome, "The email couldn't be sent: send the link again later.")),
+          'success' if outcome == 'sent' else 'warning')
+    return redirect(page)
+
+
 def checked_in(reg: dict) -> bool:
     """Has this team (or anyone on it) been checked in at the event?"""
     if str(reg.get('attendance') or '').strip().lower() == 'present' or reg.get('attendance_days'):

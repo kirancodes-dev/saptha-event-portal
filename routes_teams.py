@@ -180,8 +180,11 @@ def view_team(reg_id):
     import services_team_confirm as confirm
     statuses = {_email(m): confirm.status(m) for m in confirm.others(reg)} if confirm.enabled(event or {}) else {}
     resends = {_email(m): confirm.resends_left(m) for m in confirm.others(reg)}
+    import services_registration_edit   # the lead corrects the details (UPG-225)
+    may_edit = _is_lead(reg) and not services_registration_edit.lead_may_edit(reg, event or {})
     return render_template('teams/view.html', reg=reg, reg_id=reg_id, event=event, is_lead=_is_lead(reg),
-                           team_min=team_min, team_max=team_max, statuses=statuses, resends=resends)
+                           team_min=team_min, team_max=team_max, statuses=statuses, resends=resends,
+                           may_edit=may_edit)
 
 
 # ── Members confirm their email (UPG-207) ──────────────────────────────────

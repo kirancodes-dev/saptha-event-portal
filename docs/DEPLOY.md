@@ -98,6 +98,16 @@ member (off: the lead only). `PARTICIPANT_RESET_LIMIT` (1) and
 `/diag/email` shows today's count. The limit's table comes from migration
 `0010_email_quota`.
 
+**Backup email account (UPG-224).** `BREVO_BACKUP_API_KEY` (a secret), the API key of a
+second Brevo account, sends what the main account can't: once the main account reaches
+`EMAIL_DAILY_LIMIT`, or when Brevo refuses an email (its own 300 a day used up). It has
+its own `EMAIL_BACKUP_DAILY_LIMIT` (default 270) and sends from `MAIL_FROM_BACKUP`, else
+`MAIL_FROM`: verify that sender in the second account too (Brevo → Senders). Together the
+day's capacity is about 540. People are told to contact the organizer only when both are
+full. `/diag/email?via=backup` sends a test through the backup alone and shows its count;
+without the key nothing changes. No migration: the backup's count is a second row in
+`email_quota`.
+
 ## Database migrations
 
 The schema is built and changed only by Alembic migrations (`migrations/versions/`).

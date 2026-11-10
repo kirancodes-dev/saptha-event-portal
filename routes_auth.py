@@ -521,15 +521,26 @@ def diag_email():
 
     import services_email_quota as _quota
     utils_email.LAST_EMAIL_ERROR = ""
-    ok = utils_email._send(
+    # ?via=backup tries the backup Brevo account alone (UPG-224)
+    via_backup = request.args.get('via') == 'backup'
+    if via_backup:
+        provider = "Brevo backup"
+        from_addr = _os.environ.get('MAIL_FROM_BACKUP', '').strip() or from_addr
+    send = utils_email.send_via_backup if via_backup else utils_email._send
+    ok = send(
         to, "SapthaEvent — Email Diagnostic",
         "<p>If you can read this, email delivery is working. ✅</p>"
     )
+    if via_backup and not ok and not utils_email.LAST_EMAIL_ERROR:
+        utils_email.LAST_EMAIL_ERROR = ("BREVO_BACKUP_API_KEY isn't set" if not _quota.backup_configured()
+                                        else "the backup account's daily limit is reached")
 
     hints = {
         "Brevo":     "Brevo: free 300/day, sends to anyone. If failing check BREVO_API_KEY and MAIL_FROM.",
         "Resend":    "Resend free plan only sends to the Resend account owner's email until domain is verified.",
         "Gmail SMTP":"Gmail SMTP is blocked by Railway's outbound SMTP firewall. Use Brevo instead.",
+        "Brevo backup": "The second Brevo account: check BREVO_BACKUP_API_KEY, and that MAIL_FROM "
+                        "(or MAIL_FROM_BACKUP) is a verified sender in that account.",
     }
     return {
         "provider":        provider,
@@ -544,6 +555,9 @@ def diag_email():
         "hint":            hints.get(provider, ""),
         "emails_sent_today": _quota.sent_today(),   # UPG-152
         "daily_email_limit": _quota.limit() or None,
+        "backup_key_set":    _quota.backup_configured(),                 # UPG-224
+        "backup_emails_sent_today": _quota.sent_today(_quota.BACKUP),
+        "backup_daily_limit": _quota.limit(_quota.BACKUP) or None,
     }
 
 

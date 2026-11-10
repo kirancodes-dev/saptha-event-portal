@@ -13,6 +13,11 @@ MAIL_FROM is the sender, e.g. "SapthaEvent <events@your-domain>", verified with
 the provider. Without it the sender is MAIL_USER; with neither, Brevo and Resend
 refuse to send. With no provider at all, development logs the set-password and
 reset links instead (UPG-39).
+
+Backup (UPG-224): BREVO_BACKUP_API_KEY, a second Brevo account, sends what the
+main provider can't: once the main account reaches EMAIL_DAILY_LIMIT, or when
+it refuses an email. It has its own EMAIL_BACKUP_DAILY_LIMIT (default 270) and
+sends from MAIL_FROM_BACKUP, else MAIL_FROM (verified in that account too).
 """
 
 from __future__ import annotations
@@ -288,15 +293,26 @@ def _html_wrapper(content: str, title: str = 'SapthaEvent') -> str:
 
 def _send_via_brevo(to_email, subject: str, html: str,
                     attachments: list | None = None) -> bool:
+    return _brevo(to_email, subject, html, attachments, os.environ.get('BREVO_API_KEY', ''),
+                  _from_address(), 'Brevo')
+
+
+def _send_via_brevo_backup(to_email, subject: str, html: str,
+                           attachments: list | None = None) -> bool:
+    """The backup Brevo account (UPG-224): its own key, and MAIL_FROM_BACKUP
+    when its verified sender differs from MAIL_FROM."""
+    return _brevo(to_email, subject, html, attachments, os.environ.get('BREVO_BACKUP_API_KEY', '').strip(),
+                  os.environ.get('MAIL_FROM_BACKUP', '').strip() or _from_address(), 'Brevo backup')
+
+
+def _brevo(to_email, subject: str, html: str, attachments, api_key: str, from_raw: str, name: str) -> bool:
     global LAST_EMAIL_ERROR
     try:
         import urllib.request
         import json as _json
 
-        api_key  = os.environ.get('BREVO_API_KEY', '')
-        from_raw = _from_address()
         if not from_raw:
-            LAST_EMAIL_ERROR = f"Brevo: {NO_SENDER_ERROR}"
+            LAST_EMAIL_ERROR = f"{name}: {NO_SENDER_ERROR}"
             logger.error(LAST_EMAIL_ERROR)
             return False
 
@@ -342,14 +358,14 @@ def _send_via_brevo(to_email, subject: str, html: str,
         with urllib.request.urlopen(req, timeout=15) as resp:  # nosec B310
             status = resp.status
             if status not in (200, 201):
-                raise RuntimeError(f"Brevo HTTP {status}")
+                raise RuntimeError(f"{name} HTTP {status}")
 
-        logger.info("Brevo → %s | %s", to_list, subject)
+        logger.info("%s → %s | %s", name, to_list, subject)
         return True
 
     except Exception as exc:
-        LAST_EMAIL_ERROR = f"Brevo: {exc}"
-        logger.error("Brevo failed → %s | %s", to_email, exc)
+        LAST_EMAIL_ERROR = f"{name}: {exc}"
+        logger.error("%s failed → %s | %s", name, to_email, exc)
         return False
 
 
@@ -499,28 +515,43 @@ def _send(to_email, subject: str, html: str,
       2. RESEND_API_KEY → Resend HTTP API (free but verified emails only)
       3. neither        → Gmail SMTP      (blocked on Railway)
     """
-    # The daily limit (UPG-152): every recipient counts; at the limit nothing is sent
+    # The daily limit (UPG-152): every recipient counts; at the limit nothing is
+    # sent through that account. A backup Brevo account (UPG-224) takes over
+    # when the main one is at its limit or refuses the email.
     import services_email_quota as quota
     count = 1 if isinstance(to_email, str) else len(to_email or [])
     counted = bool(mail_provider())
-    if counted and not quota.reserve(count):
-        return False
 
     ok = False
-    if os.environ.get('BREVO_API_KEY'):
-        ok = _send_via_brevo(to_email, subject, html, attachments)
-    elif os.environ.get('RESEND_API_KEY'):
-        ok = _send_via_resend(to_email, subject, html, attachments)
-    else:
-        ok = _send_via_gmail(to_email, subject, html, attachments)
+    if not counted or quota.reserve(count):
+        if os.environ.get('BREVO_API_KEY'):
+            ok = _send_via_brevo(to_email, subject, html, attachments)
+        elif os.environ.get('RESEND_API_KEY'):
+            ok = _send_via_resend(to_email, subject, html, attachments)
+        else:
+            ok = _send_via_gmail(to_email, subject, html, attachments)
+        if not ok and counted:
+            quota.release(count)
+    if not ok and quota.backup_configured():
+        ok = send_via_backup(to_email, subject, html, attachments)
 
     if ok:
         to_list = [to_email] if isinstance(to_email, str) else to_email
         for email in to_list:
             _update_delivery_status(email, 'Sent', reg_id)
-    elif counted:
-        quota.release(count)
 
+    return ok
+
+
+def send_via_backup(to_email, subject: str, html: str, attachments: list | None = None) -> bool:
+    """Send through the backup Brevo account, counted against its own daily limit (UPG-224)."""
+    import services_email_quota as quota
+    count = 1 if isinstance(to_email, str) else len(to_email or [])
+    if not quota.backup_configured() or not quota.reserve(count, quota.BACKUP):
+        return False
+    ok = _send_via_brevo_backup(to_email, subject, html, attachments)
+    if not ok:
+        quota.release(count, quota.BACKUP)
     return ok
 
 

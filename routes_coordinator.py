@@ -800,8 +800,8 @@ def export_registrations(event_id):
     import services_export
     from routes_spoc import _export_name
     event = _event_or_abort(event_id, 'export_data')
-    return Response(services_export.to_csv(services_export.registration_rows(db, event_id),
-                                            services_export.registration_columns(db, event_id)), mimetype='text/csv',
+    columns, rows = services_export.registration_table(db, event_id)   # read once: columns follow the data (UPG-222)
+    return Response(services_export.to_csv(rows, columns), mimetype='text/csv',
                     headers={"Content-Disposition": f"attachment; filename={_export_name(event, 'Registrations.csv')}"})
 
 

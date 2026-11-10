@@ -158,8 +158,14 @@ def view_registrations(event_id):
             shown = [r for r in shown if (str(r.get('payment_status') or '').strip().lower()
                                           in ('paid', 'completed')) == (pay_filter == 'paid')]
         from utils_pagination import paginate_items
+        # The lead's USN is saved as lead_usn (UPG-226); members are found by name, USN or email
+        for reg in shown:
+            reg['member_search'] = ' '.join(
+                str(m.get(k) or '') for m in reg.get('members') or [] if isinstance(m, dict)
+                for k in ('name', 'usn', 'email'))
         page = paginate_items(shown, search_fields=(
-            'lead_name', 'name', 'lead_email', 'student_email', 'usn', 'team_name', 'lead_phone'))
+            'lead_name', 'name', 'lead_email', 'student_email', 'lead_usn', 'usn', 'team_name', 'lead_phone',
+            'member_search'))
         # Each lead's login email, for helping someone told to contact the organizer (UPG-152)
         from services_accounts import login_status
         for reg in page.items:
@@ -182,11 +188,14 @@ def view_registrations(event_id):
                         waiting['unsent'] += st['key'] != 'waiting'
                         waiting['held'] += st['key'] == 'held'
         # The hosting SPOC cancels a team until it is checked in (UPG-211)
+        may_edit = can(session, 'edit_event', event, db=db)
+        kept = kept_records(db, event_id) if may_edit else (set(), set())
         for reg in page.items:
             reg['checked_in'] = checked_in(reg)
             reg['cancelled'] = str(reg.get('status') or '').strip().lower() in ('cancelled', 'refunded')
             reg['on_list'] = services_entry.may_enter(listed, reg)
-        may_edit = can(session, 'edit_event', event, db=db)
+            # ...and deletes one that left no record elsewhere (UPG-229)
+            reg['delete_block'] = delete_refusal(reg['id'], reg, *kept) if may_edit else ''
         return render_template('coordinator/registrations.html',
             event=event, registrations=page.items, page=page, total=len(registrations),
             member_confirm=member_confirm, waiting=waiting, team_event=team_event,
@@ -431,6 +440,107 @@ def cancel_team(event_id):
     paid = str(reg.get('payment_status') or reg.get('paymentStatus') or '').strip().lower() in ('paid', 'completed')
     flash(f"{team} is cancelled; its seat is free and its ticket no longer works."
           + (" It had paid: ask the admin to refund it from Payments." if paid else ''), "success")
+    return redirect(back)
+
+
+PAID = ('paid', 'completed', 'refunded', 'refunding', 'refund_pending')
+
+
+def kept_records(db, event_id: str):
+    """(registrations with a certificate, registrations with hackathon work)
+    for the event: records kept elsewhere that a delete would orphan."""
+    certified, submitted = set(), set()
+    try:
+        import services_certificates
+        certified = {str(c.get('reg_id')) for c in services_certificates.for_event(event_id, current_only=False)
+                     if c.get('reg_id')}
+    except Exception:
+        pass
+    try:
+        submitted = {str((d.to_dict() or {}).get('registration_id') or '')
+                     for d in db.collection('project_submissions').where('event_id', '==', event_id).stream()}
+    except Exception:
+        pass
+    return certified, submitted
+
+
+def delete_refusal(reg_id: str, reg: dict, certified=(), submitted=()) -> str:
+    """Why this registration can't be deleted, or '' (UPG-229). Anything with a
+    record elsewhere (a check-in, a payment, a certificate, hackathon work)
+    is cancelled instead, so nothing points at a team that's gone."""
+    if checked_in(reg):
+        return "It was checked in, so it can't be deleted."
+    if (str(reg.get('payment_status') or reg.get('paymentStatus') or '').strip().lower() in PAID
+            or str(reg.get('status') or '').strip().lower() == 'refunded'):
+        return "It has a payment, so it can't be deleted; cancel it instead."
+    if reg_id in certified:
+        return "It has a certificate, so it can't be deleted."
+    if reg_id in submitted:
+        return "It has submitted hackathon work, so it can't be deleted; cancel it instead."
+    return ''
+
+
+@coord_bp.route('/registrations/<event_id>/delete_team', methods=['POST'])
+@login_required
+@role_required(COORD_ROLES)
+def delete_team(event_id):
+    """The hosting SPOC erases a team's registration for good (UPG-229): its
+    members, answers, form responses copy, ticket and scores go with it. A
+    team that isn't cancelled is cancelled first, so its seat is freed as
+    UPG-211's cancel frees it. The people's accounts stay."""
+    from flask import abort
+    import services_hackathon as hk
+    from routes_participant import cancel_registration_record
+    from services_permission import can
+    event_doc = db.collection('events').document(event_id).get()
+    if not event_doc.exists:
+        abort(404)
+    event = dict(event_doc.to_dict() or {}, id=event_id)
+    if not can(session, 'edit_event', event, db=db):
+        abort(403)
+    back = f'/coordinator/registrations/{event_id}'
+    reg_id = (request.form.get('reg_id') or '').strip()
+    reg_doc = db.collection('registrations').document(reg_id).get() if reg_id else None
+    reg = (reg_doc.to_dict() or {}) if reg_doc is not None and reg_doc.exists else {}
+    if str(reg.get('event_id') or '') != str(event_id):
+        flash("That registration isn't for this event.", "danger")
+        return redirect(back)
+    team = reg.get('team_name') or reg.get('lead_name') or reg_id
+    if request.form.get('confirm') != 'yes':
+        flash(f"Tick the box to confirm deleting {team}; nothing was deleted.", "warning")
+        return redirect(back)
+    refusal = delete_refusal(reg_id, reg, *kept_records(db, event_id))
+    if refusal:
+        flash(f"{team} wasn't deleted. {refusal}", "warning")
+        return redirect(back)
+
+    actor = session.get('user_id', '')
+    was_cancelled = str(reg.get('status') or '').strip().lower() in ('cancelled', 'refunded')
+    if not was_cancelled:
+        cancel_registration_record(reg_id, reg, actor, 'Deleted by the organiser')
+    for collection, field in (('form_submissions', 'reg_id'), ('tickets', 'registration_id')):
+        try:
+            for doc in db.collection(collection).where(field, '==', reg_id).stream():
+                db.collection(collection).document(doc.id).delete()
+        except Exception:
+            from flask import current_app
+            current_app.logger.warning("Could not remove %s of %s", collection, reg_id, exc_info=True)
+    db.collection('registrations').document(reg_id).delete()
+
+    lead = str(reg.get('lead_email') or reg.get('student_email') or '').strip().lower()
+    people = {lead} | {str(m.get('email') or '').strip().lower()
+                       for m in reg.get('members') or [] if isinstance(m, dict)}
+    people.discard('')
+    if not was_cancelled:
+        title = event.get('title') or 'the event'
+        hk.notify(db, event, reg, f"Registration removed: {title}",
+                  f"The organiser removed the registration of {team} for {title}. "
+                  "Your ticket no longer works. Contact the organiser if you think this is a mistake.",
+                  link='/participant/dashboard', kind='cancellation')
+    log_action(db, "REGISTRATION_DELETED",
+               f"{actor} deleted {team} ({reg_id}) of event {event_id}: lead {lead or '-'}, {len(people)} people"
+               + (", already cancelled" if was_cancelled else ''))
+    flash(f"{team} is deleted for good" + ("" if was_cancelled else "; its seat is free") + ".", "success")
     return redirect(back)
 
 

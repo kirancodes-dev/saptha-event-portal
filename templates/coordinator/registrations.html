@@ -108,67 +108,71 @@
   {% set search_label = 'Search by name, email, USN, team or phone' %}
   {% include "includes/list_search.html" %}
   {% if registrations %}
+  {#- UPG-229: one thing per column, the actions in their own column -#}
+  {% set short = {'confirmed': 'Confirmed', 'waiting': 'Waiting', 'held': 'Email held', 'failed': 'Email failed', 'not_sent': 'No link sent'} %}
   <div class="table-responsive">
-    <table class="table table-hover align-middle">
+    <table class="table table-hover align-top small" data-registrations-table>
       <thead class="table-light">
         <tr>
-          <th>Participant</th>
-          <th>Team</th>
-          <th>Contact</th>
-          <th>Status</th>
-          <th>Payment</th>
-          <th>Attendance</th>
-          <th>Login email</th>
+          {% if may_select %}<th scope="col" style="width:2rem"><span class="visually-hidden">Tick for the entry list</span></th>{% endif %}
+          <th scope="col">Team</th>
+          {% if team_event %}<th scope="col">Members</th>{% endif %}
+          <th scope="col">Contact</th>
+          <th scope="col">Status</th>
+          <th scope="col">Login</th>
+          <th scope="col" class="text-end">Actions</th>
         </tr>
       </thead>
       <tbody>
         {% for reg in registrations %}
-        <tr>
+        {% set label = reg.team_name or reg.lead_name or reg.name or 'this registration' %}
+        <tr data-reg="{{ reg.id }}">
+          {% if may_select %}
           <td>
-            {% if may_select and not reg.cancelled %}
-            <input type="checkbox" class="form-check-input me-1" name="reg_id" value="{{ reg.id }}" form="entry-form" aria-label="Tick {{ reg.team_name or reg.lead_name }}" data-entry-tick>
+            {% if not reg.cancelled %}
+            <input type="checkbox" class="form-check-input" name="reg_id" value="{{ reg.id }}" form="entry-form" aria-label="Tick {{ label }}" data-entry-tick>
             {% endif %}
-            {% if not reg.cancelled %}<span class="badge {{ 'text-bg-success' if reg.on_list else 'text-bg-light border' }}" data-entry-state="{{ 'selected' if reg.on_list else 'not_selected' }}">{{ 'Selected' if reg.on_list else 'Not selected' }}</span>{% endif %}
-            <div class="fw-semibold">{{ reg.lead_name or reg.name or '—' }}</div>
-            <div class="text-muted small">{{ reg.usn or '' }}</div>
-            {#- UPG-225: the organiser corrects the details -#}
-            {% if not reg.cancelled %}<a href="/coordinator/registrations/{{ event.id }}/edit/{{ reg.id }}" class="small" data-edit-details>Edit details</a>{% endif %}
           </td>
-          <td>
-            {{ reg.team_name or '—' }}
-            {% if reg.members %}<div class="text-muted small">{{ reg.members|length }} member{{ '' if reg.members|length == 1 else 's' }}</div>{% endif %}
-            {% for m, st in reg.member_status or [] %}
-            <div class="small" data-member-status="{{ st.key }}">{{ m.name }} <span class="badge text-bg-{{ 'secondary' if st.tone == 'neutral' else st.tone }}">{{ st.label }}</span></div>
-            {% endfor %}
+          {% endif %}
+          <td data-team-cell>
+            {% if reg.team_name %}<div class="fw-semibold">{{ reg.team_name }}</div>{% endif %}
+            <div{% if not reg.team_name %} class="fw-semibold"{% endif %}>{% if reg.team_name %}<span class="text-muted">Lead:</span> {% endif %}{{ reg.lead_name or reg.name or '—' }}</div>
+            {% if reg.lead_usn or reg.usn %}<div class="text-muted" data-lead-usn>{{ reg.lead_usn or reg.usn }}</div>{% endif %}
+            {% if reg.members and reg.members|length > 1 %}<div class="text-muted">{{ reg.members|length }} members</div>{% endif %}
           </td>
+          {% if team_event %}
           <td>
-            <div class="small">{{ reg.lead_email or reg.student_email or '—' }}</div>
-            <div class="text-muted small">{{ reg.lead_phone or '' }}</div>
+            {% if reg.member_status %}
+            <ul class="list-unstyled mb-0">
+              {% for m, st in reg.member_status %}
+              <li class="d-flex justify-content-between align-items-center gap-2 py-1" data-member-status="{{ st.key }}">
+                <span>{{ m.name or m.email }}</span>
+                <span class="badge text-bg-{{ 'secondary' if st.tone == 'neutral' else st.tone }}" title="{{ st.label }}">{{ short.get(st.key, st.label) }}<span class="visually-hidden"> ({{ st.label }})</span></span>
+              </li>
+              {% endfor %}
+            </ul>
+            {% elif reg.members and reg.members|length > 1 %}
+            <ul class="list-unstyled mb-0">
+              {% for m in reg.members if (m.email or '')|lower != (reg.lead_email or '')|lower %}
+              <li class="py-1">{{ m.name or m.email }}</li>
+              {% endfor %}
+            </ul>
+            {% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          {% endif %}
+          <td>
+            <div class="text-break">{{ reg.lead_email or reg.student_email or '—' }}</div>
+            {% if reg.lead_phone %}<div class="text-muted">{{ reg.lead_phone }}</div>{% endif %}
           </td>
           <td data-reg-status>
-            <span class="badge {{ 'bg-danger' if reg.cancelled else 'bg-secondary' }}">{{ reg.status or 'confirmed' }}</span>
-            {% if reg.cancelled and reg.cancel_reason %}<div class="text-muted small">{{ reg.cancel_reason }}</div>{% endif %}
-            {#- UPG-211: the hosting SPOC cancels a team until it is checked in -#}
-            {% if may_cancel and not reg.cancelled %}
-              {% if reg.checked_in %}
-              <div class="text-muted small mt-1">Checked in: can't be cancelled</div>
-              {% else %}
-              <details class="mt-1" data-cancel-team>
-                <summary class="small text-danger">Cancel {{ 'team' if reg.members else 'registration' }}</summary>
-                <form method="post" action="/coordinator/registrations/{{ event.id }}/cancel_team" class="mt-1">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <input type="hidden" name="reg_id" value="{{ reg.id }}">
-                  <label class="form-label small mb-0" for="reason-{{ reg.id }}">Reason (the team sees it)</label>
-                  <input type="text" id="reason-{{ reg.id }}" name="reason" class="form-control form-control-sm" maxlength="300" required>
-                  <button type="submit" class="btn btn-sm btn-danger mt-1">Cancel {{ reg.team_name or 'it' }}</button>
-                  <div class="text-muted small">Its seat is freed and its ticket stops working. This can't be undone.</div>
-                </form>
-              </details>
-              {% endif %}
-            {% endif %}
+            <div class="d-flex flex-wrap gap-1">
+              <span class="badge {{ 'bg-danger' if reg.cancelled else 'text-bg-light border' }}">{{ reg.status or 'Confirmed' }}</span>
+              {% if not reg.cancelled %}<span class="badge {{ 'text-bg-success' if reg.on_list else 'text-bg-light border' }}" data-entry-state="{{ 'selected' if reg.on_list else 'not_selected' }}">{{ 'Selected' if reg.on_list else 'Not selected' }}</span>{% endif %}
+              <span class="badge text-bg-light border" title="Payment">{{ reg.payment_status or reg.paymentStatus or 'Unpaid' }}</span>
+              <span class="badge {{ 'text-bg-success' if reg.checked_in else 'text-bg-light border' }}" title="Attendance">{{ 'Checked in' if reg.checked_in else (reg.attendance or 'Not checked in') }}</span>
+            </div>
+            {% if reg.cancelled and reg.cancel_reason %}<div class="text-muted mt-1">{{ reg.cancel_reason }}</div>{% endif %}
           </td>
-          <td>{{ reg.payment_status or reg.paymentStatus or 'unpaid' }}</td>
-          <td>{{ reg.attendance or 'Pending' }}</td>
           <td data-login-status>
             {#- UPG-152: the lead's set-password or reset email, and a new link from the organizer -#}
             {% if reg.login %}
@@ -182,11 +186,90 @@
             {% endif %}
             {% endif %}
           </td>
+          <td class="text-end" data-actions>
+            <div class="d-inline-flex flex-column align-items-stretch gap-1" style="min-width:6.5rem">
+              {#- UPG-225: the organiser corrects the details -#}
+              {% if not reg.cancelled %}
+              <a href="/coordinator/registrations/{{ event.id }}/edit/{{ reg.id }}" class="btn btn-sm btn-outline-primary" data-edit-details><i class="fas fa-pen me-1" aria-hidden="true"></i>Edit</a>
+              {% endif %}
+              {#- UPG-211: the hosting SPOC cancels a team until it is checked in -#}
+              {% if may_cancel and not reg.cancelled %}
+                {% if reg.checked_in %}
+                <span class="text-muted text-start">Checked in: can't be cancelled</span>
+                {% else %}
+                <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#cancel-{{ reg.id }}"><i class="fas fa-ban me-1" aria-hidden="true"></i>Cancel</button>
+                {% endif %}
+              {% endif %}
+              {#- UPG-229: the hosting SPOC deletes it for good -#}
+              {% if may_cancel %}
+                {% if reg.delete_block %}
+                <button type="button" class="btn btn-sm btn-outline-danger" disabled title="{{ reg.delete_block }}" data-delete-blocked><i class="fas fa-trash me-1" aria-hidden="true"></i>Delete<span class="visually-hidden">: {{ reg.delete_block }}</span></button>
+                {% else %}
+                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#delete-{{ reg.id }}"><i class="fas fa-trash me-1" aria-hidden="true"></i>Delete</button>
+                {% endif %}
+              {% endif %}
+            </div>
+          </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
+
+  {% if may_cancel %}
+  {% for reg in registrations %}
+  {% set label = reg.team_name or reg.lead_name or reg.name or 'this registration' %}
+  {% if not reg.cancelled and not reg.checked_in %}
+  <div class="modal fade" id="cancel-{{ reg.id }}" tabindex="-1" aria-labelledby="cancel-title-{{ reg.id }}" aria-hidden="true">
+    <div class="modal-dialog"><div class="modal-content">
+      <form method="post" action="/coordinator/registrations/{{ event.id }}/cancel_team" data-cancel-team>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="reg_id" value="{{ reg.id }}">
+        <div class="modal-header">
+          <h2 class="modal-title h5" id="cancel-title-{{ reg.id }}">Cancel {{ label }}?</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="small">Its seat is freed and its ticket stops working. The team is told, with your reason, and stays in this list as Cancelled. This can't be undone.</p>
+          <label class="form-label small" for="reason-{{ reg.id }}">Reason (the team sees it)</label>
+          <input type="text" id="reason-{{ reg.id }}" name="reason" class="form-control" maxlength="300" required>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Keep it</button>
+          <button type="submit" class="btn btn-warning">Cancel {{ label }}</button>
+        </div>
+      </form>
+    </div></div>
+  </div>
+  {% endif %}
+  {% if not reg.delete_block %}
+  <div class="modal fade" id="delete-{{ reg.id }}" tabindex="-1" aria-labelledby="delete-title-{{ reg.id }}" aria-hidden="true">
+    <div class="modal-dialog"><div class="modal-content">
+      <form method="post" action="/coordinator/registrations/{{ event.id }}/delete_team" data-delete-team>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="reg_id" value="{{ reg.id }}">
+        <div class="modal-header">
+          <h2 class="modal-title h5 text-danger" id="delete-title-{{ reg.id }}">Delete {{ label }} for good?</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body small">
+          <p>This erases the registration, its members, their answers, its ticket and scores. It disappears from this list, the export and the counts. <strong>It can't be undone.</strong></p>
+          <p>{% if reg.cancelled %}It's already cancelled, so nobody is told again.{% else %}Its seat is freed and each person on it gets a notice in the portal.{% endif %} Their accounts stay. To keep a record, use Cancel instead.</p>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="confirm" value="yes" id="confirm-{{ reg.id }}" required>
+            <label class="form-check-label" for="confirm-{{ reg.id }}">I understand {{ label }} will be erased and can't be brought back.</label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Keep it</button>
+          <button type="submit" class="btn btn-danger">Delete for good</button>
+        </div>
+      </form>
+    </div></div>
+  </div>
+  {% endif %}
+  {% endfor %}
+  {% endif %}
   {% include "includes/pagination.html" %}
   {% else %}
   <div class="text-center text-muted py-5">

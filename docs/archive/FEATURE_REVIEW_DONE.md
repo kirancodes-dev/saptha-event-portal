@@ -161,7 +161,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 | Create event (seminar / hackathon / sports) | Created [R] | All settings persist since BLK-09 [R]. Sports fixtures & standings generated on tournament page (UPG-13, tested). Since UPG-73: every kind of event, saved as a draft, then reviewed and published. |
 | Build form | Page OK [R] | — |
 | Publish (pending → approve → open) | OK [R] | Two steps after approval; not obvious from the UI copy. |
-| Manage registrations / waitlist | Partly [R; T at UPG-225] | Exports work since UPG-03 (CSV and Excel with every column); the SPOC and coordinators correct a registration's details from the list (UPG-225); no waitlist screen. |
+| Manage registrations / waitlist | Partly [R; T at UPG-225, UPG-229] | Exports work since UPG-03 (CSV and Excel with every column); the SPOC and coordinators correct a registration's details from the list (UPG-225); the list is a table with Edit, Cancel and Delete per team, the hosting SPOC deleting for good a team with no record elsewhere (UPG-229), and it shows and searches USNs (UPG-226); no waitlist screen. |
 | Assign coordinators / judges / rooms | Judges and coordinators: assign and remove [R at UPG-29]; rooms not re-run | Tested end to end (`tests/test_assignment.py`). |
 | Run the day | QR scans and the manual list [R at UPG-02] | Scans go through the shared check-in; the manual list still uses its own route (UPG-14); the blast email's `spoc_id` gate (`routes_spoc.py:963`) passes for the owner since BLK-09 (not re-run). WhatsApp groups used instead. |
 | Results | Publish OK [R]; lock/advance not re-run | Their `spoc_id` gates (`routes_spoc.py:1652,1673`) pass for the owner since BLK-09. |
@@ -4948,4 +4948,28 @@ Defaults chosen in Phase 1 (each one can be changed; listed in the changelog): "
   4. ✅ Only people on the team see it; a removed member no longer does; a cancelled one shows as past (`::test_only_people_on_the_team_see_it_and_a_cancelled_one_is_past`).
   5. ✅ My events lists a member's team, with their own attendance (`::test_my_events_lists_a_members_team_with_their_own_attendance`).
   6. ✅ The lookup goes through member rows, case-insensitively, and skips the lead's own (`::test_the_lookup_finds_member_rows_not_the_leads`).
+- **Tests changed:** none.
+
+#### UPG-226 — The SPOC's registrations list shows and searches a USN no registration has
+- **Status:** DONE (with UPG-229, the same table cell)
+- **Last verified:** 2026-11-10, uncommitted on `3a07c55` [T]
+- **Problem:** Found building UPG-225: the list showed `reg.usn` and searched `usn`, but the form and the walk-in desk save the lead's USN as `lead_usn`, so the line was empty and a USN search found nobody.
+- **What was built:** the Team column shows `lead_usn`, else an older row's `usn` (`templates/coordinator/registrations.html:140`); the search matches `lead_usn`, `usn` and each member's name, USN and email (`routes_coordinator.py:163-168`).
+- **Acceptance criteria** (`tests/test_registration_table.py`):
+  1. ✅ The list shows the lead's USN for a registration made through the form (`::test_each_row_has_its_own_columns_and_the_three_actions`).
+  2. ✅ Searching a lead's or a member's USN finds the registration; an older row with only `usn` is still found (`::test_searching_finds_a_leads_or_members_usn_and_an_older_usn`).
+- **Tests changed:** none.
+
+#### UPG-229 — The SPOC's registrations list as a clear table, with Edit, Cancel and Delete buttons
+- **Status:** DONE
+- **Last verified:** 2026-11-10, uncommitted on `3a07c55` [T]
+- **Problem:** Owner, 2026-11-10, with a screenshot of the live list: "add an option to delete a team; the details look jumbled; a proper table with proper edit and delete options". Each row mixed the entry-list tick and badge, the lead, an empty USN line and the Edit link in one cell; members and long confirmation labels wrapped under the team name; Cancel was a small disclosure inside the Status column. Nothing deleted a registration. The owner chose both a Cancel (keeps the record) and a permanent Delete.
+- **What was built:**
+  - The table (`templates/coordinator/registrations.html:110-275`): tick, Team (team name, lead, USN, member count), Members (one per line with a short confirmation badge, "Email held" etc., the full wording as tooltip and screen-reader text, `:112`), Contact, Status (registration, entry list, payment and attendance badges, a cancel reason), Login, and Actions (`:189`): **Edit** (UPG-225), **Cancel** (UPG-211's cancel in a dialog asking the reason, `:225`) and **Delete** (a dialog that says what is erased and needs a tick, `:248`); a refused Delete is a disabled button that says why (`:206`). Coordinators see Edit only, as before.
+  - `delete_team` (`routes_coordinator.py:486`), the hosting SPOC only (`edit_event`): needs the tick; refused by `delete_refusal` (`:467`) for a team checked in, with a payment, with a certificate or with hackathon work (`kept_records` `:449`), which are cancelled instead. A team not yet cancelled is cancelled first through `cancel_registration_record` (seat, ticket-type seat, count, waitlist) and each person gets a portal notice; then its form responses copy and tickets are removed and the registration deleted (members, scores and the rest go by the database's cascade). The audit log keeps who deleted which team, its lead and how many people. Accounts stay.
+- **Acceptance criteria** (`tests/test_registration_table.py`, real database layer, UPG-211's fixture):
+  1. ✅ Each row's team, lead and USN, members with badges, contact, status badges, login and the three actions in their own columns (`::test_each_row_has_its_own_columns_and_the_three_actions`).
+  2. ✅ The hosting SPOC deletes a team: registration, member rows, form responses copy and ticket gone, count down once, each person told, audit logged, accounts kept; an already-cancelled team is deleted without lowering the count or telling anyone again (`::test_the_hosting_spoc_deletes_a_team_for_good`, `::test_deleting_an_already_cancelled_team_doesnt_lower_the_count_again`).
+  3. ✅ Refused, nothing changing, for a checked-in, paid, certified or submitted team (`::test_delete_is_refused_for_a_team_with_a_record_elsewhere`), without the tick, for a coordinator and another SPOC (403) and for another event's team (`::test_delete_needs_the_tick_the_hosting_spoc_and_the_events_own_team`).
+  4. ✅ Cancel works from its dialog (`::test_cancel_still_works_from_its_dialog`); UPG-211's, UPG-207's and UPG-214's page tests unchanged and passing.
 - **Tests changed:** none.

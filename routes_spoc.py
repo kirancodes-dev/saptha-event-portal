@@ -202,18 +202,62 @@ def _my_fests():
     return sorted(fests, key=lambda e: str(e.get('date') or ''))
 
 
+def _step6_form(form):
+    """Step 6 of the wizard's registration form (UPG-219): {'fields', 'member_fields',
+    'problem'}, name and email first and fixed, then the SPOC's questions as listed;
+    None when the request carries no step-6 list (the API, older scripts)."""
+    if form.get('form_step6') != '1':
+        return None
+    from routes_forms import FIXED_IDENTITY, chosen_form_fields, member_settings
+    members = member_settings({'member_fields': {'usn': form.get('member_usn'), 'phone': form.get('member_phone')}})
+    try:
+        raw = json.loads(form.get('form_step6_json') or '[]')
+    except json.JSONDecodeError:
+        raw = None
+    if not isinstance(raw, list):
+        return {'fields': [], 'member_fields': members, 'problem': "the questions couldn't be read; please add them again."}
+    fixed_ids = {fid for ids, _ in FIXED_IDENTITY for fid in ids}
+    asked = [f for f in raw if isinstance(f, dict) and str(f.get('id') or '') not in fixed_ids
+             and str(f.get('label') or '').strip()]
+    if len(asked) > 60:
+        return {'fields': [], 'member_fields': members, 'problem': 'a form can have at most 60 questions.'}
+    fields, problem = chosen_form_fields([dict(f) for _, f in FIXED_IDENTITY] + asked)
+    return {'fields': fields, 'member_fields': members, 'problem': problem}
+
+
+def _form_outline(ev):
+    """An event's registration form as step 6 lists it when editing (UPG-219):
+    the questions in the page's order and what each team member is asked."""
+    from routes_forms import (_get_form, _simple_schema_fallback, form_sections, member_settings,
+                              team_limits, LAYOUT_TYPES, MEMBER_DETAILS)
+    schema = _get_form(ev['id'], ev) or _simple_schema_fallback()
+    sections = form_sections(schema.get('fields'), bool(schema.get('chosen')))
+    questions = [{'label': f.get('label') or f.get('id'), 'required': bool(f.get('required'))}
+                 for f in sections['participant'] + sections['details']
+                 if f.get('type') not in LAYOUT_TYPES and f.get('id') != 'team_name']
+    members = []
+    if team_limits(ev)[1] > 1:
+        settings = member_settings(schema)
+        members = ['Name', 'Email'] + [f"{label} ({settings[key]})" for key, label, _ in MEMBER_DETAILS
+                                       if settings[key] != 'off']
+    return {'questions': questions, 'members': members}
+
+
 def _render_wizard(values=None, errors=None, parent=None, status=200, editing=None):
-    from services_event_types import grouped, CATEGORIES, TYPES
+    from services_event_types import grouped, suggested_questions, CATEGORIES, TYPES
     profile = {}
     try:
         u_doc = db.collection('users').document(session.get('user_id', '')).get()
         profile = (u_doc.to_dict() or {}) if u_doc.exists else {}
     except Exception:
         pass
+    suggestions = {} if editing else {k: q for k, t in TYPES.items() if (q := suggested_questions(t))}
     return render_template('spoc/create_event.html', rooms=_rooms(), groups=grouped(), types=TYPES,
                            categories=CATEGORIES, values=values or {}, errors=errors or [],
                            parent=parent, fests=[] if editing else _my_fests(), editing=editing,
                            profile_phone=profile.get('phone', ''),
+                           suggestions=suggestions,                                   # UPG-219
+                           form_outline=_form_outline(editing) if editing else None,  # UPG-219
                            today=datetime.date.today().isoformat()), status
 
 
@@ -251,6 +295,11 @@ def create_event():
                                                     end_time=end_time_val)
         if has_clash:
             errors.append((clash_info or {}).get('message', 'That room is already booked at that time.'))
+
+    # Step 6's questions are the registration form, exactly as listed (UPG-219)
+    step6 = _step6_form(request.form) if not spec['fest'] else None
+    if step6 and step6['problem']:
+        errors.append(f"Registration form: {step6['problem']}")
 
     if errors:
         if request.is_json or 'json' in request.headers.get('Accept', ''):
@@ -313,25 +362,38 @@ def create_event():
             except Exception as b_exc:
                 current_app.logger.warning("Tentative room booking failed: %s", b_exc)
 
-        # Registration form: the wizard's own fields, else the preset's
-        form_fields = []
-        source = ''
-        try:
-            form_fields = json.loads(request.form.get('auto_form_json', '').strip() or '[]')
-            source = 'wizard'
-        except json.JSONDecodeError:
-            form_fields = []
-        if not (isinstance(form_fields, list) and form_fields) and preset_fields:
-            form_fields = preset_fields
-            source = 'template'
-        if isinstance(form_fields, list) and form_fields:
+        if step6:
+            # The SPOC's form from step 6, and nothing else (UPG-219)
             db.collection('event_forms').document(new_event_id).set({
-                'event_id': new_event_id, 'form_type': 'custom', 'fields': form_fields,
+                'event_id': new_event_id, 'form_type': 'custom', 'fields': step6['fields'],
                 'created_by': session.get('user_id'),
                 'created_at': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                'source': source,
+                'source': 'wizard',
             })
-            db.collection('events').document(new_event_id).update({'has_custom_form': True})
+            db.collection('events').document(new_event_id).update({
+                'has_custom_form': True, 'form_type': 'custom', 'form_chosen': True,
+                'form_member_fields': step6['member_fields'],
+            })
+        else:
+            # Without step 6's list (the API, older scripts): the posted fields, else the preset's
+            form_fields = []
+            source = ''
+            try:
+                form_fields = json.loads(request.form.get('auto_form_json', '').strip() or '[]')
+                source = 'wizard'
+            except json.JSONDecodeError:
+                form_fields = []
+            if not (isinstance(form_fields, list) and form_fields) and preset_fields:
+                form_fields = preset_fields
+                source = 'template'
+            if isinstance(form_fields, list) and form_fields:
+                db.collection('event_forms').document(new_event_id).set({
+                    'event_id': new_event_id, 'form_type': 'custom', 'fields': form_fields,
+                    'created_by': session.get('user_id'),
+                    'created_at': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    'source': source,
+                })
+                db.collection('events').document(new_event_id).update({'has_custom_form': True})
 
         log_action(db, "EVENT_CREATED", f"{session.get('user_id')} created draft '{event_data['title']}' "
                                         f"({event_data['event_type']}) {new_event_id}")

@@ -561,6 +561,32 @@ def _builder_problem(fields_raw) -> str:
     return ''
 
 
+def chosen_form_fields(fields_raw) -> tuple:
+    """(fields, problem) for a form the SPOC set out question by question, in
+    the builder or in step 6 of the event wizard (UPG-219): the questions as
+    stored, choices trimmed and once each, or the reason it can't be saved."""
+    problem = _builder_problem(fields_raw)
+    if problem:
+        return [], problem
+    fields = []
+    for i, f in enumerate(fields_raw):
+        options = f.get('options') or []
+        if f.get('type') in CHOICE_TYPES:
+            options = list(dict.fromkeys(str(o).strip()[:80] for o in options if str(o).strip()))
+        fields.append({
+            'id':          str(f.get('id') or f.get('field_name') or f'layout_{i}')[:60],
+            'type':        f.get('type', 'text'),
+            'label':       str(f.get('label') or '')[:200],
+            'placeholder': str(f.get('placeholder') or '')[:200],
+            'required':    bool(f.get('required', False)),
+            'options':     options,
+            'min':         f.get('min', ''),
+            'max':         f.get('max', ''),
+            'help_text':   str(f.get('help_text') or '')[:500],
+        })
+    return fields, ''
+
+
 # =========================================================
 # 2. SAVE FORM (AJAX — from builder or wizard)
 # =========================================================

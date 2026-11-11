@@ -168,10 +168,15 @@ def view_registrations(event_id):
             'member_search'))
         # Each lead's login email, for helping someone told to contact the organizer (UPG-152)
         from services_accounts import login_status
+        # Everything the form asked, labelled, under each row (UPG-231)
+        import services_export
+        form_details = services_export.FormDetails(db, event_id)
         for reg in page.items:
             lead = str(reg.get('lead_email') or reg.get('student_email') or '').strip().lower()
             doc = db.collection('users').document(lead).get() if lead else None
-            reg['login'] = login_status((doc.to_dict() or {}) if doc is not None and doc.exists else None)
+            profile = (doc.to_dict() or {}) if doc is not None and doc.exists else None
+            reg['login'] = login_status(profile)
+            reg['details'] = form_details.of(reg, profile)
         # Each member's confirmation (UPG-207), and how many still wait
         import services_team_confirm as confirm
         from routes_forms import team_limits
@@ -196,11 +201,14 @@ def view_registrations(event_id):
             reg['on_list'] = services_entry.may_enter(listed, reg)
             # ...and deletes one that left no record elsewhere (UPG-229)
             reg['delete_block'] = delete_refusal(reg['id'], reg, *kept) if may_edit else ''
+        # The people waiting for a seat, in line, with what they filled in (UPG-230)
+        waitlist = waitlist_rows(db, event, form_details)
         return render_template('coordinator/registrations.html',
             event=event, registrations=page.items, page=page, total=len(registrations),
             member_confirm=member_confirm, waiting=waiting, team_event=team_event,
-            may_switch=may_edit, may_cancel=may_edit, may_select=may_edit,
-            entry=entry_counts, entry_filter=entry_filter, pay_filter=pay_filter)
+            may_switch=may_edit, may_cancel=may_edit, may_select=may_edit, may_accept=may_edit,
+            entry=entry_counts, entry_filter=entry_filter, pay_filter=pay_filter,
+            waitlist=waitlist, seats=seats_left(event))
     except Exception as exc:
         if getattr(exc, 'code', None) == 403:
             abort(403)
@@ -370,6 +378,84 @@ def correct_member_email(event_id):
                                         .get(outcome, "The email couldn't be sent: send the link again later.")),
           'success' if outcome == 'sent' else 'warning')
     return redirect(page)
+
+
+def seats_left(event: dict):
+    """(seat limit, seats free) of the event; (0, None) without a limit.
+    Counted as the form counts them: the event's registration count."""
+    limit = safe_int((event.get('limits') or {}).get('max_participants', 0)) or safe_int(event.get('capacity', 0))
+    if not limit:
+        return 0, None
+    return limit, max(limit - safe_int(event.get('registration_count', 0)), 0)
+
+
+def waitlist_rows(db, event: dict, form_details=None) -> list:
+    """The event's waitlist for the SPOC's page (UPG-230): each person still
+    waiting, first in line first, with their place, the registration they
+    filled in (a waitlist joined from the event page has only name, email and
+    phone), whether accepting them asks a fee (as the promotion decides) and
+    the details labelled as the registrations' are (UPG-231)."""
+    from services_waitlist import waiting
+    from routes_waitlist import promotion_terms
+    import services_export
+    event_id = event['id']
+    form_details = form_details or services_export.FormDetails(db, event_id)
+    rows = []
+    for place, (wl_id, wl) in enumerate(waiting(db, event_id), start=1):
+        reg = wl.get('reg_data') if isinstance(wl.get('reg_data'), dict) else {}
+        reg = dict(reg) if reg else {'lead_name': wl.get('name') or '',
+                                     'lead_email': wl.get('user_email') or wl.get('email') or '',
+                                     'lead_phone': wl.get('phone') or ''}
+        rows.append({'id': wl_id, 'place': place, 'joined_at': str(wl.get('joined_at') or ''),
+                     'paid': promotion_terms(event, wl_id, reg)['is_paid'], 'reg': reg,
+                     'members': [m for m in reg.get('members') or [] if isinstance(m, dict)],
+                     'details': form_details.of(reg)})
+    return rows
+
+
+@coord_bp.route('/registrations/<event_id>/accept_waitlist', methods=['POST'])
+@login_required
+@role_required(COORD_ROLES)
+def accept_waitlist(event_id):
+    """The hosting SPOC accepts a person from the waitlist (UPG-230), whatever
+    their place in line, also when no seat is free (the event then has more
+    registrations than seats; the page says so before). They're registered as
+    the automatic promotion registers the first in line: a paid event holds the
+    seat for payment, a free one confirms it with a ticket; they're told."""
+    from flask import abort
+    from routes_waitlist import promote_entry
+    from services_permission import can
+    event_doc = db.collection('events').document(event_id).get()
+    if not event_doc.exists:
+        abort(404)
+    event = dict(event_doc.to_dict() or {}, id=event_id)
+    if not can(session, 'edit_event', event, db=db):
+        abort(403)
+    back = f'/coordinator/registrations/{event_id}#waitlist'
+    wl_id = (request.form.get('wl_id') or '').strip()
+    wl_doc = db.collection('waitlists').document(wl_id).get() if wl_id else None
+    wl = (wl_doc.to_dict() or {}) if wl_doc is not None and wl_doc.exists else {}
+    if str(wl.get('event_id') or '') != str(event_id):
+        flash("That person isn't on this event's waitlist.", "danger")
+        return redirect(back)
+    who = ((wl.get('reg_data') or {}).get('team_name') if isinstance(wl.get('reg_data'), dict) else '') \
+        or wl.get('name') or wl.get('user_email') or wl.get('email') or wl_id
+    if str(wl.get('status') or '') != 'waiting':
+        flash(f"{who} is no longer waiting, so nothing changed.", "info")
+        return redirect(back)
+
+    promoted = promote_entry(db, event_id, wl_id, wl)
+    actor = session.get('user_id', '')
+    if not promoted:
+        flash(f"{who} is already registered for this event, so they were taken off the waitlist.", "info")
+        return redirect(back)
+    log_action(db, "WAITLIST_ACCEPTED",
+               f"{actor} accepted {who} ({promoted['user_email']}) from the waitlist of event {event_id}: "
+               f"registration {promoted['reg_id']}, {promoted['status']}")
+    paying = promoted['status'] == 'pending_payment'
+    flash(f"{who} is registered" + (" and has been sent a link to pay the fee." if paying
+                                    else " and confirmed; they've been told."), "success")
+    return redirect(f'/coordinator/registrations/{event_id}')
 
 
 def checked_in(reg: dict) -> bool:

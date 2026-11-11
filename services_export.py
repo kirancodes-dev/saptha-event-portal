@@ -220,6 +220,49 @@ def _event_columns(fields, regs, confirming, taken, shown=()):
     return slots, parts, member_headers, questions
 
 
+class FormDetails:
+    """Everything a registration's form gave, labelled, for the SPOC's
+    registrations page and its waitlist (UPG-231): the same answers the
+    export has (UPG-222), read from the event's form once."""
+
+    def __init__(self, db, event_id):
+        self.fields = _form_fields(db, event_id)
+        self.usn_ids = _labelled(self.fields, USN_LABEL, kinds=(None, 'text', 'number'))
+        self.phone_ids = _labelled(self.fields, PHONE_LABEL, kinds=(None, 'text', 'tel', 'number'))
+
+    def of(self, reg, profile=None):
+        """{'lead': [(label, value)], 'members': [[(label, value)]], 'answers': [(label, value)]}.
+        Each question on the form is listed, '' when it wasn't answered; then
+        answers to questions since taken off the form."""
+        reg = reg if isinstance(reg, dict) else {}
+        usn = _lead(reg, 'usn', self.usn_ids, profile)
+        department, year = department_and_year(reg, profile, usn)
+        lead = [('Name', reg.get('lead_name') or reg.get('name') or ''), ('USN', usn),
+                ('Email', reg.get('lead_email') or reg.get('student_email') or reg.get('email') or ''),
+                ('Phone', _lead(reg, 'phone', self.phone_ids, profile)),
+                ('Department', department), ('Year', year)]
+        if reg.get('participant_type'):
+            lead.append(('Participant type', _ptype(reg)))
+        lead += [(label, _text(reg.get(key))) for key, label in (
+            ('designation', 'Designation'), ('institution', 'Institution'),
+            ('ticket_type_name', 'Ticket type'), ('team_code', 'Team code')) if _text(reg.get(key))]
+        members = [[(label, _text(m.get(key))) for key, label in MEMBER_PARTS if _text(m.get(key))]
+                   for m in _others(reg)]
+        answers, given = [], _answers(reg)
+        seen = set(IDENTITY_KEYS) | set(self.usn_ids) | set(self.phone_ids)
+        for f in self.fields:
+            fid = _fid(f)
+            if fid in seen or f.get('type') in LAYOUT_TYPES or fid.startswith('member_'):
+                continue
+            seen.add(fid)
+            answers.append((str(f.get('label') or fid), _text(given.get(fid))))
+        for fid, value in given.items():
+            if fid not in seen and not fid.startswith('member_') and _text(value):
+                seen.add(fid)
+                answers.append((f"{fid} (no longer on the form)", _text(value)))
+        return {'lead': lead, 'members': members, 'answers': answers}
+
+
 def registration_table(db, event_id, sessions=True):
     """(columns, rows) of the registrations export. With sessions=False the
     columns are COLUMNS only, the same for every event (the all-events export)."""

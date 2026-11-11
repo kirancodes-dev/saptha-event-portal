@@ -4,6 +4,7 @@
 {% block page_title %}Registrations{% endblock %}
 
 {% block content %}
+{% from "coordinator/_details.html" import details_panel %}
 <div class="container-fluid py-3">
   <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
     <div>
@@ -11,8 +12,9 @@
       <h2 class="h4 fw-bold mb-0 mt-1">{{ event.title }}</h2>
       <div class="text-muted small">{{ event.date }}{% if event.venue %} · {{ event.venue }}{% endif %}</div>
     </div>
-    <div class="d-flex align-items-center gap-2">
+    <div class="d-flex flex-wrap align-items-center gap-2">
       <span class="badge bg-primary fs-6">{{ total }} registration{{ '' if total == 1 else 's' }}</span>
+      <a href="#waitlist" class="badge {{ 'bg-warning text-dark' if waitlist else 'text-bg-light border' }} fs-6 text-decoration-none" data-waitlist-count>{{ waitlist|length }} on the waitlist</a>
       <a href="/coordinator/export_registrations/{{ event.id }}" class="btn btn-sm btn-outline-primary"><i class="fas fa-file-csv me-1"></i>Export CSV</a>
     </div>
   </div>
@@ -105,9 +107,99 @@
     </div>
   </div>
 
+  {#- UPG-230: the people waiting for a seat, and the hosting SPOC accepts them -#}
+  <div class="card border mb-3" id="waitlist" data-waitlist>
+    <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <h2 class="h6 fw-bold mb-0"><i class="fas fa-hourglass-half me-1 text-warning" aria-hidden="true"></i>Waitlist: {{ waitlist|length }} waiting</h2>
+      <div class="small text-muted" data-seats>
+        {% if seats[0] %}{{ seats[0] }} seats · {% if seats[1] %}{{ seats[1] }} free{% else %}full{% endif %}{% else %}No seat limit{% endif %}
+        · when a seat is freed, the first in line gets it on their own
+      </div>
+    </div>
+    {% if waitlist %}
+    <div class="table-responsive">
+      <table class="table table-sm align-top small mb-0" data-waitlist-table>
+        <thead class="table-light">
+          <tr>
+            <th scope="col">Place</th>
+            <th scope="col">Team / name</th>
+            <th scope="col">Contact</th>
+            <th scope="col">Joined</th>
+            <th scope="col">Fee</th>
+            <th scope="col" class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for w in waitlist %}
+          {% set wlabel = w.reg.team_name or w.reg.lead_name or w.reg.lead_email or 'this person' %}
+          <tr data-waitlist-entry="{{ w.id }}">
+            <td class="fw-bold">#{{ w.place }}</td>
+            <td>
+              {% if w.reg.team_name %}<div class="fw-semibold">{{ w.reg.team_name }}</div><div><span class="text-muted">Lead:</span> {{ w.reg.lead_name or '—' }}</div>
+              {% else %}<div class="fw-semibold">{{ w.reg.lead_name or '—' }}</div>{% endif %}
+              {% if w.reg.lead_usn %}<div class="text-muted">{{ w.reg.lead_usn }}</div>{% endif %}
+              {% if w.members|length > 1 %}<div class="text-muted">{{ w.members|length }} members</div>{% endif %}
+            </td>
+            <td>
+              <div class="text-break">{{ w.reg.lead_email or '—' }}</div>
+              {% if w.reg.lead_phone %}<div class="text-muted">{{ w.reg.lead_phone }}</div>{% endif %}
+            </td>
+            <td class="text-muted">{{ w.joined_at[:16]|replace('T', ' ') }}</td>
+            <td><span class="badge text-bg-light border" data-waitlist-fee>{{ 'Pays to confirm' if w.paid else 'Free' }}</span></td>
+            <td class="text-end">
+              <div class="d-inline-flex flex-column align-items-stretch gap-1" style="min-width:6.5rem">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#wl-details-{{ w.id }}" aria-expanded="false" aria-controls="wl-details-{{ w.id }}" data-details-toggle><i class="fas fa-list me-1" aria-hidden="true"></i>Details</button>
+                {% if may_accept %}
+                <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#accept-{{ w.id }}" data-accept-waitlist><i class="fas fa-check me-1" aria-hidden="true"></i>Accept</button>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          <tr class="collapse wl-details-row" id="wl-details-{{ w.id }}">
+            <td colspan="6" class="bg-light">{{ details_panel(w.details) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if may_accept %}
+    {% for w in waitlist %}
+    {% set wlabel = w.reg.team_name or w.reg.lead_name or w.reg.lead_email or 'this person' %}
+    <div class="modal fade" id="accept-{{ w.id }}" tabindex="-1" aria-labelledby="accept-title-{{ w.id }}" aria-hidden="true">
+      <div class="modal-dialog"><div class="modal-content">
+        <form method="post" action="/coordinator/registrations/{{ event.id }}/accept_waitlist" data-accept-form>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="wl_id" value="{{ w.id }}">
+          <div class="modal-header">
+            <h2 class="modal-title h5" id="accept-title-{{ w.id }}">Accept {{ wlabel }}?</h2>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body small">
+            <p>{{ wlabel }} is #{{ w.place }} in line. Accepting registers them now{% if w.place > 1 %}, ahead of the {{ w.place - 1 }} before them{% endif %}.</p>
+            <p>{% if w.paid %}The event has a fee: they're sent a link to pay, and their seat is confirmed once they've paid.{% else %}They're confirmed, get their ticket and are told.{% endif %}</p>
+            {% if seats[0] and not seats[1] %}<p class="text-danger fw-semibold mb-0" data-over-capacity>No seat is free: the event will have more registrations than its {{ seats[0] }} seats.</p>{% endif %}
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Not now</button>
+            <button type="submit" class="btn btn-success">Accept {{ wlabel }}</button>
+          </div>
+        </form>
+      </div></div>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% else %}
+    <div class="card-body py-2 small text-muted" data-waitlist-empty>Nobody is on the waitlist. When the event is full, people who register join it here.</div>
+    {% endif %}
+  </div>
+
   {% set search_label = 'Search by name, email, USN, team or phone' %}
   {% include "includes/list_search.html" %}
   {% if registrations %}
+  {#- UPG-231: every row's details open under it; this opens them all -#}
+  <div class="d-flex justify-content-end mb-2">
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target=".reg-details-row" aria-expanded="false" data-details-all><i class="fas fa-list me-1" aria-hidden="true"></i>Show or hide all details</button>
+  </div>
   {#- UPG-229: one thing per column, the actions in their own column -#}
   {% set short = {'confirmed': 'Confirmed', 'waiting': 'Waiting', 'held': 'Email held', 'failed': 'Email failed', 'not_sent': 'No link sent'} %}
   <div class="table-responsive">
@@ -188,6 +280,7 @@
           </td>
           <td class="text-end" data-actions>
             <div class="d-inline-flex flex-column align-items-stretch gap-1" style="min-width:6.5rem">
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#details-{{ reg.id }}" aria-expanded="false" aria-controls="details-{{ reg.id }}" data-details-toggle><i class="fas fa-list me-1" aria-hidden="true"></i>Details</button>
               {#- UPG-225: the organiser corrects the details -#}
               {% if not reg.cancelled %}
               <a href="/coordinator/registrations/{{ event.id }}/edit/{{ reg.id }}" class="btn btn-sm btn-outline-primary" data-edit-details><i class="fas fa-pen me-1" aria-hidden="true"></i>Edit</a>
@@ -210,6 +303,9 @@
               {% endif %}
             </div>
           </td>
+        </tr>
+        <tr class="collapse reg-details-row" id="details-{{ reg.id }}" data-details-row="{{ reg.id }}">
+          <td colspan="{{ 5 + (1 if may_select else 0) + (1 if team_event else 0) }}" class="bg-light">{{ details_panel(reg.details) }}</td>
         </tr>
         {% endfor %}
       </tbody>

@@ -1,0 +1,44 @@
+{#- UPG-231: everything the registration form gave, labelled; used for a
+    registration and for a waitlist entry. d = services_export.FormDetails.of() -#}
+{% macro details_panel(d) %}
+<div class="row g-3 small" data-details>
+  <div class="col-md-4">
+    <h3 class="h6 fw-bold mb-2">Lead</h3>
+    <dl class="row mb-0">
+      {% for label, value in d.lead %}
+      <dt class="col-5 text-muted fw-normal">{{ label }}</dt>
+      <dd class="col-7 text-break mb-1">{{ value or '—' }}</dd>
+      {% endfor %}
+    </dl>
+  </div>
+  {% if d.members %}
+  <div class="col-md-4">
+    <h3 class="h6 fw-bold mb-2">Team members ({{ d.members|length }} besides the lead)</h3>
+    {% for m in d.members %}
+    <div class="border rounded p-2 mb-2" data-detail-member>
+      <div class="text-muted mb-1">Member {{ loop.index + 1 }}</div>
+      <dl class="row mb-0">
+        {% for label, value in m %}
+        <dt class="col-4 text-muted fw-normal">{{ label }}</dt>
+        <dd class="col-8 text-break mb-0">{{ value }}</dd>
+        {% endfor %}
+      </dl>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  <div class="{{ 'col-md-4' if d.members else 'col-md-8' }}">
+    <h3 class="h6 fw-bold mb-2">Answers on the form</h3>
+    {% if d.answers %}
+    <dl class="row mb-0">
+      {% for label, value in d.answers %}
+      <dt class="col-6 text-muted fw-normal" data-detail-question>{{ label }}</dt>
+      <dd class="col-6 text-break mb-1" data-detail-answer>{% if value %}{{ value }}{% else %}<span class="text-muted">Not answered</span>{% endif %}</dd>
+      {% endfor %}
+    </dl>
+    {% else %}
+    <div class="text-muted">The form asked nothing more.</div>
+    {% endif %}
+  </div>
+</div>
+{% endmacro %}

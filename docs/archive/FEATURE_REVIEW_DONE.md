@@ -5226,3 +5226,12 @@ Defaults chosen in Phase 1 (each one can be changed; listed in the changelog): "
 - **Acceptance criteria** (`tests/test_screening_removed.py`):
   1. ✅ The routes answer 404, the registrations page and the waitlist card show no screening, and Accept still registers the person (`::test_the_screening_round_is_gone_and_accept_stays`).
 - **Tests changed:** `tests/test_screening_round.py` deleted with the feature it tested, at the owner's request (not to make anything pass).
+
+#### UPG-249 — The repository has no LICENSE file though the README says MIT
+- **Status:** DONE
+- **Last verified:** 2026-11-12, uncommitted on `8d1d800` [T]
+- **Problem:** Owner, 2026-11-12, applying to the Claude for Open Source Program: "licence also". The README's licence section (`README.md:261-273`) and badge (`:32`) say MIT, copyright Sapthagiri NPS University, but there was no LICENSE file: GitHub showed no licence and nobody could rely on the grant. The README's copy also left out the warranty disclaimer.
+- **What was built:** `LICENSE`, the full MIT text with the README's copyright line (nothing chosen anew: the licence and holder are the ones the README already stated); the README's section adds the disclaimer line and links to `LICENSE`.
+- **Acceptance criteria:**
+  1. ✅ The repository has the full MIT licence with the README's copyright, and the README links to it (`tests/test_licence.py::test_the_repository_has_the_mit_licence_the_readme_names`).
+- **Tests changed:** none.

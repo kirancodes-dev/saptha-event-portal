@@ -233,12 +233,12 @@ def auto_promote(db, event_id: str):
     return None
 
 
-def promote_entry(db, event_id: str, wl_id: str, wl: dict):
+def promote_entry(db, event_id: str, wl_id: str, wl: dict, announce: bool = True):
     """Register this waitlist entry, as the first in line is (auto_promote),
     or as the SPOC chose it (UPG-230): a paid event holds the seat for
-    payment, a free one is confirmed with a ticket; the person is told.
-    None, with the entry marked already_registered, when they already
-    have a registration for the event."""
+    payment, a free one is confirmed with a ticket; the person is told
+    (with announce=False, the caller tells them). None, with the entry marked
+    already_registered, when they already have a registration for the event."""
     email = wl.get("user_email") or wl.get("email", "")
     name = wl.get("name", "Participant")
 
@@ -320,40 +320,43 @@ def promote_entry(db, event_id: str, wl_id: str, wl: dict):
         "registration_count": Increment(1),
     })
 
-    # Notify
-    try:
-        from routes_notifications_v2 import create_notification
-        create_notification(
-            db, user_email=email, notif_type="waitlist_promoted",
-            title=terms["notif_title"], message=terms["notif_message"],
-            link=terms["link"],
-        )
-    except Exception:
-        pass
-
-    # Send email notification (not for a portal-only event: the notice above, UPG-195)
-    import services_hackathon
-    if services_hackathon.email_allowed(ev, 'waitlist'):
+    # The person is told here, unless the caller tells them itself (the
+    # SPOC's Accept, UPG-235)
+    if announce:
+        # Notify
         try:
-            from tasks.email_tasks import send_generic_email_task
-            email_body = (
-                f"Hi {name},\n\n"
-                f"A seat has opened up and you've been promoted from the waitlist for "
-                f"{ev.get('title', 'Event')}!\n\n"
-                f"{terms['email_line']}"
-                f"Registration ID: {reg_id}\n"
-                f"Event Date: {ev.get('date', '')}\n"
-                f"Venue: {venue_label(ev)}\n\n"
-                f"See you there!\n— SapthaEvent Team"
-            )
-            send_generic_email_task.delay(
-                to_email=email,
-                subject=terms["subject"],
-                body_text=email_body,
-                body=email_body,
+            from routes_notifications_v2 import create_notification
+            create_notification(
+                db, user_email=email, notif_type="waitlist_promoted",
+                title=terms["notif_title"], message=terms["notif_message"],
+                link=terms["link"],
             )
         except Exception:
             pass
+
+        # Send email notification (not for a portal-only event: the notice above, UPG-195)
+        import services_hackathon
+        if services_hackathon.email_allowed(ev, 'waitlist'):
+            try:
+                from tasks.email_tasks import send_generic_email_task
+                email_body = (
+                    f"Hi {name},\n\n"
+                    f"A seat has opened up and you've been promoted from the waitlist for "
+                    f"{ev.get('title', 'Event')}!\n\n"
+                    f"{terms['email_line']}"
+                    f"Registration ID: {reg_id}\n"
+                    f"Event Date: {ev.get('date', '')}\n"
+                    f"Venue: {venue_label(ev)}\n\n"
+                    f"See you there!\n— SapthaEvent Team"
+                )
+                send_generic_email_task.delay(
+                    to_email=email,
+                    subject=terms["subject"],
+                    body_text=email_body,
+                    body=email_body,
+                )
+            except Exception:
+                pass
 
     logger.info("Waitlist promotion: %s for event %s", email, event_id)
     return {
@@ -361,4 +364,5 @@ def promote_entry(db, event_id: str, wl_id: str, wl: dict):
         "registration_id": reg_id,
         "reg_id": reg_id,
         "status": status,
+        "registration": reg_data,
     }

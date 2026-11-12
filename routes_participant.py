@@ -280,6 +280,9 @@ def dashboard():
     if certificates:
         ticket_tabs.append(('certificates', 'Certificates', certificates))
 
+    # Waitlists still open for them: waiting, or accepted with a fee to pay (UPG-236)
+    my_waitlist = [w for w in _my_waitlist(user_email) if w['state'] in ('waiting', 'pay')]
+
     return render_template(
         'participant/dashboard.html',
         active_tickets   = active_tickets,
@@ -297,6 +300,7 @@ def dashboard():
         cat_counts       = cat_counts,
         last_updated     = last_updated,
         ticket_tabs      = ticket_tabs,
+        my_waitlist      = my_waitlist,
     )
 
 
@@ -780,6 +784,17 @@ def registration_edit_page(reg_id, reg, event, organiser, back, member_email_act
                            member_email_action=member_email_action)
 
 
+def _my_waitlist(email) -> list:
+    """services_waitlist.standing for this person; [] if it can't be read, so
+    the page still opens (UPG-236)."""
+    try:
+        import services_waitlist
+        return services_waitlist.standing(db, email)
+    except Exception:
+        current_app.logger.warning("Could not read the waitlist standing of %s", email, exc_info=True)
+        return []
+
+
 # =========================================================
 # 7. WAITLIST STATUS (JSON — for dashboard badge)
 # =========================================================
@@ -986,6 +1001,9 @@ def my_events():
     except Exception as exc:
         current_app.logger.error("Error loading my_events: %s", exc)
 
+    # Where they stand on each waitlist they or their team joined (UPG-236)
+    my_waitlist = _my_waitlist(user_email)
+
     is_json = (
         request.path.endswith('/api/my_events') or
         request.args.get('format') == 'json' or
@@ -996,6 +1014,7 @@ def my_events():
             'upcoming': upcoming,
             'registered': registered,
             'waitlisted': waitlisted,
+            'waitlist': my_waitlist,
             'attended': attended,
             'certificates': certificates,
             'cancelled': cancelled,
@@ -1003,6 +1022,7 @@ def my_events():
 
     return render_template(
         'participant/my_events.html',
+        my_waitlist=my_waitlist,
         upcoming=upcoming,
         registered=registered,
         waitlisted=waitlisted,

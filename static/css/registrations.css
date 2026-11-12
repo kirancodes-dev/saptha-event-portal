@@ -1,0 +1,33 @@
+/* The SPOC's registrations page (UPG-234) */
+
+.reg-summary { display: flex; flex-wrap: wrap; gap: .75rem; margin: 0 0 1rem; padding: 0; list-style: none; }
+.reg-summary__item { flex: 1 1 10rem; border: 1px solid #dee2e6; border-radius: .5rem; padding: .6rem .8rem; background: #fff; }
+.reg-summary__num { display: block; font-size: 1.4rem; font-weight: 700; line-height: 1.2; color: #0d2d62; }
+.reg-summary__label { font-size: .85rem; color: #495057; }
+.reg-summary__item--warn { border-color: #f0ad4e; background: #fff8e6; }
+.reg-summary__item--over { border-color: #dc3545; background: #fff1f2; }
+.reg-summary a.reg-summary__item { color: inherit; text-decoration: none; }
+.reg-summary a.reg-summary__item:hover, .reg-summary a.reg-summary__item:focus-visible { border-color: #0d6efd; }
+
+/* Fold-away sections: the whole bar is the button */
+.reg-fold > summary { list-style: none; cursor: pointer; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; }
+.reg-fold > summary::-webkit-details-marker { display: none; }
+.reg-fold > summary:focus-visible { outline: 3px solid #0d6efd; outline-offset: -3px; }
+.reg-fold__toggle { margin-left: auto; white-space: nowrap; }
+.reg-fold__chevron { display: inline-block; transition: transform .15s ease; }
+.reg-fold[open] .reg-fold__chevron { transform: rotate(90deg); }
+.reg-fold .reg-fold__when-open { display: none; }
+.reg-fold[open] .reg-fold__when-open { display: inline; }
+.reg-fold[open] .reg-fold__when-closed { display: none; }
+
+/* A row's details, under it */
+.reg-details-row > td { background: #f8f9fa; border-top: 0; padding: 1rem; }
+.reg-details-row[hidden] { display: none; }
+
+/* Dialogs */
+.reg-dialog { border: 0; border-radius: .75rem; padding: 0; width: min(32rem, calc(100vw - 2rem)); box-shadow: 0 1rem 3rem rgba(0, 0, 0, .25); }
+.reg-dialog::backdrop { background: rgba(15, 23, 42, .55); }
+.reg-dialog__body { padding: 1.25rem; }
+.reg-dialog__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; padding: .75rem 1.25rem; border-top: 1px solid #dee2e6; background: #f8f9fa; }
+
+@media (prefers-reduced-motion: reduce) { .reg-fold__chevron { transition: none; } }

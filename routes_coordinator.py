@@ -208,7 +208,10 @@ def view_registrations(event_id):
             member_confirm=member_confirm, waiting=waiting, team_event=team_event,
             may_switch=may_edit, may_cancel=may_edit, may_select=may_edit, may_accept=may_edit,
             entry=entry_counts, entry_filter=entry_filter, pay_filter=pay_filter,
-            waitlist=waitlist, seats=seats_left(event))
+            waitlist=waitlist, seats=seats_left(event),
+            # The summary at the top (UPG-234)
+            cancelled=sum(1 for r in registrations
+                          if str(r.get('status') or '').strip().lower() in ('cancelled', 'refunded')))
     except Exception as exc:
         if getattr(exc, 'code', None) == 403:
             abort(403)
@@ -380,13 +383,44 @@ def correct_member_email(event_id):
     return redirect(page)
 
 
-def seats_left(event: dict):
-    """(seat limit, seats free) of the event; (0, None) without a limit.
-    Counted as the form counts them: the event's registration count."""
+def seats_left(event: dict) -> dict:
+    """The event's seats as the form counts them (its registration count):
+    limit (0 without one), taken, free, and how many over the limit the
+    SPOC's accepts took it (UPG-235)."""
     limit = safe_int((event.get('limits') or {}).get('max_participants', 0)) or safe_int(event.get('capacity', 0))
-    if not limit:
-        return 0, None
-    return limit, max(limit - safe_int(event.get('registration_count', 0)), 0)
+    taken = safe_int(event.get('registration_count', 0))
+    return {'limit': limit, 'taken': taken, 'free': max(limit - taken, 0) if limit else None,
+            'over': max(taken - limit, 0) if limit else 0}
+
+
+def accepted_message(event: dict, promoted: dict) -> tuple:
+    """(subject, text) of the email and notice telling a person the organiser
+    accepted them from the waitlist (UPG-235): registered, and either
+    confirmed or asked to pay to confirm."""
+    from utils_email import _base_url
+    reg = promoted.get('registration') or {}
+    title = event.get('title') or 'the event'
+    name = reg.get('lead_name') or 'there'
+    team = reg.get('team_name') if reg.get('team_name') not in (None, '', 'Individual') else ''
+    who = f"your team {team}'s" if team else 'your'
+    base = _base_url()
+    if promoted.get('status') == 'pending_payment':
+        step = ("One step is left: pay the fee to confirm your seat.\n"
+                f"Pay here: {base}/payment/pay/{promoted['reg_id']}\n")
+        subject = f"Accepted from the waitlist: pay to confirm {title}"
+    else:
+        step = ("Your seat is confirmed. Your ticket (QR code) is in the portal:\n"
+                f"{base}/participant/dashboard\n")
+        subject = f"Accepted: you're registered for {title}"
+    text = (f"Hi {name},\n\n"
+            f"Good news: the organiser of {title} accepted {who} request from the waitlist.\n\n"
+            f"{step}\n"
+            f"Registration ID: {promoted['reg_id']}\n"
+            + (f"Team: {team}\n" if team else '')
+            + f"Date: {event.get('date') or 'to be announced'}\n"
+            f"Venue: {venue_label(event) or 'to be announced'}\n\n"
+            "See you there!")
+    return subject, text
 
 
 def waitlist_rows(db, event: dict, form_details=None) -> list:
@@ -444,17 +478,44 @@ def accept_waitlist(event_id):
         flash(f"{who} is no longer waiting, so nothing changed.", "info")
         return redirect(back)
 
-    promoted = promote_entry(db, event_id, wl_id, wl)
+    promoted = promote_entry(db, event_id, wl_id, wl, announce=False)
     actor = session.get('user_id', '')
     if not promoted:
         flash(f"{who} is already registered for this event, so they were taken off the waitlist.", "info")
         return redirect(back)
+
+    # They're told they were accepted (UPG-235): a portal notice to each person
+    # on the team, and an email to the lead, also in a portal-mode hackathon,
+    # because it's their registration email
+    import services_hackathon as hk
+    subject, text = accepted_message(event, promoted)
+    reg = dict(promoted.get('registration') or {}, lead_email=promoted['user_email'])
+    link = (f"/payment/pay/{promoted['reg_id']}" if promoted['status'] == 'pending_payment'
+            else '/participant/dashboard')
+    hk.notify(db, event, reg, subject, text, link=link, kind='waitlist_promoted')
+    emailed = False
+    if hk.email_allowed(event, 'registration'):
+        try:
+            from utils_email import send_email_notification
+            emailed = bool(send_email_notification(promoted['user_email'], subject, text, event.get('title') or ''))
+        except Exception:
+            from flask import current_app
+            current_app.logger.warning("Waitlist acceptance email to %s failed", promoted['user_email'], exc_info=True)
+
     log_action(db, "WAITLIST_ACCEPTED",
                f"{actor} accepted {who} ({promoted['user_email']}) from the waitlist of event {event_id}: "
-               f"registration {promoted['reg_id']}, {promoted['status']}")
+               f"registration {promoted['reg_id']}, {promoted['status']}, "
+               + ("emailed" if emailed else "email not sent"))
     paying = promoted['status'] == 'pending_payment'
-    flash(f"{who} is registered" + (" and has been sent a link to pay the fee." if paying
-                                    else " and confirmed; they've been told."), "success")
+    fresh = db.collection('events').document(event_id).get()
+    seats = seats_left(dict(fresh.to_dict() or {}) if fresh.exists else event)
+    count = (f" The event now has {seats['taken']} registration{'' if seats['taken'] == 1 else 's'}"
+             f" for {seats['limit']} seat{'' if seats['limit'] == 1 else 's'}"
+             + (f" ({seats['over']} over the limit)." if seats['over'] else ".")) if seats['limit'] else ''
+    told = (f"An email telling them was sent to {promoted['user_email']}." if emailed
+            else "They were told in the portal, but the email could not be sent; please contact them.")
+    flash(f"{who} is accepted and registered"
+          + (" and must pay the fee to confirm their seat. " if paying else ". ") + told + count, "success")
     return redirect(f'/coordinator/registrations/{event_id}')
 
 

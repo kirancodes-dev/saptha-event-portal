@@ -103,8 +103,9 @@ def test_the_page_lists_the_waitlist_in_line_with_what_each_person_filled_in(hos
     details = html[html.index(f'id="wl-details-{first}"'):]
     details = details[:details.index('</tr>')]
     assert 'Max Mate' in details and '1SN22CS411' in details
-    # One seat, taken: the page says the event is full
-    assert '1 seats · full' in html
+    # One seat, taken: the page says the event is full. UPG-234 changed the
+    # wording to "Seats: 1 of 1 taken · full" (the test changed to the new requirement)
+    assert 'Seats: 1 of 1 taken · full' in html
 
 
 def test_an_event_nobody_waits_for_says_so(host):

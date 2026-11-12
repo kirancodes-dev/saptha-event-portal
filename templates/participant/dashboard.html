@@ -131,6 +131,18 @@
     </div>
 {% endcall %}
 
+{#- UPG-236: where they stand on each waitlist they (or their team) joined -#}
+{% if my_waitlist %}
+{% from "participant/_waitlist.html" import waitlist_cards %}
+<section class="panel mb-4" aria-labelledby="my-waitlist-title" data-dashboard-waitlist>
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+    <h2 class="h6 mb-0" id="my-waitlist-title"><i class="fas fa-hourglass-half me-2 text-warning" aria-hidden="true"></i>Your waitlist</h2>
+    <a href="/participant/my_events?tab=waitlisted" class="small">All in My events</a>
+  </div>
+  {{ waitlist_cards(my_waitlist) }}
+</section>
+{% endif %}
+
 <section class="portal-widgets-grid" aria-label="Your activity">
   <div class="panel portal-widget-card">
     <div class="portal-widget-header"><span>Activity score</span><span class="se-badge se-badge--brand se-badge--plain">Points</span></div>

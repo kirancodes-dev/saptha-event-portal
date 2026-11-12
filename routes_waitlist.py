@@ -17,7 +17,7 @@ try:
 except ImportError:
     FieldFilter = None
 
-from utils import login_required, role_required, safe_int, venue_label
+from utils import login_required, role_required, safe_int
 
 logger = logging.getLogger(__name__)
 waitlist_bp = Blueprint("waitlist", __name__, url_prefix="/waitlist")
@@ -320,49 +320,31 @@ def promote_entry(db, event_id: str, wl_id: str, wl: dict, announce: bool = True
         "registration_count": Increment(1),
     })
 
-    # The person is told here, unless the caller tells them itself (the
-    # SPOC's Accept, UPG-235)
-    if announce:
-        # Notify
-        try:
-            from routes_notifications_v2 import create_notification
-            create_notification(
-                db, user_email=email, notif_type="waitlist_promoted",
-                title=terms["notif_title"], message=terms["notif_message"],
-                link=terms["link"],
-            )
-        except Exception:
-            pass
-
-        # Send email notification (not for a portal-only event: the notice above, UPG-195)
-        import services_hackathon
-        if services_hackathon.email_allowed(ev, 'waitlist'):
-            try:
-                from tasks.email_tasks import send_generic_email_task
-                email_body = (
-                    f"Hi {name},\n\n"
-                    f"A seat has opened up and you've been promoted from the waitlist for "
-                    f"{ev.get('title', 'Event')}!\n\n"
-                    f"{terms['email_line']}"
-                    f"Registration ID: {reg_id}\n"
-                    f"Event Date: {ev.get('date', '')}\n"
-                    f"Venue: {venue_label(ev)}\n\n"
-                    f"See you there!\n— SapthaEvent Team"
-                )
-                send_generic_email_task.delay(
-                    to_email=email,
-                    subject=terms["subject"],
-                    body_text=email_body,
-                    body=email_body,
-                )
-            except Exception:
-                pass
-
-    logger.info("Waitlist promotion: %s for event %s", email, event_id)
-    return {
+    promoted = {
         "user_email": email,
         "registration_id": reg_id,
         "reg_id": reg_id,
         "status": status,
         "registration": reg_data,
     }
+    # The person is told here, unless the caller tells them itself (the
+    # SPOC's Accept, UPG-235): a portal notice to everyone on the team, and
+    # ONE email to the one who joined — registered or pay, and a set-password
+    # link when they have no password yet — also in a portal-mode hackathon,
+    # and one reminder a day later if something is left to do (UPG-240)
+    if announce:
+        import services_hackathon
+        team = dict(reg_data, lead_email=reg_data.get("lead_email") or email)
+        try:
+            services_hackathon.notify(db, dict(ev, id=event_id), team, terms["notif_title"],
+                                      terms["notif_message"], link=terms["link"], kind="waitlist_promoted")
+        except Exception:
+            logger.warning("Waitlist promotion notice for %s failed", reg_id, exc_info=True)
+        try:
+            import services_seat_email
+            services_seat_email.tell(db, dict(ev, id=event_id), promoted, how="freed")
+        except Exception:
+            logger.warning("Waitlist promotion email for %s failed", reg_id, exc_info=True)
+
+    logger.info("Waitlist promotion: %s for event %s", email, event_id)
+    return promoted

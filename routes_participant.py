@@ -11,7 +11,7 @@ Fixes & additions in this version
 import datetime
 import json
 
-from flask import (Blueprint, abort, current_app, flash, jsonify, redirect, render_template,
+from flask import (Blueprint, Response, abort, current_app, flash, jsonify, redirect, render_template,
                    request, session)
 try:
     from google.cloud import firestore
@@ -173,6 +173,9 @@ def dashboard():
         # A member's own attendance where the gate recorded it, else the team's
         mine = None if r['is_lead'] else next((m for m in r.get('members') or [] if _mine(m, me)), None)
         r['my_attendance'] = str((mine or {}).get('attendance') or '').strip() or r.get('attendance')
+        # What the organiser gave registered teams to read and download (UPG-239)
+        import services_event_documents
+        r['documents'] = services_event_documents.documents(evt)
 
         # Certificate eligible: attended + event completed or certified
         r['cert_eligible'] = (
@@ -280,6 +283,15 @@ def dashboard():
     if certificates:
         ticket_tabs.append(('certificates', 'Certificates', certificates))
 
+    # The organiser's documents for their upcoming events, one block an event (UPG-239)
+    event_documents, seen = [], set()
+    for r in active_tickets:
+        if r.get('documents') and r.get('event_id') not in seen:
+            seen.add(r.get('event_id'))
+            event_documents.append({'event_id': r.get('event_id'), 'event_title': r.get('event_title'),
+                                    'team_name': r.get('team_name'), 'is_lead': r.get('is_lead'),
+                                    'documents': r['documents']})
+
     # Waitlists still open for them: waiting, or accepted with a fee to pay (UPG-236)
     my_waitlist = [w for w in _my_waitlist(user_email) if w['state'] in ('waiting', 'pay')]
 
@@ -301,6 +313,7 @@ def dashboard():
         last_updated     = last_updated,
         ticket_tabs      = ticket_tabs,
         my_waitlist      = my_waitlist,
+        event_documents  = event_documents,
     )
 
 
@@ -782,6 +795,39 @@ def registration_edit_page(reg_id, reg, event, organiser, back, member_email_act
     return render_template('registration_edit.html', reg=reg, reg_id=reg_id, event=event, page=page,
                            values=values, errors=errors, organiser=organiser, back=back,
                            member_email_action=member_email_action)
+
+
+@participant_bp.route('/event/<event_id>/document/<doc_id>')
+@login_required
+def event_document(event_id, doc_id):
+    """An organiser's PDF (UPG-239): for everyone on a registration for the
+    event that isn't cancelled (the lead and the members), and its staff."""
+    import services_event_documents as docs
+    from services_permission import can
+    from utils_storage import StorageError, get_private
+    ev = db.collection('events').document(event_id).get()
+    if not ev.exists:
+        abort(404)
+    event = dict(ev.to_dict() or {}, id=event_id)
+    doc = docs.find(event, doc_id)
+    if not doc or not doc.get('pdf_key'):
+        abort(404)
+    me = str(session.get('user_id') or '').strip().lower()
+    if not can(session, 'manage_registrations', event, db=db):
+        led = [(s.id, s.to_dict() or {}) for s in db.collection('registrations')
+               .where(filter=_ff('lead_email', '==', me)).stream()]
+        if not any(str(r.get('event_id') or '') == str(event_id)
+                   and str(r.get('status') or '').strip().lower() not in ('cancelled', 'refunded')
+                   for _, r in led + member_registrations(me)):
+            abort(403)
+    try:
+        raw = get_private(doc['pdf_key'])
+    except StorageError:
+        abort(404)
+    name = docs.safe_name(doc.get('pdf_name'))
+    return Response(raw, mimetype='application/pdf', headers={
+        'Content-Disposition': f'attachment; filename="{name}"',
+        'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'private, no-store'})
 
 
 def _my_waitlist(email) -> list:

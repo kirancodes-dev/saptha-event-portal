@@ -203,12 +203,15 @@ def view_registrations(event_id):
             reg['delete_block'] = delete_refusal(reg['id'], reg, *kept) if may_edit else ''
         # The people waiting for a seat, in line, with what they filled in (UPG-230)
         waitlist = waitlist_rows(db, event, form_details)
+        import services_event_documents
         return render_template('coordinator/registrations.html',
             event=event, registrations=page.items, page=page, total=len(registrations),
             member_confirm=member_confirm, waiting=waiting, team_event=team_event,
             may_switch=may_edit, may_cancel=may_edit, may_select=may_edit, may_accept=may_edit,
             entry=entry_counts, entry_filter=entry_filter, pay_filter=pay_filter,
             waitlist=waitlist, seats=seats_left(event),
+            # Documents for registered teams (UPG-239)
+            documents=services_event_documents.documents(event), may_edit_documents=may_edit,
             # The summary at the top (UPG-234)
             cancelled=sum(1 for r in registrations
                           if str(r.get('status') or '').strip().lower() in ('cancelled', 'refunded')))
@@ -393,28 +396,41 @@ def seats_left(event: dict) -> dict:
             'over': max(taken - limit, 0) if limit else 0}
 
 
-def accepted_message(event: dict, promoted: dict) -> tuple:
-    """(subject, text) of the email and notice telling a person the organiser
-    accepted them from the waitlist (UPG-235): registered, and either
-    confirmed or asked to pay to confirm."""
+def seat_step(promoted: dict) -> str:
+    """What's left for a person given a seat from the waitlist: pay, or
+    nothing (their ticket is in the portal)."""
     from utils_email import _base_url
+    base = _base_url()
+    if promoted.get('status') == 'pending_payment':
+        return ("One step is left: pay the fee to confirm your seat.\n"
+                f"Pay here: {base}/payment/pay/{promoted['reg_id']}\n")
+    return ("Your seat is confirmed. Your ticket (QR code) is in the portal:\n"
+            f"{base}/participant/dashboard\n")
+
+
+def accepted_message(event: dict, promoted: dict, how: str = 'accepted') -> tuple:
+    """(subject, text) of the email and notice telling a person they're in
+    from the waitlist: the organiser accepted them (UPG-235), or, with
+    how='freed', a seat opened and they were first in line (UPG-240).
+    Registered, and either confirmed or asked to pay to confirm."""
     reg = promoted.get('registration') or {}
     title = event.get('title') or 'the event'
     name = reg.get('lead_name') or 'there'
     team = reg.get('team_name') if reg.get('team_name') not in (None, '', 'Individual') else ''
     who = f"your team {team}'s" if team else 'your'
-    base = _base_url()
-    if promoted.get('status') == 'pending_payment':
-        step = ("One step is left: pay the fee to confirm your seat.\n"
-                f"Pay here: {base}/payment/pay/{promoted['reg_id']}\n")
-        subject = f"Accepted from the waitlist: pay to confirm {title}"
+    paying = promoted.get('status') == 'pending_payment'
+    if how == 'freed':
+        subject = (f"A seat opened for {title}: pay to confirm" if paying
+                   else f"You're in: a seat opened for {title}")
+        news = (f"Good news: a seat opened for {title}, and {who} place on the waitlist was next, "
+                "so you're registered.\n\n")
     else:
-        step = ("Your seat is confirmed. Your ticket (QR code) is in the portal:\n"
-                f"{base}/participant/dashboard\n")
-        subject = f"Accepted: you're registered for {title}"
+        subject = (f"Accepted from the waitlist: pay to confirm {title}" if paying
+                   else f"Accepted: you're registered for {title}")
+        news = f"Good news: the organiser of {title} accepted {who} request from the waitlist.\n\n"
     text = (f"Hi {name},\n\n"
-            f"Good news: the organiser of {title} accepted {who} request from the waitlist.\n\n"
-            f"{step}\n"
+            + news
+            + f"{seat_step(promoted)}\n"
             f"Registration ID: {promoted['reg_id']}\n"
             + (f"Team: {team}\n" if team else '')
             + f"Date: {event.get('date') or 'to be announced'}\n"
@@ -493,14 +509,11 @@ def accept_waitlist(event_id):
     link = (f"/payment/pay/{promoted['reg_id']}" if promoted['status'] == 'pending_payment'
             else '/participant/dashboard')
     hk.notify(db, event, reg, subject, text, link=link, kind='waitlist_promoted')
-    emailed = False
-    if hk.email_allowed(event, 'registration'):
-        try:
-            from utils_email import send_email_notification
-            emailed = bool(send_email_notification(promoted['user_email'], subject, text, event.get('title') or ''))
-        except Exception:
-            from flask import current_app
-            current_app.logger.warning("Waitlist acceptance email to %s failed", promoted['user_email'], exc_info=True)
+    # One email: registered or pay, and a set-password link if they have no
+    # password yet (UPG-240), also in a portal-mode hackathon
+    import services_seat_email
+    sent = services_seat_email.tell(db, event, promoted, how='accepted', by=actor)
+    emailed = sent['status'] == 'sent'
 
     log_action(db, "WAITLIST_ACCEPTED",
                f"{actor} accepted {who} ({promoted['user_email']}) from the waitlist of event {event_id}: "
@@ -512,11 +525,72 @@ def accept_waitlist(event_id):
     count = (f" The event now has {seats['taken']} registration{'' if seats['taken'] == 1 else 's'}"
              f" for {seats['limit']} seat{'' if seats['limit'] == 1 else 's'}"
              + (f" ({seats['over']} over the limit)." if seats['over'] else ".")) if seats['limit'] else ''
-    told = (f"An email telling them was sent to {promoted['user_email']}." if emailed
+    told = (f"An email telling them was sent to {promoted['user_email']}."
+            + (" It has a link to set their password." if sent['password_link'] else '') if emailed
+            else "They were told in the portal, but today's email limit is reached, so no email was sent; "
+                 "please contact them." if sent['status'] == 'limit'
             else "They were told in the portal, but the email could not be sent; please contact them.")
     flash(f"{who} is accepted and registered"
           + (" and must pay the fee to confirm their seat. " if paying else ". ") + told + count, "success")
     return redirect(f'/coordinator/registrations/{event_id}')
+
+
+def _hosted_event(event_id):
+    """The event, for the SPOC who may edit it (404 or 403 otherwise)."""
+    from flask import abort
+    from services_permission import can
+    doc = db.collection('events').document(event_id).get()
+    if not doc.exists:
+        abort(404)
+    event = dict(doc.to_dict() or {}, id=event_id)
+    if not can(session, 'edit_event', event, db=db):
+        abort(403)
+    return event
+
+
+@coord_bp.route('/registrations/<event_id>/documents', methods=['POST'])
+@login_required
+@role_required(COORD_ROLES)
+def add_document(event_id):
+    """The hosting SPOC gives registered teams a document (UPG-239): a title,
+    their own instructions and a PDF (an undertaking form, say), or one of the
+    two. Each team lead is told in the portal."""
+    import services_event_documents as docs
+    event = _hosted_event(event_id)
+    back = f'/coordinator/registrations/{event_id}#documents'
+    upload = request.files.get('pdf')
+    raw = upload.read(docs.PDF_MB * 1024 * 1024 + 1) if upload and upload.filename else b''
+    actor = session.get('user_id', '')
+    try:
+        ok, message = docs.add(db, event_id, event, title=request.form.get('title') or '',
+                               instructions=request.form.get('instructions') or '', pdf=raw,
+                               pdf_name=(upload.filename or '') if upload else '', by=actor)
+    except Exception:
+        from flask import current_app
+        current_app.logger.warning("Couldn't store a document for event %s", event_id, exc_info=True)
+        ok, message = False, "The PDF couldn't be saved. Please try again."
+    if ok:
+        new = docs.documents(event)[-1]
+        told = docs.notify_registered(db, event_id, event, new)
+        log_action(db, "EVENT_DOCUMENT_ADDED",
+                   f"{actor} added “{new['title']}” to event {event_id}"
+                   + (f" with {new['pdf_name']}" if new.get('pdf_key') else '') + f"; {told} lead(s) told")
+    flash(message, 'success' if ok else 'danger')
+    return redirect(back)
+
+
+@coord_bp.route('/registrations/<event_id>/documents/<doc_id>/remove', methods=['POST'])
+@login_required
+@role_required(COORD_ROLES)
+def remove_document(event_id, doc_id):
+    import services_event_documents as docs
+    event = _hosted_event(event_id)
+    ok, message = docs.remove(db, event_id, event, doc_id)
+    if ok:
+        log_action(db, "EVENT_DOCUMENT_REMOVED", f"{session.get('user_id', '')} removed document {doc_id} "
+                                                 f"from event {event_id}")
+    flash(message, 'success' if ok else 'warning')
+    return redirect(f'/coordinator/registrations/{event_id}#documents')
 
 
 def checked_in(reg: dict) -> bool:

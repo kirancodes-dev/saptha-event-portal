@@ -13,6 +13,7 @@
 .portal-filter-pills { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; margin-bottom: var(--sp-5); scrollbar-width: none; }
 .portal-filter-pills::-webkit-scrollbar { display: none; }
 .portal-filter-pills .seg__btn { flex: 0 0 auto; }
+.event-doc-instructions { white-space: pre-line; overflow-wrap: anywhere; }   /* UPG-239 */
 .portal-hero-meta-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .portal-hero-meta-item { font-size: var(--fs-sm); color: var(--text-muted); background: var(--surface-sunken); border: 1px solid var(--divider); border-radius: var(--radius-sm); padding: 4px 10px; }
 .portal-hero-meta-item strong { color: var(--text-strong); }
@@ -140,6 +141,29 @@
     <a href="/participant/my_events?tab=waitlisted" class="small">All in My events</a>
   </div>
   {{ waitlist_cards(my_waitlist) }}
+</section>
+{% endif %}
+
+{#- UPG-239: what the organiser gave registered teams: their instructions and a PDF -#}
+{% if event_documents %}
+<section class="panel mb-4" id="event-documents" aria-labelledby="event-documents-title" data-event-documents>
+  <h2 class="h6 mb-2" id="event-documents-title"><i class="fas fa-file-pdf me-2 text-danger" aria-hidden="true"></i>From the organisers</h2>
+  {% for group in event_documents %}
+  <div class="mb-3">
+    <h3 class="h6 fw-bold mb-2">{{ group.event_title }}{% if group.team_name %} <span class="small text-muted fw-normal">· Team {{ group.team_name }}</span>{% endif %}</h3>
+    <ul class="list-unstyled d-grid gap-2 mb-0">
+      {% for d in group.documents %}
+      <li class="border rounded p-3 bg-white" data-event-document="{{ d.id }}">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+          <h4 class="h6 mb-1">{{ d.title }}</h4>
+          {% if d.pdf_key %}<a class="btn btn-sm btn-primary" href="/participant/event/{{ group.event_id }}/document/{{ d.id }}" download><i class="fas fa-download me-1" aria-hidden="true"></i>Download PDF<span class="visually-hidden">: {{ d.title }}</span></a>{% endif %}
+        </div>
+        {% if d.instructions %}<div class="small event-doc-instructions">{{ d.instructions }}</div>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
 </section>
 {% endif %}
 

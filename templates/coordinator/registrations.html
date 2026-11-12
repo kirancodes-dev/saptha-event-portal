@@ -78,6 +78,62 @@
   </div>
   {% endif %}
 
+  {#- UPG-239: documents for registered teams (an undertaking form, say): the
+      SPOC's own instructions, a PDF, or both. Teams see them in their portal -#}
+  <details class="card border mb-3 reg-fold" id="documents" data-documents data-remember="documents">
+    <summary class="card-header bg-white">
+      <h2 class="h6 fw-bold mb-0"><i class="fas fa-file-pdf me-1 text-danger" aria-hidden="true"></i>Documents for teams: {{ documents|length }}</h2>
+      <span class="small text-muted">Instructions and PDFs every registered {{ 'team lead' if team_event else 'person' }} sees in their portal</span>
+      <span class="reg-fold__toggle btn btn-sm btn-outline-secondary" aria-hidden="true"><span class="reg-fold__when-closed">Show documents</span><span class="reg-fold__when-open">Hide documents</span> <i class="fas fa-chevron-right reg-fold__chevron ms-1"></i></span>
+    </summary>
+    <div class="p-3">
+      {% if documents %}
+      <ul class="list-unstyled d-grid gap-2 mb-3" data-document-list>
+        {% for d in documents %}
+        <li class="border rounded p-3" data-document="{{ d.id }}">
+          <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+            <h3 class="h6 fw-bold mb-1">{{ d.title }}</h3>
+            <div class="d-flex flex-wrap gap-2">
+              {% if d.pdf_key %}<a class="btn btn-sm btn-outline-primary" href="/participant/event/{{ event.id }}/document/{{ d.id }}"><i class="fas fa-download me-1" aria-hidden="true"></i>{{ d.pdf_name }}</a>{% endif %}
+              {% if may_edit_documents %}
+              <form method="post" action="/coordinator/registrations/{{ event.id }}/documents/{{ d.id }}/remove" class="m-0">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash me-1" aria-hidden="true"></i>Remove<span class="visually-hidden"> {{ d.title }}</span></button>
+              </form>
+              {% endif %}
+            </div>
+          </div>
+          {% if d.instructions %}<div class="small reg-doc-instructions">{{ d.instructions }}</div>{% else %}<div class="small text-muted">No instructions; the PDF only.</div>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="small text-muted mb-3">No documents yet. Add one, such as an undertaking form for teams to sign.</p>
+      {% endif %}
+      {% if may_edit_documents %}
+      <form method="post" action="/coordinator/registrations/{{ event.id }}/documents" enctype="multipart/form-data" class="border-top pt-3" data-document-form>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <h3 class="h6 fw-bold">Add a document</h3>
+        <div class="mb-2">
+          <label class="form-label small fw-semibold" for="doc-title">Title</label>
+          <input class="form-control form-control-sm" id="doc-title" name="title" maxlength="150" required placeholder="Undertaking form">
+        </div>
+        <div class="mb-2">
+          <label class="form-label small fw-semibold" for="doc-instructions">Instructions</label>
+          <textarea class="form-control form-control-sm" id="doc-instructions" name="instructions" rows="4" maxlength="5000" aria-describedby="doc-instructions-help" placeholder="Download the form, print it, get it signed and hand it in at room 204 before 10 am on the event day."></textarea>
+          <div class="form-text" id="doc-instructions-help">Teams see exactly what you type here.</div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold" for="doc-pdf">PDF</label>
+          <input class="form-control form-control-sm" type="file" id="doc-pdf" name="pdf" accept="application/pdf,.pdf" aria-describedby="doc-pdf-help">
+          <div class="form-text" id="doc-pdf-help">Up to 10 MB. Give instructions, a PDF, or both.</div>
+        </div>
+        <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-upload me-1" aria-hidden="true"></i>Add for teams</button>
+      </form>
+      {% endif %}
+    </div>
+  </details>
+
   {#- UPG-230: the people waiting for a seat, and the hosting SPOC accepts them.
       UPG-234: folded away until the SPOC opens it -#}
   <details class="card border mb-3 reg-fold" id="waitlist" data-waitlist data-remember="waitlist">

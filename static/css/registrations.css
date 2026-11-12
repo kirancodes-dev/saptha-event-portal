@@ -31,3 +31,6 @@
 .reg-dialog__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; padding: .75rem 1.25rem; border-top: 1px solid #dee2e6; background: #f8f9fa; }
 
 @media (prefers-reduced-motion: reduce) { .reg-fold__chevron { transition: none; } }
+
+/* UPG-239: the SPOC's instructions keep their line breaks */
+.reg-doc-instructions { white-space: pre-line; overflow-wrap: anywhere; }

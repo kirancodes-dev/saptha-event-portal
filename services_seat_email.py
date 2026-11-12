@@ -74,6 +74,8 @@ def _send(db, email: str, subject: str, text: str, event: dict, by: str = '') ->
         text = text + part
     else:
         text = text + f"\nLog in with this email and your password: {_base_url()}/login\n"
+    from services_event_contact import support_text
+    text = text + support_text(event)                 # "Questions? Write to ..." (UPG-242)
     try:
         ok = bool(send_email_notification(email, subject, text, event.get('title') or ''))
     except Exception:

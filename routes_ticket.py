@@ -386,8 +386,11 @@ def view_ticket(reg_id):
     wallet = {'apple': bool(show_qr and active and services_wallet.apple_configured()),
               'google': bool(show_qr and active and services_wallet.google_configured())}
 
+    import services_event_contact   # the event's own guidelines and support email (UPG-242)
     return render_template(
         'participant/ticket.html',
+        ticket_guidelines=services_event_contact.guidelines(event),
+        support_email=services_event_contact.support_email(event),
         reg=reg,
         reg_id=reg_id,
         event=event,

@@ -9,6 +9,31 @@ never repeat, and they close up when someone ahead is promoted or leaves. The
 """
 
 
+# ── Moving up on their own, or only when the SPOC accepts (UPG-243) ─────────
+AUTO = 'waitlist_auto'
+
+
+def auto_moves_up(event: dict) -> bool:
+    """Does a freed seat go to the first in line on its own? On unless the
+    event's SPOC switched it off; then only the SPOC's Accept registers
+    someone from the waitlist."""
+    return (event or {}).get(AUTO) is not False
+
+
+def someone_waiting(db, event_id: str) -> bool:
+    query = db.collection('waitlists').where('event_id', '==', str(event_id)).where('status', '==', 'waiting')
+    return any(True for _ in query.limit(1).stream())
+
+
+def joins_waitlist(db, event_id: str, event: dict, count: int, limit: int) -> bool:
+    """Does a new sign-up go on the waitlist? When the event is full, and also
+    while teams wait for the SPOC to accept them (moving up on their own is
+    off), so a newcomer can't take a freed seat ahead of them."""
+    if limit and count >= limit:
+        return True
+    return bool(limit) and not auto_moves_up(event) and someone_waiting(db, event_id)
+
+
 def waiting(db, event_id: str) -> list:
     """[(entry id, entry)] still waiting for the event, first in line first."""
     query = db.collection('waitlists').where('event_id', '==', event_id).where('status', '==', 'waiting')
@@ -95,6 +120,7 @@ def standing(db, email: str) -> list:
             'lead_name': reg_data.get('lead_name') or entry.get('name') or '',
             'is_lead': lead == email, 'joined_at': str(entry.get('joined_at') or ''),
             'place': None, 'ahead': None, 'waiting_total': None, 'link': '', 'link_label': '',
+            'auto': auto_moves_up(event),
         }
         status = _norm(entry.get('status'))
         if status == 'waiting':

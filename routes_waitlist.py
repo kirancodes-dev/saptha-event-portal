@@ -28,6 +28,19 @@ def _db():
     return db
 
 
+def _event_or_403(db, event_id: str, permission: str) -> dict:
+    """The event, for someone with this permission on it; 404 or 403 otherwise."""
+    from flask import abort
+    from services_permission import can
+    doc = db.collection("events").document(event_id).get()
+    if not doc.exists:
+        abort(404)
+    event = dict(doc.to_dict() or {}, id=event_id)
+    if not can(session, permission, event, db=db):
+        abort(403)
+    return event
+
+
 @waitlist_bp.route("/join/<event_id>", methods=["POST"])
 @login_required
 def join_waitlist(event_id):
@@ -159,8 +172,10 @@ def leave_waitlist(event_id):
 @waitlist_bp.route("/promote/<event_id>", methods=["POST"])
 @role_required(["ClubSPOC", "Admin", "Coordinator"])
 def promote_next(event_id):
-    """Manually promote the next person on the waitlist."""
+    """Manually promote the next person on the waitlist: the event's hosting
+    SPOC only (UPG-232), as the registrations page's Accept."""
     db = _db()
+    _event_or_403(db, event_id, "edit_event")
     result = auto_promote(db, event_id)
     if result:
         return jsonify({"message": f"Promoted: {result['user_email']}", "promoted": result})
@@ -170,9 +185,11 @@ def promote_next(event_id):
 @waitlist_bp.route("/list/<event_id>", methods=["GET"])
 @role_required(["ClubSPOC", "Admin", "Coordinator"])
 def view_waitlist(event_id):
-    """View the waitlist for an event."""
+    """View the waitlist for an event: its organisers only (UPG-232), because
+    it holds each person's contact details and form answers."""
     from services_waitlist import waiting
     db = _db()
+    _event_or_403(db, event_id, "manage_registrations")
     # In join order, each with their place now (UPG-114), not the place they joined at
     waitlist = [dict(wl, id=wl_id, position=place)
                 for place, (wl_id, wl) in enumerate(waiting(db, event_id), start=1)]
@@ -217,11 +234,24 @@ def promotion_terms(ev: dict, reg_id: str, reg_data: Optional[dict] = None) -> d
     }
 
 
-def auto_promote(db, event_id: str):
-    """Auto-promote the next person on the waitlist.
+def moves_up_on_its_own(db, event_id: str) -> bool:
+    """Whether a freed seat goes to the first in line by itself. Not when the
+    event's SPOC switched it off (UPG-243): then the seat waits for the SPOC's
+    Accept. Checked by the cancel task, not by the SPOC's "promote next"."""
+    from services_waitlist import auto_moves_up
+    ev = db.collection("events").document(event_id).get()
+    if ev.exists and not auto_moves_up(ev.to_dict() or {}):
+        logger.info("Waitlist of event %s: a seat is free; waiting for the SPOC to accept", event_id)
+        return False
+    return True
 
-    Called when a registration is cancelled. Creates a registration
-    for the promoted user and sends them a notification.
+
+def auto_promote(db, event_id: str):
+    """Promote the next person on the waitlist.
+
+    Called when a registration is cancelled (when the seat moves up on its
+    own, `moves_up_on_its_own`) and by the SPOC's "promote next". Creates a
+    registration for the promoted user and sends them a notification.
     """
     # The first in line by join order (UPG-112, UPG-114)
     from services_waitlist import waiting

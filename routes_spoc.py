@@ -1454,6 +1454,15 @@ def edit_event(event_id):
         val = request.form.get(field, '').strip()
         if val:
             updates[field] = val
+    if request.form.get('contact_sent'):   # the ticket's guidelines and the support email (UPG-242)
+        import services_event_contact as contact
+        support = (request.form.get('support_email') or '').strip().lower()
+        if not contact.valid_email(support):
+            flash("The support email isn't a valid email address, so nothing was saved.", "danger")
+            return render_template('spoc/edit_event.html', event=dict(event, **{
+                'support_email': support, 'ticket_guidelines': request.form.get('ticket_guidelines', '')}))
+        updates['support_email'] = support
+        updates['ticket_guidelines'] = contact.clean_guidelines(request.form.get('ticket_guidelines', ''))
     if request.form.get('placement_sent'):   # the edit form's placement section (UPG-57); rounds are kept
         from services_placement import from_form as placement_from_form, settings as placement_settings
         updates['is_placement'] = request.form.get('is_placement') == 'yes'

@@ -68,6 +68,21 @@ textarea.form-control { min-height: 110px; }
                   placeholder="Rules and guidelines for the event...">{{ event.get('rules', '') }}</textarea>
       </div>
 
+      {#- UPG-242: the back of every ticket shows these, and the emails the support email -#}
+      <input type="hidden" name="contact_sent" value="1">
+      <div class="mb-4" data-ticket-guidelines>
+        <label class="form-label" for="ticket_guidelines">Guidelines on the ticket</label>
+        <textarea name="ticket_guidelines" id="ticket_guidelines" class="form-control" rows="6" aria-describedby="ticket_guidelines_help"
+                  placeholder="Carry your university ID card during reporting.&#10;Report at the designated time.">{{ event.get('ticket_guidelines', '') }}</textarea>
+        <div class="form-text" id="ticket_guidelines_help">One per line, up to 12; numbers like "01." are taken off. Shown on the back of each ticket. Empty: the general venue guidelines.</div>
+      </div>
+      <div class="mb-4" data-support-email>
+        <label class="form-label" for="support_email">Support email</label>
+        <input type="email" name="support_email" id="support_email" class="form-control" maxlength="254" aria-describedby="support_email_help"
+               value="{{ event.get('support_email', '') }}" placeholder="team@example.com">
+        <div class="form-text" id="support_email_help">Shown on the ticket and in the registration, ticket and waitlist emails: "Questions? Write to …".</div>
+      </div>
+
       <div class="row g-3 mb-4">
         <div class="col-md-6">
           <label class="form-label">Venue</label>

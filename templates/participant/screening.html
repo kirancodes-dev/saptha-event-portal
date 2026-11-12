@@ -1,0 +1,58 @@
+{% extends "base_classic.html" %}
+{#- UPG-238: the waitlist's screening round. The lead of a team still waiting
+    answers once, between the round's times; the right answers never reach
+    this page. A member is told their lead answers for the team. -#}
+
+{% block title %}Screening round — {{ event.title or 'Event' }}{% endblock %}
+{% block page_title %}Screening round: {{ event.title or 'Event' }}{% endblock %}
+
+{% block content %}
+<div class="container py-3" style="max-width:46rem" data-screening-page="{{ state }}">
+  <p class="text-muted small mb-3">For the waitlist. Opens {{ opens }} · closes {{ closes }}{% if minutes %} · {{ minutes }} minutes once you start{% endif %}.</p>
+
+  {% if role == 'none' %}
+  <div class="alert alert-info" data-screening-not-waiting>This round is for people on the event's waitlist. You aren't waiting for this event, so there's nothing to answer.</div>
+
+  {% elif role == 'member' %}
+  <div class="alert alert-info" data-screening-member>Your team lead, {{ lead_name }}, answers the round once for your team.{% if sheet and sheet.submitted_at %} Your team's answers were received.{% endif %}</div>
+
+  {% elif sheet %}
+  <div class="alert alert-success" data-screening-received>
+    <strong>Your answers were received</strong>{% if sheet.late %}, but after the time limit, so they couldn't count{% endif %}.
+    The organiser chooses who gets the seats after the round. If you're accepted, you're told here and by email; until then you stay on the waitlist.
+  </div>
+
+  {% elif state == 'upcoming' %}
+  <div class="alert alert-warning" data-screening-upcoming>The round opens {{ opens }}. Come back then: there {{ 'is' if count == 1 else 'are' }} {{ count }} multiple-choice question{{ '' if count == 1 else 's' }}, answered once{% if minutes %}, in {{ minutes }} minutes{% endif %}.</div>
+
+  {% elif state == 'closed' %}
+  <div class="alert alert-secondary" data-screening-closed>The round closed {{ closes }}, so it can't be answered now. You're still on the waitlist.</div>
+
+  {% else %}
+  <div class="alert alert-warning small" data-screening-rules>
+    Answer once{% if ends %}, and submit by <strong data-screening-ends>{{ ends }}</strong>; answers after that don't count{% endif %}. Your answers can't be changed after you submit.
+  </div>
+  <form method="post" data-screening-form>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <ol class="ps-3 d-grid gap-3">
+      {% for q in questions %}
+      <li>
+        <fieldset data-screening-q="{{ q.id }}">
+          <legend class="fs-6 fw-semibold mb-1">{{ q.text }} <span class="text-muted small fw-normal">({{ q.points }} point{{ '' if q.points == 1 else 's' }})</span></legend>
+          {% for o in q.options %}
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="q_{{ q.id }}" id="q-{{ q.id }}-{{ loop.index0 }}" value="{{ loop.index0 }}">
+            <label class="form-check-label" for="q-{{ q.id }}-{{ loop.index0 }}">{{ o }}</label>
+          </div>
+          {% endfor %}
+        </fieldset>
+      </li>
+      {% endfor %}
+    </ol>
+    <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane me-1" aria-hidden="true"></i>Submit my answers</button>
+  </form>
+  {% endif %}
+
+  <p class="mt-3 mb-0"><a href="/participant/dashboard">Back to your dashboard</a></p>
+</div>
+{% endblock %}

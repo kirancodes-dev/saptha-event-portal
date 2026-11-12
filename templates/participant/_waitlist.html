@@ -16,7 +16,7 @@
     <p class="small mb-2 mt-2">
       {% if w.state == 'waiting' %}
         {% if w.place %}<strong data-waitlist-place>You're #{{ w.place }} in line</strong>{% if w.ahead %}, {{ w.ahead }} ahead of you{% else %}: you're next{% endif %}.{% endif %}
-        The event is full. When a seat is freed, or the organiser accepts you, you're registered and told here.{% if not w.is_lead %} Your team lead, {{ w.lead_name or 'the lead' }}, joined for your team.{% endif %}
+        {% if w.auto %}The event is full. When a seat is freed, or the organiser accepts you, you're registered and told here.{% else %}The organiser chooses who gets a seat from the waitlist. If you're accepted, you're registered and told here and by email.{% endif %}{% if not w.is_lead %} Your team lead, {{ w.lead_name or 'the lead' }}, joined for your team.{% endif %}
       {% elif w.state == 'pay' %}
         The organiser accepted {{ 'your team' if w.team_name else 'you' }} from the waitlist. {% if w.is_lead %}Pay the fee to confirm the seat.{% else %}Your team lead, {{ w.lead_name or 'the lead' }}, pays the fee to confirm the seat.{% endif %}
       {% elif w.state == 'accepted' %}
@@ -29,6 +29,20 @@
         You're no longer on this waitlist.
       {% endif %}
     </p>
+    {% if w.screening %}
+    {#- UPG-238: the screening round for this waitlist -#}
+    {% set sc = w.screening %}
+    <div class="small border rounded p-2 mb-2 bg-light" data-waitlist-screening="{{ 'done' if sc.done else sc.state }}">
+      <strong>Screening round.</strong>
+      {% if sc.done %}{{ 'Your' if sc.is_lead else "Your team's" }} answers were received. The organiser chooses who gets the seats after it.
+      {% elif sc.state == 'upcoming' %}It opens {{ sc.opens }} and closes {{ sc.closes }}.{% if sc.is_lead %} You answer it once for {{ 'your team' if w.team_name else 'yourself' }}.{% else %} Your team lead answers it for the team.{% endif %}
+      {% elif sc.state == 'open' %}Open until {{ sc.closes }}{% if sc.minutes %}, {{ sc.minutes }} minutes once you start{% endif %}.{% if not sc.is_lead %} Your team lead, {{ w.lead_name or 'the lead' }}, answers it for the team.{% endif %}
+      {% else %}It closed {{ sc.closes }}{% if sc.is_lead %} and you didn't answer it{% endif %}.{% endif %}
+      {% if sc.is_lead and not sc.done and sc.state == 'open' %}
+      <div class="mt-2"><a href="{{ sc.link }}" class="btn btn-sm btn-primary" data-take-screening>Take the screening round<span class="visually-hidden">: {{ w.event_title }}</span></a></div>
+      {% endif %}
+    </div>
+    {% endif %}
     {% if w.link %}<a href="{{ w.link }}" class="btn btn-sm {{ 'btn-primary' if w.state == 'pay' else 'btn-outline-primary' }}">{{ w.link_label }}<span class="visually-hidden">: {{ w.event_title }}</span></a>{% endif %}
   </li>
   {% endfor %}

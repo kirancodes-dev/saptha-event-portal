@@ -596,12 +596,21 @@ def _instructions_block(instructions: dict | None) -> str:
         </div>"""
 
 
+def _support_block(email: str) -> str:
+    """Where to write with questions: the event's support email (UPG-242)."""
+    if not email:
+        return ''
+    return (f"""<p style="color:#475569;font-size:13px;margin-top:16px;">Questions? Write to
+          <a href="mailto:{_e(email)}" style="color:#1a2557;font-weight:700;">{_e(email)}</a></p>""")
+
+
 def send_registration_confirmed_email(to_email: str, name: str, event_title: str,
                                        event_date: str = '', venue: str = '',
                                        is_new_user: bool = False,
                                        raw_password: str | None = None,
                                        added_by: str = '', team_name: str = '',
-                                       cancel_url: str = '', instructions: dict | None = None) -> bool:
+                                       cancel_url: str = '', instructions: dict | None = None,
+                                       support_email: str = '') -> bool:
     """
     Sent immediately at registration. Simple confirmation — no QR, no ticket ID.
     The actual entry ticket (with QR) is sent 1 day before the event.
@@ -651,6 +660,7 @@ def send_registration_confirmed_email(to_email: str, name: str, event_title: str
         </div>
         {credentials_block}
         {next_steps}
+        {_support_block(support_email)}
         {_cancel_block(cancel_url)}
     """, f"Registration Confirmed — {_e(event_title)}")
 
@@ -669,6 +679,14 @@ def send_registration_confirmed_email(to_email: str, name: str, event_title: str
             logger.warning("Failed to create ICS attachment for confirmation email: %s", e)
 
     return _send(to_email, f"Registration Confirmed — {event_title}", html, attachments=atts or None)
+
+
+def _ticket_support(reg_id: str) -> str:
+    try:
+        from services_event_contact import for_registration
+        return for_registration(reg_id)
+    except Exception:
+        return ''
 
 
 def send_ticket_email(to_email: str, name: str, event_title: str,
@@ -723,6 +741,7 @@ def send_ticket_email(to_email: str, name: str, event_title: str,
             View My Dashboard →
           </a>
         </p>
+        {_support_block(_ticket_support(reg_id))}
         {_cancel_block(cancel_url)}
     """, f"Registration Confirmed — {_e(event_title)}")
 
@@ -867,6 +886,7 @@ def send_set_password_email(to_email: str, name: str, set_password_url: str,
         <p style="color:#475569;">Dear <strong>{_e(name or 'User')}</strong>,</p>
         {_registration_block(registration) if registration else ''}
         {_instructions_block((registration or {}).get('instructions'))}
+        {_support_block((registration or {}).get('support_email') or '')}
         <p style="color:#475569;">A SapthaEvent account was created for this
            email {_e(reason)}. Choose a password, then log in with this email
            and that password. This link works once and expires in

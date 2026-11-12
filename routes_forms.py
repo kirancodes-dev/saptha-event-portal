@@ -686,9 +686,8 @@ def registration_page(event_id):
 
     # Capacity check
     max_cap = safe_int((event.get('limits') or {}).get('max_participants', 0)) or safe_int(event.get('capacity', 0))
-    is_waitlist = False
-    if max_cap and safe_int(event.get('registration_count', 0)) >= max_cap:
-        is_waitlist = True
+    from services_waitlist import joins_waitlist   # also while teams wait for the SPOC (UPG-243)
+    is_waitlist = joins_waitlist(db, event_id, event, safe_int(event.get('registration_count', 0)), max_cap)
 
     # Already registered?
     is_registered = False
@@ -960,7 +959,8 @@ def submit_form(event_id):
         # Capacity check — if event is at capacity, add to waitlists instead
         max_cap = safe_int((event_data.get('limits') or {}).get('max_participants', 0)) or safe_int(event_data.get('capacity', 0))
         current_count = safe_int(event_data.get('registration_count', 0))
-        if max_cap and current_count >= max_cap:
+        from services_waitlist import joins_waitlist   # also while teams wait for the SPOC (UPG-243)
+        if joins_waitlist(db, event_id, event_data, current_count, max_cap):
             # Check if already on waitlists
             wl_existing = list(
                 db.collection('waitlists')
@@ -1085,12 +1085,14 @@ def submit_form(event_id):
         # check the hackathon page (UPG-195)
         import services_hackathon
         instructions = services_hackathon.registration_instructions(event_data, event_id)
+        from services_event_contact import support_email   # "Questions? Write to ..." (UPG-242)
         login_email = ''
         if is_new_user:
             login_email = _email_new_account(email, full_name, registration={
                 'event_title': event_data.get('title', ''), 'event_date': event_data.get('date', ''),
                 'venue': event_data.get('venue', ''), 'team_name': team_name if team_max > 1 else '',
-                'reg_id': reg_id, 'instructions': instructions})
+                'reg_id': reg_id, 'instructions': instructions,
+                'support_email': support_email(event_data)})
         else:
             send_registration_confirmed_email(
                 email, full_name, event_data.get('title', ''),
@@ -1098,6 +1100,7 @@ def submit_form(event_id):
                 venue=event_data.get('venue', ''),
                 cancel_url=cancel_url_for(reg_data),
                 instructions=instructions,
+                support_email=support_email(event_data),
             )
         # Each team member the lead listed hears they were added (UPG-48),
         # only when team members get emails (NOTIFY_TEAM_MEMBERS, UPG-152)

@@ -203,6 +203,15 @@ def view_registrations(event_id):
             reg['delete_block'] = delete_refusal(reg['id'], reg, *kept) if may_edit else ''
         # The people waiting for a seat, in line, with what they filled in (UPG-230)
         waitlist = waitlist_rows(db, event, form_details)
+        # The screening round, its scores, and the list sorted by them (UPG-238)
+        import services_screening
+        screening = services_screening.annotate_rows(db, event, waitlist)
+        screening_round = services_screening.round_of(event)
+        import services_hackathon as _hk_times
+        from services_waitlist import auto_moves_up as services_waitlist_auto   # UPG-243
+        wl_sort = 'score' if screening.get('on') and request.args.get('wl') == 'score' else 'line'
+        if wl_sort == 'score':
+            waitlist.sort(key=lambda w: (w['screening'] is None, (w['screening'] or {}).get('rank') or 0))
         import services_event_documents
         return render_template('coordinator/registrations.html',
             event=event, registrations=page.items, page=page, total=len(registrations),
@@ -210,8 +219,12 @@ def view_registrations(event_id):
             may_switch=may_edit, may_cancel=may_edit, may_select=may_edit, may_accept=may_edit,
             entry=entry_counts, entry_filter=entry_filter, pay_filter=pay_filter,
             waitlist=waitlist, seats=seats_left(event),
+            waitlist_auto=services_waitlist_auto(event),
             # Documents for registered teams (UPG-239)
             documents=services_event_documents.documents(event), may_edit_documents=may_edit,
+            screening=screening, screening_round=screening_round, wl_sort=wl_sort,
+            screening_local=lambda v: _hk_times.local_input(v, event),
+            screening_show=lambda v: _hk_times.show(v, event),
             # The summary at the top (UPG-234)
             cancelled=sum(1 for r in registrations
                           if str(r.get('status') or '').strip().lower() in ('cancelled', 'refunded')))
@@ -463,6 +476,44 @@ def waitlist_rows(db, event: dict, form_details=None) -> list:
     return rows
 
 
+def _accept_entry(event: dict, wl_id: str, wl: dict, who: str, actor: str, how: str = 'the SPOC'):
+    """Register one waiting entry as accepted by the SPOC (UPG-230/235/240):
+    a portal notice to each person on the team and ONE email to the lead.
+    {'promoted', 'sent'}, or None when they were already registered."""
+    from routes_waitlist import promote_entry
+    event_id = event['id']
+    promoted = promote_entry(db, event_id, wl_id, wl, announce=False)
+    if not promoted:
+        return None
+    # They're told they were accepted (UPG-235): a portal notice to each person
+    # on the team, and an email to the lead, also in a portal-mode hackathon,
+    # because it's their registration email
+    import services_hackathon as hk
+    subject, text = accepted_message(event, promoted)
+    reg = dict(promoted.get('registration') or {}, lead_email=promoted['user_email'])
+    link = (f"/payment/pay/{promoted['reg_id']}" if promoted['status'] == 'pending_payment'
+            else '/participant/dashboard')
+    hk.notify(db, event, reg, subject, text, link=link, kind='waitlist_promoted')
+    # One email: registered or pay, and a set-password link if they have no
+    # password yet (UPG-240), also in a portal-mode hackathon
+    import services_seat_email
+    sent = services_seat_email.tell(db, event, promoted, how='accepted', by=actor)
+    log_action(db, "WAITLIST_ACCEPTED",
+               f"{actor} accepted {who} ({promoted['user_email']}) from the waitlist of event {event_id}"
+               + ("" if how == 'the SPOC' else f" ({how})") + f": "
+               f"registration {promoted['reg_id']}, {promoted['status']}, "
+               + ("emailed" if sent['status'] == 'sent' else "email not sent"))
+    return {'promoted': promoted, 'sent': sent}
+
+
+def _seat_count(event_id: str, event: dict) -> str:
+    fresh = db.collection('events').document(event_id).get()
+    seats = seats_left(dict(fresh.to_dict() or {}) if fresh.exists else event)
+    return (f" The event now has {seats['taken']} registration{'' if seats['taken'] == 1 else 's'}"
+            f" for {seats['limit']} seat{'' if seats['limit'] == 1 else 's'}"
+            + (f" ({seats['over']} over the limit)." if seats['over'] else ".")) if seats['limit'] else ''
+
+
 @coord_bp.route('/registrations/<event_id>/accept_waitlist', methods=['POST'])
 @login_required
 @role_required(COORD_ROLES)
@@ -473,7 +524,6 @@ def accept_waitlist(event_id):
     the automatic promotion registers the first in line: a paid event holds the
     seat for payment, a free one confirms it with a ticket; they're told."""
     from flask import abort
-    from routes_waitlist import promote_entry
     from services_permission import can
     event_doc = db.collection('events').document(event_id).get()
     if not event_doc.exists:
@@ -494,37 +544,15 @@ def accept_waitlist(event_id):
         flash(f"{who} is no longer waiting, so nothing changed.", "info")
         return redirect(back)
 
-    promoted = promote_entry(db, event_id, wl_id, wl, announce=False)
     actor = session.get('user_id', '')
-    if not promoted:
+    done = _accept_entry(event, wl_id, wl, who, actor)
+    if not done:
         flash(f"{who} is already registered for this event, so they were taken off the waitlist.", "info")
         return redirect(back)
-
-    # They're told they were accepted (UPG-235): a portal notice to each person
-    # on the team, and an email to the lead, also in a portal-mode hackathon,
-    # because it's their registration email
-    import services_hackathon as hk
-    subject, text = accepted_message(event, promoted)
-    reg = dict(promoted.get('registration') or {}, lead_email=promoted['user_email'])
-    link = (f"/payment/pay/{promoted['reg_id']}" if promoted['status'] == 'pending_payment'
-            else '/participant/dashboard')
-    hk.notify(db, event, reg, subject, text, link=link, kind='waitlist_promoted')
-    # One email: registered or pay, and a set-password link if they have no
-    # password yet (UPG-240), also in a portal-mode hackathon
-    import services_seat_email
-    sent = services_seat_email.tell(db, event, promoted, how='accepted', by=actor)
+    promoted, sent = done['promoted'], done['sent']
     emailed = sent['status'] == 'sent'
-
-    log_action(db, "WAITLIST_ACCEPTED",
-               f"{actor} accepted {who} ({promoted['user_email']}) from the waitlist of event {event_id}: "
-               f"registration {promoted['reg_id']}, {promoted['status']}, "
-               + ("emailed" if emailed else "email not sent"))
     paying = promoted['status'] == 'pending_payment'
-    fresh = db.collection('events').document(event_id).get()
-    seats = seats_left(dict(fresh.to_dict() or {}) if fresh.exists else event)
-    count = (f" The event now has {seats['taken']} registration{'' if seats['taken'] == 1 else 's'}"
-             f" for {seats['limit']} seat{'' if seats['limit'] == 1 else 's'}"
-             + (f" ({seats['over']} over the limit)." if seats['over'] else ".")) if seats['limit'] else ''
+    count = _seat_count(event_id, event)
     told = (f"An email telling them was sent to {promoted['user_email']}."
             + (" It has a link to set their password." if sent['password_link'] else '') if emailed
             else "They were told in the portal, but today's email limit is reached, so no email was sent; "
@@ -591,6 +619,103 @@ def remove_document(event_id, doc_id):
                                                  f"from event {event_id}")
     flash(message, 'success' if ok else 'warning')
     return redirect(f'/coordinator/registrations/{event_id}#documents')
+
+
+@coord_bp.route('/registrations/<event_id>/waitlist_auto', methods=['POST'])
+@login_required
+@role_required(COORD_ROLES)
+def waitlist_auto(event_id):
+    """The hosting SPOC switches moving up from the waitlist on its own on or
+    off for the event (UPG-243). Off: a freed seat stays free until the SPOC
+    accepts someone, and new sign-ups join the waitlist while anyone waits."""
+    import services_waitlist
+    event = _hosted_event(event_id)
+    on = request.form.get('auto') == 'on'
+    db.collection('events').document(event_id).update({services_waitlist.AUTO: on})
+    actor = session.get('user_id', '')
+    log_action(db, "WAITLIST_AUTO_" + ("ON" if on else "OFF"), f"{actor}: event {event_id}")
+    flash("Teams now move up from the waitlist on their own when a seat is freed." if on else
+          "Teams now stay on the waitlist until you accept them; a freed seat waits for you. "
+          "New sign-ups join the waitlist while anyone is waiting.", 'success')
+    return redirect(f'/coordinator/registrations/{event_id}#waitlist')
+
+
+# ── The waitlist's screening round (UPG-238) ────────────────────────────────
+
+def _screening_back(event_id):
+    return f'/coordinator/registrations/{event_id}#screening'
+
+
+@coord_bp.route('/registrations/<event_id>/screening/<action>', methods=['POST'])
+@login_required
+@role_required(COORD_ROLES)
+def screening_action(event_id, action):
+    """The hosting SPOC writes the round (add or remove a question, its times),
+    opens it to everyone waiting (they're told) or closes it early."""
+    from flask import abort
+    import services_screening as sc
+    event = _hosted_event(event_id)
+    actor = session.get('user_id', '')
+    try:
+        if action == 'question':
+            message = sc.add_question(db, event_id, event, request.form)
+        elif action == 'remove':
+            message = sc.remove_question(db, event_id, event, (request.form.get('qid') or '').strip())
+        elif action == 'times':
+            message = sc.set_times(db, event_id, event, request.form)
+        elif action == 'open':
+            told = sc.publish(db, event_id, event, actor)
+            message = (f"The round is open to the {told['told']} {'lead' if told['told'] == 1 else 'leads'} "
+                       f"waiting: each was told in the portal"
+                       + (f" and {told['emailed']} by email." if told['emailed'] else ".")
+                       + (" Today's email limit was reached, so some weren't emailed." if told['limit'] else ''))
+        elif action == 'close':
+            message = sc.close_now(db, event_id, event)
+        else:
+            abort(404)
+    except sc.ScreeningError as exc:
+        flash(str(exc), 'warning')
+        return redirect(_screening_back(event_id))
+    if action in ('open', 'close'):
+        log_action(db, f"SCREENING_{action.upper()}", f"{actor}: event {event_id}: {message}")
+    flash(message, 'success')
+    return redirect(_screening_back(event_id))
+
+
+@coord_bp.route('/registrations/<event_id>/accept_top', methods=['POST'])
+@login_required
+@role_required(COORD_ROLES)
+def accept_top(event_id):
+    """Accept the N best scores of the screening round in one step (UPG-238),
+    each as the Accept button does; a tie goes to the earlier joiner. The
+    others stay waiting and aren't told."""
+    import services_screening as sc
+    event = _hosted_event(event_id)
+    back = f'/coordinator/registrations/{event_id}#waitlist'
+    raw = (request.form.get('n') or '').strip()
+    if not raw.isdigit() or int(raw) < 1:
+        flash("Give how many to accept: a whole number, 1 or more.", 'warning')
+        return redirect(back)
+    n = int(raw)
+    ranked = sc.ranking(db, event_id)
+    if not ranked:
+        flash("Nobody waiting has answered the screening round yet, so nobody was accepted.", 'warning')
+        return redirect(back)
+    actor = session.get('user_id', '')
+    accepted, unsent = [], 0
+    for wl_id, wl, got in ranked[:n]:
+        reg = wl.get('reg_data') if isinstance(wl.get('reg_data'), dict) else {}
+        who = reg.get('team_name') or wl.get('name') or wl.get('user_email') or wl.get('email') or wl_id
+        done = _accept_entry(event, wl_id, wl, who, actor, how=f"top {n} of the screening round")
+        if done:
+            accepted.append(f"{who} ({got.get('score', 0)}/{got.get('max_score', 0)})")
+            unsent += done['sent']['status'] != 'sent'
+    short = (f" Only {len(ranked)} of those waiting answered the round." if len(ranked) < n else '')
+    flash(f"Accepted the top {len(accepted)} by score: " + ', '.join(accepted) + '.' + short
+          + (f" {unsent} email{'s' if unsent != 1 else ''} couldn't be sent (or today's limit was reached): "
+             "they were told in the portal." if unsent else " Each was emailed.")
+          + _seat_count(event_id, event), 'success' if accepted else 'info')
+    return redirect(f'/coordinator/registrations/{event_id}')
 
 
 def checked_in(reg: dict) -> bool:

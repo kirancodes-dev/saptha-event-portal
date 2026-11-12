@@ -25,7 +25,10 @@ def _user(db, email, role, name='Test User'):
 
 def _login(flask_app, email, role):
     client = flask_app.test_client()
-    resp = client.post('/login', data={'role': role, 'email': email, 'password': PASSWORD})
+    data = {'role': role, 'email': email, 'password': PASSWORD}
+    if role == 'SuperAdmin':   # the admin's login also needs the master key (UPG-233)
+        data['secret_key'] = flask_app.config.get('MASTER_SECRET_KEY', '')
+    resp = client.post('/login', data=data)
     assert resp.status_code == 302, resp.data[:300]
     # A failed login also redirects (back to /login); make sure this one worked
     assert resp.headers['Location'] != '/login', f"login failed for {email} as {role}"

@@ -13,6 +13,7 @@
 .portal-filter-pills { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; margin-bottom: var(--sp-5); scrollbar-width: none; }
 .portal-filter-pills::-webkit-scrollbar { display: none; }
 .portal-filter-pills .seg__btn { flex: 0 0 auto; }
+.event-doc-instructions { white-space: pre-line; overflow-wrap: anywhere; }   /* UPG-239 */
 .portal-hero-meta-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .portal-hero-meta-item { font-size: var(--fs-sm); color: var(--text-muted); background: var(--surface-sunken); border: 1px solid var(--divider); border-radius: var(--radius-sm); padding: 4px 10px; }
 .portal-hero-meta-item strong { color: var(--text-strong); }
@@ -131,6 +132,41 @@
     </div>
 {% endcall %}
 
+{#- UPG-236: where they stand on each waitlist they (or their team) joined -#}
+{% if my_waitlist %}
+{% from "participant/_waitlist.html" import waitlist_cards %}
+<section class="panel mb-4" aria-labelledby="my-waitlist-title" data-dashboard-waitlist>
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+    <h2 class="h6 mb-0" id="my-waitlist-title"><i class="fas fa-hourglass-half me-2 text-warning" aria-hidden="true"></i>Your waitlist</h2>
+    <a href="/participant/my_events?tab=waitlisted" class="small">All in My events</a>
+  </div>
+  {{ waitlist_cards(my_waitlist) }}
+</section>
+{% endif %}
+
+{#- UPG-239: what the organiser gave registered teams: their instructions and a PDF -#}
+{% if event_documents %}
+<section class="panel mb-4" id="event-documents" aria-labelledby="event-documents-title" data-event-documents>
+  <h2 class="h6 mb-2" id="event-documents-title"><i class="fas fa-file-pdf me-2 text-danger" aria-hidden="true"></i>From the organisers</h2>
+  {% for group in event_documents %}
+  <div class="mb-3">
+    <h3 class="h6 fw-bold mb-2">{{ group.event_title }}{% if group.team_name %} <span class="small text-muted fw-normal">· Team {{ group.team_name }}</span>{% endif %}</h3>
+    <ul class="list-unstyled d-grid gap-2 mb-0">
+      {% for d in group.documents %}
+      <li class="border rounded p-3 bg-white" data-event-document="{{ d.id }}">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+          <h4 class="h6 mb-1">{{ d.title }}</h4>
+          {% if d.pdf_key %}<a class="btn btn-sm btn-primary" href="/participant/event/{{ group.event_id }}/document/{{ d.id }}" download><i class="fas fa-download me-1" aria-hidden="true"></i>Download PDF<span class="visually-hidden">: {{ d.title }}</span></a>{% endif %}
+        </div>
+        {% if d.instructions %}<div class="small event-doc-instructions">{{ d.instructions }}</div>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
 <section class="portal-widgets-grid" aria-label="Your activity">
   <div class="panel portal-widget-card">
     <div class="portal-widget-header"><span>Activity score</span><span class="se-badge se-badge--brand se-badge--plain">Points</span></div>
@@ -234,6 +270,17 @@
         </div>
 
         <div class="ticket-body-lms">
+          {#- UPG-227: whose team this is, for a member and the lead alike -#}
+          {% if reg.team_code or (reg.members and reg.members|length > 1) %}
+          <div class="small mb-2" data-my-team="{{ 'lead' if reg.is_lead else 'member' }}">
+            <i class="fas fa-users me-1" aria-hidden="true"></i>
+            {% if reg.is_lead %}You lead <strong>{{ reg.team_name or 'your team' }}</strong>{% if reg.team_code %} · invite code <strong>{{ reg.team_code }}</strong>{% endif %}
+            {% else %}You're a member of <strong>{{ reg.team_name or 'a team' }}</strong>, led by {{ reg.lead_name or reg.lead_email }}{% endif %}
+          </div>
+          {% if not reg.is_lead and not reg.is_cancelled %}
+          <div class="text-muted small mb-2" data-ask-lead>Something wrong in your details? Ask your team lead, {{ reg.lead_name or 'the lead' }}{% if reg.lead_email %} ({{ reg.lead_email }}){% endif %}, to correct it.</div>
+          {% endif %}
+          {% endif %}
           <div class="d-flex flex-wrap gap-2 mb-3">
             {% if reg.days_until is not none %}
               {% if reg.days_until == 0 %}
@@ -247,9 +294,9 @@
               {% endif %}
             {% endif %}
 
-            {% if reg.attendance == 'Present' %}
+            {% if reg.my_attendance == 'Present' %}
               <span class="ticket-chip ticket-chip-attended"><i class="fas fa-check-circle"></i>Attended</span>
-            {% elif reg.attendance == 'Absent' %}
+            {% elif reg.my_attendance == 'Absent' %}
               <span class="ticket-chip ticket-chip-absent"><i class="fas fa-times-circle"></i>Absent</span>
             {% endif %}
 
@@ -307,8 +354,8 @@
               <div class="members-box">
                 {% for m in reg.members %}
                 <div class="d-flex justify-content-between align-items-center py-1 border-bottom small">
-                  <span>{{ m.name }}</span>
-                  <span class="se-badge se-badge--plain {{ 'se-badge--gold' if m.role == 'Team Leader' else 'se-badge--neutral' }}">{{ m.role }}</span>
+                  <span>{{ m.name }}{% if (m.email or '')|lower == (user_email or '')|lower %} <span class="text-muted">(you)</span>{% endif %}</span>
+                  <span class="se-badge se-badge--plain {{ 'se-badge--gold' if m.role in ('Team Leader', 'Lead') else 'se-badge--neutral' }}">{{ m.role or 'Member' }}</span>
                 </div>
                 {% endfor %}
               </div>
@@ -321,13 +368,19 @@
             <a href="/hackathon/{{ reg.event_id }}" class="btn btn-gold btn-sm" data-hackathon-page><i class="fas fa-code" aria-hidden="true"></i> Hackathon page</a>
             {% endif %}
             <a href="/ticket/{{ reg.id }}" class="btn btn-primary btn-sm"><i class="fas fa-qrcode" aria-hidden="true"></i> View ticket</a>
+            {% if reg.may_edit %}
+            <a href="/participant/registration/{{ reg.id }}/edit" class="btn btn-outline-primary btn-sm" data-edit-details><i class="fas fa-pen" aria-hidden="true"></i> Edit details</a>
+            {% endif %}
+            {% if reg.team_code %}
+            <a href="/teams/{{ reg.id }}" class="btn btn-outline-secondary btn-sm" data-team-page><i class="fas fa-users" aria-hidden="true"></i> Team page</a>
+            {% endif %}
             <a href="/participant/badge/{{ reg.id }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-id-badge" aria-hidden="true"></i> Badge</a>
             <a href="/event/{{ reg.event_id }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-info-circle" aria-hidden="true"></i> Event info</a>
             <a href="/participant/leaderboard/{{ reg.event_id }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-trophy" aria-hidden="true"></i> Leaderboard</a>
             {% if reg.cert_eligible %}
             <a href="/participant/certificate/{{ reg.id }}" class="btn btn-gold btn-sm"><i class="fas fa-certificate" aria-hidden="true"></i> Certificate</a>
             {% endif %}
-            {% if reg.get('status') != 'Cancelled' and reg.get('attendance') != 'Present' %}
+            {% if reg.is_lead and reg.get('status') != 'Cancelled' and reg.get('attendance') != 'Present' %}
             <form method="POST" action="/participant/cancel/{{ reg.id }}" style="margin:0;display:inline;">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Cancel registration for {{ reg.event_title|e }}?">

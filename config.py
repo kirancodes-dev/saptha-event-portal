@@ -211,6 +211,8 @@ class Config:
     # PARTICIPANT_RESET_LIMIT reset emails in its first
     # PARTICIPANT_RESET_WINDOW_HOURS; after that the organizer helps.
     EMAIL_DAILY_LIMIT              = int(os.environ.get('EMAIL_DAILY_LIMIT', 450))
+    # The backup Brevo account's own daily limit (BREVO_BACKUP_API_KEY, UPG-224)
+    EMAIL_BACKUP_DAILY_LIMIT       = int(os.environ.get('EMAIL_BACKUP_DAILY_LIMIT', 270))
     NOTIFY_TEAM_MEMBERS            = os.environ.get('NOTIFY_TEAM_MEMBERS', 'false').strip().lower() in ('1', 'true', 'yes')
     PARTICIPANT_RESET_WINDOW_HOURS = int(os.environ.get('PARTICIPANT_RESET_WINDOW_HOURS', 48))
     PARTICIPANT_RESET_LIMIT        = int(os.environ.get('PARTICIPANT_RESET_LIMIT', 1))

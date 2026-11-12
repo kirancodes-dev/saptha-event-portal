@@ -180,8 +180,18 @@ def view_team(reg_id):
     import services_team_confirm as confirm
     statuses = {_email(m): confirm.status(m) for m in confirm.others(reg)} if confirm.enabled(event or {}) else {}
     resends = {_email(m): confirm.resends_left(m) for m in confirm.others(reg)}
+    import services_registration_edit   # the lead corrects the details (UPG-225)
+    may_edit = _is_lead(reg) and not services_registration_edit.lead_may_edit(reg, event or {})
+    # The lead adds members up to the limit, or is told why not (UPG-241)
+    import services_hackathon
+    import services_team_members
+    add_block = services_team_members.why_not(reg, event or {}) if _is_lead(reg) else ''
     return render_template('teams/view.html', reg=reg, reg_id=reg_id, event=event, is_lead=_is_lead(reg),
-                           team_min=team_min, team_max=team_max, statuses=statuses, resends=resends)
+                           team_min=team_min, team_max=team_max, statuses=statuses, resends=resends,
+                           may_edit=may_edit, add_block=add_block,
+                           room_left=services_team_members.room_left(reg, team_max),
+                           confirm_on=confirm.enabled(event or {}) and services_hackathon.email_allowed(
+                               event or {}, 'member_confirm'))
 
 
 # ── Members confirm their email (UPG-207) ──────────────────────────────────
@@ -317,6 +327,31 @@ def remove_member(reg_id):
     flash(f"{email} removed from the team." + (
         f" Your team now has {len(kept)}; it needs {team_min} to take part." if len(kept) < team_min else ''),
         "success" if len(kept) >= team_min else "warning")
+    return redirect(f'/teams/{reg_id}')
+
+
+@teams_bp.route('/<reg_id>/members/add', methods=['POST'])
+@login_required
+def add_member(reg_id):
+    """The lead adds a member, up to the team's limit (UPG-241)."""
+    import services_team_members as tm
+    from routes_forms import team_limits
+    reg, event = _lead_team(reg_id)
+    try:
+        member, told = tm.add(db, reg_id, reg, event or {}, request.form, by=_me())
+    except tm.AddError as exc:
+        flash(str(exc), 'warning')
+        return redirect(f'/teams/{reg_id}#add-member')
+    log_action(db, "TEAM_MEMBER_ADDED", f"{_me()} added {member['email']} to {reg.get('team_name')} ({reg_id})")
+    fresh, _ = _team(reg_id)
+    count = len((fresh or {}).get('members') or [])
+    _, team_max = team_limits(event or {})
+    flash(f"{member['name']} is added. Your team now has {count} of {team_max}. " + {
+        'link': f"An email went to {member['email']} to confirm and set a password.",
+        'limit': "Today's email limit is reached, so their link wasn't sent: resend it tomorrow.",
+        'failed': "Their email couldn't be sent: use Resend link below.",
+        'email': f"An email telling them went to {member['email']}.",
+    }.get(told, "They see the team when they sign in with that email."), 'success')
     return redirect(f'/teams/{reg_id}')
 
 

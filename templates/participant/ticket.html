@@ -535,14 +535,21 @@
                     <div class="ticket-body" style="flex: 1; display: flex; flex-direction: column; justify-content: space-between; background: #ffffff;">
                         <div>
                             <div style="font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; font-weight: 700;">
-                                Venue Guidelines
+                                {{ 'Event Guidelines' if event.get('ticket_guidelines') else 'Venue Guidelines' }}
                             </div>
-                            <ul style="font-size: 13px; color: #475569; padding-left: 20px; margin-bottom: 20px; line-height: 1.6;">
-                                <li>Report to the venue 15 minutes before the start time.</li>
-                                <li>Carry your college ID card for physical verification.</li>
-                                <li>Set mobile screen brightness to maximum for QR scanning.</li>
-                                <li>No food or beverages allowed inside the laboratories.</li>
+                            {#- UPG-242: the event's own guidelines, else the general ones -#}
+                            <ul style="font-size: 13px; color: #475569; padding-left: 20px; margin-bottom: 20px; line-height: 1.6;" data-ticket-guidelines>
+                                {% for line in ticket_guidelines %}<li>{{ line }}</li>{% endfor %}
                             </ul>
+                            {% if support_email %}
+                            <div style="font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; font-weight: 700;">
+                                Support
+                            </div>
+                            <div style="font-size: 13px; color: #475569; margin-bottom: 20px; overflow-wrap: anywhere;" data-ticket-support>
+                                <i class="fas fa-life-ring me-1" aria-hidden="true"></i>Questions? Write to
+                                <a href="mailto:{{ support_email }}" style="font-weight: 700; color: #00185e;">{{ support_email }}</a>
+                            </div>
+                            {% endif %}
 
                             <div style="font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; font-weight: 700;">
                                 Club Coordinator (SPOC)

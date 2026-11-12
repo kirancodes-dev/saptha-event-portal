@@ -57,6 +57,7 @@ from services_accounts import (REGISTRATION_EMAIL_NOT_SENT, cancel_url_for, crea
                                email_login_link, load_cancel_token, resolve_registrant)
 
 from extensions import limiter
+from werkzeug.exceptions import HTTPException
 
 # WhatsApp goes through services_whatsapp: opted-in, once, under the cap (UPG-147)
 
@@ -561,6 +562,32 @@ def _builder_problem(fields_raw) -> str:
     return ''
 
 
+def chosen_form_fields(fields_raw) -> tuple:
+    """(fields, problem) for a form the SPOC set out question by question, in
+    the builder or in step 6 of the event wizard (UPG-219): the questions as
+    stored, choices trimmed and once each, or the reason it can't be saved."""
+    problem = _builder_problem(fields_raw)
+    if problem:
+        return [], problem
+    fields = []
+    for i, f in enumerate(fields_raw):
+        options = f.get('options') or []
+        if f.get('type') in CHOICE_TYPES:
+            options = list(dict.fromkeys(str(o).strip()[:80] for o in options if str(o).strip()))
+        fields.append({
+            'id':          str(f.get('id') or f.get('field_name') or f'layout_{i}')[:60],
+            'type':        f.get('type', 'text'),
+            'label':       str(f.get('label') or '')[:200],
+            'placeholder': str(f.get('placeholder') or '')[:200],
+            'required':    bool(f.get('required', False)),
+            'options':     options,
+            'min':         f.get('min', ''),
+            'max':         f.get('max', ''),
+            'help_text':   str(f.get('help_text') or '')[:500],
+        })
+    return fields, ''
+
+
 # =========================================================
 # 2. SAVE FORM (AJAX — from builder or wizard)
 # =========================================================
@@ -641,6 +668,29 @@ def save_form(event_id):
 # =========================================================
 # 3. PUBLIC REGISTRATION PAGE
 # =========================================================
+# =========================================================
+# 3b. THE ORGANISER ADDS A TEAM BY HAND (UPG-244)
+# =========================================================
+ADD_TEAM = 'team'
+
+
+def _adding_by_hand() -> bool:
+    """The request is a SPOC adding a team through the event's form (asked
+    with `add=team`); the permission is checked by `_organiser_for`."""
+    return (request.values.get('add') or '') == ADD_TEAM and bool(session.get('user_id'))
+
+
+def _organiser_for(event_id: str, event: dict) -> bool:
+    """True when the hosting SPOC adds a team by hand; 403 when someone else
+    asks for it; False for an ordinary sign-up."""
+    if (request.values.get('add') or '') != ADD_TEAM:
+        return False
+    from services_permission import can
+    if not session.get('user_id') or not can(session, 'edit_event', dict(event, id=event_id), db=db):
+        abort(403)
+    return True
+
+
 @forms_bp.route('/register/<event_id>')
 @limiter.limit("60 per hour")
 def registration_page(event_id):
@@ -651,8 +701,9 @@ def registration_page(event_id):
 
     event       = event_doc.to_dict()
     event['id'] = event_id
+    organiser = _organiser_for(event_id, event)   # the SPOC adds a team by hand (UPG-244)
 
-    if registration_closed(event):
+    if registration_closed(event) and not organiser:
         return render_template('public/registration_closed.html', event=event)
 
     import services_share   # the share link the visitor came from, kept on the form (UPG-162)
@@ -660,13 +711,13 @@ def registration_page(event_id):
 
     # Capacity check
     max_cap = safe_int((event.get('limits') or {}).get('max_participants', 0)) or safe_int(event.get('capacity', 0))
-    is_waitlist = False
-    if max_cap and safe_int(event.get('registration_count', 0)) >= max_cap:
-        is_waitlist = True
+    from services_waitlist import joins_waitlist   # also while teams wait for the SPOC (UPG-243)
+    is_waitlist = joins_waitlist(db, event_id, event, safe_int(event.get('registration_count', 0)), max_cap) \
+        and not organiser
 
     # Already registered?
     is_registered = False
-    if session.get('user_id'):
+    if session.get('user_id') and not organiser:
         q = (db.collection('registrations')
                .where(filter=FieldFilter('event_id',   '==', event_id))
                .where(filter=FieldFilter('lead_email', '==', session['user_id']))
@@ -691,6 +742,8 @@ def registration_page(event_id):
         session['register_back'] = {event_id: back_url}
     else:
         back_url = remembered.get(event_id) or f'/event/{event_id}'
+    if organiser:
+        back_url = f'/coordinator/registrations/{event_id}'
 
     import uuid
     return render_template(
@@ -708,7 +761,34 @@ def registration_page(event_id):
         submission_id=uuid.uuid4().hex,   # one registration per form, however often it's sent
         ticket_types=_ticket_types_offered(event, event_id),   # UPG-155
         share_src=share_src,
+        organiser=organiser,   # UPG-244
+        organiser_paid=organiser and _paid_event(event),
     )
+
+
+def _seats_note(event_id: str) -> str:
+    """" The event now has N registrations for M seats." after adding by hand."""
+    from routes_coordinator import _seat_count
+    return _seat_count(event_id, {})
+
+
+def _registration_fee_of(event: dict, ptype: str, ticket_id: str, people: int) -> float:
+    from services_payments import PaymentError, registration_fee
+    try:
+        return registration_fee(event, ptype, ticket_id, people)
+    except PaymentError:
+        return 1.0   # a ticket type to choose is a priced event
+
+
+def _paid_event(event: dict) -> bool:
+    """Whether anyone pays to register (the fee, or a priced ticket type)."""
+    import services_ticket_types as tt
+    types = tt.types_for(event)
+    if types:
+        return any(float(t.get('price') or 0) > 0 for t in types)
+    from services_participants import allowed_types
+    from services_payments import fee_for
+    return any(fee_for(event, t) > 0 for t in allowed_types(event))
 
 
 def _ticket_types_offered(event, event_id):
@@ -723,15 +803,19 @@ def _ticket_types_offered(event, event_id):
 # 4. SUBMIT FORM
 # =========================================================
 @forms_bp.route('/submit/<event_id>', methods=['POST'])
-@limiter.limit("20 per hour")
+@limiter.limit("20 per hour", exempt_when=_adding_by_hand)   # a SPOC adds many teams (UPG-244)
 def submit_form(event_id):
     sub_key = ''
+    organiser = False
+    form_url = f'/forms/register/{event_id}'
     try:
         event_doc = db.collection('events').document(event_id).get()
         if not event_doc.exists:
             flash("Event not found.", "danger")
             return redirect('/')
         event_data = event_doc.to_dict()
+        organiser = _organiser_for(event_id, event_data)   # the hosting SPOC adds a team (UPG-244)
+        form_url = f'/forms/register/{event_id}' + (f'?add={ADD_TEAM}' if organiser else '')
 
         schema = registration_schema(event_id, event_data)
 
@@ -751,8 +835,9 @@ def submit_form(event_id):
             if core_key in request.form and core_key not in answers:
                 answers[core_key] = request.form.get(core_key, '').strip()
 
-        # BLK-02: a logged-in visitor always registers as their own account
-        session_email = (session.get('user_id') or '').strip().lower()
+        # BLK-02: a logged-in visitor always registers as their own account;
+        # a SPOC adding a team registers the lead they typed in (UPG-244)
+        session_email = '' if organiser else (session.get('user_id') or '').strip().lower()
         if session_email:
             for email_key in ('email', 'email_address'):
                 if email_key in answers:
@@ -791,12 +876,12 @@ def submit_form(event_id):
                 flash(err, 'danger')
             session['form_state'] = {'event_id': event_id, 'values': answers,
                                      'errors': {fid: msg for fid, msg in field_errors}}
-            return redirect(f'/forms/register/{event_id}')
+            return redirect(form_url)
 
         # Extract core fields. BLK-02: registration never logs anyone in.
         core = _extract_core(answers)
         # An existing account's email registers without logging in (UPG-97)
-        email, without_login = resolve_registrant(db, core['email'])
+        email, without_login = resolve_registrant(db, core['email'], by_organiser=organiser)
         full_name = core['full_name'] or (session.get('name', '') if session_email else '')
         phone     = core['phone']
         usn       = core['usn'].upper()
@@ -804,11 +889,11 @@ def submit_form(event_id):
 
         if not email or not full_name:
             flash("Name and email are required.", "warning")
-            return redirect(f'/forms/register/{event_id}')
+            return redirect(form_url)
 
-        if registration_closed(event_data):
+        if registration_closed(event_data) and not organiser:
             flash("Registration is closed for this event.", "warning")
-            return redirect(f'/forms/register/{event_id}')
+            return redirect(form_url)
 
         # Team size is checked here, whatever the browser sent (UPG-08)
         team_min, team_max = team_limits(event_data)
@@ -819,7 +904,11 @@ def submit_form(event_id):
             team_error = "Please give your team a name."
         if team_error:
             flash(team_error, 'danger')
-            return redirect(f'/forms/register/{event_id}')
+            return redirect(form_url)
+        if organiser and _registration_fee_of(event_data, ptype, ticket_id, 1 + len(team_members)) > 0:
+            flash("This event has a fee, so a team can't be added by hand: the team registers and pays online.",
+                  'warning')
+            return redirect(f'/coordinator/registrations/{event_id}')
 
         # Placement drives: only students who meet the company's rules (UPG-57)
         from services_placement import eligibility, is_placement
@@ -828,7 +917,7 @@ def submit_form(event_id):
             ok, reason = eligibility(event_data, (prof.to_dict() or {}) if prof.exists else None)
             if not ok:
                 flash(reason, 'danger')
-                return redirect(f'/forms/register/{event_id}')
+                return redirect(form_url)
 
         # Duplicate check
         existing = list(
@@ -838,6 +927,9 @@ def submit_form(event_id):
               .limit(1).stream()
         )
         if existing:
+            if organiser:
+                flash(f"{email} is already registered for this event; nothing was added.", "warning")
+                return redirect(form_url)
             flash("🚫 You have already registered for this event.", "warning")
             return redirect('/')
 
@@ -848,7 +940,7 @@ def submit_form(event_id):
             flash("Please tick the box to agree to the privacy notice; we can't register you without it.", 'danger')
             session['form_state'] = {'event_id': event_id, 'values': answers,
                                      'errors': {'privacy_consent': "Tick this box to register."}}
-            return redirect(f'/forms/register/{event_id}')
+            return redirect(form_url)
 
         # One registration per form, however many times it's sent (UPG-26)
         from services_idempotency import claim_submission, finish_submission, submission_result
@@ -917,6 +1009,9 @@ def submit_form(event_id):
         source = services_share.for_submission(session, event_id, event_data, request.form)
         if source:   # the share link it came from (UPG-162); carried through payment and the waitlist
             reg_data['source'] = source
+        if organiser:   # added by hand (UPG-244)
+            reg_data.update(added_by=(session.get('user_id') or '').strip().lower(),
+                            added_at=datetime.datetime.now(datetime.timezone.utc).isoformat())
         if request.form.get('whatsapp_opt_in') == 'yes':   # saved with the time (UPG-147)
             reg_data.update(whatsapp_opt_in=True,
                             whatsapp_opt_in_at=datetime.datetime.now(datetime.timezone.utc).isoformat())
@@ -934,7 +1029,8 @@ def submit_form(event_id):
         # Capacity check — if event is at capacity, add to waitlists instead
         max_cap = safe_int((event_data.get('limits') or {}).get('max_participants', 0)) or safe_int(event_data.get('capacity', 0))
         current_count = safe_int(event_data.get('registration_count', 0))
-        if max_cap and current_count >= max_cap:
+        from services_waitlist import joins_waitlist   # also while teams wait for the SPOC (UPG-243)
+        if not organiser and joins_waitlist(db, event_id, event_data, current_count, max_cap):
             # Check if already on waitlists
             wl_existing = list(
                 db.collection('waitlists')
@@ -1011,7 +1107,7 @@ def submit_form(event_id):
             flash(f"{ticket['name']} sold out just now; please choose another ticket.", 'warning')
             session['form_state'] = {'event_id': event_id, 'values': answers,
                                      'errors': {'ticket_type': f"{ticket['name']} is sold out."}}
-            return redirect(f'/forms/register/{event_id}')
+            return redirect(form_url)
         try:
             create_registration(db, reg_id, reg_data)   # never over another (UPG-95)
         except AlreadyRegistered:
@@ -1059,12 +1155,14 @@ def submit_form(event_id):
         # check the hackathon page (UPG-195)
         import services_hackathon
         instructions = services_hackathon.registration_instructions(event_data, event_id)
+        from services_event_contact import support_email   # "Questions? Write to ..." (UPG-242)
         login_email = ''
         if is_new_user:
             login_email = _email_new_account(email, full_name, registration={
                 'event_title': event_data.get('title', ''), 'event_date': event_data.get('date', ''),
                 'venue': event_data.get('venue', ''), 'team_name': team_name if team_max > 1 else '',
-                'reg_id': reg_id, 'instructions': instructions})
+                'reg_id': reg_id, 'instructions': instructions,
+                'support_email': support_email(event_data)})
         else:
             send_registration_confirmed_email(
                 email, full_name, event_data.get('title', ''),
@@ -1072,6 +1170,7 @@ def submit_form(event_id):
                 venue=event_data.get('venue', ''),
                 cancel_url=cancel_url_for(reg_data),
                 instructions=instructions,
+                support_email=support_email(event_data),
             )
         # Each team member the lead listed hears they were added (UPG-48),
         # only when team members get emails (NOTIFY_TEAM_MEMBERS, UPG-152)
@@ -1100,6 +1199,20 @@ def submit_form(event_id):
             except Exception:
                 pass
 
+        if organiser:   # straight into the list, even past the limit (UPG-244)
+            actor = (session.get('user_id') or '').strip().lower()
+            log_action(db, "REGISTRATION_ADDED_BY_ORGANISER",
+                       f"{actor} added {team_name or full_name} ({email}, {len(members)} people) "
+                       f"to event {event_id}: registration {reg_id}")
+            finish_submission(sub_key, reg_id)
+            who = team_name if team_max > 1 and team_name not in ('', 'Individual') else full_name
+            mailed = (login_email in ('', 'sent')) if is_new_user else True
+            flash(f"{who} is registered ({reg_id})."
+                  + (f" {email} was emailed" + (" a link to set their password." if is_new_user else ".")
+                     if mailed else f" The email to {email} couldn't be sent (or today's limit was reached).")
+                  + _seats_note(event_id), 'success')
+            return redirect(f'/coordinator/registrations/{event_id}')
+
         log_action(db, "FORM_SUBMISSION",
                    f"{email} registered for event {event_id} via form")
 
@@ -1122,8 +1235,14 @@ def submit_form(event_id):
         if sub_key:
             from services_idempotency import release_submission
             release_submission(sub_key)
+        if organiser:
+            flash("That person is already registered for this event; nothing was added.", "warning")
+            return redirect(form_url)
         flash("You're already registered for this event.", "info")
         return redirect('/participant/dashboard' if session.get('user_id') else f'/event/{event_id}')
+
+    except HTTPException:   # a 403 for adding by hand without the right (UPG-244)
+        raise
 
     except Exception as exc:
         if sub_key:
@@ -1131,7 +1250,7 @@ def submit_form(event_id):
             release_submission(sub_key)
         logger.error("Form submission error for event %s: %s", event_id, exc, exc_info=True)
         flash(f"Submission failed: {exc}", "danger")
-        return redirect(f'/forms/register/{event_id}')
+        return redirect(form_url)
 
 
 # =========================================================

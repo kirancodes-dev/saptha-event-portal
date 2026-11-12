@@ -33,7 +33,7 @@
     </li>
     <li class="nav-item" role="presentation">
       <button class="nav-link {% if active_tab == 'waitlisted' %}active{% endif %}" id="waitlisted-tab" data-bs-toggle="pill" data-bs-target="#waitlisted" type="button" role="tab">
-        <i class="fas fa-hourglass-half me-1"></i> Waitlisted <span class="portal-tab-count">{{ waitlisted|length }}</span>
+        <i class="fas fa-hourglass-half me-1"></i> Waitlisted <span class="portal-tab-count">{{ waitlisted|length + (my_waitlist|selectattr("state", "equalto", "waiting")|list|length) }}</span>
       </button>
     </li>
     <li class="nav-item" role="presentation">
@@ -144,7 +144,10 @@
 
     <!-- 3. Waitlisted -->
     <div class="tab-pane fade {% if active_tab == 'waitlisted' %}show active{% endif %}" id="waitlisted" role="tabpanel">
-      {{ render_event_cards(waitlisted, "No waitlisted registrations.") }}
+      {#- UPG-236: the waitlists they (or their team) joined, and where each stands -#}
+      {% from "participant/_waitlist.html" import waitlist_cards %}
+      {% if my_waitlist %}<div class="mb-3">{{ waitlist_cards(my_waitlist) }}</div>{% endif %}
+      {% if waitlisted or not my_waitlist %}{{ render_event_cards(waitlisted, "You aren't on any waitlist. When an event is full, registering puts you on its waitlist, and it shows here.") }}{% endif %}
     </div>
 
     <!-- 4. Attended -->

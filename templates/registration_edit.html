@@ -1,0 +1,123 @@
+{% extends "base_classic.html" %}
+{#- UPG-225: the team lead and the event's organisers correct a registration's details.
+    No `required` attributes and no browser-checked types: only the values that
+    change are checked (on the server), so an old answer never blocks a save,
+    and an answer no longer among the options stays selectable, so it isn't lost. -#}
+
+{% block title %}Edit details — {{ reg.team_name or reg.lead_name or 'Registration' }}{% endblock %}
+{% block page_title %}Edit details{% endblock %}
+
+{% macro field(f) %}
+  {% set v = values.get(f.name) %}
+  {% set err = errors.get(f.name) %}
+  {% set described = (f.name ~ '-error') if err else '' %}
+  <div class="mb-3" data-field="{{ f.name }}">
+  {% if f.type in ('checkbox_group', 'radio') %}
+    {% set chosen = (v if v is not string else [v]) if v else [] %}
+    <fieldset{% if err %} aria-describedby="{{ described }}"{% endif %}>
+      <legend class="form-label small fw-semibold mb-1">{{ f.label }}{% if f.required %} <span class="text-danger">*</span>{% endif %}</legend>
+      {% set opts = (f.options or []) | list %}
+      {% for opt in opts + (chosen | reject('in', opts) | list) %}
+      <div class="form-check">
+        <input class="form-check-input" type="{{ 'checkbox' if f.type == 'checkbox_group' else 'radio' }}" id="{{ f.name }}-{{ loop.index }}"
+               name="{{ f.name }}" value="{{ opt }}" {% if opt in chosen %}checked{% endif %}>
+        <label class="form-check-label" for="{{ f.name }}-{{ loop.index }}">{{ opt }}{% if opt not in opts %} <span class="text-muted small">(no longer an option)</span>{% endif %}</label>
+      </div>
+      {% endfor %}
+    </fieldset>
+  {% elif f.type == 'select' %}
+    {% set opts = (f.options or []) | list %}
+    <label class="form-label small fw-semibold" for="{{ f.name }}">{{ f.label }}{% if f.required %} <span class="text-danger">*</span>{% endif %}</label>
+    <select class="form-select" id="{{ f.name }}" name="{{ f.name }}"{% if err %} aria-invalid="true" aria-describedby="{{ described }}"{% endif %}>
+      <option value="">Select…</option>
+      {% for opt in opts %}<option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>{% endfor %}
+      {% if v and v not in opts %}<option value="{{ v }}" selected>{{ v }} (no longer an option)</option>{% endif %}
+    </select>
+  {% elif f.type == 'checkbox' %}
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" id="{{ f.name }}" name="{{ f.name }}" value="yes" {% if v == 'yes' %}checked{% endif %}>
+      <label class="form-check-label" for="{{ f.name }}">{{ f.label }}{% if f.required %} <span class="text-danger">*</span>{% endif %}</label>
+    </div>
+  {% elif f.type == 'textarea' %}
+    <label class="form-label small fw-semibold" for="{{ f.name }}">{{ f.label }}{% if f.required %} <span class="text-danger">*</span>{% endif %}</label>
+    <textarea class="form-control" id="{{ f.name }}" name="{{ f.name }}" rows="3"{% if err %} aria-invalid="true" aria-describedby="{{ described }}"{% endif %}>{{ v or '' }}</textarea>
+  {% else %}
+    <label class="form-label small fw-semibold" for="{{ f.name }}">{{ f.label }}{% if f.required %} <span class="text-danger">*</span>{% endif %}</label>
+    <input type="text" class="form-control" id="{{ f.name }}" name="{{ f.name }}" value="{{ v if v is string else '' }}"
+           inputmode="{{ 'email' if f.type == 'email' else 'tel' if f.type == 'tel' else 'numeric' if f.type == 'number' else 'url' if f.type == 'url' else 'text' }}"
+           {% if f.type == 'date' %}placeholder="YYYY-MM-DD"{% endif %}{% if err %} aria-invalid="true" aria-describedby="{{ described }}"{% endif %}>
+  {% endif %}
+  {% if f.help_text %}<div class="form-text">{{ f.help_text }}</div>{% endif %}
+  {% if err %}<div class="text-danger small mt-1" id="{{ described }}" role="alert">{{ err }}</div>{% endif %}
+  </div>
+{% endmacro %}
+
+{% block content %}
+<div class="panel" style="max-width:760px;">
+  <a href="{{ back }}" class="small text-decoration-none"><i class="fas fa-arrow-left me-1" aria-hidden="true"></i>Back</a>
+  <h2 class="h5 mt-2 mb-1">{{ event.title or reg.event_title or 'Event' }}</h2>
+  <p class="text-muted small mb-3">
+    {% if organiser %}Correct what was entered wrong. The team lead sees a notice that you changed it.
+    {% else %}Correct what was entered wrong. You can change these until your team is checked in.{% endif %}
+    This changes this registration only, not anyone's account.
+  </p>
+
+  <form method="post" action="{{ request.path }}" data-edit-form novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <h3 class="h6 mb-2">{{ 'Team lead' if page.team else 'Participant' }}</h3>
+    <p class="small mb-2">Email: <strong>{{ page.lead_email }}</strong>
+      <span class="text-muted">— this is the login, so it can't be changed here.</span></p>
+    {% for f in page.lead %}{{ field(f) }}{% endfor %}
+
+    {% if page.team %}
+    <h3 class="h6 mt-4 mb-2">Team</h3>
+    {{ field(page.team) }}
+    {% endif %}
+
+    {% for m in page.members %}
+    <div class="border rounded p-3 mb-3" data-member="{{ m.key }}">
+      <input type="hidden" name="m{{ m.index }}_key" value="{{ m.key }}">
+      <h3 class="h6 mb-2">Member {{ m.n }}
+        {% if m.status %}<span class="badge text-bg-{{ 'secondary' if m.status.tone == 'neutral' else m.status.tone }} ms-1">{{ m.status.label }}</span>{% endif %}</h3>
+      <p class="small mb-2">Email: <strong>{{ m.email or '—' }}</strong>
+        {% if m.can_correct_email %}<span class="text-muted">— correct it below{% if not organiser %}, or on the team page{% endif %}.</span>
+        {% elif m.email %}<span class="text-muted">— their login, so it can't be changed here.</span>{% endif %}</p>
+      {% for f in m.parts %}{{ field(f) }}{% endfor %}
+    </div>
+    {% endfor %}
+
+    {% if page.questions %}
+    <h3 class="h6 mt-4 mb-2">Answers</h3>
+    {% for q in page.questions %}{{ field(q) }}{% endfor %}
+    {% endif %}
+
+    <div class="d-flex flex-wrap gap-2 mt-3">
+      <button type="submit" class="btn btn-primary">Save changes</button>
+      <a href="{{ back }}" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+  </form>
+
+  {% set correctable = page.members | selectattr('can_correct_email') | list %}
+  {% if correctable %}
+  <h3 class="h6 mt-4 mb-2">Correct a member's email</h3>
+  {% if organiser and member_email_action %}
+  <p class="text-muted small">For a member who hasn't confirmed yet. The new address gets a link to confirm; the old link stops working.</p>
+  {% for m in correctable %}
+  <form method="post" action="{{ member_email_action }}" class="d-flex flex-wrap gap-2 align-items-end mb-2" data-member-email>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="reg_id" value="{{ reg_id }}">
+    <input type="hidden" name="email" value="{{ m.email }}">
+    <div>
+      <label class="form-label small mb-0" for="ne-{{ m.index }}">New email for {{ m.name or m.email }} (now {{ m.email }})</label>
+      <input type="email" id="ne-{{ m.index }}" name="new_email" class="form-control form-control-sm" style="max-width:280px;" required>
+    </div>
+    <button type="submit" class="btn btn-sm btn-outline-primary">Save and send a new link</button>
+  </form>
+  {% endfor %}
+  {% else %}
+  <p class="text-muted small">Use "Correct the email" beside the member on the <a href="/teams/{{ reg_id }}">team page</a>; they get a new link to confirm.</p>
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

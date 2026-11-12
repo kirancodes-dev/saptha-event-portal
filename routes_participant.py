@@ -11,7 +11,7 @@ Fixes & additions in this version
 import datetime
 import json
 
-from flask import (Blueprint, abort, current_app, flash, jsonify, redirect, render_template,
+from flask import (Blueprint, Response, abort, current_app, flash, jsonify, redirect, render_template,
                    request, session)
 try:
     from google.cloud import firestore
@@ -67,19 +67,77 @@ def _days_until(date_str: str) -> "int | None":
 # =========================================================
 # 1. STUDENT DASHBOARD  (fully enriched)
 # =========================================================
+def _store():
+    """The database object itself, not the proxy (for the SQL-only lookup)."""
+    if not isinstance(db, DynamicDBProxy):
+        return db
+    try:
+        import app as app_module
+        if getattr(app_module, 'db', None) is not None:
+            return app_module.db
+    except Exception:
+        pass
+    from models import db as models_db
+    return models_db
+
+
+def _mine(m, email):
+    return isinstance(m, dict) and str(m.get('email') or '').strip().lower() == email
+
+
+def member_registrations(email):
+    """(doc_id, data) for each registration this person is listed on as a team
+    member but doesn't lead (UPG-227). On the SQL layer the member rows are
+    looked up by email, not every registration read."""
+    email = str(email or '').strip().lower()
+    if not email:
+        return []
+    from db_adapter import SQLFirestoreAdapter
+    store = _store()
+    if isinstance(store, SQLFirestoreAdapter):
+        from sqlalchemy import func
+        from sqlalchemy.orm import Session
+
+        from db_pg import get_engine
+        from models_pg import TeamMember
+        with Session(get_engine()) as s:
+            ids = {str(row[0]) for row in s.query(TeamMember.registration_id)
+                   .filter(func.lower(func.trim(TeamMember.email)) == email).distinct()}
+        docs = [store.collection('registrations').document(i).get() for i in sorted(ids)]
+    else:
+        try:
+            docs = list(store.collection('registrations').stream())
+        except Exception:
+            docs = []
+    found = []
+    for doc in docs:
+        if not getattr(doc, 'exists', True):
+            continue
+        data = doc.to_dict() or {}
+        if str(data.get('lead_email') or '').strip().lower() == email:
+            continue   # the lead's own, found by lead_email
+        if any(_mine(m, email) for m in data.get('members') or []):
+            found.append((doc.id, data))
+    return found
+
+
 @participant_bp.route('/dashboard')
 @login_required
 @role_required('Student')
 def dashboard():
     user_email       = session.get('user_id')
+    me               = str(user_email or '').strip().lower()
     active_tickets   = []
     completed_events = []
 
-    for reg in (db.collection('registrations')
-                  .where(filter=_ff('lead_email', '==', user_email))
-                  .stream()):
-        r = reg.to_dict()
-        r['id'] = reg.id
+    led = [(reg.id, reg.to_dict()) for reg in (db.collection('registrations')
+                                               .where(filter=_ff('lead_email', '==', user_email))
+                                               .stream())]
+    led_ids = {reg_id for reg_id, _ in led}
+    # A team member sees their team's registration too (UPG-227)
+    for reg_id, r in led + member_registrations(me):
+        r = dict(r or {})
+        r['id'] = reg_id
 
         event_doc = db.collection('events').document(r.get('event_id', '')).get()
         if not event_doc.exists:
@@ -110,12 +168,18 @@ def dashboard():
         from services_rounds import status_for   # "Round 2 of 3" (UPG-149)
         r['round_status'] = status_for(evt, r)
         import services_hackathon   # the team lead's hackathon page (UPG-196)
-        r['hackathon_page'] = (services_hackathon.is_hackathon(evt)
-                               and str(r.get('lead_email') or '').lower() == str(session.get('user_id') or '').lower())
+        r['is_lead'] = reg_id in led_ids
+        r['hackathon_page'] = services_hackathon.is_hackathon(evt) and r['is_lead']
+        # A member's own attendance where the gate recorded it, else the team's
+        mine = None if r['is_lead'] else next((m for m in r.get('members') or [] if _mine(m, me)), None)
+        r['my_attendance'] = str((mine or {}).get('attendance') or '').strip() or r.get('attendance')
+        # What the organiser gave registered teams to read and download (UPG-239)
+        import services_event_documents
+        r['documents'] = services_event_documents.documents(evt)
 
         # Certificate eligible: attended + event completed or certified
         r['cert_eligible'] = (
-            r.get('attendance') == 'Present' and
+            r['my_attendance'] == 'Present' and
             evt.get('status') in ('completed', 'certified')
         )
 
@@ -125,6 +189,8 @@ def dashboard():
         # Upcoming: a live event dated today or later, not cancelled. A past
         # date or a cancelled registration goes to past events (UPG-104).
         r['is_cancelled'] = str(r.get('status') or '').strip().lower() in ('cancelled', 'refunded')
+        import services_registration_edit   # the lead corrects the details (UPG-225)
+        r['may_edit'] = r['is_lead'] and not services_registration_edit.lead_may_edit(r, evt)
         r['cat_key'] = _category_key(r['event_cat'])
         live = evt.get('status') in ('active', 'published', 'registration_open', 'registration_closed', 'in_progress')
         not_past = r['days_until'] is None or r['days_until'] >= 0
@@ -196,7 +262,7 @@ def dashboard():
         pass
 
     all_regs = active_tickets + completed_events
-    attended_count = sum(1 for r in all_regs if r.get('attendance') == 'Present')
+    attended_count = sum(1 for r in all_regs if r.get('my_attendance') == 'Present')
     cat_counts = {
         'technical': sum(1 for r in all_regs if r.get('event_cat') == 'Technical'),
         'cultural': sum(1 for r in all_regs if r.get('event_cat') == 'Cultural'),
@@ -217,6 +283,18 @@ def dashboard():
     if certificates:
         ticket_tabs.append(('certificates', 'Certificates', certificates))
 
+    # The organiser's documents for their upcoming events, one block an event (UPG-239)
+    event_documents, seen = [], set()
+    for r in active_tickets:
+        if r.get('documents') and r.get('event_id') not in seen:
+            seen.add(r.get('event_id'))
+            event_documents.append({'event_id': r.get('event_id'), 'event_title': r.get('event_title'),
+                                    'team_name': r.get('team_name'), 'is_lead': r.get('is_lead'),
+                                    'documents': r['documents']})
+
+    # Waitlists still open for them: waiting, or accepted with a fee to pay (UPG-236)
+    my_waitlist = [w for w in _my_waitlist(user_email) if w['state'] in ('waiting', 'pay')]
+
     return render_template(
         'participant/dashboard.html',
         active_tickets   = active_tickets,
@@ -234,6 +312,8 @@ def dashboard():
         cat_counts       = cat_counts,
         last_updated     = last_updated,
         ticket_tabs      = ticket_tabs,
+        my_waitlist      = my_waitlist,
+        event_documents  = event_documents,
     )
 
 
@@ -452,7 +532,8 @@ def public_register(event_id):
         max_p = int((event_data.get('limits') or {}).get('max_participants', 0) or
                     event_data.get('max_participants', 0) or 0)
         current_count = int(event_data.get('registration_count', 0))
-        if max_p > 0 and current_count >= max_p:
+        from services_waitlist import joins_waitlist   # also while teams wait for the SPOC (UPG-243)
+        if joins_waitlist(db, event_id, event_data, current_count, max_p):
             # Check if already on waitlists
             wl_existing = list(
                 db.collection('waitlists')
@@ -669,6 +750,99 @@ def cancel_registration_record(reg_id, reg, actor, reason=''):
 
 
 # =========================================================
+# 6b. CORRECT A REGISTRATION'S DETAILS (UPG-225)
+# =========================================================
+@participant_bp.route('/registration/<reg_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_registration(reg_id):
+    """The team lead corrects their own registration, until the team is
+    checked in or the event is over."""
+    import services_registration_edit as edit
+    doc = db.collection('registrations').document(reg_id).get()
+    reg = (doc.to_dict() or {}) if doc.exists else {}
+    me = str(session.get('user_id') or '').strip().lower()
+    if not reg or str(reg.get('lead_email') or '').strip().lower() != me:
+        flash("Only the team lead can change this registration's details.", "warning")
+        return redirect('/participant/dashboard')
+    event_id = str(reg.get('event_id') or '')
+    ev = db.collection('events').document(event_id).get()
+    event = dict((ev.to_dict() or {}) if ev.exists else {}, id=event_id)
+    back = f'/teams/{reg_id}' if reg.get('team_code') else '/participant/dashboard'
+    why_not = edit.lead_may_edit(reg, event)
+    if why_not:
+        flash(why_not, "warning")
+        return redirect(back)
+    return registration_edit_page(reg_id, reg, event, organiser=False, back=back)
+
+
+def registration_edit_page(reg_id, reg, event, organiser, back, member_email_action=''):
+    """The edit page for the lead and the organiser (UPG-225): GET shows the
+    details, POST saves what changed, or shows each problem beside its field."""
+    import services_registration_edit as edit
+    if request.method == 'POST':
+        result = edit.apply(db, reg_id, event['id'], event, request.form, session.get('user_id', ''), organiser)
+        if not result['errors']:
+            if result['changed']:
+                flash(edit.message(result, organiser),
+                      'warning' if result['certificates'] or result['gone'] else 'success')
+            else:
+                flash("Nothing was changed.", "info")
+            return redirect(back)
+        flash("Some details need correcting; nothing was saved.", "danger")
+        page, values, errors = result['page'], result['values'], result['errors']
+    else:
+        page = edit.build(db, event['id'], event, reg)
+        values, errors = page['values'], {}
+    return render_template('registration_edit.html', reg=reg, reg_id=reg_id, event=event, page=page,
+                           values=values, errors=errors, organiser=organiser, back=back,
+                           member_email_action=member_email_action)
+
+
+@participant_bp.route('/event/<event_id>/document/<doc_id>')
+@login_required
+def event_document(event_id, doc_id):
+    """An organiser's PDF (UPG-239): for everyone on a registration for the
+    event that isn't cancelled (the lead and the members), and its staff."""
+    import services_event_documents as docs
+    from services_permission import can
+    from utils_storage import StorageError, get_private
+    ev = db.collection('events').document(event_id).get()
+    if not ev.exists:
+        abort(404)
+    event = dict(ev.to_dict() or {}, id=event_id)
+    doc = docs.find(event, doc_id)
+    if not doc or not doc.get('pdf_key'):
+        abort(404)
+    me = str(session.get('user_id') or '').strip().lower()
+    if not can(session, 'manage_registrations', event, db=db):
+        led = [(s.id, s.to_dict() or {}) for s in db.collection('registrations')
+               .where(filter=_ff('lead_email', '==', me)).stream()]
+        if not any(str(r.get('event_id') or '') == str(event_id)
+                   and str(r.get('status') or '').strip().lower() not in ('cancelled', 'refunded')
+                   for _, r in led + member_registrations(me)):
+            abort(403)
+    try:
+        raw = get_private(doc['pdf_key'])
+    except StorageError:
+        abort(404)
+    name = docs.safe_name(doc.get('pdf_name'))
+    return Response(raw, mimetype='application/pdf', headers={
+        'Content-Disposition': f'attachment; filename="{name}"',
+        'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'private, no-store'})
+
+
+def _my_waitlist(email) -> list:
+    """services_waitlist.standing for this person; [] if it can't be read, so
+    the page still opens (UPG-236)."""
+    try:
+        import services_waitlist
+        return services_waitlist.standing(db, email)
+    except Exception:
+        current_app.logger.warning("Could not read the waitlist standing of %s", email, exc_info=True)
+        return []
+
+
+# =========================================================
 # 7. WAITLIST STATUS (JSON — for dashboard badge)
 # =========================================================
 @participant_bp.route('/waitlist_status')
@@ -747,11 +921,19 @@ def my_events():
         regs = list(db.collection('registrations').where('lead_email', '==', user_email).stream())
         if not regs:
             regs = list(db.collection('registrations').where('student_email', '==', user_email).stream())
+        pairs = [(reg.id, reg.to_dict() or {}) for reg in regs]
+        seen = {reg_id for reg_id, _ in pairs}
+        # A team member's team registrations too (UPG-227)
+        pairs += [(reg_id, data) for reg_id, data in member_registrations(user_email) if reg_id not in seen]
 
-        for reg in regs:
-            r = reg.to_dict()
-            r['id'] = reg.id
-            r['registration_id'] = reg.id
+        for reg_id, data in pairs:
+            r = dict(data)
+            r['id'] = reg_id
+            r['registration_id'] = reg_id
+            # A member's own attendance, where the gate recorded it, decides for them
+            mine = next((m for m in r.get('members') or [] if _mine(m, user_email)), None) \
+                if str(r.get('lead_email') or '').strip().lower() != user_email else None
+            own = str((mine or {}).get('attendance') or '').strip()
 
             # Fetch event
             ev_id = str(r.get('event_id', ''))
@@ -778,7 +960,7 @@ def my_events():
                     ticket = tdoc.to_dict()
             if not ticket and ev_id:
                 try:
-                    t_stream = list(db.collection('tickets').where('registration_id', '==', reg.id).stream())
+                    t_stream = list(db.collection('tickets').where('registration_id', '==', reg_id).stream())
                     if t_stream:
                         ticket = t_stream[0].to_dict()
                 except Exception:
@@ -794,9 +976,11 @@ def my_events():
                 bool(r.get('checkin_time')) or
                 bool(ticket and ticket.get('checked_in_at'))
             )
-            if not is_checked_in:
+            if own:
+                is_checked_in = own == 'Present'
+            elif not is_checked_in:
                 try:
-                    chk_stream = list(db.collection('checkins').where('registration_id', '==', reg.id).stream())
+                    chk_stream = list(db.collection('checkins').where('registration_id', '==', reg_id).stream())
                     if not chk_stream and user_email and ev_id:
                         chk_stream = list(db.collection('checkins').where('attendee_email', '==', user_email).where('event_id', '==', ev_id).stream())
                     if chk_stream:
@@ -864,6 +1048,9 @@ def my_events():
     except Exception as exc:
         current_app.logger.error("Error loading my_events: %s", exc)
 
+    # Where they stand on each waitlist they or their team joined (UPG-236)
+    my_waitlist = _my_waitlist(user_email)
+
     is_json = (
         request.path.endswith('/api/my_events') or
         request.args.get('format') == 'json' or
@@ -874,6 +1061,7 @@ def my_events():
             'upcoming': upcoming,
             'registered': registered,
             'waitlisted': waitlisted,
+            'waitlist': my_waitlist,
             'attended': attended,
             'certificates': certificates,
             'cancelled': cancelled,
@@ -881,6 +1069,7 @@ def my_events():
 
     return render_template(
         'participant/my_events.html',
+        my_waitlist=my_waitlist,
         upcoming=upcoming,
         registered=registered,
         waitlisted=waitlisted,

@@ -47,15 +47,16 @@ def _fingerprint(password_hash: str) -> str:
     return hashlib.sha256((password_hash or '').encode()).hexdigest()[:16]
 
 
-def resolve_registrant(db, form_email: str) -> Tuple[str, bool]:
+def resolve_registrant(db, form_email: str, by_organiser: bool = False) -> Tuple[str, bool]:
     """Return (email, without_login).
 
     without_login is True when an anonymous visitor typed the email of an
     existing account: they're registered under it without logging in, no
     account is created or changed, and the account is emailed a link to
-    cancel the registration (UPG-97).
+    cancel the registration (UPG-97). `by_organiser`: the SPOC adds a team
+    by hand, so the email typed is the lead's, never the SPOC's (UPG-244).
     """
-    session_email = (session.get('user_id') or '').strip().lower()
+    session_email = '' if by_organiser else (session.get('user_id') or '').strip().lower()
     if session_email:
         return session_email, False
     email = (form_email or '').strip().lower()

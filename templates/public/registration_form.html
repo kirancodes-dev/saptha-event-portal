@@ -257,6 +257,16 @@
         <div class="req-note"><span aria-hidden="true">*</span> Indicates a required question</div>
       </header>
 
+      {% if organiser %}
+        {#- UPG-244: the hosting SPOC adds a team by hand -#}
+        <div class="alert alert-info mt-3 mb-0" data-add-team-note>
+          <i class="fas fa-user-plus" aria-hidden="true"></i>
+          <div><strong>You're adding a team by hand.</strong> Type the lead's own email and the members' details. The team goes straight into the registrations list (even past the seat limit), the lead gets the registration email with a link to set their password, and each member is added as on the online form. Nobody joins the waitlist this way.</div>
+        </div>
+        {% if organiser_paid %}
+        <div class="alert alert-warning mt-3 mb-0" data-add-team-paid>This event has a fee, so a team can't be added by hand: the team registers and pays online.</div>
+        {% endif %}
+      {% endif %}
       {% if is_waitlist %}
         <div class="alert alert-warning mt-3 mb-0">
           <i class="fas fa-hourglass-half" aria-hidden="true"></i>
@@ -267,6 +277,7 @@
       <form method="POST" action="/forms/submit/{{ event.id }}" id="reg-form" novalidate>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="submission_id" value="{{ submission_id }}">
+        {% if organiser %}<input type="hidden" name="add" value="team">{% endif %}
         {% if share_src %}<input type="hidden" name="src" value="{{ share_src }}">{% endif %}
         {% set step = namespace(n=0) %}
 
@@ -397,8 +408,9 @@
             <input class="form-check-input" type="checkbox" id="privacy_consent" name="privacy_consent" value="yes" required
                    {% if field_errors.get('privacy_consent') %}aria-invalid="true" aria-describedby="privacy_consent-error"{% endif %}>
             <label class="form-check-label" for="privacy_consent">
-              I have read the <a href="/privacy" target="_blank" rel="noopener">privacy notice</a> and agree that
-              SapthaEvent uses my details to run this event.<span class="req">*</span>
+              {% if organiser %}The team has read the <a href="/privacy" target="_blank" rel="noopener">privacy notice</a> and agreed that
+              SapthaEvent uses their details to run this event.{% else %}I have read the <a href="/privacy" target="_blank" rel="noopener">privacy notice</a> and agree that
+              SapthaEvent uses my details to run this event.{% endif %}<span class="req">*</span>
             </label>
             {% if field_errors.get('privacy_consent') %}<div class="field-error" id="privacy_consent-error" role="alert">{{ field_errors['privacy_consent'] }}</div>{% endif %}
           </div>
@@ -414,7 +426,9 @@
           <small>Check your details before you submit; your ticket is emailed to you.</small>
           <button type="submit" class="btn btn-gold btn-lg" id="submit-btn" data-no-loader>
             <i class="fas fa-paper-plane" aria-hidden="true"></i>
-            {% if is_waitlist %}
+            {% if organiser %}
+              Add this team
+            {% elif is_waitlist %}
               Join the waitlist (event is full)
             {% elif paid %}
               Continue to payment — ₹{{ event.entry_fee }}

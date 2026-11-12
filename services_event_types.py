@@ -546,13 +546,8 @@ def parse_form(form, *, today: Optional[datetime.date] = None, parent: Optional[
         'total_rounds': rounds,
         'prizes': prizes,
         'prize_pool': _clean(form.get('prize_pool'), 120),
-        'form_schema': {
-            'require_lead_whatsapp': form.get('req_lead_whatsapp') == 'on',
-            'require_member_usn': form.get('req_member_usn') == 'on',
-            'require_member_email': form.get('req_member_email') == 'on',
-            'require_member_whatsapp': form.get('req_member_whatsapp') == 'on',
-            'submission_type': submission,
-        },
+        # What registrants are asked is the registration form's (step 6 or the builder, UPG-219)
+        'form_schema': {'submission_type': submission},
         'sponsors': sponsors,
         'coordinators': coordinators,
         'contact': {'phone': contact_phone, 'group_link': group_link},
@@ -669,9 +664,6 @@ def form_values(event: dict) -> Dict[str, Any]:
     for key in ('branches', 'years'):
         if placement.get(key):
             values[f'placement_{key}'] = ', '.join(str(x) for x in placement[key])
-    for flag in ('require_lead_whatsapp', 'require_member_usn', 'require_member_email', 'require_member_whatsapp'):
-        if (ev.get('form_schema') or {}).get(flag):
-            values[flag.replace('require_', 'req_')] = 'on'
     return values
 
 
@@ -701,3 +693,28 @@ def apply_preset(event_data: Dict[str, Any], spec: Dict[str, Any]) -> List[Dict[
     if preset.get('form_config') and not spec.get('fest'):
         return BASE_FORM_FIELDS + [dict(f, id=f.get('id') or f.get('field_name')) for f in preset['form_config']]
     return []
+
+
+# Asked anyway: name and email always, phone and USN as step 6's own rows, the team name by the team section
+_NOT_SUGGESTED = {'full_name', 'name', 'email', 'phone', 'usn', 'team_name'}
+
+
+def suggested_questions(spec: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """The type's catalogue questions, offered in step 6 of the wizard one by
+    one; never added unless the SPOC adds them (UPG-219)."""
+    if not spec.get('preset') or spec.get('fest'):
+        return []
+    from services_templates import TemplateService
+    preset = TemplateService.get_template(spec['preset']) or {}
+    out = []
+    for f in preset.get('form_config') or []:
+        fid = str(f.get('id') or f.get('field_name') or '')
+        if not fid or fid in _NOT_SUGGESTED or not f.get('label'):
+            continue
+        ftype = f.get('type') or 'text'
+        if ftype == 'checkbox' and f.get('options'):
+            ftype = 'checkbox_group'
+        out.append({'id': fid, 'type': ftype, 'label': f['label'], 'placeholder': f.get('placeholder') or '',
+                    'required': bool(f.get('required')), 'options': list(f.get('options') or []),
+                    'help_text': f.get('help_text') or ''})
+    return out

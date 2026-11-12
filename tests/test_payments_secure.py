@@ -250,6 +250,10 @@ def test_a_payment_id_can_be_used_once(real_app, mail, razorpay):
 
 def test_waitlist_promotion_on_a_paid_event_holds_the_seat_until_paid(real_app, mail, razorpay, monkeypatch):
     monkeypatch.setenv('PAYMENT_SIMULATION', 'true')
+    import utils_email
+    seat_mail = []
+    monkeypatch.setattr(utils_email, 'send_email_notification', lambda to, subject, message, event_name='':
+                        seat_mail.append({'to': to, 'subject': subject, 'message': message}) or True)
     flask_app, db = real_app
     event_id = _event(flask_app, db, fee=250, limits={'max_participants': 1}, capacity=1)
 
@@ -275,7 +279,8 @@ def test_waitlist_promotion_on_a_paid_event_holds_the_seat_until_paid(real_app, 
     assert held[0]['status'] == 'pending_payment'
     assert held[0]['payment_status'] == 'Pending'
     pay_path = f"/payment/pay/{held[0]['reg_id']}"
-    assert any(pay_path in k.get('body', '') for name, k in mail if name == 'generic_email')
+    # The one "you're in" email carries the pay link (UPG-240: sent as a registration email)
+    assert any(second_email == m['to'] and pay_path in m['message'] for m in seat_mail)
 
     # Only the owner can use the pay link; paying confirms the same registration
     assert first.get(pay_path).headers['Location'] == '/participant/dashboard'

@@ -1,0 +1,39 @@
+{#- UPG-236: where a person stands on each waitlist they joined, or their team
+    joined. rows = services_waitlist.standing() -#}
+{% macro waitlist_cards(rows, empty='') %}
+{% if rows %}
+<ul class="list-unstyled d-grid gap-2 mb-0" data-my-waitlist>
+  {% for w in rows %}
+  {% set tone = {'waiting': 'warning', 'pay': 'primary', 'accepted': 'success', 'already': 'success'}.get(w.state, 'secondary') %}
+  <li class="border rounded p-3 bg-white" data-waitlist-standing="{{ w.state }}">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+      <div>
+        <h3 class="h6 fw-bold mb-1">{{ w.event_title }}</h3>
+        <div class="small text-muted">{{ w.event_date or 'Date to be announced' }}{% if w.venue %} · {{ w.venue }}{% endif %}{% if w.team_name %} · Team {{ w.team_name }}{% endif %}</div>
+      </div>
+      <span class="badge text-bg-{{ tone }}{% if tone == 'warning' %} text-dark{% endif %}">{{ w.label }}</span>
+    </div>
+    <p class="small mb-2 mt-2">
+      {% if w.state == 'waiting' %}
+        {% if w.place %}<strong data-waitlist-place>You're #{{ w.place }} in line</strong>{% if w.ahead %}, {{ w.ahead }} ahead of you{% else %}: you're next{% endif %}.{% endif %}
+        {% if w.auto %}The event is full. When a seat is freed, or the organiser accepts you, you're registered and told here.{% else %}The organiser chooses who gets a seat from the waitlist. If you're accepted, you're registered and told here and by email.{% endif %}{% if not w.is_lead %} Your team lead, {{ w.lead_name or 'the lead' }}, joined for your team.{% endif %}
+      {% elif w.state == 'pay' %}
+        The organiser accepted {{ 'your team' if w.team_name else 'you' }} from the waitlist. {% if w.is_lead %}Pay the fee to confirm the seat.{% else %}Your team lead, {{ w.lead_name or 'the lead' }}, pays the fee to confirm the seat.{% endif %}
+      {% elif w.state == 'accepted' %}
+        You were accepted from the waitlist and are registered. Your ticket is in My events.
+      {% elif w.state == 'already' %}
+        You were already registered for this event, so you were taken off the waitlist.
+      {% elif w.state == 'left' %}
+        You left this waitlist.
+      {% else %}
+        You're no longer on this waitlist.
+      {% endif %}
+    </p>
+    {% if w.link %}<a href="{{ w.link }}" class="btn btn-sm {{ 'btn-primary' if w.state == 'pay' else 'btn-outline-primary' }}">{{ w.link_label }}<span class="visually-hidden">: {{ w.event_title }}</span></a>{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% elif empty %}
+<p class="text-muted small mb-0">{{ empty }}</p>
+{% endif %}
+{% endmacro %}

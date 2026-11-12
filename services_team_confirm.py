@@ -147,30 +147,46 @@ def update_member(db, reg_id: str, email: str, change) -> Optional[dict]:
     the SQL layer (the registration row is locked, as routes_teams._add_member),
     so a member joining at the same moment isn't lost. The member as saved, or
     None if there's no such member."""
+    email = email.strip().lower()
+    saved = update_members(db, reg_id, lambda m: change(dict(m)) if _email(m) == email else None, first=True)
+    return saved[0] if saved else None
+
+
+def update_members(db, reg_id: str, change, first: bool = False) -> list:
+    """Apply change(member) -> dict of new values, or None to leave it, to
+    each member, under the same lock as update_member; the members it changed,
+    as saved (only the first with `first`). The name, email, USN and phone
+    columns follow the member (UPG-225)."""
     import json
 
     from db_adapter import SQLFirestoreAdapter
-    email = email.strip().lower()
     if not isinstance(db, SQLFirestoreAdapter):
         doc = db.collection('registrations').document(reg_id).get()
         members = list((doc.to_dict() or {}).get('members') or [])
+        saved = []
         for i, m in enumerate(members):
-            if isinstance(m, dict) and _email(m) == email:
-                members[i] = dict(m, **change(dict(m)))
-                db.collection('registrations').document(reg_id).update({'members': members})
-                return members[i]
-        return None
+            values = change(dict(m)) if isinstance(m, dict) else None
+            if values is None:
+                continue
+            members[i] = dict(m, **values)
+            saved.append(members[i])
+            if first:
+                break
+        if saved:
+            db.collection('registrations').document(reg_id).update({'members': members})
+        return saved
 
     from sqlalchemy.orm import Session
 
     from db_adapter import CustomJSONEncoder, to_uuid
     from db_pg import get_engine
     from models_pg import Registration, TeamMember
+    saved = []
     with Session(get_engine()) as s, s.begin():
         reg = (s.query(Registration).filter(Registration.id == to_uuid(reg_id))
                .with_for_update().one_or_none())
         if reg is None:
-            return None
+            return []
         for row in s.query(TeamMember).filter(TeamMember.registration_id == reg.id).all():
             try:
                 member = json.loads(row.extra_json or '{}')
@@ -178,13 +194,19 @@ def update_member(db, reg_id: str, email: str, change) -> Optional[dict]:
                 member = {}
             member = dict({'name': row.name, 'email': row.email, 'usn': row.usn, 'phone': row.phone},
                           **(member if isinstance(member, dict) else {}))
-            if (row.email or '').strip().lower() != email:
+            values = change(dict(member))
+            if values is None:
                 continue
-            member.update(change(dict(member)))
+            member.update(values)
             row.email = member.get('email', row.email)
+            for key in ('name', 'usn', 'phone'):
+                if key in values:
+                    setattr(row, key, str(member.get(key) or ''))
             row.extra_json = json.dumps(member, cls=CustomJSONEncoder)
-            return member
-    return None
+            saved.append(member)
+            if first:
+                break
+    return saved
 
 
 # ── Sending ─────────────────────────────────────────────────────────────────

@@ -22,8 +22,14 @@ HEADER = 'X-Cron-Secret'
 
 
 def _reminders():
+    """The day-before and three-day reminders, and the one reminder to a
+    person given a seat from the waitlist who hasn't set a password or paid
+    a day later (UPG-240)."""
+    from models import db
+    from services_seat_email import send_reminders
     from tasks.scheduled_tasks import send_24h_reminders, send_3day_reminders
-    return {'day_before': send_24h_reminders(), 'three_days': send_3day_reminders()}
+    return {'day_before': send_24h_reminders(), 'three_days': send_3day_reminders(),
+            'waitlist_seat': send_reminders(db)}
 
 
 def _lifecycle():

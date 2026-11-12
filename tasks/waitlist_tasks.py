@@ -29,7 +29,9 @@ def promote_from_waitlist(self, event_id: str):
         except Exception:
             from models import db
 
-        from routes_waitlist import auto_promote
+        from routes_waitlist import auto_promote, moves_up_on_its_own
+        if not moves_up_on_its_own(db, event_id):    # the SPOC accepts instead (UPG-243)
+            return {'promoted': False, 'waiting_for_spoc': True}
         res = auto_promote(db, event_id)
         if res:
             return {'promoted': True, 'email': res.get('user_email', ''), 'reg_id': res.get('reg_id', '')}

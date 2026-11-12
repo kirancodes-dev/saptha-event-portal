@@ -17,7 +17,7 @@ try:
 except ImportError:
     FieldFilter = None
 
-from utils import login_required, role_required, safe_int, venue_label
+from utils import login_required, role_required, safe_int
 
 logger = logging.getLogger(__name__)
 waitlist_bp = Blueprint("waitlist", __name__, url_prefix="/waitlist")
@@ -26,6 +26,19 @@ waitlist_bp = Blueprint("waitlist", __name__, url_prefix="/waitlist")
 def _db():
     from app import db
     return db
+
+
+def _event_or_403(db, event_id: str, permission: str) -> dict:
+    """The event, for someone with this permission on it; 404 or 403 otherwise."""
+    from flask import abort
+    from services_permission import can
+    doc = db.collection("events").document(event_id).get()
+    if not doc.exists:
+        abort(404)
+    event = dict(doc.to_dict() or {}, id=event_id)
+    if not can(session, permission, event, db=db):
+        abort(403)
+    return event
 
 
 @waitlist_bp.route("/join/<event_id>", methods=["POST"])
@@ -159,8 +172,10 @@ def leave_waitlist(event_id):
 @waitlist_bp.route("/promote/<event_id>", methods=["POST"])
 @role_required(["ClubSPOC", "Admin", "Coordinator"])
 def promote_next(event_id):
-    """Manually promote the next person on the waitlist."""
+    """Manually promote the next person on the waitlist: the event's hosting
+    SPOC only (UPG-232), as the registrations page's Accept."""
     db = _db()
+    _event_or_403(db, event_id, "edit_event")
     result = auto_promote(db, event_id)
     if result:
         return jsonify({"message": f"Promoted: {result['user_email']}", "promoted": result})
@@ -170,9 +185,11 @@ def promote_next(event_id):
 @waitlist_bp.route("/list/<event_id>", methods=["GET"])
 @role_required(["ClubSPOC", "Admin", "Coordinator"])
 def view_waitlist(event_id):
-    """View the waitlist for an event."""
+    """View the waitlist for an event: its organisers only (UPG-232), because
+    it holds each person's contact details and form answers."""
     from services_waitlist import waiting
     db = _db()
+    _event_or_403(db, event_id, "manage_registrations")
     # In join order, each with their place now (UPG-114), not the place they joined at
     waitlist = [dict(wl, id=wl_id, position=place)
                 for place, (wl_id, wl) in enumerate(waiting(db, event_id), start=1)]
@@ -217,139 +234,147 @@ def promotion_terms(ev: dict, reg_id: str, reg_data: Optional[dict] = None) -> d
     }
 
 
-def auto_promote(db, event_id: str):
-    """Auto-promote the next person on the waitlist.
+def moves_up_on_its_own(db, event_id: str) -> bool:
+    """Whether a freed seat goes to the first in line by itself. Not when the
+    event's SPOC switched it off (UPG-243): then the seat waits for the SPOC's
+    Accept. Checked by the cancel task, not by the SPOC's "promote next"."""
+    from services_waitlist import auto_moves_up
+    ev = db.collection("events").document(event_id).get()
+    if ev.exists and not auto_moves_up(ev.to_dict() or {}):
+        logger.info("Waitlist of event %s: a seat is free; waiting for the SPOC to accept", event_id)
+        return False
+    return True
 
-    Called when a registration is cancelled. Creates a registration
-    for the promoted user and sends them a notification.
+
+def auto_promote(db, event_id: str):
+    """Promote the next person on the waitlist.
+
+    Called when a registration is cancelled (when the seat moves up on its
+    own, `moves_up_on_its_own`) and by the SPOC's "promote next". Creates a
+    registration for the promoted user and sends them a notification.
     """
     # The first in line by join order (UPG-112, UPG-114)
     from services_waitlist import waiting
     for wl_id, wl in waiting(db, event_id)[:1]:
-        email = wl.get("user_email") or wl.get("email", "")
-        name = wl.get("name", "Participant")
+        promoted = promote_entry(db, event_id, wl_id, wl)
+        # Already registered another way: they don't need the seat; the next
+        # person in line gets it (UPG-115)
+        return promoted if promoted else auto_promote(db, event_id)
+    return None
 
-        # Update waitlist status
-        db.collection("waitlists").document(wl_id).update({
-            "status": "promoted",
-            "promoted_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        })
 
-        # Create registration
-        ev_doc = db.collection("events").document(event_id).get()
-        ev = ev_doc.to_dict() if ev_doc.exists else {}
+def promote_entry(db, event_id: str, wl_id: str, wl: dict, announce: bool = True):
+    """Register this waitlist entry, as the first in line is (auto_promote),
+    or as the SPOC chose it (UPG-230): a paid event holds the seat for
+    payment, a free one is confirmed with a ticket; the person is told
+    (with announce=False, the caller tells them). None, with the entry marked
+    already_registered, when they already have a registration for the event."""
+    email = wl.get("user_email") or wl.get("email", "")
+    name = wl.get("name", "Participant")
 
-        reg_data = wl.get("reg_data") or {}
-        reg_id = reg_data.get("reg_id") or str(uuid.uuid4())
-        terms = promotion_terms(dict(ev, id=event_id), reg_id, reg_data)
-        status, payment_status = terms["status"], terms["payment_status"]
-        if reg_data:
-            reg_data.update({
-                "reg_id": reg_id,
-                "status": status,
-                "payment_status": payment_status,
-                "attendance": "Pending",
-                "source": "waitlist_promotion",
-                "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            })
-        else:
-            reg_data = {
-                "reg_id": reg_id,
-                "event_id": event_id,
-                "event_title": ev.get("title", ""),
-                "lead_name": name,
-                "lead_email": email,
-                "lead_phone": wl.get("phone", ""),
-                "status": status,
-                "payment_status": payment_status,
-                "attendance": "Pending",
-                "source": "waitlist_promotion",
-                "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            }
-        try:
-            db.collection("registrations").document(reg_id).set(reg_data)
-        except Exception as exc:
-            from utils import is_active_duplicate
-            if not is_active_duplicate(exc):
-                raise
-            # Already registered another way: they don't need the seat; the next
-            # person in line gets it (UPG-115)
-            db.collection("waitlists").document(wl_id).update({"status": "already_registered"})
-            return auto_promote(db, event_id)
+    # Update waitlist status
+    db.collection("waitlists").document(wl_id).update({
+        "status": "promoted",
+        "promoted_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    })
 
-        # The promoted seat counts against its ticket type (UPG-155); the
-        # event's own seat limit already let them in
-        import services_ticket_types as tt
-        promoted_ticket = tt.find(ev, reg_data.get("ticket_type_id", ""))
-        if promoted_ticket is not None:
-            tt.take_seat(event_id, dict(promoted_ticket, seats=0))
+    # Create registration
+    ev_doc = db.collection("events").document(event_id).get()
+    ev = ev_doc.to_dict() if ev_doc.exists else {}
 
-        # Free promotions are confirmed immediately, so issue the same signed
-        # ticket that a normal registration receives.  Paid promotions remain
-        # pending payment and receive their ticket after payment is verified.
-        if status == "Confirmed":
-            from services_ticket import TicketService
-            TicketService.issue_ticket(
-                db,
-                event_id=event_id,
-                registration_id=reg_id,
-                user_email=reg_data.get("lead_email") or email,
-                lead_name=reg_data.get("lead_name") or name,
-                ticket_type=(reg_data.get("ticket_type_name") or reg_data.get("ticket_tier")
-                             or reg_data.get("ticket_type")
-                             or "General"),
-            )
-
-        # Increment count
-        try:
-            from google.cloud.firestore_v1 import Increment
-        except Exception:
-            google = None
-        db.collection("events").document(event_id).update({
-            "registration_count": Increment(1),
-        })
-
-        # Notify
-        try:
-            from routes_notifications_v2 import create_notification
-            create_notification(
-                db, user_email=email, notif_type="waitlist_promoted",
-                title=terms["notif_title"], message=terms["notif_message"],
-                link=terms["link"],
-            )
-        except Exception:
-            pass
-
-        # Send email notification (not for a portal-only event: the notice above, UPG-195)
-        import services_hackathon
-        if services_hackathon.email_allowed(ev, 'waitlist'):
-            try:
-                from tasks.email_tasks import send_generic_email_task
-                email_body = (
-                    f"Hi {name},\n\n"
-                    f"A seat has opened up and you've been promoted from the waitlist for "
-                    f"{ev.get('title', 'Event')}!\n\n"
-                    f"{terms['email_line']}"
-                    f"Registration ID: {reg_id}\n"
-                    f"Event Date: {ev.get('date', '')}\n"
-                    f"Venue: {venue_label(ev)}\n\n"
-                    f"See you there!\n— SapthaEvent Team"
-                )
-                send_generic_email_task.delay(
-                    to_email=email,
-                    subject=terms["subject"],
-                    body_text=email_body,
-                    body=email_body,
-                )
-            except Exception:
-                pass
-
-        logger.info("Waitlist promotion: %s for event %s", email, event_id)
-        return {
-            "user_email": email,
-            "registration_id": reg_id,
+    reg_data = wl.get("reg_data") or {}
+    reg_id = reg_data.get("reg_id") or str(uuid.uuid4())
+    terms = promotion_terms(dict(ev, id=event_id), reg_id, reg_data)
+    status, payment_status = terms["status"], terms["payment_status"]
+    if reg_data:
+        reg_data.update({
             "reg_id": reg_id,
             "status": status,
+            "payment_status": payment_status,
+            "attendance": "Pending",
+            "source": "waitlist_promotion",
+            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        })
+    else:
+        reg_data = {
+            "reg_id": reg_id,
+            "event_id": event_id,
+            "event_title": ev.get("title", ""),
+            "lead_name": name,
+            "lead_email": email,
+            "lead_phone": wl.get("phone", ""),
+            "status": status,
+            "payment_status": payment_status,
+            "attendance": "Pending",
+            "source": "waitlist_promotion",
+            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         }
+    try:
+        db.collection("registrations").document(reg_id).set(reg_data)
+    except Exception as exc:
+        from utils import is_active_duplicate
+        if not is_active_duplicate(exc):
+            raise
+        db.collection("waitlists").document(wl_id).update({"status": "already_registered"})
+        return None
 
-    return None
+    # The promoted seat counts against its ticket type (UPG-155); the
+    # event's own seat limit already let them in
+    import services_ticket_types as tt
+    promoted_ticket = tt.find(ev, reg_data.get("ticket_type_id", ""))
+    if promoted_ticket is not None:
+        tt.take_seat(event_id, dict(promoted_ticket, seats=0))
+
+    # Free promotions are confirmed immediately, so issue the same signed
+    # ticket that a normal registration receives.  Paid promotions remain
+    # pending payment and receive their ticket after payment is verified.
+    if status == "Confirmed":
+        from services_ticket import TicketService
+        TicketService.issue_ticket(
+            db,
+            event_id=event_id,
+            registration_id=reg_id,
+            user_email=reg_data.get("lead_email") or email,
+            lead_name=reg_data.get("lead_name") or name,
+            ticket_type=(reg_data.get("ticket_type_name") or reg_data.get("ticket_tier")
+                         or reg_data.get("ticket_type")
+                         or "General"),
+        )
+
+    # Increment count
+    try:
+        from google.cloud.firestore_v1 import Increment
+    except Exception:
+        google = None
+    db.collection("events").document(event_id).update({
+        "registration_count": Increment(1),
+    })
+
+    promoted = {
+        "user_email": email,
+        "registration_id": reg_id,
+        "reg_id": reg_id,
+        "status": status,
+        "registration": reg_data,
+    }
+    # The person is told here, unless the caller tells them itself (the
+    # SPOC's Accept, UPG-235): a portal notice to everyone on the team, and
+    # ONE email to the one who joined — registered or pay, and a set-password
+    # link when they have no password yet — also in a portal-mode hackathon,
+    # and one reminder a day later if something is left to do (UPG-240)
+    if announce:
+        import services_hackathon
+        team = dict(reg_data, lead_email=reg_data.get("lead_email") or email)
+        try:
+            services_hackathon.notify(db, dict(ev, id=event_id), team, terms["notif_title"],
+                                      terms["notif_message"], link=terms["link"], kind="waitlist_promoted")
+        except Exception:
+            logger.warning("Waitlist promotion notice for %s failed", reg_id, exc_info=True)
+        try:
+            import services_seat_email
+            services_seat_email.tell(db, dict(ev, id=event_id), promoted, how="freed")
+        except Exception:
+            logger.warning("Waitlist promotion email for %s failed", reg_id, exc_info=True)
+
+    logger.info("Waitlist promotion: %s for event %s", email, event_id)
+    return promoted

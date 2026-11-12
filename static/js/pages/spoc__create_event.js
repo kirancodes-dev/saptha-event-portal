@@ -79,6 +79,10 @@
       var missing = $$('.type-details:not([disabled]) [required]').filter(function (f) { return !f.value.trim(); })[0];
       if (missing) return problem(missing, 'Fill in the required details for this kind of event.');
     }
+    if (n === 6 && !s.fest) {
+      var bad = formProblem();
+      if (bad) return problem(bad.field, bad.msg);
+    }
     return true;
   }
 
@@ -130,6 +134,7 @@
     }
     applyMode();
     applyParticipation();
+    drawSuggest();
   }
 
   function applyMode() {
@@ -139,6 +144,8 @@
   function applyParticipation() {
     var p = $('#f-participation').value;
     $('#team-row').hidden = p === 'Individual';
+    var members = document.getElementById('member-fields');
+    if (members) members.hidden = p === 'Individual';
   }
 
   $$('input[name="event_type"]').forEach(function (r) { r.addEventListener('change', function () { applyType(false); }); });
@@ -246,46 +253,101 @@
   }
   document.getElementById('sponsor-add').addEventListener('click', function () { sponsors.push({ tier: 'Partner' }); drawSponsors(); syncSponsors(); sponsorRows.lastChild.querySelector('input').focus(); });
 
-  // Extra registration questions (the standard four are always first)
-  var BASE = [
-    { id: 'full_name', type: 'text', label: 'Full Name', placeholder: 'Enter your full name', required: true, options: [], help_text: '' },
-    { id: 'email', type: 'email', label: 'Email Address', placeholder: 'you@example.com', required: true, options: [], help_text: '' },
+  // ── Step 6: the registration form, exactly as listed (UPG-219) ─────────
+  // Name and email are fixed rows in the page; phone and USN start as ordinary
+  // questions the SPOC can change or remove; the type's catalogue questions are
+  // only suggested. Editing an event shows the form instead (the builder changes it).
+  var FIXED_IDS = ['full_name', 'name', 'email'];
+  var DEFAULT_ROWS = [
     { id: 'phone', type: 'tel', label: 'Phone Number', placeholder: '10-digit mobile', required: true, options: [], help_text: '' },
     { id: 'usn', type: 'text', label: 'USN / Roll Number', placeholder: 'e.g. 1SN21CS001', required: false, options: [], help_text: '' }
   ];
-  var baseIds = BASE.map(function (f) { return f.id; });
-  var extras = readJson('form-json').filter(function (f) { return baseIds.indexOf(f.id) === -1; });
-  var fieldRows = document.getElementById('field-rows');
+  var CHOICE_KINDS = ['select', 'radio', 'checkbox_group'];
   var KINDS = [['text', 'Short answer'], ['textarea', 'Long answer'], ['number', 'Number'], ['url', 'Link'],
-               ['select', 'Dropdown'], ['radio', 'One choice'], ['checkbox', 'Checkboxes'], ['date', 'Date']];
-  function syncFields() {
-    var real = extras.filter(function (f) { return (f.label || '').trim(); });
-    document.getElementById('form-json').value = real.length ? JSON.stringify(BASE.concat(real)) : '';
+               ['email', 'Email'], ['tel', 'Phone'], ['select', 'Dropdown'], ['radio', 'One choice'],
+               ['checkbox_group', 'Checkboxes'], ['date', 'Date']];
+  var SUGGEST = {};
+  try { SUGGEST = JSON.parse((document.getElementById('wz-suggest') || {}).textContent || '{}') || {}; } catch (e) { SUGGEST = {}; }
+  var fieldRows = document.getElementById('field-rows');
+  var formJson = document.getElementById('form-json');
+  var extras = [];
+  if (fieldRows && formJson) {
+    extras = formJson.value.trim() ? readJson('form-json') : DEFAULT_ROWS.map(function (f) { return JSON.parse(JSON.stringify(f)); });
+    extras = extras.filter(function (f) { return f && FIXED_IDS.indexOf(f.id) === -1; }).map(function (f) {
+      // "Checkboxes" with choices was saved as one tick box before UPG-219
+      if (f.type === 'checkbox' && (f.options || []).length) f.type = 'checkbox_group';
+      return f;
+    });
+  }
+  function askedRows() { return extras.filter(function (f) { return (f.label || '').trim(); }); }
+  function syncFields() { if (formJson) formJson.value = JSON.stringify(askedRows()); }
+  function moveBtn(label, icon, onClick, disabled) {
+    var b = el('button', { type: 'button', 'class': 'btn btn-outline-secondary btn-sm', 'aria-label': label },
+               [el('i', { 'class': 'fas ' + icon, 'aria-hidden': 'true' })]);
+    b.disabled = !!disabled;
+    b.addEventListener('click', onClick);
+    return b;
+  }
+  function drawSuggest() {
+    var block = document.getElementById('suggest-block');
+    var chips = document.getElementById('suggest-chips');
+    if (!block || !chips) return;
+    chips.textContent = '';
+    var have = extras.map(function (f) { return f.id; });
+    var offer = (SUGGEST[selectedType()] || []).filter(function (q) { return have.indexOf(q.id) === -1; });
+    offer.forEach(function (q) {
+      var b = el('button', { type: 'button', 'class': 'btn btn-outline-secondary btn-sm', 'data-suggest': q.id },
+                 [el('i', { 'class': 'fas fa-plus me-1', 'aria-hidden': 'true' }), document.createTextNode(q.label)]);
+      b.addEventListener('click', function () {
+        extras.push(JSON.parse(JSON.stringify(q)));
+        drawFields(); syncFields(); drawSuggest();
+      });
+      chips.appendChild(b);
+    });
+    block.hidden = !offer.length;
   }
   function drawFields() {
+    if (!fieldRows) return;
     fieldRows.textContent = '';
     extras.forEach(function (f, i) {
-      var label = el('input', { 'class': 'form-control', placeholder: 'Question, e.g. T-shirt size', 'aria-label': 'Question ' + (i + 1), value: f.label || '' });
+      var label = el('input', { 'class': 'form-control', placeholder: 'Question, e.g. T-shirt size', 'aria-label': 'Question ' + (i + 3), value: f.label || '' });
       var kind = el('select', { 'class': 'form-select', 'aria-label': 'Answer type' }, KINDS.map(function (k) { return el('option', { value: k[0], text: k[1] }); }));
       kind.value = f.type || 'text';
+      if (kind.value !== (f.type || 'text')) { kind.value = 'text'; f.type = 'text'; }
       var opts = el('input', { 'class': 'form-control', placeholder: 'Choices, comma-separated', 'aria-label': 'Choices', value: (f.options || []).join(', ') });
       var reqId = 'req-' + f.id;
       var req = el('input', { type: 'checkbox', 'class': 'form-check-input', id: reqId, checked: f.required });
       var reqWrap = el('div', { 'class': 'form-check pt-2' }, [req, el('label', { 'class': 'form-check-label', 'for': reqId, text: 'Required' })]);
-      function needOpts() { opts.hidden = ['select', 'radio', 'checkbox'].indexOf(kind.value) === -1; }
+      function needOpts() {
+        // Kept in its column when unused, so every row's buttons line up
+        var off = CHOICE_KINDS.indexOf(kind.value) === -1;
+        opts.classList.toggle('is-unused', off);
+        opts.disabled = off;
+        if (off) opts.setAttribute('aria-hidden', 'true'); else opts.removeAttribute('aria-hidden');
+      }
       label.addEventListener('input', function () { f.label = label.value; syncFields(); });
       kind.addEventListener('change', function () { f.type = kind.value; needOpts(); syncFields(); });
       opts.addEventListener('input', function () { f.options = opts.value.split(',').map(function (o) { return o.trim(); }).filter(Boolean); syncFields(); });
       req.addEventListener('change', function () { f.required = req.checked; syncFields(); });
       needOpts();
-      fieldRows.appendChild(el('div', { 'class': 'builder-row field' }, [label, kind, opts, reqWrap,
-        removeBtn('Remove question', function () { extras.splice(i, 1); drawFields(); syncFields(); })]));
+      function move(d) { var j = i + d; extras[i] = extras[j]; extras[j] = f; drawFields(); syncFields(); }
+      fieldRows.appendChild(el('div', { 'class': 'builder-row field', 'data-question': f.id }, [label, kind, opts, reqWrap,
+        moveBtn('Move up', 'fa-arrow-up', function () { move(-1); }, i === 0),
+        moveBtn('Move down', 'fa-arrow-down', function () { move(1); }, i === extras.length - 1),
+        removeBtn('Remove question', function () { extras.splice(i, 1); drawFields(); syncFields(); drawSuggest(); })]));
     });
   }
-  document.getElementById('field-add').addEventListener('click', function () {
+  var fieldAdd = document.getElementById('field-add');
+  if (fieldAdd) fieldAdd.addEventListener('click', function () {
     extras.push({ id: 'q_' + Math.random().toString(36).slice(2, 8), type: 'text', label: '', placeholder: '', required: false, options: [], help_text: '' });
     drawFields(); fieldRows.lastChild.querySelector('input').focus();
   });
+  function formProblem() {
+    var bad = askedRows().filter(function (f) { return CHOICE_KINDS.indexOf(f.type) !== -1 && !(f.options || []).length; })[0];
+    if (!bad) return null;
+    var row = fieldRows && fieldRows.querySelector('[data-question="' + bad.id + '"] input[aria-label="Choices"]');
+    return { field: row, msg: '"' + bad.label + '" needs at least one choice.' };
+  }
 
   // ── Ticket types (UPG-155) ─────────────────────────────────────────────
   var ttRows = document.getElementById('tt-rows');
@@ -340,7 +402,21 @@
         row('Judging', crits.length ? crits.map(function (c) { return c.name + ' (/' + c.max_score + ')'; }).join(', ') : 'No criteria yet');
         row('Prizes', [v('f-prize1'), v('f-prize2'), v('f-prize3')].filter(Boolean).join(' · '));
       }
-      row('Extra questions', extras.filter(function (f) { return (f.label || '').trim(); }).length || 'None');
+      if (fieldRows) {
+        row('Registration form', ['Full Name', 'Email Address'].concat(askedRows().map(function (f) {
+          return f.label.trim() + (f.required ? ' (required)' : '');
+        })).join(', '));
+        if (v('f-participation') !== 'Individual') {
+          var mem = ['name', 'email'];
+          [['f-member-usn', 'USN'], ['f-member-phone', 'phone']].forEach(function (m) {
+            var c = v(m[0]);
+            if (c && c !== 'off') mem.push(m[1] + ' (' + c + ')');
+          });
+          row('Each team member gives', mem.join(', '));
+        }
+      } else {
+        row('Registration form', 'Unchanged here; edit it in the form builder');
+      }
     } else {
       row('Registration', 'None for the fest itself; add its events after saving.');
     }

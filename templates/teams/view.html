@@ -8,7 +8,8 @@
 
         <p class="text-muted mb-1">{{ event.title or reg.event_title or 'Event' }}{% if event.date %} · {{ event.date }}{% endif %}</p>
         <p>{{ reg.members | length }} of {{ team_max }} people (at least {{ team_min }}).</p>
-        <p><a class="btn btn-primary" href="/ticket/{{ reg_id }}">Open the team ticket</a></p>
+        <p><a class="btn btn-primary" href="/ticket/{{ reg_id }}">Open the team ticket</a>
+        {% if may_edit %}<a class="btn btn-outline-primary ms-1" href="/participant/registration/{{ reg_id }}/edit" data-edit-details>Edit details</a>{% endif %}</p>
 
         <h2 class="h6 mt-4 mb-2">Members</h2>
         <ul class="list-unstyled mb-0">
@@ -52,6 +53,41 @@
             {% endfor %}
         </ul>
         {% if statuses %}<p class="text-subtle small mt-2 mb-0">Each member gets an email to confirm and set a password; once confirmed they can sign in and see their own certificate.</p>{% endif %}
+
+        {#- UPG-241: the lead adds members up to the event's limit -#}
+        {% if is_lead %}
+        <section class="mt-4" id="add-member" aria-labelledby="add-member-title" data-add-member>
+          <h2 class="h6 mb-1" id="add-member-title">Add a member</h2>
+          {% if add_block %}
+          <p class="text-subtle small mb-0" data-add-block>{{ add_block }}</p>
+          {% else %}
+          <p class="text-subtle small mb-2">Room for {{ room_left }} more. To replace someone, remove them above, then add the new person here.</p>
+          <form method="POST" action="/teams/{{ reg_id }}/members/add" class="row g-2" data-add-member-form>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="col-sm-6">
+              <label class="form-label small fw-semibold" for="am-name">Name</label>
+              <input class="form-control form-control-sm" id="am-name" name="name" maxlength="100" required autocomplete="off">
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label small fw-semibold" for="am-email">Email</label>
+              <input class="form-control form-control-sm" type="email" id="am-email" name="email" maxlength="254" required autocomplete="off">
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label small fw-semibold" for="am-usn">USN <span class="text-subtle fw-normal">(optional)</span></label>
+              <input class="form-control form-control-sm" id="am-usn" name="usn" maxlength="20" autocomplete="off">
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label small fw-semibold" for="am-phone">Phone <span class="text-subtle fw-normal">(optional)</span></label>
+              <input class="form-control form-control-sm" type="tel" id="am-phone" name="phone" maxlength="20" autocomplete="off">
+            </div>
+            <div class="col-12">
+              <button type="submit" class="btn btn-sm btn-primary">Add to the team</button>
+              {% if confirm_on %}<span class="text-subtle small ms-1">They get an email to confirm and set a password.</span>{% endif %}
+            </div>
+          </form>
+          {% endif %}
+        </section>
+        {% endif %}
 
 
         {% if is_lead %}

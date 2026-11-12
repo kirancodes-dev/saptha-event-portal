@@ -15,6 +15,7 @@ the projector. All text is stored as typed and escaped where it's shown.
 import datetime as _dt
 import json
 import secrets
+import threading
 from typing import Dict, List, Optional
 
 from sqlalchemy import func
@@ -35,8 +36,21 @@ def _session():
     return get_session()
 
 
+_last = {'at': None}
+_clock = threading.Lock()
+
+
 def _now() -> str:
-    return _dt.datetime.now(IST).strftime('%Y-%m-%d %H:%M:%S')
+    """The time a poll or question is made, to the microsecond (UPG-218), and
+    never the same twice in this process, so they come back in the order
+    they were made. Still sortable as text; rows saved before (to the second)
+    sort first within their second."""
+    with _clock:
+        now = _dt.datetime.now(IST)
+        if _last['at'] is not None and now <= _last['at']:
+            now = _last['at'] + _dt.timedelta(microseconds=1)
+        _last['at'] = now
+    return now.strftime('%Y-%m-%d %H:%M:%S.%f')
 
 
 def checked_in(db, event_id: str, email: str) -> bool:

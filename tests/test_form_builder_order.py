@@ -139,3 +139,15 @@ def test_the_builder_keeps_name_and_email_at_the_top(fb, tmp_path):  # noqa: F81
     assert steps[3] == ['full_name', 'email', 'q1', 'phone']
     # A question dropped above name goes back below email
     assert steps[4] == ['full_name', 'email', 'phone', 'q1']
+
+
+# ── UPG-220 ─────────────────────────────────────────────────────────────────
+
+def test_the_preview_title_is_white_on_the_brand_header(fb):  # noqa: F811
+    event_id = fb['event']()
+    builder = fb['owner'].get(f'/forms/builder/{event_id}').get_data(as_text=True)
+    header = re.search(r'<div class="modal-header([^"]*)"[^>]*>\s*<h5 class="modal-title[^"]*">\s*'
+                       r'<i [^>]*></i>Form Preview', builder)
+    assert header and 'on-brand' in header.group(1).split()
+    css = open('static/css/global.css').read()
+    assert re.search(r'\.modal-header\.on-brand \.modal-title\s*\{\s*color:\s*#fff', css)

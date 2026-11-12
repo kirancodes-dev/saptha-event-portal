@@ -58,8 +58,10 @@
 .wz-sub > legend, .wz-sub > h3 { font-size: 1rem; font-weight: 700; margin: 0 0 10px; float: none; }
 .builder-row { display: grid; grid-template-columns: 2fr 90px 3fr 40px; gap: 8px; margin-bottom: 8px; align-items: start; }
 .builder-row.sponsor { grid-template-columns: 2fr 1fr 2fr 2fr 40px; }
-.builder-row.field { grid-template-columns: 2fr 1fr 2fr 90px 40px; }
-@media (max-width: 767.98px) { .builder-row, .builder-row.sponsor, .builder-row.field { grid-template-columns: 1fr; padding-bottom: 10px; border-bottom: 1px solid var(--divider); } }
+.builder-row.field { grid-template-columns: 2fr 1fr 2fr 90px 40px 40px 40px; }
+.builder-row.field.fixed { grid-template-columns: 2fr 3fr; padding: 8px 12px; border-radius: 8px; background: var(--surface-2, #f4f5f8); font-weight: 600; }
+.builder-row .is-unused { visibility: hidden; }
+@media (max-width: 767.98px) { .builder-row, .builder-row.sponsor, .builder-row.field { grid-template-columns: 1fr; padding-bottom: 10px; border-bottom: 1px solid var(--divider); } .builder-row.field { grid-template-columns: 1fr 44px 44px 44px; } .builder-row.field > .form-control, .builder-row.field > .form-select { grid-column: 1 / -1; } .builder-row.field.fixed { grid-template-columns: 1fr; } .builder-row .is-unused { display: none; } }
 .wz-actions { display: flex; justify-content: space-between; gap: 10px; margin-top: 18px; }
 .wz-summary dl { display: grid; grid-template-columns: 200px 1fr; gap: 6px 16px; margin: 0; font-size: var(--fs-sm); }
 .wz-summary dt { color: var(--text-muted); font-weight: 600; }
@@ -399,25 +401,48 @@
     <section class="wz-step" data-step="6" aria-labelledby="st6">
       <div class="panel">
         <h2 id="st6">Registration form and extras</h2>
-        <p class="wz-lead">Everyone gives their name, email, phone and USN. Add any other questions here, or later in the form builder.</p>
         <div data-hide-for-fest>
           {% if editing %}
-          <p class="mb-3"><a href="/forms/builder/{{ editing.id }}" class="btn btn-outline-primary btn-sm"><i class="fas fa-rectangle-list" aria-hidden="true"></i> Edit the registration form</a> <span class="text-muted small">Questions are changed in the form builder.</span></p>
-          {% endif %}
-          <div class="mb-3"{% if editing %} hidden{% endif %}>
-            <span class="form-label d-block">Extra questions <span class="text-muted fw-normal">(optional)</span></span>
+          {# Editing: the form is changed in the builder only, so there is one place for it (UPG-219) #}
+          <p class="wz-lead">People registering are asked exactly these questions, in this order. Name and email are always asked: the account, ticket and certificate use them.</p>
+          <ol class="mb-2" id="form-outline">
+            {% for q in form_outline.questions %}<li>{{ q.label }}{% if q.required %} <span class="text-muted small">(required)</span>{% endif %}</li>{% endfor %}
+          </ol>
+          {% if form_outline.members %}<p class="text-muted small mb-2">Each team member gives: {{ form_outline.members | join(', ') }}.</p>{% endif %}
+          <p class="mb-3"><a href="/forms/builder/{{ editing.id }}" class="btn btn-outline-primary btn-sm"><i class="fas fa-rectangle-list" aria-hidden="true"></i> Edit the registration form</a> <span class="text-muted small">Questions are added, removed and reordered in the form builder.</span></p>
+          {% else %}
+          {# A new event: this list is the registration form, and nothing else is added (UPG-219) #}
+          <p class="wz-lead">This is the registration form: people are asked exactly these questions, in this order. Name and email are always asked: the account, ticket and certificate use them. You can change the form later in the form builder.</p>
+          <div class="mb-3">
+            <ol class="list-unstyled mb-2" id="fixed-rows">
+              <li class="builder-row field fixed"><span>Full Name</span><span class="text-muted small">Short answer · required · always asked</span></li>
+              <li class="builder-row field fixed"><span>Email Address</span><span class="text-muted small">Email · required · always asked</span></li>
+            </ol>
             <div id="field-rows"></div>
             <button type="button" class="btn btn-outline-primary btn-sm" id="field-add"><i class="fas fa-plus" aria-hidden="true"></i> Add a question</button>
-            <input type="hidden" name="auto_form_json" id="form-json" value="{{ val('auto_form_json') }}">
+            <div class="mt-2" id="suggest-block" hidden>
+              <span class="text-muted small d-block mb-1">Suggested for this kind of event (added only if you click):</span>
+              <div class="d-flex flex-wrap gap-2" id="suggest-chips"></div>
+            </div>
+            <input type="hidden" name="form_step6" value="1">
+            <input type="hidden" name="form_step6_json" id="form-json" value="{{ val('form_step6_json') }}">
           </div>
-          <fieldset class="mb-3">
-            <legend class="form-label">Also ask for</legend>
-            <div class="seg-choice">
-              {% for n, label in [('req_lead_whatsapp', "Leader's WhatsApp"), ('req_member_usn', "Members' USN"), ('req_member_email', "Members' email"), ('req_member_whatsapp', "Members' WhatsApp")] %}
-              <input type="checkbox" name="{{ n }}" id="{{ n }}" {{ 'checked' if v.get(n) == 'on' }}><label for="{{ n }}">{{ label }}</label>
+          <fieldset class="mb-3" id="member-fields">
+            <legend class="form-label">Team members <span class="text-muted fw-normal">(each member gives their name and email)</span></legend>
+            <div class="wz-row">
+              {% for key, label in [('usn', 'Member USN'), ('phone', 'Member phone')] %}
+              {% set chosen = v.get('member_' ~ key) or ('optional' if key == 'usn' else 'off') %}
+              <div><label class="form-label" for="f-member-{{ key }}">{{ label }}</label>
+                <select class="form-select" id="f-member-{{ key }}" name="member_{{ key }}">
+                  {% for opt, text in [('off', "Don't ask"), ('optional', 'Optional'), ('required', 'Required')] %}
+                  <option value="{{ opt }}" {{ 'selected' if chosen == opt }}>{{ text }}</option>
+                  {% endfor %}
+                </select></div>
               {% endfor %}
             </div>
+            <p class="text-muted small mb-0">Required applies to the members the team must have; extra members are optional.</p>
           </fieldset>
+          {% endif %}
         </div>
         <div class="wz-row">
           <div><label class="form-label" for="f-coords">Coordinators' emails <span class="text-muted fw-normal">(comma-separated)</span></label><input class="form-control" id="f-coords" name="coordinators" value="{{ val('coordinators') }}" placeholder="a@snpsu.edu.in, b@snpsu.edu.in"></div>
@@ -458,5 +483,6 @@
 </div>
 
 <script type="application/json" id="wz-types">{{ types | tojson }}</script>
+<script type="application/json" id="wz-suggest">{{ suggestions | tojson }}</script>
 <script src="/static/js/pages/spoc__create_event.js"></script>
 {% endblock %}

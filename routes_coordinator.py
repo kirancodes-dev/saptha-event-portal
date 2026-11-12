@@ -158,14 +158,25 @@ def view_registrations(event_id):
             shown = [r for r in shown if (str(r.get('payment_status') or '').strip().lower()
                                           in ('paid', 'completed')) == (pay_filter == 'paid')]
         from utils_pagination import paginate_items
+        # The lead's USN is saved as lead_usn (UPG-226); members are found by name, USN or email
+        for reg in shown:
+            reg['member_search'] = ' '.join(
+                str(m.get(k) or '') for m in reg.get('members') or [] if isinstance(m, dict)
+                for k in ('name', 'usn', 'email'))
         page = paginate_items(shown, search_fields=(
-            'lead_name', 'name', 'lead_email', 'student_email', 'usn', 'team_name', 'lead_phone'))
+            'lead_name', 'name', 'lead_email', 'student_email', 'lead_usn', 'usn', 'team_name', 'lead_phone',
+            'member_search'))
         # Each lead's login email, for helping someone told to contact the organizer (UPG-152)
         from services_accounts import login_status
+        # Everything the form asked, labelled, under each row (UPG-231)
+        import services_export
+        form_details = services_export.FormDetails(db, event_id)
         for reg in page.items:
             lead = str(reg.get('lead_email') or reg.get('student_email') or '').strip().lower()
             doc = db.collection('users').document(lead).get() if lead else None
-            reg['login'] = login_status((doc.to_dict() or {}) if doc is not None and doc.exists else None)
+            profile = (doc.to_dict() or {}) if doc is not None and doc.exists else None
+            reg['login'] = login_status(profile)
+            reg['details'] = form_details.of(reg, profile)
         # Each member's confirmation (UPG-207), and how many still wait
         import services_team_confirm as confirm
         from routes_forms import team_limits
@@ -182,16 +193,30 @@ def view_registrations(event_id):
                         waiting['unsent'] += st['key'] != 'waiting'
                         waiting['held'] += st['key'] == 'held'
         # The hosting SPOC cancels a team until it is checked in (UPG-211)
+        may_edit = can(session, 'edit_event', event, db=db)
+        kept = kept_records(db, event_id) if may_edit else (set(), set())
         for reg in page.items:
             reg['checked_in'] = checked_in(reg)
             reg['cancelled'] = str(reg.get('status') or '').strip().lower() in ('cancelled', 'refunded')
             reg['on_list'] = services_entry.may_enter(listed, reg)
-        may_edit = can(session, 'edit_event', event, db=db)
+            # ...and deletes one that left no record elsewhere (UPG-229)
+            reg['delete_block'] = delete_refusal(reg['id'], reg, *kept) if may_edit else ''
+        # The people waiting for a seat, in line, with what they filled in (UPG-230)
+        waitlist = waitlist_rows(db, event, form_details)
+        from services_waitlist import auto_moves_up as services_waitlist_auto   # UPG-243
+        import services_event_documents
         return render_template('coordinator/registrations.html',
             event=event, registrations=page.items, page=page, total=len(registrations),
             member_confirm=member_confirm, waiting=waiting, team_event=team_event,
-            may_switch=may_edit, may_cancel=may_edit, may_select=may_edit,
-            entry=entry_counts, entry_filter=entry_filter, pay_filter=pay_filter)
+            may_switch=may_edit, may_cancel=may_edit, may_select=may_edit, may_accept=may_edit,
+            entry=entry_counts, entry_filter=entry_filter, pay_filter=pay_filter,
+            waitlist=waitlist, seats=seats_left(event),
+            waitlist_auto=services_waitlist_auto(event),
+            # Documents for registered teams (UPG-239)
+            documents=services_event_documents.documents(event), may_edit_documents=may_edit,
+            # The summary at the top (UPG-234)
+            cancelled=sum(1 for r in registrations
+                          if str(r.get('status') or '').strip().lower() in ('cancelled', 'refunded')))
     except Exception as exc:
         if getattr(exc, 'code', None) == 403:
             abort(403)
@@ -294,6 +319,316 @@ def switch_member_confirm(event_id):
     return redirect(f'/coordinator/registrations/{event_id}')
 
 
+def _registration_of(event_id):
+    """The event, for an organiser's action on one of its registrations:
+    404 for no event, 403 without manage_registrations."""
+    from flask import abort
+    from services_permission import can
+    event_doc = db.collection('events').document(event_id).get()
+    if not event_doc.exists:
+        abort(404)
+    event = dict(event_doc.to_dict() or {}, id=event_id)
+    if not can(session, 'manage_registrations', event, db=db):
+        abort(403)
+    return event
+
+
+@coord_bp.route('/registrations/<event_id>/edit/<reg_id>', methods=['GET', 'POST'])
+@login_required
+@role_required(COORD_ROLES)
+def edit_registration(event_id, reg_id):
+    """The event's organisers correct a registration's details (UPG-225), also
+    after check-in; never a cancelled one."""
+    import services_registration_edit as edit
+    from routes_participant import registration_edit_page
+    event = _registration_of(event_id)
+    back = f'/coordinator/registrations/{event_id}'
+    doc = db.collection('registrations').document(reg_id).get()
+    reg = (doc.to_dict() or {}) if doc.exists else {}
+    if str(reg.get('event_id') or '') != str(event_id):
+        flash("That registration isn't for this event.", "danger")
+        return redirect(back)
+    if edit.cancelled(reg):
+        flash("This registration is cancelled, so its details can't be changed.", "warning")
+        return redirect(back)
+    return registration_edit_page(reg_id, reg, event, organiser=True, back=back,
+                                  member_email_action=f'/coordinator/registrations/{event_id}/member_email')
+
+
+@coord_bp.route('/registrations/<event_id>/member_email', methods=['POST'])
+@login_required
+@role_required(COORD_ROLES)
+def correct_member_email(event_id):
+    """The organiser corrects a waiting member's email (UPG-225), as the lead
+    does on the team page (UPG-207): the new address gets a link."""
+    import services_registration_edit as edit
+    import services_team_confirm as confirm
+    event = _registration_of(event_id)
+    reg_id = (request.form.get('reg_id') or '').strip()
+    doc = db.collection('registrations').document(reg_id).get() if reg_id else None
+    reg = (doc.to_dict() or {}) if doc is not None and doc.exists else {}
+    if str(reg.get('event_id') or '') != str(event_id) or edit.cancelled(reg):
+        flash("That registration isn't an active one of this event.", "danger")
+        return redirect(f'/coordinator/registrations/{event_id}')
+    page = f'/coordinator/registrations/{event_id}/edit/{reg_id}'
+    if not confirm.enabled(event):
+        flash("Member confirmation is off for this event, so a member's email isn't corrected here.", "warning")
+        return redirect(page)
+    old = (request.form.get('email') or '').strip().lower()
+    new = (request.form.get('new_email') or '').strip().lower()
+    try:
+        outcome = confirm.correct_email(db, reg_id, reg, event, old, new, by=session.get('user_id', ''))
+    except confirm.ConfirmError as exc:
+        flash(str(exc), 'warning')
+        return redirect(page)
+    flash(f"Email changed to {new}. " + ({'sent': "A link was sent there; the old one no longer works.",
+                                         'limit': "Today's email limit is reached: send the link again tomorrow."}
+                                        .get(outcome, "The email couldn't be sent: send the link again later.")),
+          'success' if outcome == 'sent' else 'warning')
+    return redirect(page)
+
+
+def seats_left(event: dict) -> dict:
+    """The event's seats as the form counts them (its registration count):
+    limit (0 without one), taken, free, and how many over the limit the
+    SPOC's accepts took it (UPG-235)."""
+    limit = safe_int((event.get('limits') or {}).get('max_participants', 0)) or safe_int(event.get('capacity', 0))
+    taken = safe_int(event.get('registration_count', 0))
+    return {'limit': limit, 'taken': taken, 'free': max(limit - taken, 0) if limit else None,
+            'over': max(taken - limit, 0) if limit else 0}
+
+
+def seat_step(promoted: dict) -> str:
+    """What's left for a person given a seat from the waitlist: pay, or
+    nothing (their ticket is in the portal)."""
+    from utils_email import _base_url
+    base = _base_url()
+    if promoted.get('status') == 'pending_payment':
+        return ("One step is left: pay the fee to confirm your seat.\n"
+                f"Pay here: {base}/payment/pay/{promoted['reg_id']}\n")
+    return ("Your seat is confirmed. Your ticket (QR code) is in the portal:\n"
+            f"{base}/participant/dashboard\n")
+
+
+def accepted_message(event: dict, promoted: dict, how: str = 'accepted') -> tuple:
+    """(subject, text) of the email and notice telling a person they're in
+    from the waitlist: the organiser accepted them (UPG-235), or, with
+    how='freed', a seat opened and they were first in line (UPG-240).
+    Registered, and either confirmed or asked to pay to confirm."""
+    reg = promoted.get('registration') or {}
+    title = event.get('title') or 'the event'
+    name = reg.get('lead_name') or 'there'
+    team = reg.get('team_name') if reg.get('team_name') not in (None, '', 'Individual') else ''
+    who = f"your team {team}'s" if team else 'your'
+    paying = promoted.get('status') == 'pending_payment'
+    if how == 'freed':
+        subject = (f"A seat opened for {title}: pay to confirm" if paying
+                   else f"You're in: a seat opened for {title}")
+        news = (f"Good news: a seat opened for {title}, and {who} place on the waitlist was next, "
+                "so you're registered.\n\n")
+    else:
+        subject = (f"Accepted from the waitlist: pay to confirm {title}" if paying
+                   else f"Accepted: you're registered for {title}")
+        news = f"Good news: the organiser of {title} accepted {who} request from the waitlist.\n\n"
+    text = (f"Hi {name},\n\n"
+            + news
+            + f"{seat_step(promoted)}\n"
+            f"Registration ID: {promoted['reg_id']}\n"
+            + (f"Team: {team}\n" if team else '')
+            + f"Date: {event.get('date') or 'to be announced'}\n"
+            f"Venue: {venue_label(event) or 'to be announced'}\n\n"
+            "See you there!")
+    return subject, text
+
+
+def waitlist_rows(db, event: dict, form_details=None) -> list:
+    """The event's waitlist for the SPOC's page (UPG-230): each person still
+    waiting, first in line first, with their place, the registration they
+    filled in (a waitlist joined from the event page has only name, email and
+    phone), whether accepting them asks a fee (as the promotion decides) and
+    the details labelled as the registrations' are (UPG-231)."""
+    from services_waitlist import waiting
+    from routes_waitlist import promotion_terms
+    import services_export
+    event_id = event['id']
+    form_details = form_details or services_export.FormDetails(db, event_id)
+    rows = []
+    for place, (wl_id, wl) in enumerate(waiting(db, event_id), start=1):
+        reg = wl.get('reg_data') if isinstance(wl.get('reg_data'), dict) else {}
+        reg = dict(reg) if reg else {'lead_name': wl.get('name') or '',
+                                     'lead_email': wl.get('user_email') or wl.get('email') or '',
+                                     'lead_phone': wl.get('phone') or ''}
+        rows.append({'id': wl_id, 'place': place, 'joined_at': str(wl.get('joined_at') or ''),
+                     'paid': promotion_terms(event, wl_id, reg)['is_paid'], 'reg': reg,
+                     'members': [m for m in reg.get('members') or [] if isinstance(m, dict)],
+                     'details': form_details.of(reg)})
+    return rows
+
+
+def _accept_entry(event: dict, wl_id: str, wl: dict, who: str, actor: str):
+    """Register one waiting entry as accepted by the SPOC (UPG-230/235/240):
+    a portal notice to each person on the team and ONE email to the lead.
+    {'promoted', 'sent'}, or None when they were already registered."""
+    from routes_waitlist import promote_entry
+    event_id = event['id']
+    promoted = promote_entry(db, event_id, wl_id, wl, announce=False)
+    if not promoted:
+        return None
+    # They're told they were accepted (UPG-235): a portal notice to each person
+    # on the team, and an email to the lead, also in a portal-mode hackathon,
+    # because it's their registration email
+    import services_hackathon as hk
+    subject, text = accepted_message(event, promoted)
+    reg = dict(promoted.get('registration') or {}, lead_email=promoted['user_email'])
+    link = (f"/payment/pay/{promoted['reg_id']}" if promoted['status'] == 'pending_payment'
+            else '/participant/dashboard')
+    hk.notify(db, event, reg, subject, text, link=link, kind='waitlist_promoted')
+    # One email: registered or pay, and a set-password link if they have no
+    # password yet (UPG-240), also in a portal-mode hackathon
+    import services_seat_email
+    sent = services_seat_email.tell(db, event, promoted, how='accepted', by=actor)
+    log_action(db, "WAITLIST_ACCEPTED",
+               f"{actor} accepted {who} ({promoted['user_email']}) from the waitlist of event {event_id}"
+               + ": "
+               f"registration {promoted['reg_id']}, {promoted['status']}, "
+               + ("emailed" if sent['status'] == 'sent' else "email not sent"))
+    return {'promoted': promoted, 'sent': sent}
+
+
+def _seat_count(event_id: str, event: dict) -> str:
+    fresh = db.collection('events').document(event_id).get()
+    seats = seats_left(dict(fresh.to_dict() or {}) if fresh.exists else event)
+    return (f" The event now has {seats['taken']} registration{'' if seats['taken'] == 1 else 's'}"
+            f" for {seats['limit']} seat{'' if seats['limit'] == 1 else 's'}"
+            + (f" ({seats['over']} over the limit)." if seats['over'] else ".")) if seats['limit'] else ''
+
+
+@coord_bp.route('/registrations/<event_id>/accept_waitlist', methods=['POST'])
+@login_required
+@role_required(COORD_ROLES)
+def accept_waitlist(event_id):
+    """The hosting SPOC accepts a person from the waitlist (UPG-230), whatever
+    their place in line, also when no seat is free (the event then has more
+    registrations than seats; the page says so before). They're registered as
+    the automatic promotion registers the first in line: a paid event holds the
+    seat for payment, a free one confirms it with a ticket; they're told."""
+    from flask import abort
+    from services_permission import can
+    event_doc = db.collection('events').document(event_id).get()
+    if not event_doc.exists:
+        abort(404)
+    event = dict(event_doc.to_dict() or {}, id=event_id)
+    if not can(session, 'edit_event', event, db=db):
+        abort(403)
+    back = f'/coordinator/registrations/{event_id}#waitlist'
+    wl_id = (request.form.get('wl_id') or '').strip()
+    wl_doc = db.collection('waitlists').document(wl_id).get() if wl_id else None
+    wl = (wl_doc.to_dict() or {}) if wl_doc is not None and wl_doc.exists else {}
+    if str(wl.get('event_id') or '') != str(event_id):
+        flash("That person isn't on this event's waitlist.", "danger")
+        return redirect(back)
+    who = ((wl.get('reg_data') or {}).get('team_name') if isinstance(wl.get('reg_data'), dict) else '') \
+        or wl.get('name') or wl.get('user_email') or wl.get('email') or wl_id
+    if str(wl.get('status') or '') != 'waiting':
+        flash(f"{who} is no longer waiting, so nothing changed.", "info")
+        return redirect(back)
+
+    actor = session.get('user_id', '')
+    done = _accept_entry(event, wl_id, wl, who, actor)
+    if not done:
+        flash(f"{who} is already registered for this event, so they were taken off the waitlist.", "info")
+        return redirect(back)
+    promoted, sent = done['promoted'], done['sent']
+    emailed = sent['status'] == 'sent'
+    paying = promoted['status'] == 'pending_payment'
+    count = _seat_count(event_id, event)
+    told = (f"An email telling them was sent to {promoted['user_email']}."
+            + (" It has a link to set their password." if sent['password_link'] else '') if emailed
+            else "They were told in the portal, but today's email limit is reached, so no email was sent; "
+                 "please contact them." if sent['status'] == 'limit'
+            else "They were told in the portal, but the email could not be sent; please contact them.")
+    flash(f"{who} is accepted and registered"
+          + (" and must pay the fee to confirm their seat. " if paying else ". ") + told + count, "success")
+    return redirect(f'/coordinator/registrations/{event_id}')
+
+
+def _hosted_event(event_id):
+    """The event, for the SPOC who may edit it (404 or 403 otherwise)."""
+    from flask import abort
+    from services_permission import can
+    doc = db.collection('events').document(event_id).get()
+    if not doc.exists:
+        abort(404)
+    event = dict(doc.to_dict() or {}, id=event_id)
+    if not can(session, 'edit_event', event, db=db):
+        abort(403)
+    return event
+
+
+@coord_bp.route('/registrations/<event_id>/documents', methods=['POST'])
+@login_required
+@role_required(COORD_ROLES)
+def add_document(event_id):
+    """The hosting SPOC gives registered teams a document (UPG-239): a title,
+    their own instructions and a PDF (an undertaking form, say), or one of the
+    two. Each team lead is told in the portal."""
+    import services_event_documents as docs
+    event = _hosted_event(event_id)
+    back = f'/coordinator/registrations/{event_id}#documents'
+    upload = request.files.get('pdf')
+    raw = upload.read(docs.PDF_MB * 1024 * 1024 + 1) if upload and upload.filename else b''
+    actor = session.get('user_id', '')
+    try:
+        ok, message = docs.add(db, event_id, event, title=request.form.get('title') or '',
+                               instructions=request.form.get('instructions') or '', pdf=raw,
+                               pdf_name=(upload.filename or '') if upload else '', by=actor)
+    except Exception:
+        from flask import current_app
+        current_app.logger.warning("Couldn't store a document for event %s", event_id, exc_info=True)
+        ok, message = False, "The PDF couldn't be saved. Please try again."
+    if ok:
+        new = docs.documents(event)[-1]
+        told = docs.notify_registered(db, event_id, event, new)
+        log_action(db, "EVENT_DOCUMENT_ADDED",
+                   f"{actor} added “{new['title']}” to event {event_id}"
+                   + (f" with {new['pdf_name']}" if new.get('pdf_key') else '') + f"; {told} lead(s) told")
+    flash(message, 'success' if ok else 'danger')
+    return redirect(back)
+
+
+@coord_bp.route('/registrations/<event_id>/documents/<doc_id>/remove', methods=['POST'])
+@login_required
+@role_required(COORD_ROLES)
+def remove_document(event_id, doc_id):
+    import services_event_documents as docs
+    event = _hosted_event(event_id)
+    ok, message = docs.remove(db, event_id, event, doc_id)
+    if ok:
+        log_action(db, "EVENT_DOCUMENT_REMOVED", f"{session.get('user_id', '')} removed document {doc_id} "
+                                                 f"from event {event_id}")
+    flash(message, 'success' if ok else 'warning')
+    return redirect(f'/coordinator/registrations/{event_id}#documents')
+
+
+@coord_bp.route('/registrations/<event_id>/waitlist_auto', methods=['POST'])
+@login_required
+@role_required(COORD_ROLES)
+def waitlist_auto(event_id):
+    """The hosting SPOC switches moving up from the waitlist on its own on or
+    off for the event (UPG-243). Off: a freed seat stays free until the SPOC
+    accepts someone, and new sign-ups join the waitlist while anyone waits."""
+    import services_waitlist
+    event = _hosted_event(event_id)
+    on = request.form.get('auto') == 'on'
+    db.collection('events').document(event_id).update({services_waitlist.AUTO: on})
+    actor = session.get('user_id', '')
+    log_action(db, "WAITLIST_AUTO_" + ("ON" if on else "OFF"), f"{actor}: event {event_id}")
+    flash("Teams now move up from the waitlist on their own when a seat is freed." if on else
+          "Teams now stay on the waitlist until you accept them; a freed seat waits for you. "
+          "New sign-ups join the waitlist while anyone is waiting.", 'success')
+    return redirect(f'/coordinator/registrations/{event_id}#waitlist')
+
+
 def checked_in(reg: dict) -> bool:
     """Has this team (or anyone on it) been checked in at the event?"""
     if str(reg.get('attendance') or '').strip().lower() == 'present' or reg.get('attendance_days'):
@@ -362,6 +697,118 @@ def cancel_team(event_id):
     paid = str(reg.get('payment_status') or reg.get('paymentStatus') or '').strip().lower() in ('paid', 'completed')
     flash(f"{team} is cancelled; its seat is free and its ticket no longer works."
           + (" It had paid: ask the admin to refund it from Payments." if paid else ''), "success")
+    return redirect(back)
+
+
+PAID = ('paid', 'completed', 'refunded', 'refunding', 'refund_pending')
+
+
+def kept_records(db, event_id: str):
+    """(registrations with a certificate, registrations with hackathon work)
+    for the event: records kept elsewhere that a delete would orphan."""
+    certified, submitted = set(), set()
+    try:
+        import services_certificates
+        certified = {str(c.get('reg_id')) for c in services_certificates.for_event(event_id, current_only=False)
+                     if c.get('reg_id')}
+    except Exception:
+        pass
+    try:
+        submitted = {str((d.to_dict() or {}).get('registration_id') or '')
+                     for d in db.collection('project_submissions').where('event_id', '==', event_id).stream()}
+    except Exception:
+        pass
+    return certified, submitted
+
+
+def delete_refusal(reg_id: str, reg: dict, certified=(), submitted=()) -> str:
+    """Why this registration can't be deleted, or '' (UPG-229). Anything with a
+    record elsewhere (a check-in, a payment, a certificate, hackathon work)
+    is cancelled instead, so nothing points at a team that's gone."""
+    if checked_in(reg):
+        return "It was checked in, so it can't be deleted."
+    if (str(reg.get('payment_status') or reg.get('paymentStatus') or '').strip().lower() in PAID
+            or str(reg.get('status') or '').strip().lower() == 'refunded'):
+        return "It has a payment, so it can't be deleted; cancel it instead."
+    if reg_id in certified:
+        return "It has a certificate, so it can't be deleted."
+    if reg_id in submitted:
+        return "It has submitted hackathon work, so it can't be deleted; cancel it instead."
+    return ''
+
+
+@coord_bp.route('/registrations/<event_id>/delete_team', methods=['POST'])
+@login_required
+@role_required(COORD_ROLES)
+def delete_team(event_id):
+    """The hosting SPOC erases a team's registration for good (UPG-229): its
+    members, answers, form responses copy, ticket and scores go with it. A
+    team that isn't cancelled is cancelled first, so its seat is freed as
+    UPG-211's cancel frees it. The people's accounts stay."""
+    from flask import abort
+    import services_hackathon as hk
+    from routes_participant import cancel_registration_record
+    from services_permission import can
+    event_doc = db.collection('events').document(event_id).get()
+    if not event_doc.exists:
+        abort(404)
+    event = dict(event_doc.to_dict() or {}, id=event_id)
+    if not can(session, 'edit_event', event, db=db):
+        abort(403)
+    back = f'/coordinator/registrations/{event_id}'
+    reg_id = (request.form.get('reg_id') or '').strip()
+    reg_doc = db.collection('registrations').document(reg_id).get() if reg_id else None
+    reg = (reg_doc.to_dict() or {}) if reg_doc is not None and reg_doc.exists else {}
+    if str(reg.get('event_id') or '') != str(event_id):
+        flash("That registration isn't for this event.", "danger")
+        return redirect(back)
+    team = reg.get('team_name') or reg.get('lead_name') or reg_id
+    if request.form.get('confirm') != 'yes':
+        flash(f"Tick the box to confirm deleting {team}; nothing was deleted.", "warning")
+        return redirect(back)
+    refusal = delete_refusal(reg_id, reg, *kept_records(db, event_id))
+    if refusal:
+        flash(f"{team} wasn't deleted. {refusal}", "warning")
+        return redirect(back)
+
+    actor = session.get('user_id', '')
+    was_cancelled = str(reg.get('status') or '').strip().lower() in ('cancelled', 'refunded')
+    if not was_cancelled:
+        cancel_registration_record(reg_id, reg, actor, 'Deleted by the organiser')
+    for collection, field in (('form_submissions', 'reg_id'), ('tickets', 'registration_id')):
+        try:
+            for doc in db.collection(collection).where(field, '==', reg_id).stream():
+                db.collection(collection).document(doc.id).delete()
+        except Exception:
+            from flask import current_app
+            current_app.logger.warning("Could not remove %s of %s", collection, reg_id, exc_info=True)
+    db.collection('registrations').document(reg_id).delete()
+
+    lead = str(reg.get('lead_email') or reg.get('student_email') or '').strip().lower()
+    # Gone from this event, not from the portal: the accounts stay, and the
+    # waitlist entry it came from no longer says "accepted" (UPG-245)
+    try:
+        for doc in db.collection('waitlists').where('event_id', '==', event_id).stream():
+            entry = doc.to_dict() or {}
+            if str(entry.get('status') or '') == 'promoted' and lead and lead in (
+                    str(entry.get('user_email') or '').strip().lower(), str(entry.get('email') or '').strip().lower()):
+                db.collection('waitlists').document(doc.id).update({'status': 'removed'})
+    except Exception:
+        from flask import current_app
+        current_app.logger.warning("Could not close the waitlist entry of %s", reg_id, exc_info=True)
+    people = {lead} | {str(m.get('email') or '').strip().lower()
+                       for m in reg.get('members') or [] if isinstance(m, dict)}
+    people.discard('')
+    if not was_cancelled:
+        title = event.get('title') or 'the event'
+        hk.notify(db, event, reg, f"Registration removed: {title}",
+                  f"The organiser removed the registration of {team} for {title}. "
+                  "Your ticket no longer works. Contact the organiser if you think this is a mistake.",
+                  link='/participant/dashboard', kind='cancellation')
+    log_action(db, "REGISTRATION_DELETED",
+               f"{actor} deleted {team} ({reg_id}) of event {event_id}: lead {lead or '-'}, {len(people)} people"
+               + (", already cancelled" if was_cancelled else ''))
+    flash(f"{team} is deleted for good" + ("" if was_cancelled else "; its seat is free") + ".", "success")
     return redirect(back)
 
 
@@ -800,8 +1247,8 @@ def export_registrations(event_id):
     import services_export
     from routes_spoc import _export_name
     event = _event_or_abort(event_id, 'export_data')
-    return Response(services_export.to_csv(services_export.registration_rows(db, event_id),
-                                            services_export.registration_columns(db, event_id)), mimetype='text/csv',
+    columns, rows = services_export.registration_table(db, event_id)   # read once: columns follow the data (UPG-222)
+    return Response(services_export.to_csv(rows, columns), mimetype='text/csv',
                     headers={"Content-Disposition": f"attachment; filename={_export_name(event, 'Registrations.csv')}"})
 
 

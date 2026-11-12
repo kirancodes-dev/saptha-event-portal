@@ -26,6 +26,13 @@ def _ptype(record):
 
 
 USN = re.compile(r'^\d?[A-Z]{2}(\d{2})([A-Z]{2,3})\d+$')
+# The university's own numbers: batch, college letters, BE, branch (25SUUBEAML231,
+# 24BECSE0624 → 2025 AML, 2024 CSE; UPG-222)
+USN_BE = re.compile(r'^(\d{2})[A-Z]{0,4}BE([A-Z]{2,4})\d+$')
+
+
+def _usn_match(usn):
+    return USN.match(usn) or USN_BE.match(usn)
 
 
 def _answers(reg):
@@ -33,13 +40,13 @@ def _answers(reg):
     return answers if isinstance(answers, dict) else {}
 
 
-def department_and_year(reg, profile=None):
+def department_and_year(reg, profile=None, usn=None):
     """Department: the profile's, else the form's, else the USN's branch code.
     Year: the form's year or semester answer, else the batch in the USN
     (1SN22CS007 → 2022)."""
     answers = _answers(reg)
-    usn = str(reg.get('lead_usn') or answers.get('usn') or '').strip().upper()
-    m = USN.match(usn)
+    usn = str(usn or reg.get('lead_usn') or answers.get('usn') or '').strip().upper()
+    m = _usn_match(usn)
     department = ((profile or {}).get('department') or answers.get('department') or answers.get('branch')
                   or (m.group(2) if m else ''))
     year = answers.get('year') or answers.get('year_of_study') or answers.get('semester') or (
@@ -101,36 +108,204 @@ def _entry_event(db, event_id):
 
 
 def registration_columns(db, event_id):
-    """COLUMNS, then one column per agenda session (UPG-159), then "Selected
-    to attend" when the event's entry list is on (UPG-214)."""
-    import services_sessions
-    return COLUMNS + [f"Session: {services_sessions.label(s)}" for s in _event_sessions(db, event_id)] + \
-        (['Selected to attend'] if _entry_event(db, event_id) else [])
+    """COLUMNS, with each team member's and each form question's columns
+    before "Attendance" (UPG-222), then one column per agenda session
+    (UPG-159), then "Selected to attend" when the event's entry list is on (UPG-214)."""
+    return registration_table(db, event_id)[0]
 
 
 def registration_rows(db, event_id, sessions=True):
     """One row per registration, in registration_columns order (COLUMNS only
-    with sessions=False): a session's cell is "Yes" when it was scanned in."""
+    with sessions=False, for the all-events export): a session's cell is
+    "Yes" when it was scanned in."""
+    return registration_table(db, event_id, sessions)[1]
+
+
+# ── The event's own columns (UPG-222) ──────────────────────────────────────
+
+# Answers the fixed columns already show, or that aren't the registrant's
+IDENTITY_KEYS = {'full_name', 'name', 'participant_name', 'email', 'email_address', 'phone', 'phone_number',
+                 'mobile', 'contact', 'usn', 'roll_number', 'roll_no', 'id_number', 'team_name', 'team',
+                 'group_name', 'participant_type', 'designation', 'institution', 'ticket_tier', 'ticket_type'}
+LAYOUT_TYPES = ('heading', 'paragraph', 'divider')
+# A question the SPOC added by hand that asks the USN or the phone
+USN_LABEL = re.compile(r'\b(usn|roll\s*(no|number)|reg(istration|ister)?\.?\s*(no|number)|university\s*seat)\b', re.I)
+PHONE_LABEL = re.compile(r'\b(phone|mobile|whats\s*app|contact\s*(no|number))\b', re.I)
+MEMBER_PARTS = (('name', 'Name'), ('usn', 'USN'), ('email', 'Email'), ('phone', 'Phone'))
+
+
+def _form_fields(db, event_id):
+    """The questions on the event's saved form, in its order."""
+    doc = db.collection('event_forms').document(event_id).get()
+    data = (doc.to_dict() or {}) if doc.exists else {}
+    fields = data if isinstance(data, list) else data.get('fields') or []
+    return [f for f in fields if isinstance(f, dict) and (f.get('id') or f.get('field_name'))]
+
+
+def _fid(field):
+    return str(field.get('id') or field.get('field_name'))
+
+
+def _text(value):
+    """An answer as a cell: choices joined, yes/no for a tick box."""
+    if isinstance(value, (list, tuple)):
+        return ', '.join(str(v) for v in value if str(v).strip())
+    if isinstance(value, bool):
+        return 'Yes' if value else 'No'
+    return '' if value is None else str(value).strip()
+
+
+def _labelled(fields, pattern, kinds=None):
+    """Ids of hand-added questions whose label asks for `pattern`."""
+    return [_fid(f) for f in fields if _fid(f) not in IDENTITY_KEYS and f.get('type') not in LAYOUT_TYPES
+            and f.get('type') != 'email' and (kinds is None or f.get('type') in kinds)
+            and pattern.search(str(f.get('label') or ''))]
+
+
+def _lead(reg, key, ids, profile):
+    """The lead's USN or phone: the registration's, else the answer to a
+    question asking it, else the account's."""
+    answers = _answers(reg)
+    for value in [reg.get(f'lead_{key}'), reg.get(key)] + [answers.get(i) for i in ids] + [(profile or {}).get(key)]:
+        text = _text(value)
+        if text:
+            return text.upper() if key == 'usn' else text
+    return ''
+
+
+def _others(reg):
+    """The team's members but the lead."""
+    lead = str(reg.get('lead_email') or '').strip().lower()
+    return [m for m in (reg.get('members') or []) if isinstance(m, dict)
+            and not (lead and str(m.get('email') or '').strip().lower() == lead)]
+
+
+def _unique_header(name, used):
+    name = str(name or '').strip() or 'Question'
+    candidate, n = name, 1
+    while candidate in used:
+        n += 1
+        candidate = f"{name} (form)" if n == 2 else f"{name} ({n - 1})"
+    used.add(candidate)
+    return candidate
+
+
+def _event_columns(fields, regs, confirming, taken, shown=()):
+    """(slots, parts, member_headers, questions): the most members besides
+    the lead on any team, the parts given for them (name, and USN, email,
+    phone when any member gave one), their headers, and (answer id, header)
+    for each question on the form, then for answers to questions since
+    taken off it."""
+    slots = max((len(_others(r)) for _, r in regs), default=0)
+    parts = [(key, label) for key, label in MEMBER_PARTS
+             if key == 'name' or any(str(m.get(key) or '').strip() for _, r in regs for m in _others(r))]
+    used = set(taken)
+    member_headers = []
+    for i in range(slots):   # the lead is member 1
+        member_headers += [_unique_header(f"Member {i + 2} {label}", used) for _, label in parts]
+        if confirming:
+            member_headers.append(_unique_header(f"Member {i + 2} Confirmed", used))
+    questions, seen = [], set(IDENTITY_KEYS) | set(shown)   # shown: the lead's USN and phone questions
+    for f in fields:
+        fid = _fid(f)
+        if fid in seen or f.get('type') in LAYOUT_TYPES or fid.startswith('member_'):
+            continue
+        seen.add(fid)
+        questions.append((fid, _unique_header(f.get('label') or fid, used)))
+    for _, r in regs:   # answers to a question the SPOC later removed
+        for fid in _answers(r):
+            if fid not in seen and not fid.startswith('member_'):
+                seen.add(fid)
+                questions.append((fid, _unique_header(f"{fid} (no longer on the form)", used)))
+    return slots, parts, member_headers, questions
+
+
+class FormDetails:
+    """Everything a registration's form gave, labelled, for the SPOC's
+    registrations page and its waitlist (UPG-231): the same answers the
+    export has (UPG-222), read from the event's form once."""
+
+    def __init__(self, db, event_id):
+        self.fields = _form_fields(db, event_id)
+        self.usn_ids = _labelled(self.fields, USN_LABEL, kinds=(None, 'text', 'number'))
+        self.phone_ids = _labelled(self.fields, PHONE_LABEL, kinds=(None, 'text', 'tel', 'number'))
+
+    def of(self, reg, profile=None):
+        """{'lead': [(label, value)], 'members': [[(label, value)]], 'answers': [(label, value)]}.
+        Each question on the form is listed, '' when it wasn't answered; then
+        answers to questions since taken off the form."""
+        reg = reg if isinstance(reg, dict) else {}
+        usn = _lead(reg, 'usn', self.usn_ids, profile)
+        department, year = department_and_year(reg, profile, usn)
+        lead = [('Name', reg.get('lead_name') or reg.get('name') or ''), ('USN', usn),
+                ('Email', reg.get('lead_email') or reg.get('student_email') or reg.get('email') or ''),
+                ('Phone', _lead(reg, 'phone', self.phone_ids, profile)),
+                ('Department', department), ('Year', year)]
+        if reg.get('participant_type'):
+            lead.append(('Participant type', _ptype(reg)))
+        lead += [(label, _text(reg.get(key))) for key, label in (
+            ('designation', 'Designation'), ('institution', 'Institution'),
+            ('ticket_type_name', 'Ticket type'), ('team_code', 'Team code')) if _text(reg.get(key))]
+        members = [[(label, _text(m.get(key))) for key, label in MEMBER_PARTS if _text(m.get(key))]
+                   for m in _others(reg)]
+        answers, given = [], _answers(reg)
+        seen = set(IDENTITY_KEYS) | set(self.usn_ids) | set(self.phone_ids)
+        for f in self.fields:
+            fid = _fid(f)
+            if fid in seen or f.get('type') in LAYOUT_TYPES or fid.startswith('member_'):
+                continue
+            seen.add(fid)
+            answers.append((str(f.get('label') or fid), _text(given.get(fid))))
+        for fid, value in given.items():
+            if fid not in seen and not fid.startswith('member_') and _text(value):
+                seen.add(fid)
+                answers.append((f"{fid} (no longer on the form)", _text(value)))
+        return {'lead': lead, 'members': members, 'answers': answers}
+
+
+def registration_table(db, event_id, sessions=True):
+    """(columns, rows) of the registrations export. With sessions=False the
+    columns are COLUMNS only, the same for every event (the all-events export)."""
+    import services_sessions
     regs = _registrations(db, event_id)
     agenda = _event_sessions(db, event_id) if sessions else []
     confirming = _member_confirm(db, event_id)
-    went = {}
-    if agenda:
-        import services_sessions
-        went = services_sessions.attended(event_id)
+    went = services_sessions.attended(event_id) if agenda else {}
     profiles = _profiles(db, regs)
     ranks = _ranks(regs)
     listed = _entry_event(db, event_id) if sessions else None
+    fields = _form_fields(db, event_id)
+    usn_ids = _labelled(fields, USN_LABEL, kinds=(None, 'text', 'number'))
+    phone_ids = _labelled(fields, PHONE_LABEL, kinds=(None, 'text', 'tel', 'number'))
+    split = COLUMNS.index('Attendance')
+    slots, parts, member_headers, questions = (
+        _event_columns(fields, regs, confirming, COLUMNS, usn_ids + phone_ids)
+        if sessions else (0, [], [], []))
+    columns = (COLUMNS[:split] + member_headers + [h for _, h in questions] + COLUMNS[split:]
+               + [f"Session: {services_sessions.label(s)}" for s in agenda]
+               + (['Selected to attend'] if listed else []))
     rows = []
     for rid, r in sorted(regs, key=lambda x: str(x[1].get('registered_at') or '')):
-        department, year = department_and_year(r, profiles.get((r.get('lead_email') or '').lower()))
-        others = [m for m in (r.get('members') or []) if (m.get('email') or '') != r.get('lead_email')]
+        profile = profiles.get((r.get('lead_email') or '').lower())
+        usn = _lead(r, 'usn', usn_ids, profile)
+        department, year = department_and_year(r, profile, usn)
+        others = _others(r)
         score = r.get('final_score') if r.get('final_score') not in (None, '') else _average(r)
-        rows.append([
-            r.get('reg_id') or rid, r.get('lead_name', ''), r.get('lead_usn', ''), department, year,
-            r.get('lead_email', ''), r.get('lead_phone') or r.get('phone', ''),
-            r.get('team_name', ''), '; '.join(f"{m.get('name', '')} ({m.get('usn', '')})"
-                                              + (_confirm_label(m) if confirming else '') for m in others),
+        cells = []
+        for i in range(slots):
+            m = others[i] if i < len(others) else None
+            cells += [_text(m.get(key)) if m else '' for key, _ in parts]
+            if confirming:
+                cells.append(('Yes' if m.get('confirmed_at') else 'No') if m else '')
+        answers = _answers(r)
+        cells += [_text(answers.get(fid)) for fid, _ in questions]
+        row = [
+            r.get('reg_id') or rid, r.get('lead_name', ''), usn, department, year,
+            r.get('lead_email', ''), _lead(r, 'phone', phone_ids, profile),
+            r.get('team_name', ''), '; '.join(
+                str(m.get('name', '')) + (f" ({m['usn']})" if str(m.get('usn') or '').strip() else '')
+                + (_confirm_label(m) if confirming else '') for m in others),
+        ] + cells + [
             r.get('attendance', 'Pending'), r.get('checkin_time', ''),
             r.get('payment_status', ''), r.get('amount_paid', 0) or 0,
             '' if score is None else score, ranks.get(rid, ''),
@@ -138,8 +313,9 @@ def registration_rows(db, event_id, sessions=True):
             _ptype(r), r.get('designation', ''), r.get('institution', ''),   # UPG-12
             r.get('ticket_type_name', ''),                                    # UPG-155
         ] + ['Yes' if s['id'] in went.get(rid, ()) else '' for s in agenda]  # UPG-159
-            + ([('Yes' if services_entry.may_enter(listed, r) else 'No')] if listed else []))  # UPG-214
-    return rows
+        row += [('Yes' if services_entry.may_enter(listed, r) else 'No')] if listed else []   # UPG-214
+        rows.append(row)
+    return columns, rows
 
 
 def to_csv(rows, columns=COLUMNS):
@@ -184,7 +360,7 @@ def to_xlsx(sheets):
 
 
 def registrations_xlsx(db, event_id):
-    return to_xlsx([('Registrations', registration_columns(db, event_id), registration_rows(db, event_id))])
+    return to_xlsx([('Registrations', *registration_table(db, event_id))])
 
 
 def all_registration_rows(db):
@@ -278,7 +454,7 @@ def event_report_xlsx(db, event_id):
          [[p['question'], o['option'], o['answers'],
            round(100 * o['answers'] / p['answered'], 1) if p['answered'] else 0, p['answered']]
           for p in report['polls'] for o in p['options']]),                        # UPG-160
-        ('Registrations', registration_columns(db, event_id), registration_rows(db, event_id)),
+        ('Registrations', *registration_table(db, event_id)),
     ])
 
 

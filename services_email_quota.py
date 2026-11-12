@@ -14,6 +14,12 @@ worker shares it.
 
 If the table can't be reached the email is sent anyway (fail open), after
 logging why: a broken counter must not stop registrations.
+
+A backup Brevo account (UPG-224), set by BREVO_BACKUP_API_KEY, has its own
+count and limit (EMAIL_BACKUP_DAILY_LIMIT, default 270 for Brevo's free 300 a
+day), kept in the same table under ``YYYYMMDD-b`` so no migration is needed.
+Every function takes ``account='main'`` or ``'backup'``; ``available()`` is
+True while either account has room.
 """
 import datetime
 import logging
@@ -24,22 +30,38 @@ from flask import current_app
 logger = logging.getLogger(__name__)
 
 DEFAULT_LIMIT = 450
+BACKUP = 'backup'
+DEFAULT_BACKUP_LIMIT = 270
+_SETTING = {'main': ('EMAIL_DAILY_LIMIT', DEFAULT_LIMIT), BACKUP: ('EMAIL_BACKUP_DAILY_LIMIT', DEFAULT_BACKUP_LIMIT)}
 
 
-def limit() -> int:
+def backup_configured() -> bool:
+    """Is a backup Brevo account set (UPG-224)?"""
+    import os
+    return bool(os.environ.get('BREVO_BACKUP_API_KEY', '').strip())
+
+
+def limit(account: str = 'main') -> int:
+    key, default = _SETTING[account]
     try:
-        value = current_app.config.get('EMAIL_DAILY_LIMIT', DEFAULT_LIMIT)
+        value = current_app.config.get(key, default)
     except RuntimeError:   # outside an app context
         import os
-        value = os.environ.get('EMAIL_DAILY_LIMIT', DEFAULT_LIMIT)
+        value = os.environ.get(key, default)
     try:
         return max(0, int(value))
     except (TypeError, ValueError):
-        return DEFAULT_LIMIT
+        return default
 
 
 def today() -> str:
     return datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d')
+
+
+def _key(account: str) -> str:
+    """The table row for today's count: the date, or YYYYMMDD-b for the backup."""
+    day = today()
+    return day if account == 'main' else day.replace('-', '') + '-b'
 
 
 @contextmanager
@@ -52,32 +74,36 @@ def _primary():
             yield s
 
 
-def sent_today() -> int:
+def sent_today(account: str = 'main') -> int:
     from models_pg import EmailQuota
     try:
         with _primary() as s:
-            row = s.get(EmailQuota, today())
+            row = s.get(EmailQuota, _key(account))
             return int(row.sent) if row else 0
     except Exception:
         logger.exception("Email quota: could not read today's count")
         return 0
 
 
+def _room(n: int, account: str) -> bool:
+    cap = limit(account)
+    return not cap or sent_today(account) + n <= cap
+
+
 def available(n: int = 1) -> bool:
-    """True when n more emails fit under today's limit."""
-    cap = limit()
-    return not cap or sent_today() + n <= cap
+    """True when n more emails fit under today's limit, the backup account's included."""
+    return _room(n, 'main') or (backup_configured() and _room(n, BACKUP))
 
 
-def reserve(n: int = 1) -> bool:
+def reserve(n: int = 1, account: str = 'main') -> bool:
     """Take n of today's places; False (and nothing taken) if that passes the limit."""
-    cap = limit()
+    cap = limit(account)
     if not cap or n <= 0:
         return True
     from sqlalchemy import update
 
     from models_pg import EmailQuota
-    day = today()
+    day = _key(account)
     try:
         with _primary() as s:
             dialect = s.get_bind().dialect.name
@@ -93,20 +119,21 @@ def reserve(n: int = 1) -> bool:
         logger.exception("Email quota: could not count an email; sending it anyway")
         return True
     if not taken:
-        logger.warning("Email quota: today's limit of %s emails is reached; not sending to %s recipient(s)", cap, n)
+        logger.warning("Email quota: today's limit of %s emails is reached on the %s account; "
+                       "not sending to %s recipient(s) through it", cap, account, n)
     return bool(taken)
 
 
-def release(n: int = 1) -> None:
+def release(n: int = 1, account: str = 'main') -> None:
     """The provider didn't accept the email: give its places back."""
-    if not limit() or n <= 0:
+    if not limit(account) or n <= 0:
         return
     from sqlalchemy import update
 
     from models_pg import EmailQuota
     try:
         with _primary() as s:
-            s.execute(update(EmailQuota).where(EmailQuota.day == today(), EmailQuota.sent >= n)
+            s.execute(update(EmailQuota).where(EmailQuota.day == _key(account), EmailQuota.sent >= n)
                       .values(sent=EmailQuota.sent - n))
     except Exception:
         logger.exception("Email quota: could not give back an unsent email's place")

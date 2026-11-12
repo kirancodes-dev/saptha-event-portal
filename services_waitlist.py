@@ -131,7 +131,9 @@ def standing(db, email: str) -> list:
             row.update(state='waiting', place=place, ahead=(place - 1) if place else None,
                        waiting_total=len(line), link=f'/event/{event_id}', link_label='See the event')
         elif status == 'promoted':
-            reg = _registration(db, event_id, lead) or {}
+            reg = _registration(db, event_id, lead)
+            if reg is None:   # the organiser deleted the team: gone from this event (UPG-245)
+                continue
             if _norm(reg.get('status')) == 'pending_payment':
                 row['state'] = 'pay'
                 if row['is_lead']:
@@ -145,6 +147,8 @@ def standing(db, email: str) -> list:
                        link_label='See your registration')
         elif status == 'cancelled':
             row['state'] = 'left'
+        elif status == 'removed':   # deleted by the organiser (UPG-245)
+            continue
         else:
             row['state'] = 'closed'
         row['label'] = STANDING[row['state']]

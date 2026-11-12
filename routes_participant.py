@@ -831,65 +831,12 @@ def event_document(event_id, doc_id):
         'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'private, no-store'})
 
 
-@participant_bp.route('/screening/<event_id>', methods=['GET', 'POST'])
-@login_required
-def screening(event_id):
-    """The waitlist's screening round (UPG-238): the lead of a team still
-    waiting answers once, between the round's times; scored on submit. A
-    member is told their lead answers for the team."""
-    import services_hackathon as hk
-    import services_screening as sc
-    ev = db.collection('events').document(event_id).get()
-    if not ev.exists:
-        abort(404)
-    event = dict(ev.to_dict() or {}, id=event_id)
-    s = sc.round_of(event)
-    state = sc.window(s)
-    if state == 'draft':
-        abort(404)
-    email = str(session.get('user_id') or '').strip().lower()
-    wl_id, entry = sc.entry_for(db, event_id, email)
-    view = {'event': event, 'state': state, 'opens': hk.show(s.get('opens_at'), event),
-            'closes': hk.show(s.get('closes_at'), event), 'minutes': int(s.get('minutes') or 0),
-            'count': len(s['questions']), 'questions': [], 'sheet': None, 'ends': '', 'role': 'lead'}
-    if not wl_id:
-        member_wl, member_entry = sc.member_of(db, event_id, email)
-        if not member_wl:
-            view['role'] = 'none'
-        else:
-            reg = member_entry.get('reg_data') if isinstance(member_entry.get('reg_data'), dict) else {}
-            view.update(role='member', lead_name=reg.get('lead_name') or 'your team lead',
-                        sheet=sc.sheet(db, event_id, member_wl))
-        return render_template('participant/screening.html', **view)
-    got = sc.sheet(db, event_id, wl_id)
-    if request.method == 'POST':
-        try:
-            got = sc.submit(db, event_id, event, wl_id, email, request.form)
-        except sc.ScreeningError as exc:
-            flash(str(exc), 'warning')
-            return redirect(f'/participant/screening/{event_id}')
-        log_action(db, "SCREENING_SUBMITTED", f"{email}: event {event_id}, waitlist entry {wl_id}: "
-                                              f"{got['score']}/{got['max_score']}" + (" (late)" if got['late'] else ''))
-        flash("Your answers were received." if not got['late'] else
-              "Your answers came after the time limit, so they couldn't count.", 'success' if not got['late'] else 'warning')
-        return redirect(f'/participant/screening/{event_id}')
-    if not (got and got.get('submitted_at')) and state == 'open':
-        got = sc.start(db, event_id, wl_id, email)
-        view['questions'] = sc.questions_for_taker(s)
-        ends = sc.deadline(s, got.get('started_at'))
-        view['ends'] = hk.show(ends.isoformat(), event) if ends else ''
-    view['sheet'] = got if got and got.get('submitted_at') else None
-    return render_template('participant/screening.html', **view)
-
-
 def _my_waitlist(email) -> list:
     """services_waitlist.standing for this person; [] if it can't be read, so
     the page still opens (UPG-236)."""
     try:
-        import services_screening
         import services_waitlist
-        # With the screening round, if the event holds one (UPG-238)
-        return services_screening.annotate_standing(db, services_waitlist.standing(db, email), email)
+        return services_waitlist.standing(db, email)
     except Exception:
         current_app.logger.warning("Could not read the waitlist standing of %s", email, exc_info=True)
         return []

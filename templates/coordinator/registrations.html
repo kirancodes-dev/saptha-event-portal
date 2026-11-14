@@ -337,6 +337,32 @@
       <button type="button" class="btn btn-sm btn-outline-secondary" data-details-all aria-expanded="false"><i class="fas fa-list me-1" aria-hidden="true"></i><span data-label>Show all details</span></button>
       {% endif %}
     </div>
+    {#- UPG-264: filters that combine, and a sort; the search is kept -#}
+    {% set labels = {'status': 'Status', 'members': 'Members', 'checkin': 'Check-in', 'size': 'Team size', 'entry': 'Entry list', 'pay': 'Payment', 'sort': 'Sort by'} %}
+    <details class="border rounded px-3 py-2 mb-2" data-filter-sort{% if picked %} open{% endif %}>
+      <summary class="small fw-semibold">Filter and sort{% if picked %} <span class="badge text-bg-primary ms-1" data-filter-count>{{ picked | length }} on</span>{% endif %}</summary>
+      <form method="get" action="{{ request.path }}#registrations" class="d-flex flex-wrap gap-2 align-items-end mt-2 mb-1" aria-label="Filter and sort the list">
+        {% if page.q %}<input type="hidden" name="q" value="{{ page.q }}">{% endif %}
+        {% if page.per_page != 25 %}<input type="hidden" name="per_page" value="{{ page.per_page }}">{% endif %}
+        {% for key in ['status', 'members', 'checkin', 'size', 'entry', 'pay', 'sort'] %}
+        {% set options = filter_choices[key] %}
+        {% if options %}
+        <div>
+          <label class="form-label small mb-0" for="flt-{{ key }}">{{ labels[key] }}</label>
+          <select id="flt-{{ key }}" name="{{ key }}" class="form-select form-select-sm" data-filter="{{ key }}">
+            <option value="">{{ 'Newest first' if key == 'sort' else 'All' }}</option>
+            {% for value, name in options %}{% if not (key == 'sort' and value == 'newest') %}
+            <option value="{{ value }}"{% if picked.get(key) == value %} selected{% endif %}>{{ name }}</option>
+            {% endif %}{% endfor %}
+          </select>
+        </div>
+        {% endif %}
+        {% endfor %}
+        <button type="submit" class="btn btn-sm btn-primary">Apply</button>
+        {% if picked %}<a href="{{ request.path }}{% if page.q %}?{{ {'q': page.q}|urlencode }}{% endif %}#registrations" class="btn btn-sm btn-link" data-filter-clear>Clear filters</a>{% endif %}
+      </form>
+    </details>
+    {% if picked or page.q %}<p class="small text-muted mb-2" data-filter-summary>Showing {{ page.total }} of {{ total }}.</p>{% endif %}
   {% if registrations %}
   {#- UPG-229: one thing per column, the actions in their own column -#}
   {% set short = {'confirmed': 'Confirmed', 'waiting': 'Waiting', 'held': 'Email held', 'failed': 'Email failed', 'not_sent': 'No link sent'} %}
@@ -459,7 +485,7 @@
   {% else %}
   <div class="text-center text-muted py-5">
     <i class="fas fa-users fa-2x mb-2" aria-hidden="true"></i>
-    <p class="mb-0">{% if page.q %}No registrations match “{{ page.q }}”.{% elif entry_filter or pay_filter or members_filter %}No registrations match this filter.{% else %}No registrations yet.{% endif %}</p>
+    <p class="mb-0">{% if page.q %}No registrations match “{{ page.q }}”.{% elif picked %}No registrations match this filter.{% else %}No registrations yet.{% endif %}</p>
   </div>
   {% endif %}
   </section>

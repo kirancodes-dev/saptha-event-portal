@@ -129,6 +129,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Ticket transfer | WORKING [T at UPG-161] | `services_transfer.py`, `routes_participant.py:1048`, `routes_ticket.py:42-65` | Off by default; the `tickets` record isn't moved yet (UPG-189). |
 | Share links and registration sources | WORKING [T at UPG-162] | `services_share.py`, `routes_spoc.py:2494-2535` | Only the code is stored; unknown codes are "other". |
 | SPOC event panel (`/spoc/dashboard`) | WORKING [T at UPG-253, UPG-254] | `services_spoc_panel.py`, `routes_spoc.py:94-123`, `templates/spoc/dashboard.html:1408-1872` | Top row (registered of the limit, waiting, members not confirmed, checked in; Registrations & Waitlist, Share, Scanner), a "What to do now" card by stage, every earlier tool in labelled tabs and groups, hackathon, round, sports and placement tools only on those kinds (all on an event of no known type), a line under each "Advance to" button; fits 375px. No invented map; "Received" is the money paid registrations paid, paid events only. |
+| SPOC registrations list: filter and sort | WORKING [T at UPG-264] | `services_registration_filters.py`, `routes_coordinator.py:156-166`, `templates/coordinator/registrations.html:340-365` | Filters that combine: status, members (not confirmed, everyone confirmed, no email, added during window), check-in, team size, entry list, payment; sorts by date, team or lead name, size and members not confirmed; kept with the search and across pages. |
 
 ---
 
@@ -5417,3 +5418,15 @@ Defaults chosen in Phase 1 (each one can be changed; listed in the changelog): "
 - **Acceptance criteria:**
   1. ✅ The hygiene scan passes, and so do the paid-plan tests (`tests/test_repo_hygiene.py`, `tests/test_email_paid_plan.py`: 78 passed).
 - **Tests changed:** `tests/test_email_paid_plan.py`, only the made-up value (no assertion).
+
+#### UPG-264 — The SPOC's registrations list: filters that combine, and a sort
+- **Status:** DONE
+- **Last verified:** 2026-11-14, uncommitted on `3fd9d6a` [T]
+- **Problem:** Owner, 2026-11-14, for the SPOC: "add sorting, all confirmed and all that, a filter system with everything possible to make it easy". The registrations list (`/coordinator/registrations/<event>`) filtered by one thing at a time (on the entry list, paid, members not confirmed, added during window) and always sorted newest first.
+- **What was built:** `services_registration_filters.py`: filters by status (registered, waiting for payment, cancelled), members (a member not confirmed, everyone confirmed, a member with no email, added during window), check-in (in, not in), team size (below the minimum, has room, full), the entry list and payment; sorts newest or oldest first, team or lead name A–Z, most or fewest members, most members not confirmed. Every filter is a URL argument and they combine; unknown values are ignored. The route uses it in place of its own filters (`routes_coordinator.py:156-166`); the page has a folding "Filter and sort" form with a dropdown each, Apply, "Clear filters", how many are on, and "Showing N of M" (`templates/coordinator/registrations.html:340-365`). Only what applies to the event is offered (`choices`: no member or size filters without teams, no confirmation filters when it's off). The search keeps the filters and the form keeps the search; the quick links above the list are unchanged and use the same arguments (`?members=unconfirmed` and `?members=late` links from notices still work).
+- **Acceptance criteria:**
+  1. ✅ Each filter keeps only its teams; newest first by default; "No registrations match this filter." when none (`tests/test_registration_filters.py::test_each_filter_keeps_only_the_teams_it_names`).
+  2. ✅ Filters combine with each other and with the search; an unknown value shows everything (`::test_filters_combine_with_each_other_and_the_search`).
+  3. ✅ Sorting by date, team name, size and members not confirmed (`::test_the_list_sorts_by_date_name_size_and_waiting_members`).
+  4. ✅ Only the filters that apply are offered; another SPOC gets 403 (`::test_the_form_offers_only_what_applies_and_another_spoc_gets_403`).
+- **Tests changed:** none (the page's existing tests pass: `tests/test_registrations_page.py`, `test_wrong_email_hints.py`, `test_window_summary.py`, `test_entry_selection.py` and others, 50).

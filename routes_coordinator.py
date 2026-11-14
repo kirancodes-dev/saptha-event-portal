@@ -153,24 +153,16 @@ def view_registrations(event_id):
         import services_entry
         entry_counts = services_entry.counts(db, event_id, event, regs=[(r['id'], r) for r in registrations])
         listed = dict(event, **{services_entry.SWITCH: True})
-        entry_filter = (request.args.get('entry') or '').strip()
-        pay_filter = (request.args.get('pay') or '').strip()
-        shown = registrations
-        if entry_filter in ('selected', 'not_selected'):
-            shown = [r for r in shown if not services_entry.inactive(r)
-                     and services_entry.may_enter(listed, r) == (entry_filter == 'selected')]
-        if pay_filter in ('paid', 'unpaid'):
-            shown = [r for r in shown if (str(r.get('payment_status') or '').strip().lower()
-                                          in ('paid', 'completed')) == (pay_filter == 'paid')]
-        # Teams with a member who hasn't confirmed: maybe a wrong email (UPG-257);
-        # teams with a member added in the SPOC's window (UPG-252)
-        import services_team_confirm as confirm
-        members_filter = (request.args.get('members') or '').strip()
-        if members_filter == 'unconfirmed':
-            shown = [r for r in shown if confirm.active(r) and any(
-                st['key'] != 'confirmed' for _, st in confirm.summary(r))]
-        elif members_filter == 'late':
-            shown = [r for r in shown if any(isinstance(m, dict) and m.get('late') for m in r.get('members') or [])]
+        # Filters that combine, and a sort (UPG-264); the quick links' entry, pay
+        # and members (UPG-214, UPG-257, UPG-252) are the same arguments
+        import services_registration_filters as reg_filters
+        picked = reg_filters.chosen(request.args)
+        entry_filter, pay_filter = picked.get('entry', ''), picked.get('pay', '')
+        members_filter = picked.get('members', '')
+        shown = reg_filters.apply(
+            registrations, picked, event,
+            on_list=lambda r: None if services_entry.inactive(r) else bool(services_entry.may_enter(listed, r)),
+            checked_in=checked_in)
         any_late = any(isinstance(m, dict) and m.get('late') for r in registrations for m in r.get('members') or [])
         from utils_pagination import paginate_items
         # The lead's USN is saved as lead_usn (UPG-226); members are found by name, USN or email
@@ -241,6 +233,8 @@ def view_registrations(event_id):
             may_edit=may_edit, may_switch=may_edit, may_cancel=may_edit, may_select=may_edit, may_accept=may_edit,
             entry=entry_counts, entry_filter=entry_filter, pay_filter=pay_filter, members_filter=members_filter,
             any_late=any_late,
+            # The combined filters and sort (UPG-264)
+            filter_choices=reg_filters.choices(member_confirm, team_event, any_late), picked=picked,
             waitlist=waitlist, seats=seats_left(event),
             waitlist_auto=services_waitlist_auto(event),
             # Documents for registered teams (UPG-239)

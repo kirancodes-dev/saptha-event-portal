@@ -390,89 +390,6 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--ink-900);
   line-height: 1.1;
 }
-/* Blueprint SVG Map Visuals */
-.wayfinder-card-wrapper {
-  border: 1px solid var(--ink-200);
-  border-radius: var(--radius);
-  background: var(--bg-soft);
-  overflow: hidden;
-}
-/* Collapsible Wayfinder Map styles */
-.wayfinder-toggle-container {
-  margin-top: 12px;
-}
-.wayfinder-toggle-btn {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
-  background: var(--bg-soft);
-  border: 1px solid var(--ink-200);
-  border-radius: var(--radius-sm);
-  color: var(--brand-ink);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all var(--t-fast);
-}
-.wayfinder-toggle-btn:hover {
-  background: var(--brand-navy);
-  color: #fff;
-  border-color: var(--brand-navy);
-}
-[data-theme="dark"] .wayfinder-toggle-btn {
-  background: rgba(255,255,255,0.02);
-  border-color: rgba(255,255,255,0.08);
-  color: var(--snpsu-gold-light);
-}
-[data-theme="dark"] .wayfinder-toggle-btn:hover {
-  background: var(--brand-gold);
-  color: var(--snpsu-blue-dark);
-  border-color: var(--brand-gold);
-}
-.wayfinder-collapsible-content {
-  display: none;
-  margin-top: 12px;
-  animation: fadeIn 0.25s ease-out;
-}
-.wayfinder-collapsible-content.show {
-  display: block;
-}
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.wayfinder-svg {
-  background: #0b0f19;
-  border-radius: var(--radius-sm);
-  padding: 8px;
-}
-.wayfinder-room-g {
-  transition: all var(--t);
-}
-.wayfinder-room-rect {
-  transition: all var(--t);
-  stroke-width: 1.5;
-}
-.wayfinder-room-g:hover .wayfinder-room-rect {
-  fill-opacity: 0.35 !important;
-  stroke: var(--brand-gold) !important;
-}
-.wayfinder-room-g.active .wayfinder-room-rect {
-  fill-opacity: 0.45 !important;
-  stroke: var(--brand-gold) !important;
-  stroke-width: 2.5;
-}
-.wayfinder-room-text {
-  font-family: var(--font-heading);
-  font-weight: 700;
-  fill: #ffffff;
-}
-.wayfinder-room-subtext {
-  font-family: monospace;
-  font-weight: bold;
-}
 /* Global Stats grid */
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 14px; margin-bottom: 24px; }
 .stat-card {
@@ -496,7 +413,7 @@ h1, h2, h3, h4, h5, h6 {
 .si-orange { background: var(--brand-gold-100); color: var(--brand-gold-700); }
 .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--ink-500); font-weight: 600; margin-bottom: 4px; }
 .stat-val { font-family: var(--font-heading); font-size: 24px; font-weight: 800; color: var(--ink-900); line-height: 1; }
-/* Chart and Wayfinder Containers */
+/* Chart containers */
 .chart-card { background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--ink-200); padding: 20px 24px; box-shadow: var(--shadow-xs); }
 .chart-title { font-family: var(--font-heading); font-size: 14px; font-weight: 700; color: var(--ink-900); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
 /* General tables */
@@ -724,6 +641,21 @@ h1, h2, h3, h4, h5, h6 {
     display: none !important; /* Hide portal link on very narrow mobile screens */
   }
 }
+/* UPG-253: the event panel's top row, "What to do now" and tool groups */
+.panel-top { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
+  padding: 12px 14px; border: 1px solid var(--ink-200); border-radius: var(--radius); background: var(--bg-card); }
+.panel-top-numbers { display: flex; flex-wrap: wrap; gap: 8px 20px; min-width: 0; }
+.panel-num { display: flex; flex-direction: column; min-width: 64px; }
+.panel-num-val { font-family: var(--font-heading); font-size: 20px; font-weight: 800; color: var(--ink-900); line-height: 1.1; }
+.panel-num-val small { font-size: 12px; font-weight: 500; color: var(--ink-400); }
+.panel-num-label { font-size: 11.5px; color: var(--ink-500); }
+.panel-top-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.next-steps-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 8px; }
+.next-step { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid var(--ink-200);
+  border-radius: var(--radius-sm); background: var(--bg-soft); color: var(--ink-900); text-decoration: none; min-width: 0; }
+.next-step:hover, .next-step:focus-visible { border-color: var(--brand-navy); background: var(--bg-card); }
+.tool-group-title { font-size: 13px; font-weight: 700; color: var(--ink-900); margin-bottom: 8px; }
+.tool-group .action-btn { white-space: normal; text-align: left; }
 /* Horizontal Scrollable Segmented Tabs on Mobile */
 @media (max-width: 768px) {
   .tabs-navigation {
@@ -1419,73 +1351,6 @@ h1, h2, h3, h4, h5, h6 {
           </div>
         </div>
         
-        <!-- Live Room Capacity & Wayfinder (Unified Blueprint Map) -->
-        <div class="wayfinder-toggle-container mb-4">
-          <button class="wayfinder-toggle-btn" data-h-click="spoc/dashboard:8" data-show-text="Show Campus Venue Wayfinder Map" data-hide-text="Hide Campus Venue Wayfinder Map">
-            <span><i class="fas fa-map-location-dot me-2"></i><span class="toggle-text">Show Campus Venue Wayfinder Map</span></span>
-            <i class="fas fa-chevron-down toggle-icon ms-2"></i>
-          </button>
-          <div id="global-wayfinder-content" class="wayfinder-collapsible-content">
-            <div class="wayfinder-card-wrapper p-3">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="mb-0 text-white font-monospace" style="color: var(--ink-900) !important;"><i class="fas fa-map-location-dot me-2 text-primary"></i>Live Room Capacity Wayfinder</h6>
-                <span class="badge bg-success" style="font-size:10px;">Tactical Console Layout</span>
-              </div>
-              <div class="row align-items-center g-3">
-                <div class="col-md-7">
-                  <svg viewBox="0 0 600 300" width="100%" style="height:auto" class="wayfinder-svg" id="global-svg-wayfinder">
-                    <defs>
-                      <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-                        <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
-                      </pattern>
-                    </defs>
-                    <rect width="100%" height="100%" fill="url(#grid)" rx="10" />
-                    <rect x="10" y="10" width="580" height="280" rx="15" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2" />
-                    
-                    <!-- Main Auditorium -->
-                    <g class="wayfinder-room-g" style="cursor:pointer;" data-h-click="spoc/dashboard:9" data-room-name="Main Auditorium">
-                      <rect x="30" y="30" width="220" height="150" rx="10" class="wayfinder-room-rect" fill="rgba(16, 185, 129, 0.1)" stroke="#10b981" />
-                      <text x="140" y="100" class="wayfinder-label" font-size="14" text-anchor="middle">Main Auditorium</text>
-                      <text x="140" y="125" class="wayfinder-sublabel text-success" fill="#10b981" font-size="11" text-anchor="middle">310 / 400 (77%)</text>
-                    </g>
-
-                    <!-- CS Lab -->
-                    <g class="wayfinder-room-g" style="cursor:pointer;" data-h-click="spoc/dashboard:10" data-room-name="CS Lab">
-                      <rect x="270" y="30" width="140" height="110" rx="10" class="wayfinder-room-rect" fill="rgba(239, 68, 68, 0.1)" stroke="#ef4444" />
-                      <text x="340" y="80" class="wayfinder-label" font-size="12" text-anchor="middle">CS Lab (Zone C)</text>
-                      <text x="340" y="100" class="wayfinder-sublabel text-danger" fill="#ef4444" font-size="10" text-anchor="middle">48 / 50 (96% FULL)</text>
-                    </g>
-
-                    <!-- Seminar Hall -->
-                    <g class="wayfinder-room-g" style="cursor:pointer;" data-h-click="spoc/dashboard:11" data-room-name="Seminar Hall">
-                      <rect x="430" y="30" width="140" height="110" rx="10" class="wayfinder-room-rect" fill="rgba(245, 158, 11, 0.1)" stroke="#f59e0b" stroke-dasharray="4" />
-                      <text x="500" y="80" class="wayfinder-label" font-size="12" text-anchor="middle">Seminar Hall</text>
-                      <text x="500" y="100" class="wayfinder-sublabel text-warning" fill="#f59e0b" font-size="10" text-anchor="middle">120 / 150 (80%)</text>
-                    </g>
-
-                    <path d="M 30 220 L 570 220" stroke="rgba(255,255,255,0.12)" stroke-width="4" stroke-dasharray="8 4" />
-                    <text x="300" y="245" fill="rgba(255,255,255,0.25)" font-size="10" text-anchor="middle" font-family="monospace">MAIN LOGISTICS PASSAGEWAY</text>
-
-                    <!-- Sports Arena -->
-                    <g class="wayfinder-room-g" style="cursor:pointer;" data-h-click="spoc/dashboard:12" data-room-name="Sports Arena">
-                      <rect x="270" y="160" width="300" height="110" rx="10" class="wayfinder-room-rect" fill="rgba(59, 130, 246, 0.1)" stroke="#3b82f6" />
-                      <text x="420" y="210" class="wayfinder-label" font-size="14" text-anchor="middle">Sports Arena (Zone D)</text>
-                      <text x="420" y="230" class="wayfinder-sublabel text-info" fill="#3b82f6" font-size="11" text-anchor="middle">85 / 200 (42%)</text>
-                    </g>
-                  </svg>
-                </div>
-                <div class="col-md-5">
-                  <div class="p-3 rounded h-100" style="background:rgba(255,255,255,0.03); border: 1px solid var(--ink-200);">
-                    <h6 class="fw-bold mb-2" style="font-size:13px; color:var(--ink-900);"><i class="fas fa-circle-info me-2 text-primary"></i>Wayfinder Inspector</h6>
-                    <div class="room-details-content text-muted small" style="line-height:1.45;">
-                      <p class="mb-0">Select a zone on the blueprint layout map to inspect real-time logistics details, capacity threshold alarms, and shift recommendations.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {% if events %}
         <!-- Live Announcement Panel -->
@@ -1576,12 +1441,14 @@ h1, h2, h3, h4, h5, h6 {
               {% if event.allowed_transitions %}
               <div class="d-flex gap-2 flex-wrap justify-content-end">
                 {% for next_state in event.allowed_transitions %}
-                <form action="/spoc/event/{{ event.id }}/transition" method="POST" style="margin:0;">
+                <form action="/spoc/event/{{ event.id }}/transition" method="POST" style="margin:0; max-width:220px;" data-stage-button>
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <input type="hidden" name="target_state" value="{{ next_state }}">
                   <button type="submit" class="btn btn-sm" style="background:var(--brand-navy);color:#fff;font-size:11.5px;font-weight:700;padding:5px 12px;border-radius:6px;border:none;">
                     <i class="fas fa-arrow-right me-1"></i>Advance to {{ next_state | replace('_', ' ') | title }}
                   </button>
+                  {#- UPG-253: what the stage means -#}
+                  {% if stage_meaning.get(next_state) %}<div class="small text-muted mt-1" style="font-size:11px; line-height:1.3;" data-stage-meaning>{{ stage_meaning[next_state] }}</div>{% endif %}
                 </form>
                 {% endfor %}
               </div>
@@ -1589,19 +1456,56 @@ h1, h2, h3, h4, h5, h6 {
             </div>
           </div>
           
+          {#- UPG-253: the numbers that matter and the main buttons, then what to do at this stage -#}
+          {% set pn = event.panel or {} %}
+          <section class="panel-top mb-3" data-top-row aria-label="Key numbers and main actions">
+            <div class="panel-top-numbers">
+              <div class="panel-num"><span class="panel-num-val">{{ rc }}{% if max_p > 0 %}<small>/{{ max_p }}</small>{% endif %}</span><span class="panel-num-label">registered</span></div>
+              <div class="panel-num"><span class="panel-num-val">{{ pn.waiting | default(0) }}</span><span class="panel-num-label">waiting</span></div>
+              {% if pn.unconfirmed is defined %}<div class="panel-num"><span class="panel-num-val{{ ' text-warning' if pn.unconfirmed else '' }}">{{ pn.unconfirmed }}</span><span class="panel-num-label">members not confirmed</span></div>{% endif %}
+              <div class="panel-num"><span class="panel-num-val">{{ pn.checked_in | default(p_count) }}</span><span class="panel-num-label">checked in</span></div>
+            </div>
+            <div class="panel-top-actions">
+              <a href="/coordinator/registrations/{{ event.id }}" class="btn btn-sm btn-primary" data-top-registrations><i class="fas fa-users me-1" aria-hidden="true"></i>Registrations &amp; Waitlist</a>
+              <a href="/spoc/event/{{ event.id }}/share" class="btn btn-sm btn-outline-primary"><i class="fas fa-share-nodes me-1" aria-hidden="true"></i>Share</a>
+              <a href="/spoc/scan/{{ event.id }}" class="btn btn-sm btn-outline-success"><i class="fas fa-qrcode me-1" aria-hidden="true"></i>Scanner</a>
+            </div>
+          </section>
+
+          {% if pn.stage %}
+          <section class="card border mb-3 p-3" data-next-steps data-stage="{{ pn.stage }}" aria-labelledby="next-{{ event.id }}">
+            <h4 class="h6 fw-bold mb-2" id="next-{{ event.id }}"><i class="fas fa-list-check me-2 text-primary" aria-hidden="true"></i>What to do now: {{ pn.stage_title }}</h4>
+            {% if pn.steps %}
+            <div class="next-steps-grid">
+              {% for label, href, why in pn.steps %}
+              <a href="{{ href }}" class="next-step" data-next-step>
+                <span class="fw-semibold">{{ label }}</span>
+                <span class="small text-muted">{{ why }}</span>
+              </a>
+              {% endfor %}
+            </div>
+            {% else %}
+            <p class="small text-muted mb-0">Nothing to do: the event won't take place. You can still open its registrations and reports below.</p>
+            {% endif %}
+          </section>
+          {% endif %}
+
           <!-- Event Segmented Tab Controls -->
           <div class="tabs-navigation" id="tour-tabs-nav">
             <button class="tab-btn active" data-tab="overview" data-h-click="spoc/dashboard:15">
               <i class="fas fa-home"></i> Overview
             </button>
+            <button class="tab-btn" data-tab="people" data-h-click="spoc/dashboard:62">
+              <i class="fas fa-users"></i> Registrations &amp; data
+            </button>
             <button class="tab-btn" data-tab="logistics" data-h-click="spoc/dashboard:16">
-              <i class="fas fa-qrcode"></i> Logistics &amp; QR
+              <i class="fas fa-qrcode"></i> Event day
             </button>
             <button class="tab-btn" data-tab="comms" data-h-click="spoc/dashboard:17">
-              <i class="fas fa-paper-plane"></i> Blast &amp; Alert
+              <i class="fas fa-paper-plane"></i> Messages
             </button>
             <button class="tab-btn" data-tab="certs" data-h-click="spoc/dashboard:18">
-              <i class="fas fa-gavel"></i> Judges &amp; Certs
+              <i class="fas fa-gavel"></i> Judging &amp; certificates
             </button>
             <button class="tab-btn text-danger" data-tab="settings" data-h-click="spoc/dashboard:19">
               <i class="fas fa-cog"></i> Settings
@@ -1627,13 +1531,16 @@ h1, h2, h3, h4, h5, h6 {
                   <div class="event-stat-val">{{ p_count }} <span style="font-size:11px; font-weight:500; color:var(--ink-400);">({{ att_pct }}%)</span></div>
                 </div>
               </div>
-              <div class="event-stat-card">
+              {#- UPG-254: what paid registrations actually paid, for a paid event only -#}
+              {% if event.paid_event %}
+              <div class="event-stat-card" data-received>
                 <div class="event-stat-icon si-orange"><i class="fas fa-wallet"></i></div>
                 <div>
-                  <div class="event-stat-label">Est. Revenue</div>
-                  <div class="event-stat-val">₹{{ "{:,}".format(fee * rc) }}</div>
+                  <div class="event-stat-label">Received</div>
+                  <div class="event-stat-val">₹{{ "{:,.0f}".format(event.paid_total | default(0) | float) }}</div>
                 </div>
               </div>
+              {% endif %}
               <div class="event-stat-card">
                 <div class="event-stat-icon si-purple"><i class="fas fa-user-tie"></i></div>
                 <div>
@@ -1682,77 +1589,58 @@ h1, h2, h3, h4, h5, h6 {
                   <i class="fas fa-user-plus"></i> Assign Coordinator
                 </button>
               </div>
-                        <!-- SVG Room Allocation Wayfinder map focusing on event venue -->
-            <div class="wayfinder-toggle-container">
-              <button class="wayfinder-toggle-btn" data-h-click="spoc/dashboard:21" data-h-a2="{{ event.id }}" data-show-text="Show Venue Wayfinder Map" data-hide-text="Hide Venue Wayfinder Map">
-                <span><i class="fas fa-location-crosshairs me-2"></i><span class="toggle-text">Show Venue Wayfinder Map</span></span>
-                <i class="fas fa-chevron-down toggle-icon ms-2"></i>
-              </button>
-              <div id="event-wayfinder-content-{{ event.id }}" class="wayfinder-collapsible-content">
-                <div class="wayfinder-card-wrapper p-3">
-                  <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h6 class="mb-0 text-white font-monospace" style="color: var(--ink-900) !important;"><i class="fas fa-location-crosshairs me-2 text-primary"></i>Wayfinder Location (Venue: <span class="event-venue-text">{{ event.venue | default('Main Auditorium') }}</span>)</h6>
-                    <span class="badge bg-primary" style="font-size: 9px;">Location Pin Active</span>
-                  </div>
-                  <div class="row align-items-center g-3">
-                    <div class="col-md-7">
-                      <svg viewBox="0 0 600 300" width="100%" style="height:auto" class="wayfinder-svg">
-                        <rect width="100%" height="100%" fill="url(#grid)" rx="10" />
-                        <rect x="10" y="10" width="580" height="280" rx="15" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2" />
-                        
-                        <!-- Main Auditorium -->
-                        <g class="wayfinder-room-g" style="cursor:pointer;" data-h-click="spoc/dashboard:22" data-room-name="Main Auditorium">
-                          <rect x="30" y="30" width="220" height="150" rx="10" class="wayfinder-room-rect" fill="rgba(16, 185, 129, 0.1)" stroke="#10b981" />
-                          <text x="140" y="100" class="wayfinder-label" font-size="14" text-anchor="middle">Main Auditorium</text>
-                          <text x="140" y="125" class="wayfinder-sublabel text-success" fill="#10b981" font-size="11" text-anchor="middle">310 / 400 (77%)</text>
-                        </g>
-
-                        <!-- CS Lab -->
-                        <g class="wayfinder-room-g" style="cursor:pointer;" data-h-click="spoc/dashboard:23" data-room-name="CS Lab">
-                          <rect x="270" y="30" width="140" height="110" rx="10" class="wayfinder-room-rect" fill="rgba(239, 68, 68, 0.1)" stroke="#ef4444" />
-                          <text x="340" y="80" class="wayfinder-label" font-size="12" text-anchor="middle">CS Lab (Zone C)</text>
-                          <text x="340" y="100" class="wayfinder-sublabel text-danger" fill="#ef4444" font-size="10" text-anchor="middle">48 / 50 (96% FULL)</text>
-                        </g>
-
-                        <!-- Seminar Hall -->
-                        <g class="wayfinder-room-g" style="cursor:pointer;" data-h-click="spoc/dashboard:24" data-room-name="Seminar Hall">
-                          <rect x="430" y="30" width="140" height="110" rx="10" class="wayfinder-room-rect" fill="rgba(245, 158, 11, 0.1)" stroke="#f59e0b" stroke-dasharray="4" />
-                          <text x="500" y="80" class="wayfinder-label" font-size="12" text-anchor="middle">Seminar Hall</text>
-                          <text x="500" y="100" class="wayfinder-sublabel text-warning" fill="#f59e0b" font-size="10" text-anchor="middle">120 / 150 (80%)</text>
-                        </g>
-
-                        <path d="M 30 220 L 570 220" stroke="rgba(255,255,255,0.12)" stroke-width="4" stroke-dasharray="8 4" />
-
-                        <!-- Sports Arena -->
-                        <g class="wayfinder-room-g" style="cursor:pointer;" data-h-click="spoc/dashboard:25" data-room-name="Sports Arena">
-                          <rect x="270" y="160" width="300" height="110" rx="10" class="wayfinder-room-rect" fill="rgba(59, 130, 246, 0.1)" stroke="#3b82f6" />
-                          <text x="420" y="210" class="wayfinder-label" font-size="14" text-anchor="middle">Sports Arena (Zone D)</text>
-                          <text x="420" y="230" class="wayfinder-sublabel text-info" fill="#3b82f6" font-size="11" text-anchor="middle">85 / 200 (42%)</text>
-                        </g>
-                      </svg>
-                    </div>
-                    <div class="col-md-5">
-                      <div class="p-3 rounded h-100" style="background:rgba(255,255,255,0.03); border: 1px solid var(--ink-200);">
-                        <h6 class="fw-bold mb-2" style="font-size:13px; color:var(--ink-900);"><i class="fas fa-map-location-dot me-2 text-primary"></i>Wayfinder Inspector</h6>
-                        <div class="room-details-content text-muted small" style="line-height:1.45;">
-                          <p class="mb-0">Select a zone on the blueprint layout map to inspect real-time logistics details, capacity threshold alarms, and shift recommendations.</p>
-                        </div>
-                      </div>
-                    </div>
+            </div>
+          </div>
+          
+          {#- UPG-253: every tool kept, grouped by what the SPOC is doing; the
+              hackathon, round, placement and sports tools only on those events -#}
+          {% set kinds = pn.kinds or {'hackathon': true, 'rounds': true, 'placement': event.is_placement, 'sports': event.category == 'Sports' or event.tournament} %}
+          <!-- TAB: REGISTRATIONS & DATA -->
+          <div class="tab-pane" data-tab-pane="people">
+            <h6 class="fw-bold mb-3" style="font-size:14px;"><i class="fas fa-users me-2 text-primary"></i>Registrations &amp; data</h6>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <div class="p-3 border rounded h-100 tool-group" style="background: var(--bg-soft);">
+                  <h5 class="tool-group-title">People who registered</h5>
+                  <div class="d-flex flex-column gap-2">
+                    <a href="/coordinator/registrations/{{ event.id }}" class="action-btn btn-outline justify-content-start" data-registrations-link>
+                      <i class="fas fa-users"></i> Registrations, Waitlist &amp; Teams (details, accept, cancel)
+                    </a>
+                    <a href="/spoc/export_excel/{{ event.id }}" class="action-btn btn-outline justify-content-start">
+                      <i class="fas fa-table"></i> Export Registrations (Excel)
+                    </a>
+                    <a href="/spoc/export_csv/{{ event.id }}" class="action-btn btn-outline justify-content-start">
+                      <i class="fas fa-file-csv"></i> Export Registrations (CSV)
+                    </a>
+                    <a href="/ticket/badges/{{ event.id }}.pdf" target="_blank" rel="noopener" class="action-btn btn-outline justify-content-start">
+                      <i class="fas fa-id-badge"></i> Print Name Badges (PDF)
+                    </a>
                   </div>
                 </div>
               </div>
-            </div>  </div>
+              <div class="col-md-6">
+                <div class="p-3 border rounded h-100 tool-group" style="background: var(--bg-soft);">
+                  <h5 class="tool-group-title">The form and the link</h5>
+                  <div class="d-flex flex-column gap-2">
+                    <a href="/forms/builder/{{ event.id }}" class="action-btn btn-forms-builder justify-content-start">
+                      <i class="fas fa-rectangle-list"></i> {{ 'Edit Registration Form Builder' if event.get('has_custom_form') else 'Build Custom Registration Form' }}
+                    </a>
+                    <a href="/spoc/event/{{ event.id }}/share" class="action-btn btn-outline justify-content-start">
+                      <i class="fas fa-share-nodes"></i> Share Links &amp; Sources
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-          
-          <!-- TAB 2: LOGISTICS & QR -->
+
+          <!-- TAB 2: EVENT DAY -->
           <div class="tab-pane" data-tab-pane="logistics">
-            <h6 class="fw-bold mb-3" style="font-size:14px;"><i class="fas fa-qrcode me-2 text-success"></i>Live Check-in &amp; Logistics</h6>
-            
+            <h6 class="fw-bold mb-3" style="font-size:14px;"><i class="fas fa-qrcode me-2 text-primary"></i>Event day: check-in and venue</h6>
             <div class="row g-3">
               <div class="col-md-6">
-                <div class="p-3 border rounded h-100" style="background: var(--bg-soft);">
-                  <div style="font-weight:700; font-size:13px; color:var(--ink-900); margin-bottom:8px;">Live Actions</div>
+                <div class="p-3 border rounded h-100 tool-group" style="background: var(--bg-soft);">
+                  <h5 class="tool-group-title">Check-in</h5>
                   <div class="d-flex flex-column gap-2">
                     <a href="/spoc/scan/{{ event.id }}" class="action-btn btn-green justify-content-start">
                       <i class="fas fa-qrcode"></i> QR Ticket Scanner
@@ -1771,13 +1659,15 @@ h1, h2, h3, h4, h5, h6 {
                     </a>
                     {% endif %}
                     {% endif %}
+                    <a href="/spoc/ticket/nfc-verify/{{ event.id }}" class="action-btn btn-green-outline justify-content-start">
+                      <i class="fas fa-rss"></i> NFC Check-in Simulator
+                    </a>
                   </div>
                 </div>
               </div>
-              
               <div class="col-md-6">
-                <div class="p-3 border rounded h-100" style="background: var(--bg-soft);">
-                  <div style="font-weight:700; font-size:13px; color:var(--ink-900); margin-bottom:8px;">Venues &amp; Optimization</div>
+                <div class="p-3 border rounded h-100 tool-group" style="background: var(--bg-soft);">
+                  <h5 class="tool-group-title">Rooms, schedule and the hall</h5>
                   <div class="d-flex flex-column gap-2">
                     <button class="action-btn btn-outline justify-content-start" data-h-click="spoc/dashboard:26" data-h-a3="{{ event.id }}">
                       <i class="fas fa-door-open"></i> Rooms &amp; Capacities Configuration
@@ -1785,40 +1675,33 @@ h1, h2, h3, h4, h5, h6 {
                     <a href="/spoc/room_allocation/{{ event.id }}" class="action-btn btn-outline justify-content-start">
                       <i class="fas fa-table"></i> View Auto-Allocated Rooms
                     </a>
-                    <a href="/spoc/hackathon/{{ event.id }}" class="action-btn btn-blue-outline justify-content-start">
-                      <i class="fas fa-code"></i> Run hackathon: problems, submissions, deadline
-                    </a>
-                    <a href="/spoc/round_panel/{{ event.id }}" class="action-btn btn-blue-outline justify-content-start">
-                      <i class="fas fa-layer-group"></i> Round &amp; Elimination Manager
-                    </a>
                     <a href="/spoc/schedule/optimize/{{ event.id }}" class="action-btn btn-blue-outline justify-content-start">
                       <i class="fas fa-shuffle"></i> Run AI Schedule Optimizer
                     </a>
-                    <a href="/spoc/ticket/nfc-verify/{{ event.id }}" class="action-btn btn-green-outline justify-content-start">
-                      <i class="fas fa-rss"></i> NFC Check-in Simulator
+                    <a href="/interact/{{ event.id }}/host" class="action-btn btn-outline justify-content-start">
+                      <i class="fas fa-square-poll-vertical"></i> Live Polls &amp; Q&amp;A
                     </a>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-          
-          <!-- TAB 3: COMMUNICATIONS -->
+
+          <!-- TAB 3: MESSAGES -->
           <div class="tab-pane" data-tab-pane="comms">
-            <h6 class="fw-bold mb-3" style="font-size:14px;"><i class="fas fa-paper-plane me-2 text-primary"></i>Communications Center</h6>
-            
+            <h6 class="fw-bold mb-3" style="font-size:14px;"><i class="fas fa-paper-plane me-2 text-primary"></i>Messages to participants</h6>
             <div class="row g-3">
               <div class="col-md-6">
                 <!-- Post Announcement -->
-                <div class="p-3 border rounded h-100" style="background: var(--bg-soft);">
-                  <div style="font-weight:700; font-size:13px; color:var(--ink-900); margin-bottom:8px;">Send Dashboard Notification Alert</div>
+                <div class="p-3 border rounded h-100 tool-group" style="background: var(--bg-soft);">
+                  <h5 class="tool-group-title">Notice on participants' dashboards</h5>
                   <form method="POST" action="/spoc/announce/{{ event.id }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-2">
                       <input aria-label="Type notification broadcast message" type="text" name="message" placeholder="Type notification broadcast message…" class="form-control" style="font-size:13px;" required>
                     </div>
-                    <div class="d-flex gap-2 align-items-center">
-                      <select aria-label="Priority" name="priority" class="form-select py-1" style="font-size:12px; height: 34px;">
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                      <select aria-label="Priority" name="priority" class="form-select py-1" style="font-size:12px; height: 34px; flex:1 1 120px;">
                         <option value="info">Info Priority</option>
                         <option value="warning">Warning Priority</option>
                         <option value="success">Success Priority</option>
@@ -1830,18 +1713,13 @@ h1, h2, h3, h4, h5, h6 {
                   </form>
                 </div>
               </div>
-              
               <div class="col-md-6">
-                <!-- Registration Forms & Email Broadcasts -->
-                <div class="p-3 border rounded h-100" style="background: var(--bg-soft);">
-                  <div style="font-weight:700; font-size:13px; color:var(--ink-900); margin-bottom:8px;">Form Builder &amp; Email Broadcasts</div>
+                <div class="p-3 border rounded h-100 tool-group" style="background: var(--bg-soft);">
+                  <h5 class="tool-group-title">Email and the agenda</h5>
                   <div class="d-flex flex-column gap-2">
                     <button class="action-btn btn-emerald justify-content-start" data-h-click="spoc/dashboard:27" data-h-a4="{{ event.id }}" data-h-a5="{{ event.title | e }}">
                       <i class="fas fa-paper-plane"></i> Bulk Email Broadcast (AI Assist)
                     </button>
-                    <a href="/forms/builder/{{ event.id }}" class="action-btn btn-forms-builder justify-content-start">
-                      <i class="fas fa-rectangle-list"></i> {{ 'Edit Registration Form Builder' if event.get('has_custom_form') else 'Build Custom Registration Form' }}
-                    </a>
                     <a href="/spoc/agenda/{{ event.id }}" class="action-btn btn-outline justify-content-start">
                       <i class="fas fa-calendar-check"></i> Edit Public Agenda / Schedule
                     </a>
@@ -1850,20 +1728,18 @@ h1, h2, h3, h4, h5, h6 {
               </div>
             </div>
           </div>
-          
-          <!-- TAB 4: JUDGES & ROUNDS -->
+
+          <!-- TAB 4: JUDGING & CERTIFICATES -->
           <div class="tab-pane" data-tab-pane="certs">
-            <h6 class="fw-bold mb-3" style="font-size:14px;"><i class="fas fa-gavel me-2 text-purple"></i>Judges &amp; Certificates</h6>
-            
+            <h6 class="fw-bold mb-3" style="font-size:14px;"><i class="fas fa-gavel me-2 text-primary"></i>Judging, results &amp; certificates</h6>
             <div class="row g-3">
               <div class="col-md-6">
-                <div class="p-3 border rounded h-100" style="background: var(--bg-soft);">
-                  <div style="font-weight:700; font-size:13px; color:var(--ink-900); margin-bottom:8px;">Judge Evaluations</div>
+                <div class="p-3 border rounded h-100 tool-group" style="background: var(--bg-soft);">
+                  <h5 class="tool-group-title">Judging and results</h5>
                   <div class="d-flex flex-column gap-2">
                     <button class="action-btn btn-sky-outline justify-content-start" data-h-click="spoc/dashboard:28" data-h-a6="{{ event.id }}">
                       <i class="fas fa-users-cog"></i> Add / Manage Judges &amp; CSV Rosters
                     </button>
-                    
                     <form method="POST" action="/spoc/toggle_openhall/{{ event.id }}" style="display:contents;">
                       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                       <button type="submit" class="action-btn {{ 'btn-teal-on' if event.get('open_hall_mode') else 'btn-outline' }} justify-content-start">
@@ -1871,43 +1747,8 @@ h1, h2, h3, h4, h5, h6 {
                         OpenHall Mode (Everyone grades everyone): {% if event.get('open_hall_mode') %}<strong>ON</strong>{% else %}OFF{% endif %}
                       </button>
                     </form>
-                    
-                    {% if event.is_placement %}
-                    <a href="/placement/{{ event.id }}" class="action-btn btn-outline justify-content-start">
-                      <i class="fas fa-briefcase"></i> Placement Drive: Eligibility &amp; Rounds
-                    </a>
-                    {% endif %}
-                    {% if event.category == 'Sports' or event.tournament %}
-                    <a href="/tournament/{{ event.id }}" class="action-btn btn-outline justify-content-start">
-                      <i class="fas fa-medal"></i> Sports Tournament: Fixtures &amp; Standings
-                    </a>
-                    {% endif %}
                     <a href="/spoc/results/{{ event.id }}" class="action-btn btn-outline justify-content-start">
                       <i class="fas fa-trophy"></i> Live Leaderboard &amp; Judging Scores
-                    </a>
-                    <a href="/spoc/event_report/{{ event.id }}" class="action-btn btn-outline justify-content-start">
-                      <i class="fas fa-file-excel"></i> Download Event Report (Excel)
-                    </a>
-                    <a href="/feedback/analytics/{{ event.id }}" class="action-btn btn-outline justify-content-start">
-                      <i class="fas fa-comments"></i> Feedback Summary
-                    </a>
-                    <a href="/coordinator/registrations/{{ event.id }}" class="action-btn btn-outline justify-content-start" data-registrations-link>
-                      <i class="fas fa-users"></i> Registrations, Waitlist &amp; Teams (details, accept, cancel)
-                    </a>
-                    <a href="/spoc/export_excel/{{ event.id }}" class="action-btn btn-outline justify-content-start">
-                      <i class="fas fa-table"></i> Export Registrations (Excel)
-                    </a>
-                    <a href="/spoc/export_csv/{{ event.id }}" class="action-btn btn-outline justify-content-start">
-                      <i class="fas fa-file-csv"></i> Export Registrations (CSV)
-                    </a>
-                    <a href="/ticket/badges/{{ event.id }}.pdf" target="_blank" rel="noopener" class="action-btn btn-outline justify-content-start">
-                      <i class="fas fa-id-badge"></i> Print Name Badges (PDF)
-                    </a>
-                    <a href="/interact/{{ event.id }}/host" class="action-btn btn-outline justify-content-start">
-                      <i class="fas fa-square-poll-vertical"></i> Live Polls &amp; Q&amp;A
-                    </a>
-                    <a href="/spoc/event/{{ event.id }}/share" class="action-btn btn-outline justify-content-start">
-                      <i class="fas fa-share-nodes"></i> Share Links &amp; Sources
                     </a>
                     <a href="/spoc/judging/audit/{{ event.id }}" class="action-btn btn-purple-outline justify-content-start">
                       <i class="fas fa-scale-balanced"></i> Run Judging Strictness Audit
@@ -1915,15 +1756,45 @@ h1, h2, h3, h4, h5, h6 {
                   </div>
                 </div>
               </div>
-              
+              {% if kinds.hackathon or kinds.rounds or kinds.placement or kinds.sports %}
               <div class="col-md-6">
-                <div class="p-3 border rounded h-100" style="background: var(--bg-soft);">
-                  <div style="font-weight:700; font-size:13px; color:var(--ink-900); margin-bottom:8px;">Certificate Setup</div>
+                <div class="p-3 border rounded h-100 tool-group" style="background: var(--bg-soft);">
+                  <h5 class="tool-group-title">For this kind of event</h5>
                   <div class="d-flex flex-column gap-2">
+                    {% if kinds.hackathon %}
+                    <a href="/spoc/hackathon/{{ event.id }}" class="action-btn btn-blue-outline justify-content-start">
+                      <i class="fas fa-code"></i> Run hackathon: problems, submissions, deadline
+                    </a>
+                    {% endif %}
+                    {% if kinds.rounds %}
+                    <a href="/spoc/round_panel/{{ event.id }}" class="action-btn btn-blue-outline justify-content-start">
+                      <i class="fas fa-layer-group"></i> Round &amp; Elimination Manager
+                    </a>
+                    {% endif %}
+                    {% if kinds.placement %}
+                    <a href="/placement/{{ event.id }}" class="action-btn btn-outline justify-content-start">
+                      <i class="fas fa-briefcase"></i> Placement Drive: Eligibility &amp; Rounds
+                    </a>
+                    {% endif %}
+                    {% if kinds.sports %}
+                    <a href="/tournament/{{ event.id }}" class="action-btn btn-outline justify-content-start">
+                      <i class="fas fa-medal"></i> Sports Tournament: Fixtures &amp; Standings
+                    </a>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+              {% endif %}
+              <div class="col-md-6">
+                <div class="p-3 border rounded h-100 tool-group" style="background: var(--bg-soft);">
+                  <h5 class="tool-group-title">Certificates</h5>
+                  <div class="d-flex flex-column gap-2">
+                    <a href="/certificates/events/{{ event.id }}" class="action-btn btn-purple-outline justify-content-start">
+                      <i class="fas fa-award"></i> Certificates: design, signatories, send
+                    </a>
                     <button class="action-btn btn-purple-outline justify-content-start" data-h-click="spoc/dashboard:29" data-h-a7="{{ event.id }}">
                       <i class="fas fa-certificate"></i> Configure Visual Cert Templates
                     </button>
-                    
                     <form method="POST" action="/spoc/bulk_certs/{{ event.id }}" style="display:contents;"
                           data-h-submit="spoc/dashboard:30" data-h-a8="{{ event.title | e }}">
                       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -1934,9 +1805,22 @@ h1, h2, h3, h4, h5, h6 {
                   </div>
                 </div>
               </div>
+              <div class="col-md-6">
+                <div class="p-3 border rounded h-100 tool-group" style="background: var(--bg-soft);">
+                  <h5 class="tool-group-title">Reports</h5>
+                  <div class="d-flex flex-column gap-2">
+                    <a href="/spoc/event_report/{{ event.id }}" class="action-btn btn-outline justify-content-start">
+                      <i class="fas fa-file-excel"></i> Download Event Report (Excel)
+                    </a>
+                    <a href="/feedback/analytics/{{ event.id }}" class="action-btn btn-outline justify-content-start">
+                      <i class="fas fa-comments"></i> Feedback Summary
+                    </a>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          
+
           <!-- TAB 5: SETTINGS & DANGER ZONE -->
           <div class="tab-pane" data-tab-pane="settings">
             <h6 class="fw-bold mb-3 text-danger" style="font-size:14px;"><i class="fas fa-cog me-2"></i>Event Settings</h6>

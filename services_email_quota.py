@@ -20,6 +20,13 @@ count and limit (EMAIL_BACKUP_DAILY_LIMIT, default 270 for Brevo's free 300 a
 day), kept in the same table under ``YYYYMMDD-b`` so no migration is needed.
 Every function takes ``account='main'`` or ``'backup'``; ``available()`` is
 True while either account has room.
+
+A paid plan (UPG-255) counts per month: EMAIL_MONTHLY_LIMIT (0, the default,
+means none) caps the main account's emails in a UTC month, beside the daily
+limit, kept under ``YYYY-MM``. With Brevo as the main sender, Gmail SMTP
+(MAIL_USER and MAIL_PASS) sends what Brevo can't, counted as the ``smtp``
+account under ``YYYYMMDD-g`` against EMAIL_SMTP_DAILY_LIMIT (default 450,
+for Gmail's 500 a day).
 """
 import datetime
 import logging
@@ -32,7 +39,21 @@ logger = logging.getLogger(__name__)
 DEFAULT_LIMIT = 450
 BACKUP = 'backup'
 DEFAULT_BACKUP_LIMIT = 270
-_SETTING = {'main': ('EMAIL_DAILY_LIMIT', DEFAULT_LIMIT), BACKUP: ('EMAIL_BACKUP_DAILY_LIMIT', DEFAULT_BACKUP_LIMIT)}
+SMTP = 'smtp'
+_SETTING = {'main': ('EMAIL_DAILY_LIMIT', DEFAULT_LIMIT), BACKUP: ('EMAIL_BACKUP_DAILY_LIMIT', DEFAULT_BACKUP_LIMIT),
+            SMTP: ('EMAIL_SMTP_DAILY_LIMIT', DEFAULT_LIMIT)}
+MONTHLY = 'EMAIL_MONTHLY_LIMIT'
+
+
+class _Refused(Exception):
+    """The month is full: undo the day's place taken in the same transaction."""
+
+
+def smtp_fallback_configured() -> bool:
+    """Brevo is the main sender and Gmail SMTP is set to send what it can't (UPG-255)."""
+    import os
+    return bool(os.environ.get('BREVO_API_KEY', '').strip() and os.environ.get('MAIL_USER', '').strip()
+                and os.environ.get('MAIL_PASS', '').strip())
 
 
 def backup_configured() -> bool:
@@ -43,6 +64,15 @@ def backup_configured() -> bool:
 
 def limit(account: str = 'main') -> int:
     key, default = _SETTING[account]
+    return _setting(key, default)
+
+
+def monthly_limit() -> int:
+    """The main account's emails a UTC month; 0 = none (UPG-255)."""
+    return _setting(MONTHLY, 0)
+
+
+def _setting(key: str, default: int) -> int:
     try:
         value = current_app.config.get(key, default)
     except RuntimeError:   # outside an app context
@@ -58,10 +88,17 @@ def today() -> str:
     return datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d')
 
 
+def month() -> str:
+    return today()[:7]
+
+
 def _key(account: str) -> str:
-    """The table row for today's count: the date, or YYYYMMDD-b for the backup."""
+    """The table row for today's count: the date, YYYYMMDD-b for the backup,
+    YYYYMMDD-g for Gmail SMTP behind Brevo."""
     day = today()
-    return day if account == 'main' else day.replace('-', '') + '-b'
+    if account == 'main':
+        return day
+    return day.replace('-', '') + ('-b' if account == BACKUP else '-g')
 
 
 @contextmanager
@@ -85,55 +122,87 @@ def sent_today(account: str = 'main') -> int:
         return 0
 
 
+def sent_this_month() -> int:
+    """The main account's emails this UTC month (counted while a monthly limit is set)."""
+    from models_pg import EmailQuota
+    try:
+        with _primary() as s:
+            row = s.get(EmailQuota, month())
+            return int(row.sent) if row else 0
+    except Exception:
+        logger.exception("Email quota: could not read this month's count")
+        return 0
+
+
 def _room(n: int, account: str) -> bool:
     cap = limit(account)
-    return not cap or sent_today(account) + n <= cap
+    if cap and sent_today(account) + n > cap:
+        return False
+    monthly = monthly_limit() if account == 'main' else 0
+    return not monthly or sent_this_month() + n <= monthly
 
 
 def available(n: int = 1) -> bool:
     """True when n more emails fit under today's limit, the backup account's included."""
-    return _room(n, 'main') or (backup_configured() and _room(n, BACKUP))
+    return (_room(n, 'main') or (smtp_fallback_configured() and _room(n, SMTP))
+            or (backup_configured() and _room(n, BACKUP)))
 
 
-def reserve(n: int = 1, account: str = 'main') -> bool:
-    """Take n of today's places; False (and nothing taken) if that passes the limit."""
-    cap = limit(account)
-    if not cap or n <= 0:
-        return True
+def _take(s, key: str, n: int, cap: int) -> bool:
     from sqlalchemy import update
 
     from models_pg import EmailQuota
-    day = _key(account)
+    dialect = s.get_bind().dialect.name
+    if dialect == 'postgresql':
+        from sqlalchemy.dialects.postgresql import insert
+    else:
+        from sqlalchemy.dialects.sqlite import insert
+    s.execute(insert(EmailQuota).values(day=key, sent=0).on_conflict_do_nothing(index_elements=['day']))
+    return bool(s.execute(update(EmailQuota).where(EmailQuota.day == key, EmailQuota.sent + n <= cap)
+                          .values(sent=EmailQuota.sent + n)).rowcount)
+
+
+def reserve(n: int = 1, account: str = 'main') -> bool:
+    """Take n of today's places (and this month's, for the main account with a
+    monthly limit); False (and nothing taken) if that passes a limit."""
+    cap = limit(account)
+    monthly = monthly_limit() if account == 'main' else 0
+    if (not cap and not monthly) or n <= 0:
+        return True
+    which = 'day'
     try:
         with _primary() as s:
-            dialect = s.get_bind().dialect.name
-            if dialect == 'postgresql':
-                from sqlalchemy.dialects.postgresql import insert
+            if cap and not _take(s, _key(account), n, cap):
+                taken = False
+            elif monthly and not _take(s, month(), n, monthly):
+                which = 'month'
+                raise _Refused()
             else:
-                from sqlalchemy.dialects.sqlite import insert
-            s.execute(insert(EmailQuota).values(day=day, sent=0).on_conflict_do_nothing(index_elements=['day']))
-            taken = s.execute(update(EmailQuota)
-                              .where(EmailQuota.day == day, EmailQuota.sent + n <= cap)
-                              .values(sent=EmailQuota.sent + n)).rowcount
+                taken = True
+    except _Refused:
+        taken = False                       # the transaction rolled the day's place back
     except Exception:
         logger.exception("Email quota: could not count an email; sending it anyway")
         return True
     if not taken:
-        logger.warning("Email quota: today's limit of %s emails is reached on the %s account; "
-                       "not sending to %s recipient(s) through it", cap, account, n)
-    return bool(taken)
+        logger.warning("Email quota: the %s's limit of %s emails is reached on the %s account; "
+                       "not sending to %s recipient(s) through it",
+                       which, cap if which == 'day' else monthly, account, n)
+    return taken
 
 
 def release(n: int = 1, account: str = 'main') -> None:
     """The provider didn't accept the email: give its places back."""
-    if not limit(account) or n <= 0:
+    keys = ([_key(account)] if limit(account) else []) + ([month()] if account == 'main' and monthly_limit() else [])
+    if not keys or n <= 0:
         return
     from sqlalchemy import update
 
     from models_pg import EmailQuota
     try:
         with _primary() as s:
-            s.execute(update(EmailQuota).where(EmailQuota.day == _key(account), EmailQuota.sent >= n)
-                      .values(sent=EmailQuota.sent - n))
+            for key in keys:
+                s.execute(update(EmailQuota).where(EmailQuota.day == key, EmailQuota.sent >= n)
+                          .values(sent=EmailQuota.sent - n))
     except Exception:
         logger.exception("Email quota: could not give back an unsent email's place")

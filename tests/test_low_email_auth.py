@@ -204,7 +204,10 @@ def test_the_set_password_link_lasts_48_hours_works_once_and_then_login_works(lo
 
 # ── Criteria 5 and 6: one reset in the first 48 hours, 15 minutes, once ───────
 
-def test_one_reset_email_in_the_first_48_hours_then_the_organizer_message(low):
+def test_one_reset_email_in_the_first_48_hours_then_the_organizer_message(low, monkeypatch):
+    # UPG-260: the limit is off by default now (an account always gets its
+    # link); this checks it still works when PARTICIPANT_RESET_LIMIT is set
+    monkeypatch.setitem(low['app'].config, 'PARTICIPANT_RESET_LIMIT', 1)
     db = low['db']
     event_id, _ = low['event'](team=False)
     lead, _ = low['register'](event_id)
@@ -322,8 +325,11 @@ def test_the_counter_is_atomic_and_gives_back_refused_emails(low, monkeypatch):
 
 # ── Criterion 9: logged for troubleshooting, never a password or token ─────────
 
-def test_status_and_expiry_are_logged_never_a_password_or_token(low, caplog):
+def test_status_and_expiry_are_logged_never_a_password_or_token(low, caplog, monkeypatch):
     flask_app, db = low['app'], low['db']
+    # UPG-260: the reset limit is off by default now; set it, so the refusal
+    # this test checks is still logged without a secret
+    monkeypatch.setitem(flask_app.config, 'PARTICIPANT_RESET_LIMIT', 1)
     caplog.set_level(logging.DEBUG)
     event_id, _ = low['event'](team=False)
     lead, _ = low['register'](event_id)

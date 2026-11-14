@@ -558,6 +558,10 @@ def diag_email():
         "backup_key_set":    _quota.backup_configured(),                 # UPG-224
         "backup_emails_sent_today": _quota.sent_today(_quota.BACKUP),
         "backup_daily_limit": _quota.limit(_quota.BACKUP) or None,
+        "emails_sent_this_month": _quota.sent_this_month(),            # UPG-255
+        "monthly_email_limit": _quota.monthly_limit() or None,
+        "smtp_fallback_set": _quota.smtp_fallback_configured(),
+        "smtp_emails_sent_today": _quota.sent_today(_quota.SMTP),
     }
 
 

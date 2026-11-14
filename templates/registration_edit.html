@@ -67,7 +67,8 @@
 
     <h3 class="h6 mb-2">{{ 'Team lead' if page.team else 'Participant' }}</h3>
     <p class="small mb-2">Email: <strong>{{ page.lead_email }}</strong>
-      <span class="text-muted">— this is the login, so it can't be changed here.</span></p>
+      {% if lead_email_action %}<span class="text-muted">— this is the login; if it's wrong, correct it at the end of this page.</span>
+      {% else %}<span class="text-muted">— this is the login, so it can't be changed here.</span>{% endif %}</p>
     {% for f in page.lead %}{{ field(f) }}{% endfor %}
 
     {% if page.team %}
@@ -97,6 +98,22 @@
       <a href="{{ back }}" class="btn btn-outline-secondary">Cancel</a>
     </div>
   </form>
+
+  {% if lead_email_action %}
+  {#- UPG-256: the hosting SPOC corrects a lead's mistyped email -#}
+  <section class="border rounded p-3 mt-4" id="lead-email" data-lead-email aria-labelledby="lead-email-title">
+    <h3 class="h6 mb-1" id="lead-email-title">The {{ 'lead' if page.team else 'participant' }}'s email is wrong</h3>
+    <p class="text-muted small mb-2">Now <strong>{{ page.lead_email }}</strong>. Type the right address: the {{ 'team' if page.team else 'registration' }} moves to it and it gets the login (a link to set a password). The old address loses access, and the old ticket QR stops working.</p>
+    <form method="post" action="{{ lead_email_action }}" class="d-flex flex-wrap gap-2 align-items-end m-0">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div>
+        <label class="form-label small mb-0" for="lead-new-email">Correct email</label>
+        <input type="email" id="lead-new-email" name="new_email" class="form-control form-control-sm" style="max-width:280px;" required>
+      </div>
+      <button type="submit" class="btn btn-sm btn-outline-primary">Change the email and send the login</button>
+    </form>
+  </section>
+  {% endif %}
 
   {% set correctable = page.members | selectattr('can_correct_email') | list %}
   {% if correctable %}

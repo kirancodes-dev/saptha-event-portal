@@ -275,7 +275,7 @@ def login_status(user: Optional[dict]) -> dict:
 
 def _reset_settings() -> Tuple[int, int]:
     cfg = current_app.config
-    return (int(cfg.get('PARTICIPANT_RESET_WINDOW_HOURS', 48)), int(cfg.get('PARTICIPANT_RESET_LIMIT', 1)))
+    return (int(cfg.get('PARTICIPANT_RESET_WINDOW_HOURS', 48)), int(cfg.get('PARTICIPANT_RESET_LIMIT', 0)))
 
 
 def reset_refusal(user: dict) -> str:
@@ -283,11 +283,15 @@ def reset_refusal(user: dict) -> str:
     (they already had their PARTICIPANT_RESET_LIMIT), 'window' (more than
     PARTICIPANT_RESET_WINDOW_HOURS since the registration made it), or ''.
     Only accounts made by a registration are limited; staff and older
-    accounts keep the usual reset."""
+    accounts keep the usual reset. With PARTICIPANT_RESET_LIMIT 0, the
+    default since UPG-260, nobody is limited: an account that exists always
+    gets its link (the request throttle and the daily email limit still apply)."""
     started = _when((user or {}).get(REGISTERED_AT))
     if started is None:
         return ''
     hours, allowed = _reset_settings()
+    if allowed <= 0:
+        return ''
     if int(user.get('reset_requests') or 0) >= allowed:
         return 'used'
     if _utcnow() > started + datetime.timedelta(hours=hours):

@@ -807,6 +807,19 @@ def view_audit_log():
 # =========================================================
 # BULK EMAIL — send to all users or all registrants of an event
 # =========================================================
+def _mail_counts() -> dict:
+    """Emails sent today and this month against their limits, for the mail page (UPG-255)."""
+    import services_email_quota as quota
+    out = {'today': quota.sent_today(), 'daily': quota.limit(),
+           'month': quota.sent_this_month(), 'monthly': quota.monthly_limit(),
+           'smtp': quota.smtp_fallback_configured(), 'backup': quota.backup_configured()}
+    if out['smtp']:
+        out.update(smtp_today=quota.sent_today(quota.SMTP), smtp_daily=quota.limit(quota.SMTP))
+    if out['backup']:
+        out.update(backup_today=quota.sent_today(quota.BACKUP), backup_daily=quota.limit(quota.BACKUP))
+    return out
+
+
 @admin_bp.route('/send_email', methods=['GET', 'POST'])
 @login_required
 @role_required(SUPER_ROLES)
@@ -815,6 +828,8 @@ def send_bulk_email():
     GET  → show compose form (recipient options + subject + body)
     POST → send to selected audience and show delivery report
     """
+    def _page(**kw):
+        return render_template('admin/send_email.html', mail=_mail_counts(), **kw)
 
     events = []
     try:
@@ -826,7 +841,7 @@ def send_bulk_email():
         pass
 
     if request.method == 'GET':
-        return render_template('admin/send_email.html', events=events)
+        return _page( events=events)
 
     # ── POST — collect form values ────────────────────────
     audience   = request.form.get('audience', 'all_users')  # all_users | event_regs | role_filter
@@ -837,7 +852,7 @@ def send_bulk_email():
 
     if not subject or not message:
         flash('Subject and message are required.', 'warning')
-        return render_template('admin/send_email.html', events=events)
+        return _page( events=events)
 
     emails = []
 
@@ -874,7 +889,7 @@ def send_bulk_email():
 
         if not emails:
             flash('No recipients found for that selection.', 'warning')
-            return render_template('admin/send_email.html', events=events)
+            return _page( events=events)
 
         # Send individually and count successes
         from utils_email import _html_wrapper, _send
@@ -898,7 +913,7 @@ def send_bulk_email():
             log_action(db, 'ANNOUNCEMENT_POSTED', f"{session.get('user_id')} → in-app {posted} | {subject}")
         if channel == 'app':
             flash(f'Posted in the app to {posted} recipient(s).', 'success')
-            return render_template('admin/send_email.html', events=events,
+            return _page( events=events,
                                    last_sent={'count': posted, 'subject': subject, 'audience': audience})
         sent_ok, sent_fail = 0, 0
         failed_addrs = []
@@ -926,7 +941,7 @@ def send_bulk_email():
             flash(f'✅ Email delivered to {sent_ok} recipient(s).'
                   + (f' Also posted in the app to {posted}.' if posted else ''), 'success')
 
-        return render_template('admin/send_email.html',
+        return _page(
                                events=events,
                                last_sent={'count': sent_ok, 'subject': subject,
                                           'audience': audience})
@@ -934,7 +949,7 @@ def send_bulk_email():
     except Exception as exc:
         current_app.logger.exception("Bulk email route error: %s", exc)
         flash(f'Send failed: {exc}', 'danger')
-        return render_template('admin/send_email.html', events=events)
+        return _page( events=events)
 
 
 # =========================================================

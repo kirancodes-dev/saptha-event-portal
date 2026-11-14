@@ -88,6 +88,13 @@ def dashboard():
             if s.get('email'):
                 unique_staff.add(s['email'])
         data['registration_count'] = reg_count
+        # What was actually received, shown for a paid event only (UPG-254)
+        from routes_forms import _paid_event
+        data['paid_event'] = _paid_event(data)
+        data['paid_total'] = sum(paid_amount(r) for r in regs)
+        # The panel's top row, "What to do now" and which tools fit the event (UPG-253)
+        import services_spoc_panel
+        data['panel'] = services_spoc_panel.panel(db, doc.id, data, regs)
         try:
             from services_workflow import WorkflowEngine
             data['allowed_transitions'] = WorkflowEngine.get_allowed_transitions(data, data.get('status', 'active'))
@@ -109,9 +116,11 @@ def dashboard():
     last_updated = datetime.datetime.now().strftime('%d/%m/%Y  %I:%M %p')
 
     from utils_pagination import paginate_events
+    import services_spoc_panel
     return render_template(
         'spoc/dashboard.html',
         events=events,
+        stage_meaning=services_spoc_panel.MEANING,      # under each "Advance to" button (UPG-253)
         page=paginate_events(events),   # sidebar and event panels: 25 a page; stats use every event (UPG-19)
         status_filter=(request.args.get('status') or '').strip().lower(),
         stats={

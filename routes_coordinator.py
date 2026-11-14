@@ -139,6 +139,11 @@ def view_registrations(event_id):
         event = event_doc.to_dict(); event['id'] = event_id
         if not can(session, 'manage_registrations', event, db=db):
             abort(403)
+        # A window whose time has passed ends now, if the hourly job hasn't ended it (UPG-252)
+        import services_team_members as tm
+        if event.get(tm.WINDOW) and not tm.window_open(event):
+            tm.finish_window(db, event_id, event)
+            event[tm.WINDOW] = ''
         regs_raw = (db.collection('registrations')
                       .where(filter=_ff('event_id', '==', event_id)).stream())
         registrations = sorted(
@@ -157,6 +162,16 @@ def view_registrations(event_id):
         if pay_filter in ('paid', 'unpaid'):
             shown = [r for r in shown if (str(r.get('payment_status') or '').strip().lower()
                                           in ('paid', 'completed')) == (pay_filter == 'paid')]
+        # Teams with a member who hasn't confirmed: maybe a wrong email (UPG-257);
+        # teams with a member added in the SPOC's window (UPG-252)
+        import services_team_confirm as confirm
+        members_filter = (request.args.get('members') or '').strip()
+        if members_filter == 'unconfirmed':
+            shown = [r for r in shown if confirm.active(r) and any(
+                st['key'] != 'confirmed' for _, st in confirm.summary(r))]
+        elif members_filter == 'late':
+            shown = [r for r in shown if any(isinstance(m, dict) and m.get('late') for m in r.get('members') or [])]
+        any_late = any(isinstance(m, dict) and m.get('late') for r in registrations for m in r.get('members') or [])
         from utils_pagination import paginate_items
         # The lead's USN is saved as lead_usn (UPG-226); members are found by name, USN or email
         for reg in shown:
@@ -183,6 +198,13 @@ def view_registrations(event_id):
         member_confirm = confirm.enabled(event)
         team_event = team_limits(event)[1] > 1
         waiting = {'waiting': 0, 'unsent': 0, 'held': 0}
+        # "Added during window": when, and by whom (UPG-252)
+        from services_hackathon import show as _show
+        for reg in page.items:
+            for m in reg.get('members') or []:
+                if isinstance(m, dict) and m.get('late'):
+                    m['late_text'] = f"Added {_show(m.get('added_at'), event)}" + (
+                        f" by {m['added_by']}" if m.get('added_by') else '')
         if member_confirm:
             for reg in page.items:
                 reg['member_status'] = confirm.summary(reg)
@@ -205,15 +227,25 @@ def view_registrations(event_id):
         waitlist = waitlist_rows(db, event, form_details)
         from services_waitlist import auto_moves_up as services_waitlist_auto   # UPG-243
         import services_event_documents
+        # The window for teams to change after registration closes (UPG-250)
+        import services_team_members as tm
+        window = None
+        if team_event and may_edit:
+            from services_hackathon import local_input
+            window = {'closes': tm.window_closes(event), 'why_not': tm.why_no_window(event),
+                      'room': len(tm.teams_with_room(db, event_id, event)),
+                      'default_until': local_input((tm._now() + datetime.timedelta(hours=1)).isoformat(), event)}
         return render_template('coordinator/registrations.html',
             event=event, registrations=page.items, page=page, total=len(registrations),
             member_confirm=member_confirm, waiting=waiting, team_event=team_event,
-            may_switch=may_edit, may_cancel=may_edit, may_select=may_edit, may_accept=may_edit,
-            entry=entry_counts, entry_filter=entry_filter, pay_filter=pay_filter,
+            may_edit=may_edit, may_switch=may_edit, may_cancel=may_edit, may_select=may_edit, may_accept=may_edit,
+            entry=entry_counts, entry_filter=entry_filter, pay_filter=pay_filter, members_filter=members_filter,
+            any_late=any_late,
             waitlist=waitlist, seats=seats_left(event),
             waitlist_auto=services_waitlist_auto(event),
             # Documents for registered teams (UPG-239)
             documents=services_event_documents.documents(event), may_edit_documents=may_edit,
+            window=window,
             # The summary at the top (UPG-234)
             cancelled=sum(1 for r in registrations
                           if str(r.get('status') or '').strip().lower() in ('cancelled', 'refunded')))
@@ -260,8 +292,18 @@ def send_login_link(event_id):
         flash(f"✅ A one-time password link (valid 48 hours) was emailed to {lead}.", "success")
     elif status == 'limit':
         flash("Today's email limit is reached, so nothing was sent. Try again tomorrow.", "danger")
+        return redirect(back)
     else:
         flash(f"The email to {lead} couldn't be sent. Check the mail settings and try again.", "danger")
+    # Every member of the team gets their own login too, not only the lead (UPG-261)
+    import services_team_confirm as confirm
+    counts = confirm.send_team(db, reg_doc.id, reg, event, by=session.get('user_id', ''))
+    if any(counts.values()):
+        flash(f"Team members: {counts['sent']} sent a link to confirm and set their password."
+              + (f" {counts['limit']} held back by today's email limit." if counts['limit'] else '')
+              + (f" {counts['failed']} couldn't be sent." if counts['failed'] else '')
+              + (f" {counts['skipped']} already had {confirm.RESEND_LIMIT} links today." if counts['skipped'] else ''),
+              "success" if counts['sent'] and not (counts['limit'] or counts['failed']) else "warning")
     return redirect(back)
 
 
@@ -339,6 +381,7 @@ def _registration_of(event_id):
 def edit_registration(event_id, reg_id):
     """The event's organisers correct a registration's details (UPG-225), also
     after check-in; never a cancelled one."""
+    from services_permission import can
     import services_registration_edit as edit
     from routes_participant import registration_edit_page
     event = _registration_of(event_id)
@@ -351,8 +394,42 @@ def edit_registration(event_id, reg_id):
     if edit.cancelled(reg):
         flash("This registration is cancelled, so its details can't be changed.", "warning")
         return redirect(back)
+    import services_lead_email   # the hosting SPOC corrects the lead's email (UPG-256)
+    lead_email_action = (f'/coordinator/registrations/{event_id}/lead_email/{reg_id}'
+                         if can(session, 'edit_event', event, db=db) and not services_lead_email.why_not(reg, event)
+                         else '')
     return registration_edit_page(reg_id, reg, event, organiser=True, back=back,
-                                  member_email_action=f'/coordinator/registrations/{event_id}/member_email')
+                                  member_email_action=f'/coordinator/registrations/{event_id}/member_email',
+                                  lead_email_action=lead_email_action)
+
+
+@coord_bp.route('/registrations/<event_id>/lead_email/<reg_id>', methods=['POST'])
+@login_required
+@role_required(COORD_ROLES)
+def correct_lead_email(event_id, reg_id):
+    """The hosting SPOC corrects a lead's mistyped email (UPG-256): the team
+    moves to the new address, which gets the login."""
+    import services_lead_email
+    event = _hosted_event(event_id)
+    page = f'/coordinator/registrations/{event_id}/edit/{reg_id}'
+    doc = db.collection('registrations').document(reg_id).get()
+    reg = (doc.to_dict() or {}) if doc.exists else {}
+    if str(reg.get('event_id') or '') != str(event_id):
+        flash("That registration isn't for this event.", "danger")
+        return redirect(f'/coordinator/registrations/{event_id}')
+    try:
+        done = services_lead_email.correct(db, reg_id, reg, event, request.form.get('new_email') or '',
+                                           by=session.get('user_id', ''))
+    except services_lead_email.LeadEmailError as exc:
+        flash(str(exc), 'warning')
+        return redirect(page)
+    flash(f"The lead's email is now {done['new']}. " + {
+        'sent': "A link to set a password went there; the old address no longer has the team.",
+        'sign-in': "That address already has an account: an email told them to sign in.",
+        'limit': "Today's email limit is reached, so no login email went: use \"Send password link\" on the list tomorrow.",
+    }.get(done['login'], "The login email couldn't be sent: use \"Send password link\" on the list.")
+        + " The old ticket QR no longer works.", 'success' if done['login'] in ('sent', 'sign-in') else 'warning')
+    return redirect(page)
 
 
 @coord_bp.route('/registrations/<event_id>/member_email', methods=['POST'])
@@ -627,6 +704,37 @@ def waitlist_auto(event_id):
           "Teams now stay on the waitlist until you accept them; a freed seat waits for you. "
           "New sign-ups join the waitlist while anyone is waiting.", 'success')
     return redirect(f'/coordinator/registrations/{event_id}#waitlist')
+
+
+@coord_bp.route('/registrations/<event_id>/add_members_window', methods=['POST'])
+@login_required
+@role_required(COORD_ROLES)
+def add_members_window(event_id):
+    """The hosting SPOC opens the event, after registration closes, for a set
+    time in which registered teams add and remove members (UPG-250), or
+    closes it early."""
+    import services_team_members as tm
+    event = _hosted_event(event_id)
+    actor = session.get('user_id', '')
+    if request.form.get('action') == 'close':
+        added = tm.close_window(db, event_id, event, by=actor)      # logs it and tells the SPOC (UPG-252)
+        flash("Closed: teams can't change any more." + (
+            f" {len(added)} member{'' if len(added) == 1 else 's'} added while it was open: "
+            "the list is in your notifications." if added else ''), 'success')
+        return redirect(f'/coordinator/registrations/{event_id}#add-members-window')
+    try:
+        done = tm.open_window(db, event_id, event, (request.form.get('length') or '').strip(),
+                              request.form.get('until') or '', email=request.form.get('email') == 'yes',
+                              by=actor)
+    except tm.WindowError as exc:
+        flash(str(exc), 'warning')
+        return redirect(f'/coordinator/registrations/{event_id}#add-members-window')
+    log_action(db, "ADD_MEMBERS_WINDOW_OPENED", f"{actor}: event {event_id} until {done['until']}")
+    teams = done['teams']
+    told = (f"{teams} team{'' if teams == 1 else 's'} with room {'was' if teams == 1 else 'were'} told in their portal"
+            + (f", {done['emailed']} by email" if done['emailed'] else '') + '.') if teams else "No team has room right now."
+    flash(f"Teams can add and remove members until {done['until']}. {told}", 'success')
+    return redirect(f'/coordinator/registrations/{event_id}#add-members-window')
 
 
 def checked_in(reg: dict) -> bool:

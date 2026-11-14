@@ -364,6 +364,25 @@ def send_waiting(db, event_id: str, event: dict, by: str) -> dict:
     return counts
 
 
+def send_team(db, reg_id: str, reg: dict, event: dict, by: str) -> dict:
+    """The organiser's "Send password link" on a team (UPG-261): besides the
+    lead's link, each member who hasn't confirmed gets a fresh link to confirm
+    and set a password (an earlier one stops working), within the resend
+    limit. {'sent', 'limit', 'failed', 'skipped'}: skipped = resends used up."""
+    counts = {'sent': 0, 'limit': 0, 'failed': 0, 'skipped': 0}
+    if not enabled(event) or not active(reg):
+        return counts
+    for member in others(reg):
+        if member.get('confirmed_at'):
+            continue
+        again = bool(member.get('confirm_email'))
+        if again and not resends_left(member):
+            counts['skipped'] += 1
+            continue
+        counts[send(db, reg_id, reg, event, member, by=by, resend=again)] += 1
+    return counts
+
+
 def summary(reg: dict) -> list:
     """[(member, status)] for the organiser's list and export."""
     return [(m, status(m)) for m in others(reg)]

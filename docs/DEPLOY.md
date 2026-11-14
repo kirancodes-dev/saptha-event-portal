@@ -93,8 +93,9 @@ app sends in a UTC day, every kind and every instance together, one per recipien
 at the limit it sends nothing and tells people to contact the organizer. Set it below
 your provider's quota: about 270 on Brevo's free plan (300 a day), 450 on Gmail
 (500), 1,800 on Google Workspace (2,000). `NOTIFY_TEAM_MEMBERS=true` also emails every team
-member (off: the lead only). `PARTICIPANT_RESET_LIMIT` (1) and
-`PARTICIPANT_RESET_WINDOW_HOURS` (48) limit a registration account's reset emails.
+member (off: the lead only). `PARTICIPANT_RESET_LIMIT` (0, none, since UPG-260: an
+account that exists always gets its reset link) and `PARTICIPANT_RESET_WINDOW_HOURS`
+(48) limit a registration account's reset emails when the limit is set above 0.
 `/diag/email` shows today's count. The limit's table comes from migration
 `0010_email_quota`.
 
@@ -107,6 +108,49 @@ day's capacity is about 540. People are told to contact the organizer only when 
 full. `/diag/email?via=backup` sends a test through the backup alone and shows its count;
 without the key nothing changes. No migration: the backup's count is a second row in
 `email_quota`.
+
+**A paid mail plan (UPG-255).** Paid plans (Brevo Starter, for one) give an allowance a
+month, not a day. `EMAIL_MONTHLY_LIMIT` (default 0, none) caps the main account's emails in
+a UTC month, beside `EMAIL_DAILY_LIMIT`; at either limit the main account sends nothing
+more and the fallbacks take over. With `BREVO_API_KEY` main and `MAIL_USER` + `MAIL_PASS`
+also set, Gmail SMTP sends what Brevo can't (its limit reached, or the email refused),
+before the backup Brevo account, if there is one, counted against
+`EMAIL_SMTP_DAILY_LIMIT` (default 450, for Gmail's 500 a day). The admin's **Send email**
+page and `/diag/email` show today's and this month's counts. No migration: the month's
+count is a row `YYYY-MM` in `email_quota`, Gmail's a row `YYYYMMDD-g`.
+
+Switching from Gmail to a paid Brevo plan (only the owner can do this):
+
+1. **Plan.** In Brevo → *Plans*, buy the plan (Starter: a set number of emails a month,
+   no daily cap). Note the monthly number.
+2. **Domain.** Brevo → *Senders, domains & dedicated IPs* → *Domains* → add the domain
+   you send from (an address like `events@yourcollege.edu`, not a gmail.com one). Brevo
+   shows DNS records: add them at the domain's DNS host:
+   - the **Brevo code** TXT record;
+   - **DKIM**: the TXT (or CNAME) record Brevo gives;
+   - **SPF**: add `include:spf.brevo.com` to the domain's one `v=spf1 … ~all` TXT record
+     (don't make a second SPF record);
+   - **DMARC**: a TXT at `_dmarc` such as `v=DMARC1; p=none; rua=mailto:you@yourdomain`.
+   Click *Authenticate* once DNS has spread (minutes to a day). Then add the sender
+   address under *Senders*.
+3. **Secret.** Brevo → *SMTP & API* → *API keys* → new key. Store it:
+   `printf '%s' 'xkeysib-…' | gcloud secrets versions add BREVO_API_KEY --data-file=-`
+   (or `gcloud secrets create` the first time, then grant the run service account
+   *Secret Manager Secret Accessor*).
+4. **Redeploy** with the secret and the new settings, keeping `MAIL_USER`/`MAIL_PASS` so
+   Gmail stays as the fallback:
+   ```bash
+   gcloud run services update saptha --region <region> \
+     --update-secrets=BREVO_API_KEY=BREVO_API_KEY:latest \
+     --update-env-vars=MAIL_FROM='SapthaEvent <events@yourdomain>',EMAIL_MONTHLY_LIMIT=<plan's month minus a margin>,EMAIL_DAILY_LIMIT=<a day's share or 0>
+   ```
+   `EMAIL_DAILY_LIMIT=0` turns the daily cap off for the main account; keep one if a
+   single bad send shouldn't use the month.
+5. **Check.** Open `/diag/email?to=<your address>`: the provider says Brevo, the email
+   arrives, and `monthly_email_limit` is the number you set. The admin's *Send email*
+   page shows "Sent this month".
+6. **Roll back** by removing the secret from the service
+   (`--remove-secrets=BREVO_API_KEY`): Gmail SMTP is the main sender again.
 
 ## Database migrations
 

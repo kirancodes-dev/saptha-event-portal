@@ -132,6 +132,17 @@
     </div>
 {% endcall %}
 
+{#- UPG-257: teammates who haven't confirmed; maybe the lead mistyped an email -#}
+{% if unconfirmed %}
+<section class="panel mb-4 border-warning" aria-labelledby="unconfirmed-title" data-unconfirmed-reminder>
+  <h2 class="h6 mb-2" id="unconfirmed-title"><i class="fas fa-user-clock me-2 text-warning" aria-hidden="true"></i>Teammates who haven't confirmed</h2>
+  {% for u in unconfirmed %}
+  <p class="small mb-1">{{ u.names|length }} teammate{{ '' if u.names|length == 1 else 's' }} on {{ u.team_name or 'your team' }} ({{ u.event_title }}) {{ 'hasn\'t' if u.names|length == 1 else 'haven\'t' }} confirmed: {{ u.names|join(', ') }}. Check their emails.
+    <a href="/teams/{{ u.reg_id }}" class="ms-1">Open the team page</a></p>
+  {% endfor %}
+</section>
+{% endif %}
+
 {#- UPG-236: where they stand on each waitlist they (or their team) joined -#}
 {% if my_waitlist %}
 {% from "participant/_waitlist.html" import waitlist_cards %}

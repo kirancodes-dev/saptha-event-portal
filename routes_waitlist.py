@@ -341,6 +341,13 @@ def promote_entry(db, event_id: str, wl_id: str, wl: dict, announce: bool = True
                          or "General"),
         )
 
+    # Each member the lead listed: a link to confirm and set a password, as a
+    # registration from the form sends (UPG-209); a paid seat sends them once
+    # it's paid (routes_payment._complete_registration)
+    if status == "Confirmed":
+        import services_team_confirm   # never raises: the lead or organiser can resend
+        services_team_confirm.after_registration(db, reg_id, reg_data, dict(ev, id=event_id))
+
     # Increment count
     try:
         from google.cloud.firestore_v1 import Increment

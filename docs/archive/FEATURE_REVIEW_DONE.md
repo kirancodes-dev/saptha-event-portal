@@ -129,7 +129,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Ticket transfer | WORKING [T at UPG-161] | `services_transfer.py`, `routes_participant.py:1048`, `routes_ticket.py:42-65` | Off by default; the `tickets` record isn't moved yet (UPG-189). |
 | Share links and registration sources | WORKING [T at UPG-162] | `services_share.py`, `routes_spoc.py:2494-2535` | Only the code is stored; unknown codes are "other". |
 | SPOC event panel (`/spoc/dashboard`) | WORKING [T at UPG-253, UPG-254] | `services_spoc_panel.py`, `routes_spoc.py:94-123`, `templates/spoc/dashboard.html:1408-1872` | Top row (registered of the limit, waiting, members not confirmed, checked in; Registrations & Waitlist, Share, Scanner), a "What to do now" card by stage, every earlier tool in labelled tabs and groups, hackathon, round, sports and placement tools only on those kinds (all on an event of no known type), a line under each "Advance to" button; fits 375px. No invented map; "Received" is the money paid registrations paid, paid events only. |
-| SPOC registrations list: filter and sort | WORKING [T at UPG-264] | `services_registration_filters.py`, `routes_coordinator.py:156-166`, `templates/coordinator/registrations.html:340-365` | Filters that combine: status, members (not confirmed, everyone confirmed, no email, added during window), check-in, team size, entry list, payment; sorts by date, team or lead name, size and members not confirmed; kept with the search and across pages. |
+| SPOC registrations list: filter and sort | WORKING [T at UPG-264] | `services_registration_filters.py`, `routes_coordinator.py:156-166`, `templates/coordinator/registrations.html:340-365` | Filters that combine: status, members (not confirmed, everyone confirmed, no email, added during window), check-in, team size, entry list, payment; sorts by date, team or lead name, size and members not confirmed; kept with the search and across pages. The filtered list downloads with "What to fix" and goes to WhatsApp as a message (UPG-265, untested). |
 
 ---
 
@@ -5430,3 +5430,13 @@ Defaults chosen in Phase 1 (each one can be changed; listed in the changelog): "
   3. ✅ Sorting by date, team name, size and members not confirmed (`::test_the_list_sorts_by_date_name_size_and_waiting_members`).
   4. ✅ Only the filters that apply are offered; another SPOC gets 403 (`::test_the_form_offers_only_what_applies_and_another_spoc_gets_403`).
 - **Tests changed:** none (the page's existing tests pass: `tests/test_registrations_page.py`, `test_wrong_email_hints.py`, `test_window_summary.py`, `test_entry_selection.py` and others, 50).
+
+#### UPG-265 — The SPOC downloads the filtered list with what to fix, and sends it on WhatsApp
+- **Status:** DONE (untested, owner's instruction)
+- **Last verified:** 2026-11-14, uncommitted on `ef56a74` [C]
+- **Problem:** Owner, 2026-11-14: "download the full details of that and send to WhatsApp, like all teams still not confirmed, so we can fix things". UPG-264's filters showed the teams, but the export always held every registration and nothing put the list in a message.
+- **What was built:** `GET /coordinator/registrations/<event>/export_filtered` (`routes_coordinator.py:1368-1399`, `export_data` permission) applies the page's filters and search and returns the export (`services_export.registration_table(..., only=...)`, `:266`) for just those teams, in the page's order, with a "What to fix" column (`services_registration_filters.problems`). The page (`templates/coordinator/registrations.html:366-377`) has "Download this list with full details (CSV)", "Send on WhatsApp" (`https://wa.me/?text=…`: the event, the filters in words, each team with its lead's phone and what to fix; cut at 1,800 characters with "…and N more", `whatsapp_text`) and "Copy the message" (`static/js/pages/coordinator__registrations.js:87`), with the message shown under "See the message".
+- **Acceptance criteria (not test-backed: the owner said "don't test anything, just add and deploy"):**
+  1. The download holds only the filtered, searched teams, with every column and "What to fix".
+  2. The WhatsApp message lists each team, its lead's phone and what to fix, and opens WhatsApp.
+- **Tests changed:** none; no tests written or run (owner's instruction). Checked: ruff, the template parses, the script parses.

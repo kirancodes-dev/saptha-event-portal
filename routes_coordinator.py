@@ -124,6 +124,10 @@ def dashboard():
         user_name=session.get('name'))
 
 
+SEARCH_FIELDS = ('lead_name', 'name', 'lead_email', 'student_email', 'lead_usn', 'usn', 'team_name', 'lead_phone',
+                 'member_search')
+
+
 # 2. VIEW REGISTRATIONS (all students for an event)
 @coord_bp.route('/registrations/<event_id>')
 @login_required
@@ -173,6 +177,11 @@ def view_registrations(event_id):
         page = paginate_items(shown, search_fields=(
             'lead_name', 'name', 'lead_email', 'student_email', 'lead_usn', 'usn', 'team_name', 'lead_phone',
             'member_search'))
+        # The filtered list as a file and as a WhatsApp message (UPG-265)
+        from utils_pagination import matches as _matches
+        found = [r for r in shown if _matches(r, page.q, SEARCH_FIELDS)]
+        import services_team_confirm as confirm
+        share_text = reg_filters.whatsapp_text(found, event, picked, page.q, confirm.enabled(event))
         # Each lead's login email, for helping someone told to contact the organizer (UPG-152)
         from services_accounts import login_status
         # Everything the form asked, labelled, under each row (UPG-231)
@@ -235,6 +244,7 @@ def view_registrations(event_id):
             any_late=any_late,
             # The combined filters and sort (UPG-264)
             filter_choices=reg_filters.choices(member_confirm, team_event, any_late), picked=picked,
+            share_text=share_text, filtered_export=reg_filters.export_args(picked, page.q),
             waitlist=waitlist, seats=seats_left(event),
             waitlist_auto=services_waitlist_auto(event),
             # Documents for registered teams (UPG-239)
@@ -1353,6 +1363,40 @@ def export_registrations(event_id):
     columns, rows = services_export.registration_table(db, event_id)   # read once: columns follow the data (UPG-222)
     return Response(services_export.to_csv(rows, columns), mimetype='text/csv',
                     headers={"Content-Disposition": f"attachment; filename={_export_name(event, 'Registrations.csv')}"})
+
+
+@coord_bp.route('/registrations/<event_id>/export_filtered')
+@login_required
+def export_filtered(event_id):
+    """The registrations list as filtered and searched on the page, every
+    detail plus "What to fix" (UPG-265)."""
+    import services_entry
+    import services_export
+    import services_registration_filters as reg_filters
+    import services_team_confirm as confirm
+    from routes_spoc import _export_name
+    from utils_pagination import matches
+    event = _event_or_abort(event_id, 'export_data')
+    event['id'] = event_id
+    regs = [dict(d.to_dict() or {}, id=d.id) for d in
+            db.collection('registrations').where(filter=_ff('event_id', '==', event_id)).stream()]
+    listed = dict(event, **{services_entry.SWITCH: True})
+    picked = reg_filters.chosen(request.args)
+    shown = reg_filters.apply(
+        regs, picked, event,
+        on_list=lambda r: None if services_entry.inactive(r) else bool(services_entry.may_enter(listed, r)),
+        checked_in=checked_in)
+    q = (request.args.get('q') or '').strip()
+    for reg in shown:
+        reg['member_search'] = ' '.join(str(m.get(k) or '') for m in reg.get('members') or [] if isinstance(m, dict)
+                                        for k in ('name', 'usn', 'email'))
+    shown = [r for r in shown if matches(r, q, SEARCH_FIELDS)]
+    member_confirm = confirm.enabled(event)
+    only = {r['id']: '; '.join(reg_filters.problems(r, event, member_confirm)) for r in shown}
+    columns, rows = services_export.registration_table(db, event_id, only=only)
+    return Response(services_export.to_csv(rows, columns), mimetype='text/csv',
+                    headers={"Content-Disposition":
+                             f"attachment; filename={_export_name(event, 'Registrations-filtered.csv')}"})
 
 
 @coord_bp.route('/export_excel/<event_id>')

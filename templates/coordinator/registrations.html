@@ -363,6 +363,18 @@
       </form>
     </details>
     {% if picked or page.q %}<p class="small text-muted mb-2" data-filter-summary>Showing {{ page.total }} of {{ total }}.</p>{% endif %}
+    {#- UPG-265: this list as a file, and as a message for WhatsApp, with what to fix -#}
+    {% if page.total %}
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-2" data-share-list>
+      <a href="/coordinator/registrations/{{ event.id }}/export_filtered{% if filtered_export %}?{{ filtered_export }}{% endif %}" class="btn btn-sm btn-outline-primary" data-export-filtered><i class="fas fa-download me-1" aria-hidden="true"></i>Download {{ 'this list' if picked or page.q else 'all' }} with full details (CSV)</a>
+      <a href="https://wa.me/?text={{ share_text|urlencode }}" target="_blank" rel="noopener" class="btn btn-sm btn-success" data-whatsapp><i class="fab fa-whatsapp me-1" aria-hidden="true"></i>Send on WhatsApp</a>
+      <button type="button" class="btn btn-sm btn-outline-secondary" data-copy-share><i class="fas fa-copy me-1" aria-hidden="true"></i><span data-label>Copy the message</span></button>
+    </div>
+    <details class="small mb-2" data-share-preview>
+      <summary class="text-muted">See the message (each team and what to fix)</summary>
+      <pre class="border rounded p-2 mt-1 mb-0 bg-light" style="white-space:pre-wrap;max-height:16rem;overflow:auto;" data-share-text>{{ share_text }}</pre>
+    </details>
+    {% endif %}
   {% if registrations %}
   {#- UPG-229: one thing per column, the actions in their own column -#}
   {% set short = {'confirmed': 'Confirmed', 'waiting': 'Waiting', 'held': 'Email held', 'failed': 'Email failed', 'not_sent': 'No link sent'} %}

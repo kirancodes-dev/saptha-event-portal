@@ -154,3 +154,77 @@ def sort(regs: List[dict], how: str) -> List[dict]:
     }
     key = keys.get(how)
     return sorted(newest, key=key) if key else newest
+
+
+# ── What to fix, the list as a file and as a WhatsApp message (UPG-265) ─────
+
+_WAIT = {'waiting': 'not confirmed yet', 'not_sent': 'no link sent', 'held': 'email held (daily limit)',
+         'failed': 'email failed (wrong address?)'}
+
+
+def problems(reg: dict, event: dict, member_confirm: bool) -> List[str]:
+    """What the SPOC may need to chase or correct on one registration."""
+    import services_team_confirm as confirm
+    from routes_forms import team_limits
+    out = []
+    status = _status(reg)
+    if status in CANCELLED:
+        return ['cancelled']
+    if status in ('pending_payment', 'pending payment'):
+        out.append('waiting for payment')
+    lo = team_limits(event)[0]
+    if size(reg) < lo:
+        out.append(f'team has {size(reg)} of at least {lo}')
+    for m in _others(reg):
+        who = str(m.get('name') or '').strip() or 'a member'
+        if not confirm._email(m):
+            out.append(f'{who}: no email')
+        elif member_confirm and not m.get('confirmed_at'):
+            out.append(f"{who} ({confirm._email(m)}): {_WAIT.get(confirm.status(m)['key'], 'not confirmed')}")
+    return out
+
+
+def describe(picked: Dict[str, str], q: str = '') -> str:
+    """The chosen filters in words: "Members: a member not confirmed; Check-in: not checked in"."""
+    names = {'status': ('Status', STATUS), 'members': ('Members', MEMBERS), 'checkin': ('Check-in', CHECKIN),
+             'size': ('Team size', SIZE), 'entry': ('Entry list', ENTRY), 'pay': ('Payment', PAY)}
+    parts = [f"{label}: {dict(options).get(picked[key], picked[key]).lower()}"
+             for key, (label, options) in names.items() if picked.get(key)]
+    if q:
+        parts.append(f'search "{q}"')
+    return '; '.join(parts) or 'all registrations'
+
+
+WHATSAPP_LIMIT = 1800   # characters: a wa.me link longer than this may not open on every phone
+
+
+def whatsapp_text(regs: List[dict], event: dict, picked: Dict[str, str], q: str, member_confirm: bool,
+                  limit: int = WHATSAPP_LIMIT) -> str:
+    """A message listing the filtered teams and what to fix, cut short (with
+    "and N more") so the link still opens."""
+    title = str(event.get('title') or 'Event').strip()
+    head = f"*{title}*: {describe(picked, q)} ({len(regs)})"
+    lines, used = [head], len(head)
+    for n, r in enumerate(regs, start=1):
+        lead = str(r.get('lead_name') or r.get('name') or '').strip()
+        phone = str(r.get('lead_phone') or r.get('phone') or '').strip()
+        team = str(r.get('team_name') or '').strip()
+        who = ' – '.join(x for x in (team, lead + (f' ({phone})' if phone else '')) if x) or 'Registration'
+        fix = problems(r, event, member_confirm)
+        line = f"{n}. {who}" + (''.join(f"\n   • {p}" for p in fix) if fix else '')
+        rest = len(regs) - n + 1
+        if used + len(line) + 40 > limit and n > 1:
+            lines.append(f"…and {rest} more: see the downloaded list.")
+            break
+        lines.append(line)
+        used += len(line) + 1
+    return '\n'.join(lines)
+
+
+def export_args(picked: Dict[str, str], q: str = '') -> str:
+    """The query string for the filtered download: the same filters and search."""
+    from urllib.parse import urlencode
+    args = dict(picked)
+    if q:
+        args['q'] = q
+    return urlencode(args)

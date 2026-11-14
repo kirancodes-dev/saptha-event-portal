@@ -83,4 +83,17 @@
     var a = e.target.closest('a[href^="#"]');
     if (a) openTo(a.getAttribute('href'));
   });
+
+  // UPG-265: copy the WhatsApp message, to paste into a group or a chat
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-copy-share]');
+    if (!btn) return;
+    var pre = document.querySelector('[data-share-text]');
+    var label = btn.querySelector('[data-label]');
+    if (!pre || !navigator.clipboard) return;
+    navigator.clipboard.writeText(pre.textContent).then(function () {
+      if (label) label.textContent = 'Copied';
+      setTimeout(function () { if (label) label.textContent = 'Copy the message'; }, 2000);
+    });
+  });
 })();

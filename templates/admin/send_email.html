@@ -33,6 +33,22 @@ h1,h2,h3,h4,h5 { font-family: var(--font-heading); }
     </div>
     {% endif %}
 
+    {% if mail %}
+    {#- What's been sent against the plan's limits (UPG-255) -#}
+    <div class="card mb-4" data-mail-counts>
+        <div class="card-body py-3 d-flex flex-wrap gap-4 small">
+            <div><span class="text-muted d-block">Sent today</span>
+                <strong data-sent-today>{{ mail.today }}{% if mail.daily %} of {{ mail.daily }}{% endif %}</strong></div>
+            <div><span class="text-muted d-block">Sent this month</span>
+                <strong data-sent-month>{% if mail.monthly %}{{ mail.month }} of {{ mail.monthly }}{% else %}no monthly limit set{% endif %}</strong></div>
+            {% if mail.smtp %}<div><span class="text-muted d-block">Gmail SMTP fallback today</span>
+                <strong data-sent-smtp>{{ mail.smtp_today }}{% if mail.smtp_daily %} of {{ mail.smtp_daily }}{% endif %}</strong></div>{% endif %}
+            {% if mail.backup %}<div><span class="text-muted d-block">Backup account today</span>
+                <strong data-sent-backup>{{ mail.backup_today }}{% if mail.backup_daily %} of {{ mail.backup_daily }}{% endif %}</strong></div>{% endif %}
+        </div>
+    </div>
+    {% endif %}
+
     <div class="card mb-4">
         <div class="card-header d-flex align-items-center gap-2">
             <i class="fas fa-envelope-open-text"></i>

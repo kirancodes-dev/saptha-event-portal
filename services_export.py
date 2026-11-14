@@ -263,11 +263,16 @@ class FormDetails:
         return {'lead': lead, 'members': members, 'answers': answers}
 
 
-def registration_table(db, event_id, sessions=True):
+def registration_table(db, event_id, sessions=True, only=None):
     """(columns, rows) of the registrations export. With sessions=False the
-    columns are COLUMNS only, the same for every event (the all-events export)."""
+    columns are COLUMNS only, the same for every event (the all-events export).
+    `only` (UPG-265): {registration id: what to fix}, in the order to list
+    them: just those registrations, with a "What to fix" column."""
     import services_sessions
     regs = _registrations(db, event_id)
+    if only is not None:
+        order = {rid: n for n, rid in enumerate(only)}
+        regs = [(rid, r) for rid, r in regs if rid in order]
     agenda = _event_sessions(db, event_id) if sessions else []
     confirming = _member_confirm(db, event_id)
     went = services_sessions.attended(event_id) if agenda else {}
@@ -284,8 +289,11 @@ def registration_table(db, event_id, sessions=True):
     columns = (COLUMNS[:split] + member_headers + [h for _, h in questions] + COLUMNS[split:]
                + [f"Session: {services_sessions.label(s)}" for s in agenda]
                + (['Selected to attend'] if listed else []))
+    if only is not None:
+        columns = columns + ['What to fix']
     rows = []
-    for rid, r in sorted(regs, key=lambda x: str(x[1].get('registered_at') or '')):
+    for rid, r in (sorted(regs, key=lambda x: order[x[0]]) if only is not None
+                   else sorted(regs, key=lambda x: str(x[1].get('registered_at') or ''))):
         profile = profiles.get((r.get('lead_email') or '').lower())
         usn = _lead(r, 'usn', usn_ids, profile)
         department, year = department_and_year(r, profile, usn)
@@ -314,6 +322,7 @@ def registration_table(db, event_id, sessions=True):
             r.get('ticket_type_name', ''),                                    # UPG-155
         ] + ['Yes' if s['id'] in went.get(rid, ()) else '' for s in agenda]  # UPG-159
         row += [('Yes' if services_entry.may_enter(listed, r) else 'No')] if listed else []   # UPG-214
+        row += [only[rid]] if only is not None else []                                        # UPG-265
         rows.append(row)
     return columns, rows
 

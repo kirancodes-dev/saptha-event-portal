@@ -134,7 +134,9 @@ def build(db, event_id: str, event: dict, reg: dict) -> dict:
         st = confirm.status(m) if confirming else None
         members.append({'n': i + 1, 'index': i, 'key': _member_key(m), 'email': _email(m.get('email')),
                         'name': str(m.get('name') or ''), 'parts': parts, 'status': st,
-                        'can_correct_email': bool(st and st['key'] != 'confirmed' and _email(m.get('email')))})
+                        'can_correct_email': bool(st and st['key'] != 'confirmed' and _email(m.get('email'))),
+                        # UPG-262: a member with no email can be given one
+                        'needs_email': not _email(m.get('email'))})
 
     questions = []
     for f in fields:

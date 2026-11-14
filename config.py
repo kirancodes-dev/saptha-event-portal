@@ -207,15 +207,19 @@ class Config:
     # kind counted together (registrations and password resets included),
     # kept under the provider's own limit (450 for 500 a day; 0 = no limit).
     # NOTIFY_TEAM_MEMBERS: automated messages go to the team lead only unless
-    # this is true. An account a registration made may ask for
-    # PARTICIPANT_RESET_LIMIT reset emails in its first
-    # PARTICIPANT_RESET_WINDOW_HOURS; after that the organizer helps.
+    # this is true. PARTICIPANT_RESET_LIMIT (0, the default, means none, UPG-260):
+    # set above 0, an account a registration made may ask for that many reset
+    # emails in its first PARTICIPANT_RESET_WINDOW_HOURS, then the organizer helps.
     EMAIL_DAILY_LIMIT              = int(os.environ.get('EMAIL_DAILY_LIMIT', 450))
     # The backup Brevo account's own daily limit (BREVO_BACKUP_API_KEY, UPG-224)
     EMAIL_BACKUP_DAILY_LIMIT       = int(os.environ.get('EMAIL_BACKUP_DAILY_LIMIT', 270))
+    # A paid plan's monthly allowance for the main account (0 = none), and Gmail
+    # SMTP's own daily limit when it sends what Brevo can't (UPG-255)
+    EMAIL_MONTHLY_LIMIT            = int(os.environ.get('EMAIL_MONTHLY_LIMIT', 0))
+    EMAIL_SMTP_DAILY_LIMIT         = int(os.environ.get('EMAIL_SMTP_DAILY_LIMIT', 450))
     NOTIFY_TEAM_MEMBERS            = os.environ.get('NOTIFY_TEAM_MEMBERS', 'false').strip().lower() in ('1', 'true', 'yes')
     PARTICIPANT_RESET_WINDOW_HOURS = int(os.environ.get('PARTICIPANT_RESET_WINDOW_HOURS', 48))
-    PARTICIPANT_RESET_LIMIT        = int(os.environ.get('PARTICIPANT_RESET_LIMIT', 1))
+    PARTICIPANT_RESET_LIMIT        = int(os.environ.get('PARTICIPANT_RESET_LIMIT', 0))
 
     # =========================================================
     # 5. SUPER ADMIN

@@ -79,6 +79,57 @@
   </div>
   {% endif %}
 
+  {% if window %}
+  {#- UPG-250: after registration closes, the SPOC lets registered teams add
+      and remove members for a set time -#}
+  <section class="card border mb-3" id="add-members-window" data-add-members-window="{{ 'open' if window.closes else 'closed' }}" aria-labelledby="amw-title">
+    <div class="card-body py-3">
+      <h2 class="h6 fw-bold mb-1" id="amw-title"><i class="fas fa-user-clock me-1 text-primary" aria-hidden="true"></i>Let teams add members after the deadline</h2>
+      {% if window.closes %}
+      <p class="small mb-2"><span class="badge bg-success me-1">Open</span>Registered teams can add and remove members, and teammates can join with the invite code, until <strong>{{ window.closes }}</strong>. New teams still can't register. {{ window.room }} team{{ '' if window.room == 1 else 's' }} still {{ 'has' if window.room == 1 else 'have' }} room.</p>
+      <form method="post" action="/coordinator/registrations/{{ event.id }}/add_members_window" class="m-0 d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="close">
+        <button type="submit" class="btn btn-sm btn-outline-danger">Close now</button>
+      </form>
+      {% elif window.why_not %}
+      <p class="small text-muted mb-0" data-window-why-not>{{ window.why_not }}</p>
+      {% else %}
+      <p class="small text-muted mb-2">Registration has closed. Open it for a while so registered teams with room ({{ window.room }} now) can add or replace members. New teams still can't register.</p>
+      {% endif %}
+      {% if not window.why_not %}
+      <form method="post" action="/coordinator/registrations/{{ event.id }}/add_members_window" class="row g-2 align-items-end mt-1" data-window-form>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="open">
+        <div class="col-sm-auto">
+          <label class="form-label small fw-semibold mb-0" for="amw-length">{{ 'Change the end to' if window.closes else 'For how long' }}</label>
+          <select class="form-select form-select-sm" id="amw-length" name="length">
+            <option value="30">30 minutes from now</option>
+            <option value="60" selected>1 hour from now</option>
+            <option value="120">2 hours from now</option>
+            <option value="1440">1 day from now</option>
+            <option value="until">Until the time I choose →</option>
+          </select>
+        </div>
+        <div class="col-sm-auto">
+          <label class="form-label small fw-semibold mb-0" for="amw-until">Time (only for "until the time I choose")</label>
+          <input class="form-control form-control-sm" type="datetime-local" id="amw-until" name="until" value="{{ window.default_until }}">
+        </div>
+        <div class="col-sm-auto">
+          <div class="form-check small mb-1">
+            <input class="form-check-input" type="checkbox" id="amw-email" name="email" value="yes" checked>
+            <label class="form-check-label" for="amw-email">Email the leads too (counts against today's email limit)</label>
+          </div>
+        </div>
+        <div class="col-sm-auto">
+          <button type="submit" class="btn btn-sm btn-primary">{{ 'Change the end' if window.closes else 'Open for teams' }}</button>
+        </div>
+      </form>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+
   {#- UPG-239: documents for registered teams (an undertaking form, say): the
       SPOC's own instructions, a PDF, or both. Teams see them in their portal -#}
   <details class="card border mb-3 reg-fold" id="documents" data-documents data-remember="documents">
@@ -208,7 +259,7 @@
 
   {#- UPG-214: the SPOC quietly chooses which teams may attend; nobody is told.
       UPG-234: folded away, open while the list is on -#}
-  <details class="card border mb-3 reg-fold" data-entry-list data-remember="entry"{% if entry.on %} open{% endif %}>
+  <details class="card border mb-3 reg-fold" id="entry-list" data-entry-list data-remember="entry"{% if entry.on %} open{% endif %}>
     <summary class="card-header bg-white">
       <h2 class="h6 fw-bold mb-0">Entry list: {{ 'on' if entry.on else 'off' }}</h2>
       <span class="small text-muted" data-entry-counts>Selected {{ entry.selected }} · Not selected {{ entry.not_selected }} · Checked in {{ entry.checked_in }} · Turned away at the door {{ entry.refused }}{% if entry.limit %} · Hall seats {{ entry.limit }}{% endif %}</span>
@@ -274,8 +325,10 @@
         Show:
         {% set base = request.path ~ '?' ~ ({'q': page.q} if page.q else {})|urlencode %}
         {% set filters = [('', '', 'all'), ('entry', 'selected', 'selected'), ('entry', 'not_selected', 'not selected'), ('pay', 'paid', 'paid'), ('pay', 'unpaid', 'not paid')] %}
+        {% if member_confirm %}{% set filters = filters + [('members', 'unconfirmed', 'members not confirmed')] %}{% endif %}
+        {% if any_late %}{% set filters = filters + [('members', 'late', 'added during window')] %}{% endif %}
         {% for key, value, name in filters %}
-        {% set current = (not key and not entry_filter and not pay_filter) or (key == 'entry' and entry_filter == value) or (key == 'pay' and pay_filter == value) %}
+        {% set current = (not key and not entry_filter and not pay_filter and not members_filter) or (key == 'entry' and entry_filter == value) or (key == 'pay' and pay_filter == value) or (key == 'members' and members_filter == value) %}
         <a href="{{ base }}{% if key %}&{{ key }}={{ value }}{% endif %}#registrations" class="{{ 'fw-bold' if current }}"{% if current %} aria-current="true"{% endif %}>{{ name }}</a>{% if not loop.last %} ·{% endif %}
         {% endfor %}
       </nav>
@@ -284,6 +337,44 @@
       <button type="button" class="btn btn-sm btn-outline-secondary" data-details-all aria-expanded="false"><i class="fas fa-list me-1" aria-hidden="true"></i><span data-label>Show all details</span></button>
       {% endif %}
     </div>
+    {#- UPG-264: filters that combine, and a sort; the search is kept -#}
+    {% set labels = {'status': 'Status', 'members': 'Members', 'checkin': 'Check-in', 'size': 'Team size', 'entry': 'Entry list', 'pay': 'Payment', 'sort': 'Sort by'} %}
+    <details class="border rounded px-3 py-2 mb-2" data-filter-sort{% if picked %} open{% endif %}>
+      <summary class="small fw-semibold">Filter and sort{% if picked %} <span class="badge text-bg-primary ms-1" data-filter-count>{{ picked | length }} on</span>{% endif %}</summary>
+      <form method="get" action="{{ request.path }}#registrations" class="d-flex flex-wrap gap-2 align-items-end mt-2 mb-1" aria-label="Filter and sort the list">
+        {% if page.q %}<input type="hidden" name="q" value="{{ page.q }}">{% endif %}
+        {% if page.per_page != 25 %}<input type="hidden" name="per_page" value="{{ page.per_page }}">{% endif %}
+        {% for key in ['status', 'members', 'checkin', 'size', 'entry', 'pay', 'sort'] %}
+        {% set options = filter_choices[key] %}
+        {% if options %}
+        <div>
+          <label class="form-label small mb-0" for="flt-{{ key }}">{{ labels[key] }}</label>
+          <select id="flt-{{ key }}" name="{{ key }}" class="form-select form-select-sm" data-filter="{{ key }}">
+            <option value="">{{ 'Newest first' if key == 'sort' else 'All' }}</option>
+            {% for value, name in options %}{% if not (key == 'sort' and value == 'newest') %}
+            <option value="{{ value }}"{% if picked.get(key) == value %} selected{% endif %}>{{ name }}</option>
+            {% endif %}{% endfor %}
+          </select>
+        </div>
+        {% endif %}
+        {% endfor %}
+        <button type="submit" class="btn btn-sm btn-primary">Apply</button>
+        {% if picked %}<a href="{{ request.path }}{% if page.q %}?{{ {'q': page.q}|urlencode }}{% endif %}#registrations" class="btn btn-sm btn-link" data-filter-clear>Clear filters</a>{% endif %}
+      </form>
+    </details>
+    {% if picked or page.q %}<p class="small text-muted mb-2" data-filter-summary>Showing {{ page.total }} of {{ total }}.</p>{% endif %}
+    {#- UPG-265: this list as a file, and as a message for WhatsApp, with what to fix -#}
+    {% if page.total %}
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-2" data-share-list>
+      <a href="/coordinator/registrations/{{ event.id }}/export_filtered{% if filtered_export %}?{{ filtered_export }}{% endif %}" class="btn btn-sm btn-outline-primary" data-export-filtered><i class="fas fa-download me-1" aria-hidden="true"></i>Download {{ 'this list' if picked or page.q else 'all' }} with full details (CSV)</a>
+      <a href="https://wa.me/?text={{ share_text|urlencode }}" target="_blank" rel="noopener" class="btn btn-sm btn-success" data-whatsapp><i class="fab fa-whatsapp me-1" aria-hidden="true"></i>Send on WhatsApp</a>
+      <button type="button" class="btn btn-sm btn-outline-secondary" data-copy-share><i class="fas fa-copy me-1" aria-hidden="true"></i><span data-label>Copy the message</span></button>
+    </div>
+    <details class="small mb-2" data-share-preview>
+      <summary class="text-muted">See the message (each team and what to fix)</summary>
+      <pre class="border rounded p-2 mt-1 mb-0 bg-light" style="white-space:pre-wrap;max-height:16rem;overflow:auto;" data-share-text>{{ share_text }}</pre>
+    </details>
+    {% endif %}
   {% if registrations %}
   {#- UPG-229: one thing per column, the actions in their own column -#}
   {% set short = {'confirmed': 'Confirmed', 'waiting': 'Waiting', 'held': 'Email held', 'failed': 'Email failed', 'not_sent': 'No link sent'} %}
@@ -324,7 +415,7 @@
             <ul class="list-unstyled mb-0">
               {% for m, st in reg.member_status %}
               <li class="d-flex justify-content-between align-items-center gap-2 py-1" data-member-status="{{ st.key }}">
-                <span>{{ m.name or m.email }}</span>
+                <span>{{ m.name or m.email }}{% if m.late %}<span class="badge text-bg-info ms-1" data-late title="{{ m.late_text }}">Added during window</span><span class="d-block small text-muted">{{ m.late_text }}</span>{% endif %}</span>
                 <span class="badge text-bg-{{ 'secondary' if st.tone == 'neutral' else st.tone }}" title="{{ st.label }}">{{ short.get(st.key, st.label) }}<span class="visually-hidden"> ({{ st.label }})</span></span>
               </li>
               {% endfor %}
@@ -332,7 +423,7 @@
             {% elif reg.members and reg.members|length > 1 %}
             <ul class="list-unstyled mb-0">
               {% for m in reg.members if (m.email or '')|lower != (reg.lead_email or '')|lower %}
-              <li class="py-1">{{ m.name or m.email }}</li>
+              <li class="py-1">{{ m.name or m.email }}{% if m.late %}<span class="badge text-bg-info ms-1" data-late title="{{ m.late_text }}">Added during window</span><span class="d-block small text-muted">{{ m.late_text }}</span>{% endif %}</li>
               {% endfor %}
             </ul>
             {% else %}<span class="text-muted">—</span>{% endif %}
@@ -359,7 +450,7 @@
             <form method="post" action="/coordinator/registrations/{{ event.id }}/login_link" class="mt-1">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <input type="hidden" name="reg_id" value="{{ reg.reg_id or reg.id }}">
-              <button type="submit" class="btn btn-sm btn-outline-secondary">Send password link</button>
+              <button type="submit" class="btn btn-sm btn-outline-secondary" data-send-login{% if reg.members and member_confirm %} title="The lead and each member who hasn't confirmed"{% endif %}>Send password link{% if reg.members and member_confirm and reg.members|length > 1 %}s{% endif %}</button>
             </form>
             {% endif %}
             {% endif %}
@@ -370,6 +461,10 @@
               {#- UPG-225: the organiser corrects the details -#}
               {% if not reg.cancelled %}
               <a href="/coordinator/registrations/{{ event.id }}/edit/{{ reg.id }}" class="btn btn-sm btn-outline-primary" data-edit-details><i class="fas fa-pen me-1" aria-hidden="true"></i>Edit<span class="visually-hidden"> {{ label }}</span></a>
+              {% endif %}
+              {#- UPG-256: the hosting SPOC corrects a lead's mistyped email; the right address gets the login -#}
+              {% if may_edit and not reg.cancelled and not reg.checked_in %}
+              <a href="/coordinator/registrations/{{ event.id }}/edit/{{ reg.id }}#lead-email" class="btn btn-sm btn-outline-secondary" data-change-lead-email><i class="fas fa-at me-1" aria-hidden="true"></i>Lead's email<span class="visually-hidden"> of {{ label }}</span></a>
               {% endif %}
               {#- UPG-211: the hosting SPOC cancels a team until it is checked in -#}
               {% if may_cancel and not reg.cancelled %}
@@ -402,7 +497,7 @@
   {% else %}
   <div class="text-center text-muted py-5">
     <i class="fas fa-users fa-2x mb-2" aria-hidden="true"></i>
-    <p class="mb-0">{% if page.q %}No registrations match “{{ page.q }}”.{% elif entry_filter or pay_filter %}No registrations match this filter.{% else %}No registrations yet.{% endif %}</p>
+    <p class="mb-0">{% if page.q %}No registrations match “{{ page.q }}”.{% elif picked %}No registrations match this filter.{% else %}No registrations yet.{% endif %}</p>
   </div>
   {% endif %}
   </section>

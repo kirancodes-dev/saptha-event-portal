@@ -21,7 +21,7 @@
                 <span><span class="fw-semibold text-strong">{{ m.name }}</span> <span class="text-subtle small" style="word-break:break-all;">{{ m.email }}{% if m.usn %} · {{ m.usn }}{% endif %}</span>
                     {% if m.role == 'Lead' %}<span class="se-badge se-badge--gold se-badge--plain ms-1">Lead</span>{% endif %}
                     {% if st %}<span class="se-badge se-badge--{{ st.tone }} se-badge--plain ms-1" data-status="{{ st.key }}">{{ st.label }}</span>{% endif %}</span>
-                {% if is_lead and m.role != 'Lead' %}
+                {% if is_lead and m.role != 'Lead' and may_remove %}
                 <form method="POST" action="/teams/{{ reg_id }}/remove" class="m-0">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="email" value="{{ m.email }}">
@@ -29,6 +29,19 @@
                 </form>
                 {% endif %}
               </div>
+              {% if is_lead and not key and m.role != 'Lead' %}
+              <div class="mt-2" data-add-email>
+                {#- UPG-262: a member saved with no email gets one, and their link -#}
+                <p class="small mb-1 text-strong"><i class="fas fa-circle-exclamation text-warning me-1" aria-hidden="true"></i>{{ m.name or 'This member' }} has no email yet, so they can't log in. Add it and they get a link to confirm and set a password:</p>
+                <form method="POST" action="/teams/{{ reg_id }}/members/email" class="d-flex flex-wrap gap-2">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="email" value="name:{{ (m.name or '')|trim }}">
+                    <label class="visually-hidden" for="ae-{{ loop.index }}">Email for {{ m.name }}</label>
+                    <input type="email" id="ae-{{ loop.index }}" name="new_email" class="form-control form-control-sm" style="max-width:260px;" required placeholder="name@example.com">
+                    <button type="submit" class="btn btn-sm btn-primary">Add the email and send the link</button>
+                </form>
+              </div>
+              {% endif %}
               {% if is_lead and st and st.key != 'confirmed' %}
               <div class="d-flex flex-wrap gap-2 align-items-start mt-2">
                 <form method="POST" action="/teams/{{ reg_id }}/members/resend" class="m-0">
@@ -37,16 +50,17 @@
                     <button type="submit" class="btn btn-sm btn-outline-primary"{% if not resends.get(key) %} disabled{% endif %}>Resend link</button>
                     <span class="text-subtle small ms-1">{{ resends.get(key, 0) }} of 3 resends left today</span>
                 </form>
-                <details class="m-0">
-                    <summary class="btn btn-sm btn-outline-secondary">Correct the email</summary>
-                    <form method="POST" action="/teams/{{ reg_id }}/members/email" class="d-flex flex-wrap gap-2 mt-2">
+                <div class="w-100" data-wrong-email>
+                    {#- UPG-257: a teammate who hasn't confirmed may have a mistyped email -#}
+                    <p class="small mb-1 text-strong"><i class="fas fa-circle-exclamation text-warning me-1" aria-hidden="true"></i>{{ m.name or 'This member' }} hasn't confirmed yet. Wrong email? Type the right one and they get a new link:</p>
+                    <form method="POST" action="/teams/{{ reg_id }}/members/email" class="d-flex flex-wrap gap-2">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="email" value="{{ m.email }}">
                         <label class="visually-hidden" for="ne-{{ loop.index }}">New email for {{ m.name }}</label>
                         <input type="email" id="ne-{{ loop.index }}" name="new_email" class="form-control form-control-sm" style="max-width:260px;" required placeholder="name@example.com">
-                        <button type="submit" class="btn btn-sm btn-primary">Save and send a new link</button>
+                        <button type="submit" class="btn btn-sm btn-primary">Correct the email and send a new link</button>
                     </form>
-                </details>
+                </div>
               </div>
               {% endif %}
             </li>
@@ -58,6 +72,10 @@
         {% if is_lead %}
         <section class="mt-4" id="add-member" aria-labelledby="add-member-title" data-add-member>
           <h2 class="h6 mb-1" id="add-member-title">Add a member</h2>
+          {% if window_closes %}
+          {#- UPG-250: the SPOC opened the team for changes after registration closed -#}
+          <p class="alert alert-info small py-2 mb-2" data-window-open>Registration has closed, but the organiser lets teams change until <strong>{{ window_closes }}</strong>. Add or remove members before then; teammates can also join with your invite code.</p>
+          {% endif %}
           {% if add_block %}
           <p class="text-subtle small mb-0" data-add-block>{{ add_block }}</p>
           {% else %}

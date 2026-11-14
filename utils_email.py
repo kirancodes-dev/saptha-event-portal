@@ -18,6 +18,11 @@ Backup (UPG-224): BREVO_BACKUP_API_KEY, a second Brevo account, sends what the
 main provider can't: once the main account reaches EMAIL_DAILY_LIMIT, or when
 it refuses an email. It has its own EMAIL_BACKUP_DAILY_LIMIT (default 270) and
 sends from MAIL_FROM_BACKUP, else MAIL_FROM (verified in that account too).
+
+A paid plan (UPG-255): EMAIL_MONTHLY_LIMIT caps the main account's month. With
+BREVO_API_KEY main and MAIL_USER + MAIL_PASS set, Gmail SMTP sends what Brevo
+can't (its limit reached, or the email refused), before the backup Brevo
+account; it counts against EMAIL_SMTP_DAILY_LIMIT.
 """
 
 from __future__ import annotations
@@ -532,6 +537,8 @@ def _send(to_email, subject: str, html: str,
             ok = _send_via_gmail(to_email, subject, html, attachments)
         if not ok and counted:
             quota.release(count)
+    if not ok and quota.smtp_fallback_configured():
+        ok = send_via_smtp_fallback(to_email, subject, html, attachments)
     if not ok and quota.backup_configured():
         ok = send_via_backup(to_email, subject, html, attachments)
 
@@ -540,6 +547,18 @@ def _send(to_email, subject: str, html: str,
         for email in to_list:
             _update_delivery_status(email, 'Sent', reg_id)
 
+    return ok
+
+
+def send_via_smtp_fallback(to_email, subject: str, html: str, attachments: list | None = None) -> bool:
+    """Brevo is main and couldn't send: Gmail SMTP, counted against its own daily limit (UPG-255)."""
+    import services_email_quota as quota
+    count = 1 if isinstance(to_email, str) else len(to_email or [])
+    if not quota.smtp_fallback_configured() or not quota.reserve(count, quota.SMTP):
+        return False
+    ok = _send_via_gmail(to_email, subject, html, attachments)
+    if not ok:
+        quota.release(count, quota.SMTP)
     return ok
 
 
@@ -954,6 +973,28 @@ def send_member_confirm_email(to_email: str, name: str, lead: str, team: str, ev
     """, "Confirm your team place")
     _log_link_without_mail('team member confirmation', to_email, url)
     return _send(to_email, f"Confirm your place in {team or 'the team'} — {event_title}", html)
+
+
+def send_add_members_window_email(to_email: str, name: str, team: str, event_title: str,
+                                  closes: str, reg_id: str) -> bool:
+    """The organiser opened the event, after registration closed, for teams
+    to add members until `closes` (UPG-250). To the lead of a team with room."""
+    url = f"{_base_url()}/teams/{reg_id}#add-member"
+    html = _html_wrapper(f"""
+        <p style="color:#475569;">Dear <strong>{_e(name or 'Team lead')}</strong>,</p>
+        <p style="color:#475569;">Registration for <strong style="color:#1a2557;">{_e(event_title)}</strong> has
+           closed, but the organiser has opened it for team changes until
+           <strong>{_e(closes)}</strong>. {f'Team <strong>{_e(team)}</strong> has' if team else 'Your team has'}
+           room for more members.</p>
+        <p style="color:#475569;">Add them from your team page, or share your invite code with them.
+           After that time the team can't change.</p>
+        <p style="text-align:center;margin:24px 0;">
+          <a href="{_e(url)}"
+             style="background:#1a2557;color:#fff;padding:12px 32px;border-radius:8px;
+                    text-decoration:none;font-weight:700;display:inline-block;">Open my team page →</a>
+        </p>
+    """, "Add members to your team")
+    return _send(to_email, f"Add members until {closes} — {event_title}", html)
 
 
 def send_payment_receipt_email(to_email: str, name: str, event_title: str, amount,

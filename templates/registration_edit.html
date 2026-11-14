@@ -67,7 +67,8 @@
 
     <h3 class="h6 mb-2">{{ 'Team lead' if page.team else 'Participant' }}</h3>
     <p class="small mb-2">Email: <strong>{{ page.lead_email }}</strong>
-      <span class="text-muted">— this is the login, so it can't be changed here.</span></p>
+      {% if lead_email_action %}<span class="text-muted">— this is the login; if it's wrong, correct it at the end of this page.</span>
+      {% else %}<span class="text-muted">— this is the login, so it can't be changed here.</span>{% endif %}</p>
     {% for f in page.lead %}{{ field(f) }}{% endfor %}
 
     {% if page.team %}
@@ -81,7 +82,8 @@
       <h3 class="h6 mb-2">Member {{ m.n }}
         {% if m.status %}<span class="badge text-bg-{{ 'secondary' if m.status.tone == 'neutral' else m.status.tone }} ms-1">{{ m.status.label }}</span>{% endif %}</h3>
       <p class="small mb-2">Email: <strong>{{ m.email or '—' }}</strong>
-        {% if m.can_correct_email %}<span class="text-muted">— correct it below{% if not organiser %}, or on the team page{% endif %}.</span>
+        {% if m.needs_email %}<span class="text-muted" data-needs-email>— none yet. Add it {% if organiser %}below{% else %}on the <a href="/teams/{{ reg_id }}">team page</a>{% endif %}; they get a link to confirm and set a password.</span>
+        {% elif m.can_correct_email %}<span class="text-muted">— correct it below{% if not organiser %}, or on the team page{% endif %}.</span>
         {% elif m.email %}<span class="text-muted">— their login, so it can't be changed here.</span>{% endif %}</p>
       {% for f in m.parts %}{{ field(f) }}{% endfor %}
     </div>
@@ -98,25 +100,42 @@
     </div>
   </form>
 
-  {% set correctable = page.members | selectattr('can_correct_email') | list %}
+  {% if lead_email_action %}
+  {#- UPG-256: the hosting SPOC corrects a lead's mistyped email -#}
+  <section class="border rounded p-3 mt-4" id="lead-email" data-lead-email aria-labelledby="lead-email-title">
+    <h3 class="h6 mb-1" id="lead-email-title">The {{ 'lead' if page.team else 'participant' }}'s email is wrong</h3>
+    <p class="text-muted small mb-2">Now <strong>{{ page.lead_email }}</strong>. Type the right address: the {{ 'team' if page.team else 'registration' }} moves to it and it gets the login (a link to set a password). The old address loses access, and the old ticket QR stops working.</p>
+    <form method="post" action="{{ lead_email_action }}" class="d-flex flex-wrap gap-2 align-items-end m-0">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div>
+        <label class="form-label small mb-0" for="lead-new-email">Correct email</label>
+        <input type="email" id="lead-new-email" name="new_email" class="form-control form-control-sm" style="max-width:280px;" required>
+      </div>
+      <button type="submit" class="btn btn-sm btn-outline-primary">Change the email and send the login</button>
+    </form>
+  </section>
+  {% endif %}
+
+  {% set correctable = page.members | selectattr('can_correct_email') | list
+                       + page.members | selectattr('needs_email') | list %}
   {% if correctable %}
-  <h3 class="h6 mt-4 mb-2">Correct a member's email</h3>
+  <h3 class="h6 mt-4 mb-2">{{ 'Add or correct' if page.members | selectattr('needs_email') | list else 'Correct' }} a member's email</h3>
   {% if organiser and member_email_action %}
-  <p class="text-muted small">For a member who hasn't confirmed yet. The new address gets a link to confirm; the old link stops working.</p>
+  <p class="text-muted small">For a member with no email, or who hasn't confirmed yet. The new address gets a link to confirm and set a password; an old link stops working.</p>
   {% for m in correctable %}
-  <form method="post" action="{{ member_email_action }}" class="d-flex flex-wrap gap-2 align-items-end mb-2" data-member-email>
+  <form method="post" action="{{ member_email_action }}" class="d-flex flex-wrap gap-2 align-items-end mb-2" data-member-email{% if m.needs_email %} data-add-email{% endif %}>
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="reg_id" value="{{ reg_id }}">
-    <input type="hidden" name="email" value="{{ m.email }}">
+    <input type="hidden" name="email" value="{{ m.key }}">
     <div>
-      <label class="form-label small mb-0" for="ne-{{ m.index }}">New email for {{ m.name or m.email }} (now {{ m.email }})</label>
-      <input type="email" id="ne-{{ m.index }}" name="new_email" class="form-control form-control-sm" style="max-width:280px;" required>
+      <label class="form-label small mb-0" for="ne-{{ m.index }}">{% if m.needs_email %}Email for {{ m.name or 'Member ' ~ m.n }} (none yet){% else %}New email for {{ m.name or m.email }} (now {{ m.email }}){% endif %}</label>
+      <input type="email" id="ne-{{ m.index }}" name="new_email" class="form-control form-control-sm" style="max-width:280px;" required placeholder="name@example.com">
     </div>
-    <button type="submit" class="btn btn-sm btn-outline-primary">Save and send a new link</button>
+    <button type="submit" class="btn btn-sm btn-outline-primary">{{ 'Add the email and send the link' if m.needs_email else 'Save and send a new link' }}</button>
   </form>
   {% endfor %}
   {% else %}
-  <p class="text-muted small">Use "Correct the email" beside the member on the <a href="/teams/{{ reg_id }}">team page</a>; they get a new link to confirm.</p>
+  <p class="text-muted small">Use "Correct the email" (or "Add the email", for a member with none) beside the member on the <a href="/teams/{{ reg_id }}">team page</a>; they get a link to confirm.</p>
   {% endif %}
   {% endif %}
 </div>

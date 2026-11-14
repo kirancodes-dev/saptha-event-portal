@@ -104,7 +104,7 @@ def create_team(event_id):
 @login_required
 @role_required('Student')
 def join_team():
-    from routes_forms import registration_closed, team_limits
+    from routes_forms import team_limits
     if request.method == 'GET':
         return render_template('teams/join.html', code=(request.args.get('code') or '').strip().upper())
 
@@ -123,7 +123,8 @@ def join_team():
     if any(_email(m) == me for m in members) or (reg.get('lead_email') or '').lower() == me:
         flash("You're already on this team.", "info")
         return redirect(f'/teams/{reg_id}')
-    if not event or registration_closed(event):
+    import services_team_members   # the SPOC's window after registration closes (UPG-250)
+    if not event or services_team_members.closed_for_changes(event):
         flash("This event isn't taking registrations, so its teams can't change.", "warning")
         return redirect('/teams/join')
     if _registered_for(event_id, me):
@@ -141,6 +142,8 @@ def join_team():
     member = {'role': 'Member', 'email': me, 'name': profile.get('name') or session.get('name', ''),
               'usn': (profile.get('usn') or '').upper(), 'phone': profile.get('phone', ''),
               'confirmed_at': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'confirmed_by': 'invite'}
+    if services_team_members.late_fields(event):           # joined in the SPOC's window (UPG-252)
+        member.update(late=True, added_at=member['confirmed_at'], added_by=me)
     # The checks above are re-made atomically while adding (UPG-52)
     added = _add_member(reg_id, member, team_max)
     if added == 'full':
@@ -189,6 +192,9 @@ def view_team(reg_id):
     return render_template('teams/view.html', reg=reg, reg_id=reg_id, event=event, is_lead=_is_lead(reg),
                            team_min=team_min, team_max=team_max, statuses=statuses, resends=resends,
                            may_edit=may_edit, add_block=add_block,
+                           # The SPOC's window after registration closes (UPG-250)
+                           window_closes=services_team_members.window_closes(event or {}),
+                           may_remove=not services_team_members.why_not_remove(reg, event or {}),
                            room_left=services_team_members.room_left(reg, team_max),
                            confirm_on=confirm.enabled(event or {}) and services_hackathon.email_allowed(
                                event or {}, 'member_confirm'))
@@ -227,17 +233,20 @@ def resend_confirmation(reg_id):
 def correct_member_email(reg_id):
     import services_team_confirm as confirm
     reg, event = _lead_team(reg_id)
-    old = (request.form.get('email') or '').strip().lower()
+    old = (request.form.get('email') or '').strip()     # 'name:' and the name for a member with no email (UPG-262)
     new = (request.form.get('new_email') or '').strip().lower()
     try:
         outcome = confirm.correct_email(db, reg_id, reg, event, old, new, by=_me())
     except confirm.ConfirmError as exc:
         flash(str(exc), 'warning')
         return redirect(f'/teams/{reg_id}')
-    flash(f"Email changed to {new}. " + ({'sent': "A link was sent there; the old one no longer works.",
-                                         'limit': "Today's email limit is reached: resend the link tomorrow."}
-                                        .get(outcome, "The email couldn't be sent: resend the link later.")),
-          'success' if outcome == 'sent' else 'warning')
+    flash(f"Email {'added' if old.startswith('name:') else 'changed to'} {new}. "
+          + ({'sent': "A link was sent there to confirm and set a password"
+                      + ("." if old.startswith('name:') else "; the old one no longer works."),
+              'limit': "Today's email limit is reached: resend the link tomorrow.",
+              'saved': ""}
+             .get(outcome, "The email couldn't be sent: resend the link later.")),
+          'success' if outcome in ('sent', 'saved') else 'warning')
     return redirect(f'/teams/{reg_id}')
 
 
@@ -268,6 +277,8 @@ def confirm_member(token):
         # An account with a password: confirm by signing in as it
         if _me() == email:
             confirm.confirm(db, reg_id, email, 'sign-in')
+            import services_team_members   # missing USN and phone from their profile (UPG-251)
+            services_team_members.save_own_details(db, reg_id, email, user, {})
             flash(f"Confirmed: you're on team {reg.get('team_name') or ''}.", 'success')
             return redirect(f'/teams/{reg_id}')
         if _me():
@@ -290,10 +301,17 @@ def confirm_member(token):
         if not ok:
             flash(pw_err, 'danger')
             return redirect(request.path)
+        import services_team_members   # the member's own name, USN and phone (UPG-251)
+        try:
+            details = services_team_members.own_details(member, request.form)
+        except services_team_members.AddError as exc:
+            flash(str(exc), 'danger')
+            return redirect(request.path)
         db.collection('users').document(email).update({
             'password': generate_password_hash(new_pw, method='pbkdf2:sha256'),
             'needs_password_reset': False, 'email_verified': True})
         confirm.confirm(db, reg_id, email, 'link')
+        services_team_members.save_own_details(db, reg_id, email, user, details)
         category = user.get('category', 'General')
         _set_session(email, user.get('name', 'Participant'), _login_role(user.get('role', 'Student')) or 'Student',
                      str(getattr(category, 'value', category)), remember_me=False)
@@ -303,8 +321,11 @@ def confirm_member(token):
                            heading='Confirm your team place',
                            intro=f"{reg.get('lead_name') or 'Your team lead'} added you to team "
                                  f"{reg.get('team_name') or ''} for {reg.get('event_title') or 'an event'}. "
-                                 "Choose a password to confirm; you'll sign in with this email:",
-                           button='Confirm and set password')
+                                 "Check your details and choose a password to confirm; you'll sign in with this email:",
+                           button='Confirm and set password',
+                           details={'name': member.get('name') or user.get('name') or '',
+                                    'usn': member.get('usn') or user.get('usn') or '',
+                                    'phone': member.get('phone') or user.get('phone') or ''})
 
 
 @teams_bp.route('/<reg_id>/remove', methods=['POST'])
@@ -315,6 +336,11 @@ def remove_member(reg_id):
     if reg is None or not _is_lead(reg):
         flash("Only the team lead can remove members.", "danger")
         return redirect(f'/teams/{reg_id}' if reg else '/participant/dashboard')
+    import services_team_members   # after registration closes, only in the SPOC's window (UPG-250)
+    blocked = services_team_members.why_not_remove(reg, event or {})
+    if blocked:
+        flash(blocked, "warning")
+        return redirect(f'/teams/{reg_id}')
     email = (request.form.get('email') or '').strip().lower()
     members = list(reg.get('members') or [])
     kept = [m for m in members if _email(m) != email or m.get('role') == 'Lead']

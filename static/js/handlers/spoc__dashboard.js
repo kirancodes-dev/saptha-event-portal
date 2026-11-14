@@ -185,4 +185,7 @@ Object.assign(window.SE_H = window.SE_H || {}, {
   "spoc/dashboard:61": function (event) { with (document) { with (this.form || {}) { with (this) {
     filterPaletteCommands()
   } } } },
+  "spoc/dashboard:62": function (event) { with (document) { with (this.form || {}) { with (this) {
+    switchTab('people', this)
+  } } } },
 });

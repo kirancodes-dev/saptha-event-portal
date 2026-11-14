@@ -191,6 +191,8 @@ def dashboard():
         r['is_cancelled'] = str(r.get('status') or '').strip().lower() in ('cancelled', 'refunded')
         import services_registration_edit   # the lead corrects the details (UPG-225)
         r['may_edit'] = r['is_lead'] and not services_registration_edit.lead_may_edit(r, evt)
+        import services_team_confirm   # members confirm their email (UPG-207); a reminder below (UPG-257)
+        r['confirm_on'] = services_team_confirm.enabled(evt)
         r['cat_key'] = _category_key(r['event_cat'])
         live = evt.get('status') in ('active', 'published', 'registration_open', 'registration_closed', 'in_progress')
         not_past = r['days_until'] is None or r['days_until'] >= 0
@@ -295,6 +297,17 @@ def dashboard():
     # Waitlists still open for them: waiting, or accepted with a fee to pay (UPG-236)
     my_waitlist = [w for w in _my_waitlist(user_email) if w['state'] in ('waiting', 'pay')]
 
+    # Teams they lead with teammates who haven't confirmed: maybe a wrong email (UPG-257)
+    import services_team_confirm
+    unconfirmed = []
+    for r in active_tickets:
+        if r.get('is_lead') and r.get('team_code') and r.get('confirm_on') and services_team_confirm.active(r):
+            waiting = [m.get('name') or m.get('email') for m, st in services_team_confirm.summary(r)
+                       if st['key'] != 'confirmed']
+            if waiting:
+                unconfirmed.append({'reg_id': r.get('reg_id') or r['id'], 'team_name': r.get('team_name') or '',
+                                    'event_title': r.get('event_title') or '', 'names': waiting})
+
     return render_template(
         'participant/dashboard.html',
         active_tickets   = active_tickets,
@@ -314,6 +327,7 @@ def dashboard():
         ticket_tabs      = ticket_tabs,
         my_waitlist      = my_waitlist,
         event_documents  = event_documents,
+        unconfirmed      = unconfirmed,
     )
 
 
@@ -775,7 +789,7 @@ def edit_registration(reg_id):
     return registration_edit_page(reg_id, reg, event, organiser=False, back=back)
 
 
-def registration_edit_page(reg_id, reg, event, organiser, back, member_email_action=''):
+def registration_edit_page(reg_id, reg, event, organiser, back, member_email_action='', lead_email_action=''):
     """The edit page for the lead and the organiser (UPG-225): GET shows the
     details, POST saves what changed, or shows each problem beside its field."""
     import services_registration_edit as edit
@@ -795,7 +809,7 @@ def registration_edit_page(reg_id, reg, event, organiser, back, member_email_act
         values, errors = page['values'], {}
     return render_template('registration_edit.html', reg=reg, reg_id=reg_id, event=event, page=page,
                            values=values, errors=errors, organiser=organiser, back=back,
-                           member_email_action=member_email_action)
+                           member_email_action=member_email_action, lead_email_action=lead_email_action)
 
 
 @participant_bp.route('/event/<event_id>/document/<doc_id>')

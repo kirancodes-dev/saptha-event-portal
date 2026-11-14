@@ -8,6 +8,7 @@ its own daily limit. The admin's mail page shows this month's count and limit.
 Nothing leaves the machine: every sender is replaced.
 """
 import html
+import uuid
 
 import pytest
 
@@ -78,7 +79,7 @@ def test_without_a_monthly_limit_nothing_changes(paid, monkeypatch):
 def test_with_brevo_main_and_gmail_set_an_email_brevo_refuses_goes_by_gmail(paid, monkeypatch):
     flask_app = paid['app']
     monkeypatch.setenv('MAIL_USER', 'sender@gmail.com')
-    monkeypatch.setenv('MAIL_PASS', 'app-password')
+    monkeypatch.setenv('MAIL_PASS', uuid.uuid4().hex)        # made up when the test runs (UPG-93, UPG-263)
     monkeypatch.setitem(flask_app.config, 'EMAIL_SMTP_DAILY_LIMIT', 1)
     backup = []
     monkeypatch.setenv('BREVO_BACKUP_API_KEY', 'test-backup-key')
@@ -96,7 +97,7 @@ def test_with_brevo_main_and_gmail_set_an_email_brevo_refuses_goes_by_gmail(paid
 def test_brevo_at_its_monthly_limit_hands_over_to_gmail(paid, monkeypatch):
     flask_app = paid['app']
     monkeypatch.setenv('MAIL_USER', 'sender@gmail.com')
-    monkeypatch.setenv('MAIL_PASS', 'app-password')
+    monkeypatch.setenv('MAIL_PASS', uuid.uuid4().hex)        # made up when the test runs (UPG-93, UPG-263)
     monkeypatch.setitem(flask_app.config, 'EMAIL_MONTHLY_LIMIT', 1)
     with flask_app.app_context():
         assert _send('one@test.edu') and _send('two@test.edu')

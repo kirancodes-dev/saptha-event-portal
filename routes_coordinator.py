@@ -437,7 +437,8 @@ def correct_lead_email(event_id, reg_id):
 @role_required(COORD_ROLES)
 def correct_member_email(event_id):
     """The organiser corrects a waiting member's email (UPG-225), as the lead
-    does on the team page (UPG-207): the new address gets a link."""
+    does on the team page (UPG-207), or adds one for a member who has none
+    (UPG-262): the new address gets a link."""
     import services_registration_edit as edit
     import services_team_confirm as confirm
     event = _registration_of(event_id)
@@ -448,20 +449,20 @@ def correct_member_email(event_id):
         flash("That registration isn't an active one of this event.", "danger")
         return redirect(f'/coordinator/registrations/{event_id}')
     page = f'/coordinator/registrations/{event_id}/edit/{reg_id}'
-    if not confirm.enabled(event):
-        flash("Member confirmation is off for this event, so a member's email isn't corrected here.", "warning")
-        return redirect(page)
-    old = (request.form.get('email') or '').strip().lower()
+    old = (request.form.get('email') or '').strip()     # 'name:' and the name for a member with no email (UPG-262)
     new = (request.form.get('new_email') or '').strip().lower()
     try:
         outcome = confirm.correct_email(db, reg_id, reg, event, old, new, by=session.get('user_id', ''))
     except confirm.ConfirmError as exc:
         flash(str(exc), 'warning')
         return redirect(page)
-    flash(f"Email changed to {new}. " + ({'sent': "A link was sent there; the old one no longer works.",
-                                         'limit': "Today's email limit is reached: send the link again tomorrow."}
-                                        .get(outcome, "The email couldn't be sent: send the link again later.")),
-          'success' if outcome == 'sent' else 'warning')
+    flash(f"Email {'added' if old.startswith('name:') else 'changed to'} {new}. "
+          + ({'sent': "A link was sent there to confirm and set a password"
+                      + ("." if old.startswith('name:') else "; the old one no longer works."),
+              'limit': "Today's email limit is reached: send the link again tomorrow.",
+              'saved': "Member confirmation is off for this event, so no link is sent."}
+             .get(outcome, "The email couldn't be sent: send the link again later.")),
+          'success' if outcome in ('sent', 'saved') else 'warning')
     return redirect(page)
 
 

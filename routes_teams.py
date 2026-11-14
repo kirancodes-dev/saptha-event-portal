@@ -233,17 +233,20 @@ def resend_confirmation(reg_id):
 def correct_member_email(reg_id):
     import services_team_confirm as confirm
     reg, event = _lead_team(reg_id)
-    old = (request.form.get('email') or '').strip().lower()
+    old = (request.form.get('email') or '').strip()     # 'name:' and the name for a member with no email (UPG-262)
     new = (request.form.get('new_email') or '').strip().lower()
     try:
         outcome = confirm.correct_email(db, reg_id, reg, event, old, new, by=_me())
     except confirm.ConfirmError as exc:
         flash(str(exc), 'warning')
         return redirect(f'/teams/{reg_id}')
-    flash(f"Email changed to {new}. " + ({'sent': "A link was sent there; the old one no longer works.",
-                                         'limit': "Today's email limit is reached: resend the link tomorrow."}
-                                        .get(outcome, "The email couldn't be sent: resend the link later.")),
-          'success' if outcome == 'sent' else 'warning')
+    flash(f"Email {'added' if old.startswith('name:') else 'changed to'} {new}. "
+          + ({'sent': "A link was sent there to confirm and set a password"
+                      + ("." if old.startswith('name:') else "; the old one no longer works."),
+              'limit': "Today's email limit is reached: resend the link tomorrow.",
+              'saved': ""}
+             .get(outcome, "The email couldn't be sent: resend the link later.")),
+          'success' if outcome in ('sent', 'saved') else 'warning')
     return redirect(f'/teams/{reg_id}')
 
 

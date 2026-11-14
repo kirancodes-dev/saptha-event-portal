@@ -307,32 +307,49 @@ def _has_certificate(event_id: str, email: str) -> bool:
         return True     # can't tell: don't let the email move away from a certificate
 
 
+def member_key(member: dict) -> str:
+    """Who a member is in a form: the email, else 'name:' and the name for a
+    member with no email (UPG-262), as the edit page keys them."""
+    return _email(member) or 'name:' + str((member or {}).get('name') or '').strip()
+
+
 def correct_email(db, reg_id: str, reg: dict, event: dict, old: str, new: str, by: str) -> str:
-    """Replace a waiting member's email and send the new address a link; the
-    old link stops working. Returns the send's outcome."""
+    """Replace a waiting member's email, or give one to a member who has none
+    (`old` is then 'name:' and their name, UPG-262), and send the new address a
+    link; the old link stops working. Returns the send's outcome, or 'saved'
+    when member confirmation is off for the event (nothing is sent)."""
     from routes_teams import _registered_for
-    old, new = old.strip().lower(), new.strip().lower()
-    member = next((m for m in others(reg) if _email(m) == old), None)
+    old, new = old.strip(), new.strip().lower()
+    old = old if old.startswith('name:') else old.lower()
+    member = next((m for m in reg.get('members') or []
+                   if isinstance(m, dict) and not is_lead(reg, m) and member_key(m) == old), None)
     if member is None:
         raise ConfirmError("That person isn't a member of this team.")
+    had = _email(member)
     if member.get('confirmed_at'):
-        raise ConfirmError(f"{old} has already confirmed, so the email can't be changed here.")
-    if _has_certificate(str(reg.get('event_id') or ''), old):
-        raise ConfirmError(f"A certificate has already been issued to {old}, so the email can't be changed "
+        raise ConfirmError(f"{had or member.get('name')} has already confirmed, so the email can't be changed here.")
+    if had and _has_certificate(str(reg.get('event_id') or ''), had):
+        raise ConfirmError(f"A certificate has already been issued to {had}, so the email can't be changed "
                            "from the team page. Ask the event's organiser to correct the certificate.")
     if not _EMAIL.match(new) or len(new) > 254:
         raise ConfirmError("Enter a valid email address.")
-    if new == old:
+    if new == had:
         raise ConfirmError("That's the email the member already has.")
     if _registered_for(str(reg.get('event_id') or ''), new):
         raise ConfirmError(f"{new} is already registered for this event.")
-    saved = update_member(db, reg_id, old, lambda m: {
+    saved = update_members(db, reg_id, lambda m: {
         'email': new, 'confirm_nonce': '', 'confirm_email': '', 'confirm_resends': [],
-        'email_corrected_from': old})
-    if saved is None:
+        'email_corrected_from': had} if not is_lead(reg, m) and member_key(m) == old else None, first=True)
+    if not saved:
         raise ConfirmError("That person isn't a member of this team.")
-    _audit(db, "TEAM_MEMBER_EMAIL_CORRECTED", f"{by} changed a member's email in {reg_id} from {old} to {new}")
-    return send(db, reg_id, reg, event, saved, by=by)
+    if had:
+        _audit(db, "TEAM_MEMBER_EMAIL_CORRECTED", f"{by} changed a member's email in {reg_id} from {had} to {new}")
+    else:
+        _audit(db, "TEAM_MEMBER_EMAIL_ADDED", f"{by} added {new} as the email of {member.get('name') or 'a member'} "
+                                              f"in {reg_id}")
+    if not enabled(event):
+        return 'saved'
+    return send(db, reg_id, reg, event, saved[0], by=by)
 
 
 def confirm(db, reg_id: str, email: str, how: str) -> None:

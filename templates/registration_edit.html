@@ -82,7 +82,8 @@
       <h3 class="h6 mb-2">Member {{ m.n }}
         {% if m.status %}<span class="badge text-bg-{{ 'secondary' if m.status.tone == 'neutral' else m.status.tone }} ms-1">{{ m.status.label }}</span>{% endif %}</h3>
       <p class="small mb-2">Email: <strong>{{ m.email or '—' }}</strong>
-        {% if m.can_correct_email %}<span class="text-muted">— correct it below{% if not organiser %}, or on the team page{% endif %}.</span>
+        {% if m.needs_email %}<span class="text-muted" data-needs-email>— none yet. Add it {% if organiser %}below{% else %}on the <a href="/teams/{{ reg_id }}">team page</a>{% endif %}; they get a link to confirm and set a password.</span>
+        {% elif m.can_correct_email %}<span class="text-muted">— correct it below{% if not organiser %}, or on the team page{% endif %}.</span>
         {% elif m.email %}<span class="text-muted">— their login, so it can't be changed here.</span>{% endif %}</p>
       {% for f in m.parts %}{{ field(f) }}{% endfor %}
     </div>
@@ -115,25 +116,26 @@
   </section>
   {% endif %}
 
-  {% set correctable = page.members | selectattr('can_correct_email') | list %}
+  {% set correctable = page.members | selectattr('can_correct_email') | list
+                       + page.members | selectattr('needs_email') | list %}
   {% if correctable %}
-  <h3 class="h6 mt-4 mb-2">Correct a member's email</h3>
+  <h3 class="h6 mt-4 mb-2">{{ 'Add or correct' if page.members | selectattr('needs_email') | list else 'Correct' }} a member's email</h3>
   {% if organiser and member_email_action %}
-  <p class="text-muted small">For a member who hasn't confirmed yet. The new address gets a link to confirm; the old link stops working.</p>
+  <p class="text-muted small">For a member with no email, or who hasn't confirmed yet. The new address gets a link to confirm and set a password; an old link stops working.</p>
   {% for m in correctable %}
-  <form method="post" action="{{ member_email_action }}" class="d-flex flex-wrap gap-2 align-items-end mb-2" data-member-email>
+  <form method="post" action="{{ member_email_action }}" class="d-flex flex-wrap gap-2 align-items-end mb-2" data-member-email{% if m.needs_email %} data-add-email{% endif %}>
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="reg_id" value="{{ reg_id }}">
-    <input type="hidden" name="email" value="{{ m.email }}">
+    <input type="hidden" name="email" value="{{ m.key }}">
     <div>
-      <label class="form-label small mb-0" for="ne-{{ m.index }}">New email for {{ m.name or m.email }} (now {{ m.email }})</label>
-      <input type="email" id="ne-{{ m.index }}" name="new_email" class="form-control form-control-sm" style="max-width:280px;" required>
+      <label class="form-label small mb-0" for="ne-{{ m.index }}">{% if m.needs_email %}Email for {{ m.name or 'Member ' ~ m.n }} (none yet){% else %}New email for {{ m.name or m.email }} (now {{ m.email }}){% endif %}</label>
+      <input type="email" id="ne-{{ m.index }}" name="new_email" class="form-control form-control-sm" style="max-width:280px;" required placeholder="name@example.com">
     </div>
-    <button type="submit" class="btn btn-sm btn-outline-primary">Save and send a new link</button>
+    <button type="submit" class="btn btn-sm btn-outline-primary">{{ 'Add the email and send the link' if m.needs_email else 'Save and send a new link' }}</button>
   </form>
   {% endfor %}
   {% else %}
-  <p class="text-muted small">Use "Correct the email" beside the member on the <a href="/teams/{{ reg_id }}">team page</a>; they get a new link to confirm.</p>
+  <p class="text-muted small">Use "Correct the email" (or "Add the email", for a member with none) beside the member on the <a href="/teams/{{ reg_id }}">team page</a>; they get a link to confirm.</p>
   {% endif %}
   {% endif %}
 </div>

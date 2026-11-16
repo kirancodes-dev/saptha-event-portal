@@ -51,6 +51,7 @@
   <div class="scan-card__actions">
     <a href="/coordinator/scan/{{ ev.id }}" class="btn btn-primary"><i class="fas fa-qrcode" aria-hidden="true"></i> {{ primary_label }}</a>
     {% if tone == 'today' %}<a href="/coordinator/on_spot" class="btn btn-secondary"><i class="fas fa-plus" aria-hidden="true"></i> Walk-in</a>{% endif %}
+    <a href="/coordinator/runsheet/{{ ev.id }}" class="btn btn-secondary" data-runsheet-link><i class="fas fa-clipboard-list" aria-hidden="true"></i> Run sheet</a>
   </div>
 </article>
 {%- endmacro %}
@@ -80,14 +81,14 @@
 {% if tomorrow_events %}
 <div class="sel-section"><span class="se-badge se-badge--warning">Tomorrow</span><h2>Tomorrow's events</h2></div>
 <div class="ev-grid">
-  {% for ev in tomorrow_events %}{{ scan_card(ev, 'tomorrow', 'Tomorrow · ' ~ ev.date, 'Open scanner') }}{% endfor %}
+  {% for ev in tomorrow_events %}{{ scan_card(ev, 'tomorrow', 'Tomorrow · ' ~ ev.date|day, 'Open scanner') }}{% endfor %}
 </div>
 {% endif %}
 
 {% if upcoming_events %}
 <div class="sel-section"><span class="se-badge se-badge--info">Upcoming</span><h2>Upcoming events</h2></div>
 <div class="ev-grid">
-  {% for ev in upcoming_events %}{{ scan_card(ev, '', (ev.category ~ ' · ' ~ ev.date), 'Open scanner') }}{% endfor %}
+  {% for ev in upcoming_events %}{{ scan_card(ev, '', (ev.category ~ ' · ' ~ ev.date|day), 'Open scanner') }}{% endfor %}
 </div>
 {% endif %}
 

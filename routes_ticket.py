@@ -150,8 +150,28 @@ def _ist_today() -> str:
     return _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=5, minutes=30))).date().isoformat()
 
 
+OFFLINE_SCAN_MAX_AGE_HOURS = 72
+
+
+def scan_time(value) -> Optional[datetime.datetime]:
+    """When a queued scan was made, as the device reported it (UPG-269): an
+    aware time, or None when it is missing, unreadable, in the future, or too
+    old to believe, in which case the time it reached the server is used."""
+    try:
+        at = datetime.datetime.fromisoformat(str(value or '').strip().replace('Z', '+00:00'))
+    except ValueError:
+        return None
+    if at.tzinfo is None:
+        return None
+    now = datetime.datetime.now(datetime.timezone.utc)
+    if at > now + datetime.timedelta(minutes=2) or at < now - datetime.timedelta(hours=OFFLINE_SCAN_MAX_AGE_HOURS):
+        return None
+    return at
+
+
 def check_in(reg_id: str, actor, expected_event_id: Optional[str] = None,
-             source: str = 'scan', token_extra: Optional[dict] = None) -> Tuple[Dict[str, Any], int]:
+             source: str = 'scan', token_extra: Optional[dict] = None,
+             scanned_at: Optional[datetime.datetime] = None) -> Tuple[Dict[str, Any], int]:
     """Mark one registration present. Returns (JSON body, HTTP status).
 
     The registration's event must exist and the actor needs check_in on it.
@@ -159,7 +179,11 @@ def check_in(reg_id: str, actor, expected_event_id: Optional[str] = None,
     must allow entry (payment_allows_entry). `expected_event_id` is the
     event the scanner is working; another event's ticket is refused.
     `token_extra` is what the scanned token carried: a ticket replaced by a
-    transfer is refused (UPG-161)."""
+    transfer is refused (UPG-161). `scanned_at` is when a scan kept offline
+    was made (scan_time): the check-in is recorded at that time and on that
+    day, not when the phone got its connection back (UPG-269). Whichever
+    check-in reaches the server first is the record; a later one, from this or
+    another device, changes nothing and is answered "already checked in"."""
     from services_permission import can
 
     def answer(status, message, http, **extra):
@@ -215,7 +239,8 @@ def check_in(reg_id: str, actor, expected_event_id: Optional[str] = None,
 
     # Each day attended is recorded, so a multi-day event can certify people who
     # came on enough of its days (UPG-122). A second scan on the same day changes nothing.
-    today = _ist_today()
+    ist = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+    today = scanned_at.astimezone(ist).date().isoformat() if scanned_at else _ist_today()
     days = list(reg.get('attendance_days') or [])
     if str(reg.get('attendance') or '').strip().lower() == 'present':
         first = reg.get('checkin_time') or ''
@@ -231,7 +256,7 @@ def check_in(reg_id: str, actor, expected_event_id: Optional[str] = None,
     if not payment_allows_entry(reg, event):
         return answer('unpaid', 'Payment pending — entry not allowed.', 402, **details)
 
-    checkin_time = _now()
+    checkin_time = scanned_at.astimezone().strftime("%H:%M:%S") if scanned_at else _now()
     # Activity points and hours aren't written here: the ledger credits a
     # registration once from its attendance (services_ledger, UPG-11).
     db.collection('registrations').document(reg_id).update({
@@ -239,6 +264,8 @@ def check_in(reg_id: str, actor, expected_event_id: Optional[str] = None,
         'checkin_time':    checkin_time,
         'checked_in_by':   user_email,
         'attendance_days': sorted(set(days + [today])),
+        **({'checkin_scanned_at': scanned_at.isoformat(),
+            'checkin_synced_at': datetime.datetime.now(datetime.timezone.utc).isoformat()} if scanned_at else {}),
     })
     if reg.get('ticket_id'):
         try:
@@ -253,7 +280,8 @@ def check_in(reg_id: str, actor, expected_event_id: Optional[str] = None,
         award_xp(reg.get('lead_email'), 150)
     except Exception:
         pass
-    log_action(db, "CHECKIN", f"Reg {reg_id} checked in at {checkin_time} ({source})")
+    log_action(db, "CHECKIN", f"Reg {reg_id} checked in at {checkin_time} ({source}"
+                             + (f", scanned offline on {today}, sent later" if scanned_at else '') + ")")
     return answer('success', 'Entry granted.', 200, checkin_time=checkin_time, **details)
 
 
@@ -269,7 +297,8 @@ def api_checkin():
         return jsonify({'status': 'invalid', 'success': False,
                         'message': "Not a valid ticket. Scan the ticket's QR code; registration IDs aren't accepted."}), 400
     body, status = check_in(reg_id, session, expected_event_id=(data.get('event_id') or '').strip() or None,
-                            source=(data.get('source') or 'scan')[:20], token_extra=extra)
+                            source=(data.get('source') or 'scan')[:20], token_extra=extra,
+                            scanned_at=scan_time(data.get('scanned_at')))
     return jsonify(body), status
 
 

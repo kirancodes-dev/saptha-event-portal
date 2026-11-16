@@ -172,8 +172,7 @@ a test reads, the exact text is back, for example "Verification Failed",
 | `layouts/status` | Shared | include | new in UPG-63 | New (UPG-63) | Render check |
 | `live/leaderboard` | Public (projector) | /live/<event_id> | fullscreen; emoji UI | Restyled (UPG-63) | Render check |
 | `login` | Public | /login | standalone; 53 inline styles; emoji UI | Restyled (UPG-63) | Screenshot + render check |
-| `marketing/features` | Public | /features | standalone; own top bar/sidebar; dark/slate colours | Restyled (UPG-63) | Screenshot + render check |
-| `marketing/landing` | Public | /platform | standalone; own top bar/sidebar; dark/slate colours; 13 inline styles | Restyled (UPG-63) | Screenshot + render check |
+| `public/about` | Public | /about (and /platform, /features behind DEMO_PAGES_ENABLED) | app layout (`base_classic.html`) | Replaces `marketing/landing` and `marketing/features` (UPG-275) | tests/test_product_story.py |
 | `marketing/pricing` | Public | /pricing | standalone; own top bar/sidebar; dark/slate colours | Restyled (UPG-63) | Screenshot + render check |
 | `offline` | Public | /offline | standalone | Rebuilt on app/status layout (UPG-63) | Render check |
 | `onboarding/signup` | Public / new tenant | /onboarding/signup | standalone; dark/slate colours | Restyled (UPG-63) | Render check |

@@ -234,6 +234,11 @@ body{
   </table>
 </div>
 
+<!-- Only the event's staff see the scores until the organiser makes the board public (UPG-300) -->
+<div class="empty-state" id="staffOnly" style="display:none;padding:10px 0;" data-leaderboard-staff-only>
+  <p><i class="fas fa-user-shield"></i> Only the event's staff can see these scores. The public sees "Not public yet" until the organiser makes the leaderboard public.</p>
+</div>
+
 <!-- EMPTY if no data -->
 <div class="empty-state" id="emptyState" style="display:none;">
   <i class="fas fa-hourglass-half"></i>
@@ -291,6 +296,19 @@ function render(data) {
   document.getElementById('totalCount').textContent = data.total || 0;
   document.getElementById('lastTs').textContent     = new Date().toLocaleTimeString('en-IN',
     { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+  document.getElementById('staffOnly').style.display = data.staff_only ? '' : 'none';
+  if (data.hidden) {
+    // Not public yet: no teams, no scores; the stream keeps asking, so the board appears once it is made public
+    document.getElementById('podiumRow').innerHTML = `
+      <div class="empty-state" style="flex:1;padding:40px 0;" data-leaderboard-hidden>
+        <i class="fas fa-eye-slash"></i><p>${escapeHtml(data.message || 'The leaderboard is not public yet.')}</p>
+      </div>`;
+    document.getElementById('boardWrap').style.display  = 'none';
+    document.getElementById('emptyState').style.display = 'none';
+    prevRanks = {};
+    return;
+  }
 
   const board = data.board || [];
   const scored = board.filter(r => r.score !== null);

@@ -181,20 +181,47 @@
 </section>
 
 <section class="hk-card" id="evaluation" aria-labelledby="evalHead">
-  <h2 id="evalHead"><i class="fas fa-robot" aria-hidden="true"></i> AI evaluation</h2>
-  {% if not ai_on %}
+  <h2 id="evalHead"><i class="fas fa-scale-balanced" aria-hidden="true"></i> Who scores the submissions</h2>
+  {#- AI or judges for the submission round; later rounds are always judged (UPG-298) -#}
+  <form method="POST" action="/spoc/hackathon/{{ event.id }}/evaluation_mode" class="mb-3" data-evaluation-mode="{{ eval_mode }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="d-flex flex-wrap gap-3 align-items-center">
+      {% for key, label in eval_modes.items() %}
+      <label class="form-check m-0"><input class="form-check-input" type="radio" name="mode" value="{{ key }}" {% if key == eval_mode %}checked{% endif %} {% if shortlist %}disabled{% endif %}> {{ label }}</label>
+      {% endfor %}
+      {% if not shortlist %}<button class="btn btn-sm btn-outline-primary" type="submit">Save</button>{% endif %}
+    </div>
+    <p class="hk-note mt-1 mb-0">This is the round teams submit their work in{% if round %} (round {{ round }}){% endif %}. After you confirm the shortlist, the next round is always scored by judges. You can change this until scoring starts.</p>
+  </form>
+  {% if eval_mode == 'judges' %}
+  <div data-judges-round>
+    <p class="mb-2">Judges score each team that submitted, after the deadline, with the judges' criteria:
+      {% if judging.has_criteria %}<strong>{% for c in judging.criteria %}{{ c.name }} (/{{ c.max_score }}){{ ', ' if not loop.last }}{% endfor %}</strong>{% else %}<strong>one overall score out of 100</strong> (no judges' criteria are set){% endif %}{% if judging.can_edit %}. <a href="/spoc/edit_event/{{ event.id }}">Change them in the event's details</a>{% endif %}.</p>
+    <p class="mb-2"><strong>{{ judging.scored }}</strong> of {{ judging.teams }} submitted team(s) scored by at least one judge · {{ judging.judges }} judge(s) on this event.
+      {% if not judging.judges %}<span class="text-danger">Add judges to the event so they can score.</span>{% endif %}</p>
+    <p class="hk-note mb-0">{% if judging.open_hall %}Open hall: every judge sees every team that submitted.{% else %}A team you assign to a judge is scored by that judge only; every judge sees the teams not assigned to anyone.{% endif %} Each team's ranking score is the judges' average, out of 100. Judges don't see each other's scores.</p>
+  </div>
+  {% elif not ai_on %}
   <p class="mb-0" data-ai-off>{{ ai_off }}</p>
   {% else %}
   <p class="hk-note">After the deadline, AI reads each submission (text answers, the chosen problem statement and the first pages of each PDF; links aren't opened) and scores it against the criteria below. The score only helps you sort; it never eliminates anyone, and judges and teams don't see it.</p>
   <form method="POST" action="/spoc/hackathon/{{ event.id }}/ai/criteria" class="mb-3">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="row g-2">
+    {#- Each criterion: its name, what it means for the AI, and its marks out of 100 (UPG-299) -#}
+    <div class="table-responsive"><table class="hk-table" data-ai-criteria>
+      <thead><tr><th scope="col">Criterion</th><th scope="col">What it means (for the AI)</th><th scope="col">Marks</th></tr></thead>
+      <tbody>
       {% for i in range(max_criteria) %}{% set c = criteria[i] if i < criteria | length else none %}
-      <div class="col-md-4"><input class="form-control" name="criterion_{{ i }}" value="{{ c.label if c else '' }}" maxlength="80" placeholder="Criterion {{ i + 1 }}" aria-label="Criterion {{ i + 1 }}"></div>
+      <tr>
+        <td><input class="form-control form-control-sm" name="criterion_{{ i }}" value="{{ c.label if c else '' }}" maxlength="80" placeholder="Criterion {{ i + 1 }}" aria-label="Criterion {{ i + 1 }}"></td>
+        <td><input class="form-control form-control-sm" name="description_{{ i }}" value="{{ c.description if c and c.description else '' }}" maxlength="{{ max_description }}" placeholder="Optional, e.g. Is the idea new for this problem?" aria-label="What criterion {{ i + 1 }} means"></td>
+        <td style="width:110px"><input class="form-control form-control-sm" type="number" min="1" max="100" step="1" name="marks_{{ i }}" value="{{ c.weight if c and c.weight else '' }}" aria-label="Marks for criterion {{ i + 1 }}"></td>
+      </tr>
       {% endfor %}
-    </div>
+      </tbody>
+    </table></div>
     <button class="btn btn-sm btn-outline-primary mt-2" type="submit" {% if ai.scored %}disabled{% endif %}>Save criteria</button>
-    <span class="hk-note ms-2">Each scored 0-10; the total is out of 100.{% if ai.scored %} Criteria are fixed once a submission is scored.{% endif %}</span>
+    <span class="hk-note ms-2">The AI scores each criterion 0-10. Give marks to every criterion (they must add up to 100), or leave all marks empty for equal weights. The total is out of 100.{% if ai.scored %} Criteria are fixed once a submission is scored.{% endif %}</span>
   </form>
   <div id="hkAi" data-next-url="/spoc/hackathon/{{ event.id }}/ai/next" data-status="{{ ai.status }}">
     <p class="mb-2" id="hkAiProgress" aria-live="polite">
@@ -223,6 +250,7 @@
 
 <section class="hk-card" id="ranking" aria-labelledby="rankHead">
   <h2 id="rankHead"><i class="fas fa-list-ol" aria-hidden="true"></i> Ranking &amp; shortlist</h2>
+  <div class="mb-3">{% with back='hackathon' %}{% include 'includes/leaderboard_switch.html' %}{% endwith %}</div>
   {% if unsent_results %}
   <form method="POST" action="/spoc/hackathon/{{ event.id }}/results/resend" class="alert alert-warning d-flex flex-wrap gap-2 align-items-center">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -242,12 +270,13 @@
   </div>
   {% endif %}
   {% if ranking %}
-  <p class="hk-note mb-2">Sort: {% if sort == 'ai' %}<a href="?sort=rank#ranking">by ranking (your score, else AI)</a> · <strong>by AI total</strong>{% else %}<strong>by ranking (your score, else AI)</strong> · <a href="?sort=ai#ranking">by AI total</a>{% endif %}. Your score (0-100) overrides the AI total.</p>
+  {% set by = "judges'" if eval_mode == 'judges' else "AI" %}
+  <p class="hk-note mb-2">Sort: {% if sort == 'ai' %}<a href="?sort=rank#ranking">by ranking (your score, else {{ by }})</a> · <strong>by {{ by }} score</strong>{% else %}<strong>by ranking (your score, else {{ by }})</strong> · <a href="?sort=ai#ranking">by {{ by }} score</a>{% endif %}. Your score (0-100) overrides the {{ by }} score.</p>
   <form method="POST" action="/spoc/hackathon/{{ event.id }}/shortlist/preview" id="hkShortlist">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   </form>
   <div class="table-responsive"><table class="hk-table" id="hkRanking">
-    <thead><tr><th>{% if not shortlist %}<span class="visually-hidden">Pick</span>{% endif %}</th><th>Rank</th><th>Team</th><th>Problem</th><th>AI total</th><th>AI reason</th><th>Your score &amp; note</th></tr></thead>
+    <thead><tr><th>{% if not shortlist %}<span class="visually-hidden">Pick</span>{% endif %}</th><th>Rank</th><th>Team</th><th>Problem</th>{% if eval_mode == 'judges' %}<th>Judges (out of 100)</th>{% else %}<th>AI total</th><th>AI reason</th>{% endif %}<th>Your score &amp; note</th></tr></thead>
     <tbody>
     {% for r in ranking %}
       <tr data-reg="{{ r.reg_id }}">
@@ -255,9 +284,13 @@
         <td>{{ r.rank or '—' }}{% if r.tied %} <span class="se-badge se-badge--warning">tie</span>{% endif %}</td>
         <td><strong>{{ r.team }}</strong>{% if r.submitted %}<br><a href="/hackathon/{{ event.id }}/review/{{ r.reg_id }}" target="_blank" rel="noopener">Open submission</a>{% else %}<br><span class="hk-note">No submission</span>{% endif %}</td>
         <td>{{ problem_titles.get(r.sub.problem_id, '—') if r.sub and r.sub.problem_id else '—' }}</td>
+        {% if eval_mode == 'judges' %}
+        <td data-judges-score>{% if r.judges is not none %}{{ r.judges }}<br><span class="hk-note">{{ r.judges_n }} judge(s)</span>{% elif r.submitted %}<span class="hk-note">Not scored yet</span>{% else %}—{% endif %}</td>
+        {% else %}
         <td data-ai-total>{% if r.ai_total is not none %}{{ r.ai_total }}{% elif r.ai.status == 'not_scored' %}<span class="text-danger">Not scored</span><br><span class="hk-note">{{ r.ai.error }}</span>{% else %}—{% endif %}
           {% if ai_on and r.submitted and window == 'closed' and r.ai %}<form method="POST" action="/spoc/hackathon/{{ event.id }}/ai/{{ r.sub_id }}/rerun"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-link btn-sm p-0" type="submit">Re-run</button></form>{% endif %}</td>
         <td class="small">{% if r.ai.reason %}{{ r.ai.reason }}{% if r.ai.scores %}<br><span class="hk-note">{% for c in r.ai.criteria or criteria %}{{ c.label }} {{ r.ai.scores.get(c.id, '—') }}{% if not loop.last %} · {% endif %}{% endfor %}</span>{% endif %}{% else %}—{% endif %}</td>
+        {% endif %}
         <td>{% if r.submitted %}
           <form method="POST" action="/spoc/hackathon/{{ event.id }}/review/{{ r.reg_id }}" class="d-flex flex-wrap gap-1">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

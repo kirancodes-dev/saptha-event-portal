@@ -26,7 +26,11 @@
         <h2 class="h6"><a href="/event/{{ e.id }}">{{ e.title }}</a></h2>
         <p class="small text-muted mb-1">{{ e.date }} · {{ venue_label(e) }}</p>
         {% if e.category %}<p class="small mb-2">{{ e.category }}{% if e.event_type %} · {{ e.event_type }}{% endif %}</p>{% endif %}
-        <a class="btn btn-sm btn-outline-primary" href="/event/{{ e.id }}">Details and registration</a>
+        <p class="small mb-2" data-eligibility="{{ eligibility(e).mode }}">{{ eligibility(e).line }}</p>{#- UPG-270 -#}
+        {% set rs = reg_state_of(e) %}{#- UPG-266 -#}
+        <p class="small mb-2"><span class="se-badge se-badge--{{ rs.tone }}" data-reg-state="{{ rs.key }}">{{ rs.label }}</span></p>
+        <a class="btn btn-sm btn-outline-primary" href="/event/{{ e.id }}">{{ 'Details and registration' if rs.action == 'register' else ('Details and waitlist' if rs.action == 'waitlist' else 'Details') }}</a>
+        {% if not rs.registerable %}<p class="small text-muted mt-2 mb-0" data-reg-explanation>{{ rs.explanation }}</p>{% endif %}
     </div></div></div>
 {% endfor %}
 </div>

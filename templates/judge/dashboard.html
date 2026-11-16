@@ -46,7 +46,7 @@
     <div class="judge-event__head">
       <h2 class="judge-event__title">{{ event.title }}</h2>
       <div class="judge-event__meta">
-        <span><i class="fas fa-calendar-alt me-1" aria-hidden="true"></i>{{ event.date or 'Date to be announced' }}</span>
+        <span><i class="fas fa-calendar-alt me-1" aria-hidden="true"></i>{{ (event.date or 'Date to be announced')|day }}</span>
         <span><i class="fas fa-map-marker-alt me-1" aria-hidden="true"></i>{{ venue_label(event) }}</span>
       </div>
       {% if event.open_hall_mode %}

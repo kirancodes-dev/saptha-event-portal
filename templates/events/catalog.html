@@ -66,17 +66,18 @@
       {% for ev in events %}
         {% set cat = ev.category or 'General' %}
         {% set url = '/events/' ~ ev.slug if ev.slug else '/event/' ~ ev.id %}
-        <article class="ev-card">
+        {% set rs = reg_state_of(ev) %}{#- the same state as the home page and the form (UPG-266), kept current (UPG-267) -#}
+        <article class="ev-card" data-live-event="{{ ev.id }}" data-reg-state="{{ rs.key }}">
           <div class="ev-banner" aria-hidden="true">
             <i class="ev-banner-icon fas {{ {'Technical': 'fa-laptop-code', 'Cultural': 'fa-masks-theater', 'Sports': 'fa-futbol', 'Management': 'fa-chart-pie'}.get(cat, 'fa-star') }}"></i>
             <span class="ev-cat cat-{{ cat|lower }}">{{ cat }}</span>
-            <span class="ev-deadline"><i class="fas fa-location-dot" aria-hidden="true"></i>{{ {'online': 'Online', 'hybrid': 'Hybrid'}.get((ev.event_mode or ev.mode or 'offline')|lower, 'In person') }}</span>
+            <span class="ev-deadline{{ ' ev-deadline--closed' if rs.key in ('closed', 'cancelled', 'full') else (' ev-deadline--past' if rs.key == 'ended' else '') }}" data-reg-state="{{ rs.key }}" data-live-label>{{ rs.label }}</span>
           </div>
           <div class="ev-body">
             <h2 class="ev-title">{{ ev.name or ev.title }}</h2>
             <p class="ev-desc ev-desc--clamp">{{ ev.short_description or ev.description or 'No description provided.' }}</p>
             <div class="ev-meta">
-              <span><i class="far fa-calendar-alt" aria-hidden="true"></i>{{ ev.start_datetime or ev.date or 'Date to be announced' }}</span>
+              <span><i class="far fa-calendar-alt" aria-hidden="true"></i>{{ (ev.start_datetime or ev.date or 'Date to be announced')|day }}</span>
               <span><i class="fas fa-map-marker-alt" aria-hidden="true"></i>{{ ev.venue or 'Main campus / online' }}</span>
             </div>
             <div class="ev-footer">
@@ -85,10 +86,11 @@
               {% else %}
                 <div class="ev-fee-free">Free entry</div>
               {% endif %}
-              <a href="{{ url }}" class="btn-reg" aria-label="View details for {{ ev.name or ev.title }}">
-                Details &amp; register <i class="fas fa-arrow-right" aria-hidden="true"></i>
+              <a href="{{ url }}" class="btn-reg" aria-label="View details for {{ ev.name or ev.title }}" data-reg-action="{{ rs.action or 'details' }}">
+                <span data-live-action-text>{% if rs.action == 'register' %}Details &amp; register{% elif rs.action == 'waitlist' %}Details &amp; waitlist{% else %}Details{% endif %}</span> <i class="fas fa-arrow-right" aria-hidden="true"></i>
               </a>
             </div>
+            <p class="small text-muted mt-2 mb-0" data-reg-explanation data-live-explanation data-live-only-refused {% if rs.registerable %}hidden{% endif %}>{{ '' if rs.registerable else rs.explanation }}</p>
           </div>
         </article>
       {% endfor %}
@@ -102,4 +104,4 @@
     </div>
   {% endif %}
 {% endblock %}
-{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/events__catalog.js"></script>{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/live-refresh.js"></script><script src="/static/js/handlers/events__catalog.js"></script>{% endblock %}

@@ -1,61 +1,71 @@
-# SapthaEvent Progressive Web App (PWA) Specification
+# The installable app and what works offline
 
-## 1. Overview
-SapthaEvent functions as an installable Progressive Web App (PWA) compliant with W3C Web App standards. It provides full offline usability for ticket viewing, campus wayfinding, and gate check-in scanning even in subterranean auditoriums or areas with intermittent cellular coverage.
+SapthaEvent can be installed from the browser ("Add to Home Screen"). This
+page says what that gives, what works without a connection, and what is kept
+on the device. It describes `static/sw.js`, `static/js/offline-sync.js` and
+`static/manifest.webmanifest` as they are.
 
----
+## Installing
 
-## 2. Web App Manifest (`/manifest.json`)
-The manifest (`static/manifest.json`) controls branding and device integration:
-```json
-{
-  "name": "SapthaEvent Universal Portal",
-  "short_name": "SapthaEvent",
-  "description": "Enterprise Event Operating System for SNPSU",
-  "start_url": "/?source=pwa",
-  "scope": "/",
-  "display": "standalone",
-  "orientation": "portrait-primary",
-  "background_color": "#0f172a",
-  "theme_color": "#f37021",
-  "icons": [
-    {
-      "src": "/static/icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/static/icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ]
-}
-```
+The manifest is served at `/manifest.webmanifest`. Installed, the site opens
+in its own window. There is no separate app-store app in this repository's
+web deployment.
 
----
+## What the service worker does
 
-## 3. Service Worker & Caching Strategies (`/sw.js`)
-The Service Worker (`static/sw.js`) implements tiered caching policies:
+| Request | Rule |
+|---|---|
+| `/static/*` | Answered from the cache, refreshed in the background. |
+| Pages (`GET`) | The network first; if it fails, the copy from the last visit, if there is one; otherwise the offline page. |
+| `/offline` | From the cache: "You're offline". |
+| `/live/state.json`, `/live/ops.json` | Never cached: a registration state must be current or absent. |
+| `POST` and other writes, streams, other sites | Not intercepted. |
 
-### 3.1 Cache First, Network Fallback (Static Shell)
-- Pre-caches core CSS, JavaScript bundles, Google Fonts, Bootstrap icons, and logos.
-- Guarantees immediate sub-second visual shell rendering even with zero network connectivity.
+So, offline, a person can re-open a page they already opened on that device
+(their ticket, for instance) and nothing else. Forms cannot be submitted
+offline. A cached page can be out of date; the registration state on it is
+refreshed only when the connection is back.
 
-### 3.2 Network First with Offline Vault Fallback (Dynamic Content)
-- Applied to event agendas, registered user ticket passes, and leaderboards.
-- If network request fails or times out (after 3 seconds), serves the most recently cached snapshot from the IndexedDB store.
+Push notifications are shown when the person has allowed them and the
+deployment has push keys configured.
 
-### 3.3 Custom Offline Page (`/offline.html`)
-- If an un-cached resource is requested while offline, serves an interactive offline fallback page detailing cached capabilities.
+## Check-in without a connection
 
----
+The full-screen scanner (`/coordinator/scan-hud/<event>`) keeps working when
+the connection drops:
 
-## 4. Offline Queue & Background Sync
-For Gate Coordinators operating without Internet:
-1. Scanned ticket tokens are recorded into an IndexedDB table (`offline_scan_queue`).
-2. Scans are cryptographically pre-verified against cached event public keys.
-3. When connectivity is re-established, the Service Worker triggers Background Sync to call `/api/v1/tickets/sync-offline`.
-4. Reconciles batch scans, detecting duplicates and alerting the coordinator.
+1. A scan made offline is stored on the device and shown as "kept, not yet
+   checked". The scanner cannot say whether the ticket is valid: only the
+   server can.
+2. When the connection returns, each kept scan is sent with the time it was
+   made. The server checks it exactly as a live scan and answers checked in,
+   already in, or refused, and the scanner shows a count of each. A scan the
+   server could not answer stays in the queue.
+3. If two devices scanned the same ticket, the first to reach the server
+   checks it in; the other is told "already in".
+4. A scan's own time is used for the attendance day when it is within 72
+   hours and not in the future; otherwise the time it arrived.
+
+Not possible offline: looking a person up by name, checking in a ticket whose
+payment is not confirmed (the server refuses it at sync), and walk-in
+registration.
+
+## What is kept on the device
+
+| Data | Where | Removed |
+|---|---|---|
+| Scans waiting to be sent: the ticket token, the event, the time, and a short account marker | IndexedDB | When the server has answered; at sign-out (after a warning if any are unsent) |
+| The entry list for the event being scanned (which tickets may enter) | `localStorage` | At sign-out |
+| Pages and static files already visited | Cache Storage | When the cache version changes; by clearing site data |
+
+The queue is per account: a second person signing in on the same device
+cannot see or send the first person's scans. No names, phone numbers, signing
+keys or passwords are stored for check-in. A shared phone should still be
+signed out after the event; clearing the browser's site data removes
+everything above.
+
+## Tested
+
+`tests/test_offline_checkin.py` drives a headless browser through the offline
+queue, the sync report, two accounts on one device and sign-out.
+`tests/test_live_refresh.py` covers the never-cached state requests.

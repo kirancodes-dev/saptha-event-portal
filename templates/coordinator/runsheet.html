@@ -1,0 +1,104 @@
+{% extends "base_classic.html" %}
+{#- The run sheet (UPG-272): the day's schedule for the event's staff. -#}
+{% block title %}Run sheet — {{ event.title }}{% endblock %}
+{% block page_title %}Run sheet{% endblock %}
+{% block page_sub %}{{ event.title }} · {{ event.date }}{% if event.venue %} · {{ event.venue }}{% endif %}{% endblock %}
+{% block page_actions %}
+  {% if may_edit %}<a href="/spoc/agenda/{{ event.id }}" class="btn btn-secondary" data-edit-schedule><i class="fas fa-pen" aria-hidden="true"></i> Edit the schedule</a>{% endif %}
+  <a href="/coordinator/dashboard" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Dashboard</a>
+{% endblock %}
+{% block extra_css %}
+<style>
+.rs-item { border-top: 1px solid var(--border, #e2e8f0); padding: 14px 20px; }
+.rs-item:first-child { border-top: 0; }
+.rs-item--cancelled .rs-title { text-decoration: line-through; color: var(--text-subtle); }
+.rs-item--mine { background: var(--brand-gold-100, #fdf6e3); }
+.rs-time { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rs-form select { width: auto; min-width: 140px; }
+@media print { .rs-form, .app-bar, .sidebar, .btn { display: none !important; } }
+</style>
+{% endblock %}
+{% block content %}
+  {% if not sheet %}
+  <div class="card" style="max-width:820px;"><div style="padding:24px;" data-no-schedule>
+    <p class="mb-2"><strong>This event has no schedule yet.</strong></p>
+    <p class="text-subtle mb-0">{% if may_edit %}Add its items, with a time, a room and who is responsible for each, in
+      <a href="/spoc/agenda/{{ event.id }}">the schedule builder</a>.{% else %}The organiser adds the schedule; it will appear here.{% endif %}</p>
+  </div></div>
+  {% else %}
+  <div class="card mb-4" style="max-width:920px;">
+    <div class="card-header"><span><i class="fas fa-clipboard-list" aria-hidden="true"></i> The schedule, in time order</span></div>
+    {% if multi_day %}<p class="small text-subtle mb-0" style="padding:12px 20px 0;">This event runs for more than a day. The schedule has times, not days.</p>{% endif %}
+    <div data-runsheet>
+      {% for item in sheet %}
+      {% set mine = item.owner and item.owner.strip().casefold() in me %}
+      <div class="rs-item rs-item--{{ item.status }}{% if mine %} rs-item--mine{% endif %}" data-item="{{ item.id }}" data-status="{{ item.status }}">
+        <div class="d-flex flex-wrap gap-3 align-items-start justify-content-between">
+          <div class="d-flex gap-3 align-items-start">
+            <div class="rs-time">{{ item.time }}{% if item.end %}–{{ item.end }}{% endif %}</div>
+            <div>
+              <div class="rs-title fw-bold">{{ item.title }}</div>
+              <div class="small text-subtle">
+                {% if item.room %}<i class="fas fa-door-open" aria-hidden="true"></i> {{ item.room }} · {% endif %}
+                <span data-owner>{% if item.owner %}Responsible: <strong>{{ item.owner }}</strong>{% if mine %} (you){% endif %}{% else %}Nobody is responsible yet{% endif %}</span>
+              </div>
+              {% if item.desc %}<div class="small">{{ item.desc }}</div>{% endif %}
+              {% if item.note %}<div class="small" data-note><i class="fas fa-note-sticky" aria-hidden="true"></i> {{ item.note }}</div>{% endif %}
+            </div>
+          </div>
+          <div class="d-flex flex-column align-items-end gap-2">
+            <span class="se-badge se-badge--{{ item.status_tone }}" data-status-label>{{ item.status_label }}</span>
+            {% if item.id and (may_edit or item.status in ('planned', 'ready', 'running', 'done')) %}
+            <form method="POST" action="/coordinator/runsheet/{{ event.id }}/status" class="rs-form d-flex flex-wrap gap-2 align-items-center justify-content-end">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="item" value="{{ item.id }}">
+              <label class="visually-hidden" for="st-{{ item.id }}">Status of {{ item.title }}</label>
+              <select name="status" id="st-{{ item.id }}" class="form-select form-select-sm">
+                {% for key, label in staff_statuses %}<option value="{{ key }}"{% if key == item.status %} selected{% endif %}>{{ label }}</option>{% endfor %}
+                {% if may_edit %}{% for key, label in public_statuses %}<option value="{{ key }}"{% if key == item.status %} selected{% endif %}>{{ label }} (participants see this)</option>{% endfor %}{% endif %}
+              </select>
+              {% if may_edit %}
+              <span class="form-check mb-0">
+                <input class="form-check-input" type="checkbox" name="announce" value="1" id="an-{{ item.id }}">
+                <label class="form-check-label small" for="an-{{ item.id }}">Tell participants</label>
+              </span>
+              {% endif %}
+              <button type="submit" class="btn btn-sm btn-primary">Set</button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% if may_edit %}
+    <p class="small text-subtle mb-0" style="padding:12px 20px;">
+      “Tell participants” applies to Delayed and Cancelled, and to taking either mark off: the change is posted to
+      the event's announcements and sent to each registered person as a notification on this site. No email is sent.
+    </p>
+    {% else %}
+    <p class="small text-subtle mb-0" style="padding:12px 20px;">
+      You can mark an item Planned, Ready, Running now or Done. Delaying or cancelling an item is the organiser's.
+    </p>
+    {% endif %}
+  </div>
+
+  <div class="card mb-4" style="max-width:920px;">
+    <div class="card-header"><span><i class="fas fa-user-check" aria-hidden="true"></i> Who is responsible for what</span></div>
+    <div style="padding:8px 20px 16px;" data-responsibilities>
+      {% for owner, items in groups %}
+      <div class="mt-3" data-owner-group="{{ owner or 'nobody' }}">
+        <div class="fw-bold">{{ owner or 'Nobody yet' }}{% if owner and owner.strip().casefold() in me %} (you){% endif %}
+          <span class="text-subtle fw-normal small">· {{ items|length }} item{{ '' if items|length == 1 else 's' }}</span></div>
+        <ul class="mb-0 small">
+          {% for item in items %}
+          <li>{{ item.time }}{% if item.end %}–{{ item.end }}{% endif %} · {{ item.title }}{% if item.room %} · {{ item.room }}{% endif %}
+            {% if item.status != 'planned' %} · {{ item.status_label }}{% endif %}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+{% endblock %}

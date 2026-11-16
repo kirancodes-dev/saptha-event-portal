@@ -41,6 +41,7 @@
 </style>
 {% endblock %}
 {% block content %}
+<div class="mb-3">{% with back='results' %}{% include 'includes/leaderboard_switch.html' %}{% endwith %}</div>
 <div class="res-stats">
   {{ ui.stat_tile('fa-ranking-star', summary.scored, 'Teams scored') }}
   {{ ui.stat_tile('fa-hourglass-half', summary.unscored, 'Not scored yet') }}

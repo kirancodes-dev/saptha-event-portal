@@ -468,8 +468,12 @@ def review_event(event_id):
         p_doc = db.collection('events').document(ev['parent_event_id']).get()
         parent = dict(p_doc.to_dict() or {}, id=p_doc.id) if p_doc.exists else None
     from services_event_types import type_label
+    import services_reach
+    # A list the organiser typed that couldn't be saved comes back to be fixed (UPG-270)
+    typed = session.pop('invited_typed', None) or {}
     return render_template('spoc/review_event.html', ev=ev, spec=get_type(ev.get('event_type')),
-                           type_label=type_label,
+                           type_label=type_label, invited_text=services_reach.invited_text(ev),
+                           invited_typed=typed.get('text') if typed.get('event_id') == event_id else None,
                            checklist=_review_checklist(ev, sub_events), sub_events=sub_events,
                            parent=parent)
 
@@ -1087,21 +1091,70 @@ def manage_agenda(event_id):
         flash("Event not found.", "danger")
         return redirect('/spoc/dashboard')
 
+    import services_runsheet as runsheet
+    import services_sessions
+    event = event_doc.to_dict() or {}
+    event['id'] = event_id
+    problems, typed = [], None
+
     if request.method == 'POST':
         # Each item is a session with an ID, and optionally an end, room,
-        # capacity and hours, for session check-in (UPG-159)
-        import services_sessions
-        agenda = services_sessions.parse_agenda(request.form)
-        db.collection('events').document(event_id).update({'agenda': agenda})
-        flash("Schedule saved!", "success")
-        return redirect(f'/spoc/agenda/{event_id}')
+        # capacity and hours, for session check-in (UPG-159); and a status,
+        # an owner and a staff note for the run sheet (UPG-272)
+        rows = []
+        agenda = services_sessions.parse_agenda(request.form, rows)
+        fields = runsheet.read_staff_fields(request.form, agenda, rows)
+        problems, warnings = runsheet.check(agenda, fields, one_day=not runsheet.multi_day(event))
+        if not problems:
+            actor = session.get('user_id', '')
+            warnings += runsheet.elsewhere(db, event_id, event, agenda)
+            sentences = runsheet.changes(event.get('agenda') or [], agenda)
+            db.collection('events').document(event_id).update({'agenda': agenda})
+            runsheet.save_staff_fields(db, event_id, fields, actor)
+            flash("Schedule saved!", "success")
+            for warning in warnings[:8]:
+                flash("Check this: " + warning['message'], "warning")
+            if sentences and request.form.get('announce') == '1':
+                told = runsheet.announce(db, event_id, event, sentences, actor)
+                flash(f"The change was posted to the event's announcements and sent to {told} registered "
+                      f"{'person' if told == 1 else 'people'} as a notification: " + ' '.join(sentences), "info")
+            elif sentences:
+                flash("Participants were not told about this change (the box was not ticked): " + ' '.join(sentences), "info")
+            return redirect(f'/spoc/agenda/{event_id}')
+        # nothing is saved; the page comes back with what was typed
+        typed = [dict(item, **fields.get(item['id'], {})) for item in agenda]
 
-    event  = event_doc.to_dict()
-    event['id'] = event_id
-    return render_template('spoc/agenda.html', event=event)
+    fields = runsheet.staff_fields(db, event_id)
+    items = typed if typed is not None else [dict(i, **fields.get(str(i.get('id') or ''), {}))
+                                             for i in event.get('agenda') or [] if isinstance(i, dict)]
+    wrong = {sid for p in problems for sid in p['ids']}
+    people = sorted({str(m.get('name') or m.get('email') or '').strip() for m in event.get('staff') or []
+                     if isinstance(m, dict)} - {''})
+    return render_template('spoc/agenda.html', event=event, items=items, problems=problems, wrong=wrong,
+                           statuses=[(k, runsheet.STATUS_LABELS[k]) for k in services_sessions.STATUSES],
+                           people=people, multi_day=runsheet.multi_day(event)), (400 if problems else 200)
 
 
 # --- 11. PUBLISH RESULTS ---
+@spoc_bp.route('/leaderboard_visibility/<event_id>', methods=['POST'])
+@login_required
+@role_required('ClubSPOC')
+def leaderboard_visibility(event_id):
+    """The organiser shows the event's leaderboard to the public, or hides it
+    again (UPG-300). Until then the public boards say it isn't public yet."""
+    import services_leaderboard
+    _event_or_abort(event_id, 'publish_results')
+    public = request.form.get('public') == '1'
+    services_leaderboard.set_public(db, event_id, public, session.get('user_id', ''))
+    log_action(db, "LEADERBOARD_PUBLIC" if public else "LEADERBOARD_HIDDEN",
+               f"{session.get('user_id')} {'showed' if public else 'hid'} the leaderboard of {event_id}")
+    flash("The leaderboard is public: anyone with the link and the projector screen see the scores."
+          if public else "The leaderboard is hidden: the public sees \"Not public yet\"; staff still see the scores.",
+          'success' if public else 'info')
+    back = {'rounds': f'/spoc/round_panel/{event_id}', 'hackathon': f'/spoc/hackathon/{event_id}#ranking'}
+    return redirect(back.get(request.form.get('back', ''), f'/spoc/results/{event_id}'))
+
+
 @spoc_bp.route('/publish_results/<event_id>', methods=['POST'])
 @login_required
 @role_required('ClubSPOC')
@@ -1391,6 +1444,7 @@ def clone_event(event_id):
         'registration_count', 'status', 'ended_at', 'created_at',
         'velocity_alert_sent', 'velocity_alert_sent_at',
         'results_published', 'registration_closed_at',
+        'leaderboard_public', 'leaderboard_public_changed_at', 'leaderboard_public_changed_by',   # a copy starts hidden (UPG-300)
     }
     clone = {k: v for k, v in src.items() if k not in _STRIP}
     clone['title']               = f"Copy of {src.get('title', 'Event')}"

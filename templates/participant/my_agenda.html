@@ -10,7 +10,9 @@
 {% macro session_row(s, starred) %}
   <li class="list-group-item d-flex justify-content-between align-items-start gap-3" data-session="{{ s.id }}">
     <div>
-      <div class="fw-bold">{{ s.time }}{% if s.end %}–{{ s.end }}{% endif %} · {{ s.title }}</div>
+      <div class="fw-bold">{{ s.time }}{% if s.end %}–{{ s.end }}{% endif %} · {{ s.title }}
+        {%- if s.status == 'cancelled' %} <span class="se-badge se-badge--danger" data-agenda-status="cancelled">Cancelled</span>
+        {%- elif s.status == 'delayed' %} <span class="se-badge se-badge--warning" data-agenda-status="delayed">Delayed</span>{% endif %}</div>
       {% if s.room or s.hours %}<div class="small text-muted">{% if s.room %}<i class="fas fa-door-open" aria-hidden="true"></i> {{ s.room }}{% endif %}{% if s.room and s.hours %} · {% endif %}{% if s.hours %}{{ s.hours }} h credited if you attend{% endif %}</div>{% endif %}
       {% if s.desc %}<div class="small">{{ s.desc }}</div>{% endif %}
     </div>

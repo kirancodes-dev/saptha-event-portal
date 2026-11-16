@@ -1,0 +1,87 @@
+{% extends "base_classic.html" %}
+{#- The roster file, checked and waiting to be confirmed (UPG-271). Super Admin only. -#}
+{% set app_active = 'users' %}
+{% set c = checked.counts %}
+{% set words = {'create': ('New student', 'success'), 'update': ('Update', 'info'), 'same': ('No change', 'neutral'), 'skip': ('Not used', 'danger')} %}
+{% block title %}Check the roster | Admin{% endblock %}
+{% block page_title %}Check the roster before importing{% endblock %}
+{% block page_sub %}{{ waiting.filename }} · {{ c.rows }} row{{ '' if c.rows == 1 else 's' }}. Nothing has been changed yet.{% endblock %}
+{% block page_actions %}<a href="/admin/users#roster" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Users</a>{% endblock %}
+{% block content %}
+<section class="panel mb-3" aria-labelledby="sum-h" data-roster-summary>
+  <h2 class="h6 fw-bold mb-2" id="sum-h">What this file would do</h2>
+  <ul class="list-unstyled d-flex flex-wrap gap-3 mb-2">
+    <li><a href="?show=create" data-count="create"><strong>{{ c.create }}</strong> new student{{ '' if c.create == 1 else 's' }}</a></li>
+    <li><a href="?show=update" data-count="update"><strong>{{ c['update'] }}</strong> existing student{{ '' if c['update'] == 1 else 's' }} with changes</a></li>
+    <li><a href="?show=same" data-count="same"><strong>{{ c.same }}</strong> already up to date</a></li>
+    <li><a href="?show=skip" data-count="skip"{% if c.skip %} class="text-danger"{% endif %}><strong>{{ c.skip }}</strong> row{{ '' if c.skip == 1 else 's' }} that can't be used</a></li>
+    {% if show %}<li><a href="?">Show every row</a></li>{% endif %}
+  </ul>
+  <p class="small text-muted mb-1">Columns read: {{ checked.columns|join(', ') }}.{% if checked.ignored_columns %} <span data-ignored-columns>Ignored: {{ checked.ignored_columns|join(', ') }}.</span>{% endif %}</p>
+  {% if c.skip %}
+  <div class="callout callout--warning mt-2" role="status">
+    <strong>{{ c.skip }} row{{ '' if c.skip == 1 else 's' }} can't be used</strong> and will be left out. The reason is beside each one.
+    Fix them in your file and upload them again later, or <a href="/admin/users/import/{{ import_id }}/problems.csv">download the rows to fix</a>.
+  </div>
+  {% endif %}
+</section>
+
+<section class="panel mb-3" aria-labelledby="rows-h">
+  <h2 class="h6 fw-bold mb-2" id="rows-h">{{ {'create': 'New students', 'update': 'Students with changes', 'same': 'Already up to date', 'skip': "Rows that can't be used"}.get(show, 'Every row') }}</h2>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle" data-roster-rows>
+      <thead><tr><th scope="col">Line</th><th scope="col">Email</th><th scope="col">Name</th><th scope="col">USN</th><th scope="col">What happens</th><th scope="col">Details</th></tr></thead>
+      <tbody>
+        {% for r in page.items %}
+        <tr data-line="{{ r.line }}" data-action="{{ r.action }}">
+          <td>{{ r.line }}</td>
+          <td>{{ r.email or '—' }}</td>
+          <td>{{ r['values'].name or '—' }}</td>
+          <td>{{ r['values'].usn or '—' }}</td>
+          <td><span class="se-badge se-badge--{{ words[r.action][1] }}">{{ words[r.action][0] }}</span></td>
+          <td class="small">
+            {% for p in r.problems %}<div class="text-danger" data-problem><i class="fas fa-circle-exclamation me-1" aria-hidden="true"></i>{{ p }}</div>{% endfor %}
+            {% if not r.problems %}
+              {% for ch in r.changes %}<div data-change>{{ ch.field }}: {% if ch.old %}<span class="text-muted">{{ ch.old }}</span> → {% endif %}<strong>{{ ch.new }}</strong></div>{% endfor %}
+              {% for n in r.notes %}<div class="text-muted">{{ n }}</div>{% endfor %}
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-muted">No rows of this kind.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "includes/pagination.html" %}
+</section>
+
+<section class="panel" aria-labelledby="go-h">
+  <h2 class="h6 fw-bold mb-2" id="go-h">Import</h2>
+  {% if checked.usable %}
+  <form method="POST" action="/admin/users/import/{{ import_id }}/confirm" class="mb-2" data-roster-confirm>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <fieldset class="mb-3">
+      <legend class="form-label">Students who already have an account{% if c['update'] %} ({{ c['update'] }} with changes){% endif %}</legend>
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="existing" id="ex-update" value="update" checked>
+        <label class="form-check-label" for="ex-update">Update them with this file's values <span class="text-muted">(an empty cell changes nothing)</span></label>
+      </div>
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="existing" id="ex-leave" value="leave">
+        <label class="form-check-label" for="ex-leave">Leave them as they are, and only add new students</label>
+      </div>
+    </fieldset>
+    <p class="small text-muted">New students get an account they can't use until they set a password from the "Forgot password" link on the login page. No email is sent by this import.</p>
+    <button type="submit" class="btn btn-primary">Import {{ c.create }} new{% if c['update'] %} and update {{ c['update'] }}{% endif %}</button>
+  </form>
+  {% else %}
+  <p class="text-danger" data-nothing-usable>No row in this file can be imported. Fix the rows above and upload the file again.</p>
+  {% endif %}
+  <form method="POST" action="/admin/users/import/{{ import_id }}/cancel" class="d-inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-outline-secondary">Cancel: change nothing</button>
+  </form>
+  <p class="small text-muted mt-3 mb-0">This upload is kept for {{ keep_minutes }} minutes, for you only, then deleted. Confirming checks the file again against the accounts as they are then.</p>
+</section>
+{% endblock %}

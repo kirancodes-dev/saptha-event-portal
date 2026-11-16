@@ -41,6 +41,8 @@ def test_a_rubric_score_is_stored_and_shown_on_the_leaderboard(judged):
     assert resp.status_code == 200 and resp.get_json()['status'] == 'ok'
     scores = d['db'].collection('registrations').document(reg_id).get().to_dict()['scores']
     assert scores[d['judge']]['total'] == 8
+    # The organiser makes the leaderboard public first (UPG-300: hidden until then)
+    d['db'].collection('events').document(event_id).update({'leaderboard_public': True})
     board = json.dumps(d['app'].test_client().get(f'/live/data/{event_id}').get_json())
     assert 'Team Nova' in board and ('8.0' in board or ': 8' in board)
 

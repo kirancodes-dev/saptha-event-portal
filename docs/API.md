@@ -1,161 +1,160 @@
-# SapthaEvent REST API v1 Specification
+# SapthaEvent REST API v1
 
-## 1. Overview
-The SapthaEvent REST API v1 (`/api/v1`) provides programmatic access to event management, ticketing, workflow state transitions, rubric scoring, certificates, and the AI Copilot.
+This is the list of what the code serves under `/api/v1`. A test
+(`tests/test_integration_docs.py`) fails when this list and the routes in
+`routes_api_v1.py` stop matching, so an endpoint is never documented before it
+exists or dropped from here while it still answers.
 
-### Base URL
-```
-https://events.snpsu.edu.in/api/v1
-```
+It is the API the mobile app uses. It is not a separate product: there are no
+API keys, no per-client quotas and no sandbox. A caller signs in as a user
+account and can do what that account can do.
 
-### Authentication
-All non-public endpoints require an RFC 6750 Bearer token:
+## Base URL
+
+`<the portal's address>/api/v1`, for example `https://events.example.edu/api/v1`.
+`GET /api/v1/` returns the API's name and version.
+
+## Signing in
+
+`POST /api/v1/auth/login` with JSON `{"email", "password", "role"}` returns an
+access token (15 minutes by default) and a refresh token (7 days by default).
+Send the access token on later calls:
+
 ```http
-Authorization: Bearer <jwt_access_token>
-```
-Obtain tokens via `POST /api/v1/auth/login`.
-
----
-
-## 2. Universal Event Endpoints
-
-### 2.1 List Events
-`GET /api/v1/events`
-- Query parameters:
-  - `q`: Text search across title, description, and venue.
-  - `category`: Filter by category (e.g., `Technical`, `Cultural`).
-  - `type`: Filter by template type (e.g., `hackathon`, `conference`).
-  - `mode`: Filter by mode (`offline`, `online`, `hybrid`).
-  - `page`: Page index (default: `1`).
-  - `per_page`: Page size (default: `20`, max: `100`).
-
-### 2.2 Get Event by Slug or ID
-`GET /api/v1/events/<slug_or_id>`
-- Response:
-```json
-{
-  "status": "success",
-  "data": {
-    "id": "c784f47b-...",
-    "slug": "quantum-computing-symposium-2026",
-    "title": "Quantum Computing Symposium 2026",
-    "category": "Technical",
-    "event_type": "conference",
-    "capacity": 300,
-    "fee": 500.0,
-    "ticket_tiers": [...]
-  }
-}
+Authorization: Bearer <access token>
 ```
 
-### 2.3 Create Event
-`POST /api/v1/events` (Admin / SPOC only)
-- Request body:
-```json
-{
-  "title": "Cyber Warfare CTF 2026",
-  "category": "Technical",
-  "event_type": "hackathon",
-  "event_mode": "hybrid",
-  "venue": "Lab 401, CSE Block",
-  "capacity": 150,
-  "fee": 200.0,
-  "date_str": "2026-11-25"
-}
-```
+`POST /api/v1/auth/refresh` exchanges a refresh token for new tokens;
+`POST /api/v1/auth/logout` invalidates the access token. Failed sign-ins share
+the web login's lockout counters. The lifetimes are the settings
+`JWT_ACCESS_TOKEN_EXPIRES` and `JWT_REFRESH_TOKEN_EXPIRES` (seconds).
 
----
+"Signed in" below means any valid access token. A role list means the token's
+role must be one of those named in the code, or Super Admin.
 
-## 3. Workflow & Lifecycle Endpoints
+## Versioning
 
-### 3.1 Transition Workflow Stage
-`POST /api/v1/events/<event_id>/workflow/transition` (Admin / Coordinator)
-- Request body:
-```json
-{
-  "target_step": "evaluation",
-  "notes": "Closing submissions and dispatching rubric sheets to judges."
-}
-```
+Every path starts with `/api/v1`. A change that would break a caller goes
+under a new prefix; fields may be added to a response under `v1`. There is no
+deprecation schedule to quote, because there has been only one version.
 
----
+## Answers and errors
 
-## 4. Ticketing & Verification Endpoints
+Success: `{"status": "success", "data": ...}`; lists add paging fields.
+Failure: `{"status": "error", "code": "...", "message": "..."}` with the HTTP
+status `400` (bad input), `401` (missing, wrong or expired token), `403` (the
+role may not do this), `404`, `429` (too many requests) or `503`.
 
-### 4.1 Issue Digital Pass
-`POST /api/v1/events/<event_id>/tickets/issue`
-- Request body:
-```json
-{
-  "registration_id": "reg-12345",
-  "tier_id": "vip-delegate",
-  "attendee_name": "Dr. Alan Turing",
-  "attendee_email": "turing@cam.ac.uk"
-}
-```
+## Endpoints
 
-### 4.2 Verify QR Token (Coordinator Scanner)
-`POST /api/v1/tickets/verify`
-- Request body:
-```json
-{
-  "signed_token": "eyJh...hmac_token"
-}
-```
+"Tested" means the automated tests call the endpoint. Endpoints marked "no"
+exist and answer, and were not re-checked when this page was last rewritten
+(2026-11-15).
 
-### 4.3 Batch Offline Sync
-`POST /api/v1/tickets/sync-offline`
-- Request body:
-```json
-{
-  "event_id": "evt-12345",
-  "scans": [
-    {
-      "token": "token-abc",
-      "scanned_at": "2026-11-20T08:45:00Z",
-      "gate_id": "Gate-2"
-    }
-  ]
-}
-```
+### Accounts
 
----
+| Method | Path | Who | Tested | What it does |
+|---|---|---|---|---|
+| POST | `/api/v1/auth/login` | anyone | yes | Sign in, get tokens |
+| POST | `/api/v1/auth/register` | anyone | yes | Create a student account |
+| POST | `/api/v1/auth/refresh` | anyone with a refresh token | no | New tokens |
+| POST | `/api/v1/auth/logout` | signed in | no | Invalidate the access token |
+| GET | `/api/v1/users/me` | signed in | yes | The caller's profile |
+| PUT | `/api/v1/users/me` | signed in | yes | Update the caller's profile |
+| GET | `/api/v1/achievements` | signed in | no | The caller's points and badges |
+| GET | `/api/v1/notifications` | signed in | no | The caller's notifications |
+| GET | `/api/v1/registrations` | signed in | no | The caller's registrations |
 
-## 5. AI Copilot Endpoints
+### Events
 
-### 5.1 Propose Event Schema
-`POST /api/v1/ai/copilot/propose` (Admin only)
-- Request body:
-```json
-{
-  "prompt": "Create a 3-day aerospace engineering design hackathon with CFD simulation rubrics."
-}
-```
+| Method | Path | Who | Tested | What it does |
+|---|---|---|---|---|
+| GET | `/api/v1/` | anyone | no | Name, version and a summary of endpoints |
+| GET | `/api/v1/events` | anyone | yes | Listed events, paged; filters `q`, `category`, `type`, `mode`, `page`, `per_page` |
+| GET | `/api/v1/events/<event_id>` | anyone | yes | One event |
+| POST | `/api/v1/events` | ClubSPOC, Admin, Coordinator | yes | Create a draft event, with the web wizard's checks |
+| PUT | `/api/v1/events/<event_id>` | ClubSPOC, Admin, Coordinator | no | Update an event |
+| POST | `/api/v1/events/<event_id>/register` | signed in | no | Register the caller |
+| GET | `/api/v1/templates` | anyone | yes | The event-type catalogue |
+| GET | `/api/v1/templates/<template_id>` | anyone | yes | One event type |
+| POST | `/api/v1/events/from-template` | SuperAdmin, Admin, SPOC, Organizer | yes | Create a draft from an event type |
+| POST | `/api/v1/events/<event_id>/workflow-transition` | SuperAdmin, Admin, SPOC, Organizer | yes | Move an event to another stage |
+| POST | `/api/v1/registrations/<reg_id>/workflow-transition` | SuperAdmin, Admin, SPOC, Organizer, Judge, Volunteer | no | Move a registration to another stage |
+| GET | `/api/v1/workflow/history/<entity_type>/<entity_id>` | signed in | yes | The stage changes of an event or registration |
 
-### 5.2 Get Proposal Status
-`GET /api/v1/ai/copilot/proposals/<proposal_id>`
+### Check-in, scores and certificates
 
-### 5.3 Approve & Instatiate Proposal
-`POST /api/v1/ai/copilot/proposals/<proposal_id>/approve`
+| Method | Path | Who | Tested | What it does |
+|---|---|---|---|---|
+| GET | `/api/v1/events/<event_id>/ticket-manifest` | SuperAdmin, Admin, SPOC, Organizer, EventCoordinator | yes | The event's tickets, for the app's scanner |
+| POST | `/api/v1/events/<event_id>/checkin-batch` | SuperAdmin, Admin, SPOC, Organizer, EventCoordinator | yes | Send check-ins the app kept while offline |
+| POST | `/api/v1/events/<event_id>/scores` | SuperAdmin, Admin, SPOC, Organizer, Judge, EventCoordinator | yes | Submit a score |
+| GET | `/api/v1/events/<event_id>/leaderboard` | anyone, once the organiser makes the leaderboard public | yes | The event's ranking; `403 not_public` until then |
+| GET | `/api/v1/leaderboard/<event_id>` | anyone, once the organiser makes the leaderboard public | yes | The event's ranking (older path); `403 not_public` until then |
+| POST | `/api/v1/events/<event_id>/issue-certificates` | SuperAdmin, Admin, SPOC, ClubSPOC, Organizer | yes | Issue certificates through the web's issuing |
+| GET | `/api/v1/certificates/<cert_id>` | anyone | yes | Verify a certificate by its number |
 
----
+The web scanner does not use `checkin-batch`; it sends each kept scan to
+`POST /ticket/api/checkin` (see `docs/PWA.md`).
 
-## 6. Standard Error Schema
+### Messages
 
-```json
-{
-  "status": "error",
-  "code": "permission_denied",
-  "message": "You do not have the required role to perform this action.",
-  "timestamp": "2026-09-17T11:20:00Z"
-}
-```
-Common HTTP Status Codes:
-- `200 OK`: Request succeeded.
-- `201 Created`: Resource created.
-- `400 Bad Request`: Invalid parameters or validation failure.
-- `401 Unauthorized`: Missing or expired Bearer token.
-- `403 Forbidden`: Insufficient role permissions.
-- `404 Not Found`: Resource does not exist.
-- `429 Too Many Requests`: Rate limit threshold exceeded.
-- `500 Internal Error`: Server encountered an unexpected error.
+| Method | Path | Who | Tested | What it does |
+|---|---|---|---|---|
+| POST | `/api/v1/events/<event_id>/broadcast` | SuperAdmin, Admin, SPOC, Organizer | yes | Send a notice to an event's participants |
+| POST | `/api/v1/notifications/trigger` | SuperAdmin, Admin, SPOC, Organizer, EventCoordinator | yes | Send a notice to one participant |
+| POST | `/api/v1/webhooks/email` | the email provider | no | Incoming delivery reports from the email provider (see "Webhooks") |
+
+### Reports
+
+| Method | Path | Who | Tested | What it does |
+|---|---|---|---|---|
+| GET | `/api/v1/analytics/events/<event_id>/funnel` | SuperAdmin, Admin, SPOC, Organizer | yes | Registered, confirmed, attended |
+| GET | `/api/v1/analytics/events/<event_id>/throughput` | SuperAdmin, Admin, SPOC, Organizer, EventCoordinator | no | Check-ins by hour |
+| GET | `/api/v1/analytics/events/<event_id>/demographics` | SuperAdmin, Admin, SPOC, Organizer | yes | Participants by department and institution |
+| GET | `/api/v1/analytics/events/<event_id>/executive-summary` | SuperAdmin, Admin, SPOC, Organizer | yes | One event's summary |
+
+### Platform administration
+
+| Method | Path | Who | Tested | What it does |
+|---|---|---|---|---|
+| GET | `/api/v1/orgs` | SuperAdmin | no | Organisation records |
+| POST | `/api/v1/orgs` | SuperAdmin | no | Create an organisation record |
+| GET | `/api/v1/control-plane/overview` | SuperAdmin | yes | Counts across the deployment |
+| POST | `/api/v1/control-plane/orgs/<org_id>/plan` | SuperAdmin | yes | Set an organisation record's plan |
+| POST | `/api/v1/control-plane/orgs/<org_id>/status` | SuperAdmin | yes | Suspend or reactivate an organisation record |
+| POST | `/api/v1/control-plane/impersonate` | SuperAdmin | yes | Record an audited support access |
+| GET | `/api/v1/security/incidents` | SuperAdmin | yes | Recent security events |
+| POST | `/api/v1/security/verify-nonce` | anyone | yes | Check a time-limited nonce |
+
+Organisation records do not separate data: a deployment serves one institution
+(`docs/MULTI_TENANCY.md`).
+
+### AI event writer
+
+| Method | Path | Who | Tested | What it does |
+|---|---|---|---|---|
+| POST | `/api/v1/ai/copilot/propose` | SuperAdmin, Admin, SPOC, Organizer | yes | Draft an event from a description |
+| GET | `/api/v1/ai/copilot/proposals/<proposal_id>` | SuperAdmin, Admin, SPOC, Organizer | yes | Read a draft |
+| POST | `/api/v1/ai/copilot/proposals/<proposal_id>/approve` | SuperAdmin, Admin, SPOC, Organizer | yes | Turn a draft into an event |
+
+### Payments
+
+These exist and are outside this page's review; see the payment code and its
+tests before relying on them.
+
+| Method | Path | Who | Tested | What it does |
+|---|---|---|---|---|
+| POST | `/api/v1/finance/checkout-preview` | anyone | yes | Price breakdown for a ticket |
+| POST | `/api/v1/finance/convert` | anyone | yes | Currency conversion |
+| GET | `/api/v1/events/<event_id>/payout-summary` | SuperAdmin, Admin, SPOC, Organizer | yes | An event's revenue summary |
+
+## Webhooks
+
+**Outgoing webhooks do not exist.** The portal does not call another system
+when someone registers, checks in or receives a certificate (planned as
+UPG-171, not built). To get data out, use the exports and feeds in
+`docs/INTEGRATIONS.md`, or poll the endpoints above.
+
+**Incoming:** `POST /api/v1/webhooks/email` takes delivery reports from the
+email provider and records whether a registration's email was delivered.

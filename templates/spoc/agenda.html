@@ -9,35 +9,19 @@
 .row-num { width: 28px; height: 28px; border-radius: 50%; background: var(--brand-navy); color: #fff; font-size: var(--fs-xs); font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 4px; }
 .remove-row { background: none; border: 0; color: var(--text-subtle); cursor: pointer; font-size: 15px; padding: 6px; border-radius: var(--radius-xs); }
 .remove-row:hover { color: var(--danger); background: var(--danger-soft); }
+.agenda-row--wrong { outline: 2px solid var(--danger); outline-offset: 6px; border-radius: var(--radius-xs); }
 </style>
 {% endblock %}
 {% block content %}
-  
-
-  <form method="POST">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-    <div class="card mb-4" style="max-width:820px;">
-      <div class="card-header justify-content-between">
-        <span><i class="fas fa-calendar-check" aria-hidden="true"></i> Event timeline</span>
-        <button type="button" class="btn btn-gold btn-sm" data-h-click="spoc/agenda:1">
-          <i class="fas fa-plus" aria-hidden="true"></i> Add item
-        </button>
-      </div>
-      <p class="small text-subtle mb-0" style="padding:12px 20px 0;">
-        Each item is a session. Give it seats to warn the scanner when the room is full, and hours
-        to credit attendees only for the sessions they were scanned into (FDPs, NSS).
-        Scan people into a session from the scanner's <strong>Session</strong> mode.
-      </p>
-      <div style="padding:20px;" id="rows-container">
-        {% if event.get('agenda') %}
-          {% for item in event.agenda %}
-          <div class="d-flex gap-3 align-items-start mb-3 agenda-row">
-            <div class="row-num">{{ loop.index }}</div>
+{#- One row of the schedule: the builder's rows and the blank row "Add item"
+    copies (UPG-272: status, owner and a staff note for the run sheet). -#}
+{% macro agenda_row(item, number) %}
+          <div class="d-flex gap-3 align-items-start mb-3 agenda-row{% if item.id and item.id in wrong %} agenda-row--wrong{% endif %}" data-row>
+            <div class="row-num">{{ number }}</div>
             <div class="row g-2 flex-grow-1">
               <input type="hidden" name="sid[]" value="{{ item.id or '' }}">
               <div class="col-auto">
-                <input aria-label="Start time" type="time" name="time[]" value="{{ item.time }}"
+                <input aria-label="Start time" type="time" name="time[]" value="{{ item.time or '' }}"
                        class="form-control form-control-sm" style="width:110px;" required>
               </div>
               <div class="col-auto">
@@ -45,12 +29,12 @@
                        class="form-control form-control-sm" style="width:110px;">
               </div>
               <div class="col">
-                <input aria-label="Item title (e.g. Opening Ceremony)" type="text" name="title[]" value="{{ item.title }}"
+                <input aria-label="Item title (e.g. Opening Ceremony)" type="text" name="title[]" value="{{ item.title or '' }}"
                        placeholder="Item title (e.g. Opening Ceremony)"
                        class="form-control form-control-sm" required>
               </div>
               <div class="col-12">
-                <input aria-label="Details (optional)" type="text" name="desc[]" value="{{ item.desc }}"
+                <input aria-label="Details (optional)" type="text" name="desc[]" value="{{ item.desc or '' }}"
                        placeholder="Details (optional)"
                        class="form-control form-control-sm">
               </div>
@@ -66,17 +50,93 @@
                 <input aria-label="Hours credited (optional)" type="number" min="0" step="0.25" name="hours[]" value="{{ item.hours or '' }}"
                        placeholder="Hours" class="form-control form-control-sm" style="width:100px;">
               </div>
+              <div class="col-12 col-md-4">
+                <input aria-label="Who is responsible (staff only)" type="text" name="owner[]" value="{{ item.owner or '' }}"
+                       list="owner-names" maxlength="120" placeholder="Who is responsible (staff only)"
+                       class="form-control form-control-sm">
+              </div>
+              <div class="col-12 col-md-5">
+                <input aria-label="Note for the staff (staff only)" type="text" name="note[]" value="{{ item.note or '' }}"
+                       maxlength="300" placeholder="Note for the staff (staff only)"
+                       class="form-control form-control-sm">
+              </div>
+              <div class="col-12 col-md-3">
+                <select aria-label="Status" name="status[]" class="form-select form-select-sm">
+                  {% for key, label in statuses %}
+                  <option value="{{ key }}"{% if (item.status or 'planned') == key %} selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
             </div>
             <button type="button" class="remove-row" data-h-click="spoc/agenda:2" aria-label="Remove this item">
               <i class="fas fa-trash-alt" aria-hidden="true"></i>
             </button>
           </div>
-          {% endfor %}
-        {% else %}
-          <p class="text-center text-subtle py-4 mb-0">
+{% endmacro %}
+
+  {% if problems %}
+  <div class="alert alert-danger" role="alert" style="max-width:820px;" data-schedule-problems>
+    <strong>The schedule was not saved.</strong> Fix {{ 'this' if problems|length == 1 else 'these' }} and save again:
+    <ul class="mb-0 mt-1">
+      {% for problem in problems %}<li>{{ problem.message }}</li>{% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <datalist id="owner-names">
+      {% for person in people %}<option value="{{ person }}"></option>{% endfor %}
+    </datalist>
+
+    <div class="card mb-4" style="max-width:820px;">
+      <div class="card-header justify-content-between">
+        <span><i class="fas fa-calendar-check" aria-hidden="true"></i> Event timeline</span>
+        <span class="d-flex gap-2">
+          <a href="/coordinator/runsheet/{{ event.id }}" class="btn btn-secondary btn-sm" data-runsheet-link>
+            <i class="fas fa-clipboard-list" aria-hidden="true"></i> Run sheet</a>
+          <button type="button" class="btn btn-gold btn-sm" data-h-click="spoc/agenda:1">
+            <i class="fas fa-plus" aria-hidden="true"></i> Add item
+          </button>
+        </span>
+      </div>
+      <p class="small text-subtle mb-0" style="padding:12px 20px 0;">
+        Each item is a session. Give it seats to warn the scanner when the room is full, and hours
+        to credit attendees only for the sessions they were scanned into (FDPs, NSS).
+        Scan people into a session from the scanner's <strong>Session</strong> mode.
+      </p>
+      <p class="small text-subtle mb-0" style="padding:8px 20px 0;">
+        Who is responsible and the note are for the event's staff: they appear on the run sheet, never on the
+        public page. Participants see the time, the room, and a <strong>Delayed</strong> or
+        <strong>Cancelled</strong> mark.
+        {% if multi_day %}This event runs for more than a day and the schedule has times, not days, so two
+        items in one room at one time are a warning here, not an error.
+        {% else %}Two items can't use the same room at the same time.{% endif %}
+      </p>
+      <div style="padding:20px;" id="rows-container">
+        {% for item in items %}{{ agenda_row(item, loop.index) }}{% endfor %}
+        {% if not items %}
+          <p class="text-center text-subtle py-4 mb-0" data-empty>
             No schedule items yet. Click <strong>Add Item</strong> to start building the timeline.
           </p>
         {% endif %}
+      </div>
+    </div>
+
+    <div class="card mb-4" style="max-width:820px;">
+      <div style="padding:16px 20px;">
+        <div class="form-check mb-0">
+          <input class="form-check-input" type="checkbox" name="announce" value="1" id="announce-change"
+                 {% if (event.registration_count or 0) | int > 0 %}checked{% endif %}>
+          <label class="form-check-label" for="announce-change">
+            Tell registered participants what changed
+          </label>
+        </div>
+        <p class="small text-subtle mb-0 mt-1">
+          When a time or room changes, or an item is added, removed, delayed or cancelled, the change is posted
+          to the event's announcements and sent to each registered person as a notification on this site.
+          No email is sent. Changes to who is responsible, notes, seats and hours are never announced.
+        </p>
       </div>
     </div>
 
@@ -86,6 +146,7 @@
     </div>
   </form>
 
+  <template id="agenda-row-template">{{ agenda_row({}, 0) }}</template>
 
 <script src="/static/js/pages/spoc__agenda.js"></script>
 {% endblock %}

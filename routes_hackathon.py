@@ -391,9 +391,32 @@ def manage(event_id):
         email_mode=h.email_mode(event), is_hackathon=h.is_hackathon(event), group_link=h.group_link(event),
         max_pdf=h.MAX_PDF_MB, default_pdf=h.DEFAULT_PDF_MB,
         ai_on=ev.ai_enabled(), ai_off=ev.OFF, ai=ev.progress(db, event_id, event, subs),
-        criteria=ev.criteria(event), max_criteria=ev.MAX_CRITERIA, ranking=ev.ranking(db, event_id, event, sort),
+        criteria=ev.criteria(event), max_criteria=ev.MAX_CRITERIA, max_description=ev.DESCRIPTION_CHARS, ranking=ev.ranking(db, event_id, event, sort),
         sort=sort, shortlist=ev.shortlist(event), undo_ok=undo_ok, undo_why=undo_why,
-        round=round_info(event)['current'], unsent_results=_unsent_results(event_id, event))
+        round=round_info(event)['current'], unsent_results=_unsent_results(event_id, event),
+        eval_mode=ev.mode(event), eval_modes=ev.MODES, judging=_judging_summary(event_id, event))
+
+
+def _judging_summary(event_id, event):
+    """For a submission round scored by judges: the judges' criteria and how
+    far the judges are (UPG-298); None otherwise."""
+    ev = services_hackathon_eval
+    if ev.mode(event) != ev.JUDGES:
+        return None
+    from routes_judge import normalize_criteria
+    from services_rounds import round_teams
+    import services_permission
+    submitted = {str(s.get('registration_id')) for s in services_hackathon.submissions(db, event_id)}
+    teams = [t for t in round_teams(db, event_id, event) if str(t['id']) in submitted]
+    scored = sum(1 for t in teams if any(isinstance(v, dict) for v in (t['reg'].get('scores') or {}).values()))
+    judges = {str(j).strip().lower() for j in event.get('judges') or [] if str(j).strip()}
+    judges |= {str(s.get('email') or '').strip().lower() for s in event.get('staff') or []
+               if isinstance(s, dict) and s.get('role') == 'Judge' and s.get('email')}
+    return {'criteria': normalize_criteria(event.get('judging_criteria')),
+            'has_criteria': bool(event.get('judging_criteria')),
+            'teams': len(teams), 'scored': scored, 'judges': len(judges),
+            'open_hall': bool(event.get('open_hall_mode')),
+            'can_edit': services_permission.can(session, 'edit_event', event, db=db)}
 
 
 def _unsent_results(event_id, event):
@@ -509,6 +532,21 @@ def email_setting(event_id):
     return _back(event_id, 'emails')
 
 
+# ── Who scores the submission round: AI or judges (UPG-298) ─────────────────
+
+@hackathon_bp.route('/spoc/hackathon/<event_id>/evaluation_mode', methods=['POST'])
+@login_required
+def evaluation_mode(event_id):
+    event = _managed(event_id)
+    ev = services_hackathon_eval
+    before = ev.mode(event)
+    ok, message = ev.set_mode(db, event_id, event, request.form.get('mode', ''), by=_me())
+    if ok and ev.mode(event) != before:
+        _audit('HACKATHON_EVALUATION_MODE', f"{_me()} set the submission round of {event_id} to {ev.mode(event)}")
+    flash(message, 'success' if ok else 'danger')
+    return _back(event_id, 'evaluation')
+
+
 # ── After the deadline: AI scoring (UPG-192) ────────────────────────────────
 
 def _wants_json():
@@ -519,8 +557,11 @@ def _wants_json():
 @login_required
 def ai_criteria(event_id):
     event = _managed(event_id)
-    labels = [request.form.get(f'criterion_{i}', '') for i in range(services_hackathon_eval.MAX_CRITERIA + 2)]
-    ok, message = services_hackathon_eval.set_criteria(db, event_id, event, labels)
+    rows = range(services_hackathon_eval.MAX_CRITERIA + 2)
+    labels = [request.form.get(f'criterion_{i}', '') for i in rows]
+    descriptions = [request.form.get(f'description_{i}', '') for i in rows]   # UPG-299
+    marks = [request.form.get(f'marks_{i}', '') for i in rows]
+    ok, message = services_hackathon_eval.set_criteria(db, event_id, event, labels, descriptions, marks)
     flash(message, 'success' if ok else 'danger')
     return _back(event_id, 'evaluation')
 

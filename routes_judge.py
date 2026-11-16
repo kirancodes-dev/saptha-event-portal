@@ -94,6 +94,71 @@ def normalize_criteria(raw_criteria):
     }]
 
 
+def submission_round(event: dict) -> dict | None:
+    """When judges score the hackathon's submission round (UPG-298):
+    {'open': True while teams can still submit}. Otherwise None."""
+    import services_hackathon
+    import services_hackathon_eval
+    if not services_hackathon_eval.judges_score_submissions(event):
+        return None
+    return {'open': services_hackathon.window(event) != 'closed'}
+
+
+def judge_teams(event_id: str, event: dict, judge_email: str) -> list:
+    """The registrations this judge scores now, as (id, data) pairs.
+    Usually: checked in, still in, the current round and (unless open hall)
+    assigned to this judge. In a submission round scored by judges: after
+    the deadline, every team still in that submitted; a team assigned to a
+    judge is that judge's only."""
+    cur_round = event.get('active_round', 1)
+    sub_round = submission_round(event)
+    if sub_round is not None:
+        if sub_round['open']:
+            return []
+        import services_hackathon
+        submitted = {str(s.get('registration_id')) for s in services_hackathon.submissions(db, event_id)}
+        regs = db.collection('registrations').where(filter=_ff('event_id', '==', event_id)).stream()
+        out = []
+        for r in regs:
+            d = r.to_dict() or {}
+            if d.get('is_eliminated') or d.get('current_round', 1) != cur_round or r.id not in submitted:
+                continue
+            mine = d.get('assigned_judge_email')
+            if not event.get('open_hall_mode') and mine and mine != judge_email:
+                continue
+            out.append((r.id, d))
+        return out
+    regs = (db.collection('registrations')
+              .where(filter=_ff('event_id',    '==', event_id))
+              .where(filter=_ff('attendance',  '==', 'Present'))
+              .stream())
+    out = []
+    for r in regs:
+        d = r.to_dict() or {}
+        if d.get('is_eliminated') or d.get('current_round', 1) != cur_round:
+            continue
+        # In normal mode, only show teams assigned to this judge
+        if not event.get('open_hall_mode', False) and d.get('assigned_judge_email') != judge_email:
+            continue
+        out.append((r.id, d))
+    return out
+
+
+def _submission_round_refusal(event: dict, reg_id: str):
+    """Why this team can't be scored yet in a judges-scored submission
+    round, or None."""
+    sub_round = submission_round(event)
+    if sub_round is None:
+        return None
+    if sub_round['open']:
+        return "Submissions are still open. Score the teams after the submission deadline."
+    import services_hackathon
+    if not any(str(s.get('registration_id')) == str(reg_id)
+               for s in services_hackathon.submissions(db, event['id'])):
+        return "This team didn't submit, so there is nothing to score."
+    return None
+
+
 # =========================================================
 # 1. JUDGE DASHBOARD
 # =========================================================
@@ -115,13 +180,16 @@ def dashboard():
         data['id'] = e.id
         status = str(data.get('status') or '').lower()
         if status in JUDGING_STATUSES and can(session, 'score', data, db=db):
-            # Count scored / total teams for progress bar
-            regs       = list(db.collection('registrations')
-                               .where(filter=_ff('event_id', '==', e.id))
-                               .stream())
-            present    = [r for r in regs if r.to_dict().get('attendance') == 'Present'
-                          and not r.to_dict().get('is_eliminated')]
-            scored_by_me = sum(1 for r in present if email in r.to_dict().get('scores', {}))
+            # Count scored / total teams for progress bar: the teams this
+            # judge scores now (UPG-298: a judged submission round counts
+            # the teams that submitted)
+            if submission_round(data) is not None:
+                present = [d for _, d in judge_teams(e.id, data, email)]
+            else:
+                regs    = [r.to_dict() or {} for r in db.collection('registrations')
+                           .where(filter=_ff('event_id', '==', e.id)).stream()]
+                present = [d for d in regs if d.get('attendance') == 'Present' and not d.get('is_eliminated')]
+            scored_by_me = sum(1 for d in present if email in (d.get('scores') or {}))
             data['teams_total']    = len(present)
             data['teams_scored']   = scored_by_me
             data['open_hall_mode'] = data.get('open_hall_mode', False)
@@ -152,27 +220,11 @@ def event_teams(event_id):
     event['judging_criteria_normalized'] = normalize_criteria(event.get('judging_criteria'))
     judge_email = session.get('user_id')
     open_hall   = event.get('open_hall_mode', False)
-    cur_round   = event.get('active_round', 1)
-
-    # Base query — present, not eliminated, current round
-    all_regs = (db.collection('registrations')
-                  .where(filter=_ff('event_id',    '==', event_id))
-                  .where(filter=_ff('attendance',  '==', 'Present'))
-                  .stream())
 
     teams = []
-    for r in all_regs:
-        d = r.to_dict()
-        if d.get('is_eliminated'):
-            continue
-        if d.get('current_round', 1) != cur_round:
-            continue
-        # In normal mode, only show teams assigned to this judge
-        if not open_hall and d.get('assigned_judge_email') != judge_email:
-            continue
-
-        d['id']       = r.id
-        d['my_score'] = d.get('scores', {}).get(judge_email)
+    for reg_id, d in judge_teams(event_id, event, judge_email):
+        d['id']       = reg_id
+        d['my_score'] = (d.get('scores') or {}).get(judge_email)
         teams.append(d)
 
     teams.sort(key=lambda x: x.get('team_name', ''))
@@ -181,7 +233,8 @@ def event_teams(event_id):
                             event=event, teams=teams,
                             judge_email=judge_email,
                             open_hall=open_hall,
-                            is_hackathon=services_hackathon.has_form(event))
+                            is_hackathon=services_hackathon.has_form(event),
+                            submission_round=submission_round(event))
 
 
 # =========================================================
@@ -215,6 +268,12 @@ def submit_score(reg_id):
             if request.is_json or 'json' in request.headers.get('Accept', ''):
                 return jsonify({'status': 'error', 'message': message}), 409
             flash(message, "warning")
+            return redirect(f'/judge/event/{event_id}'), 409
+        not_yet = _submission_round_refusal(event_doc, reg_id)   # UPG-298
+        if not_yet:
+            if request.is_json or 'json' in request.headers.get('Accept', ''):
+                return jsonify({'status': 'error', 'message': not_yet}), 409
+            flash(not_yet, "warning")
             return redirect(f'/judge/event/{event_id}'), 409
 
         norm_criteria = normalize_criteria(event_doc.get('judging_criteria'))
@@ -315,6 +374,9 @@ def score_inline(reg_id):
         if not can_score(event_doc, reg_data):
             return jsonify({'status': 'error',
                             'message': "This team isn't in the current round, so it can't be scored."}), 409
+        not_yet = _submission_round_refusal(event_doc, reg_id)   # UPG-298
+        if not_yet:
+            return jsonify({'status': 'error', 'message': not_yet}), 409
 
         norm_criteria = normalize_criteria(event_doc.get('judging_criteria'))
 

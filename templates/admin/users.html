@@ -33,23 +33,25 @@
             </div>
         </details>
 
-        <div class="card mb-4">
+        {#- UPG-271: the file is checked first; nothing changes until the preview is confirmed -#}
+        <div class="card mb-4" id="roster">
             <div class="card-header">
                 <strong>Import Student Roster (CSV)</strong>
             </div>
             <div class="card-body">
                 <p class="text-muted small mb-2">
-                    Upload a CSV file containing columns: <code>email</code>, <code>name</code>, <code>usn</code>, <code>department</code>, <code>year</code>, <code>section</code>.
-                    Existing student records are updated in place without creating duplicates.
+                    Upload a CSV file with a heading row. Columns: <code>email</code> (required), <code>name</code>, <code>usn</code>, <code>department</code>, <code>year</code>, <code>section</code>, <code>cgpa</code>, <code>backlogs</code>.
+                    You see what each row would do, and anything wrong with it, before anything is changed.
+                    <a href="/admin/users/import/sample.csv">Download a sample file</a>
                 </p>
-                <form method="POST" action="/admin/users/import_csv" enctype="multipart/form-data" class="row g-2 align-items-center">
+                <form method="POST" action="/admin/users/import/check" enctype="multipart/form-data" class="row g-2 align-items-center" data-roster-upload>
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="col-auto">
                         <label for="roster-csv" class="visually-hidden">Roster CSV file</label>
                         <input type="file" id="roster-csv" name="file" accept=".csv,text/csv" required class="form-control form-control-sm">
                     </div>
                     <div class="col-auto">
-                        <button type="submit" class="btn btn-sm btn-primary">Upload & Import Roster</button>
+                        <button type="submit" class="btn btn-sm btn-primary">Check the file</button>
                     </div>
                 </form>
             </div>

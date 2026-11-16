@@ -10,7 +10,9 @@ deletion (UPG-22, DPDP Act 2023).
   details (a team's other members) left out.
 - `anonymise_account(db, email)`: what a processed deletion request does. The
   account goes (no login), and the person's name, email, phone, USN and answers
-  are removed from registrations, team entries, form submissions and feedback.
+  are removed from registrations, team entries, form submissions and feedback
+  responses (the rating stays, the comment goes). What it does not reach is
+  listed in docs/DATA_HANDLING.md.
   Kept, without personal data: the registration rows themselves (attendance
   and payment amounts feed the event reports). Kept as they are: payment orders
   (finance records) and the audit log; see "Decisions needed" (D-7).
@@ -23,7 +25,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-PRIVACY_NOTICE_VERSION = '2026-10-10'
+PRIVACY_NOTICE_VERSION = '2026-11-15'
 CONSENT_FIELD = 'privacy_consent'
 DELETED_NAME = 'Deleted user'
 
@@ -123,11 +125,43 @@ def own_data(db, email: str) -> dict:
             return []
 
     export['sections']['form_submissions'] = by_email('form_submissions')
-    export['sections']['feedback'] = by_email('feedback')
+    # each person's feedback is its own document in `feedback_responses` (UPG-05);
+    # `feedback` is where older ones were kept (UPG-274)
+    export['sections']['feedback'] = by_email('feedback_responses') + by_email('feedback')
+    export['sections']['certificates'] = _own_certificates(email)
     export['sections']['notifications'] = by_email('notifications_v2', 'user_email')
     consent = db.collection('user_consent').document(email).get()
     export['sections']['consent'] = (consent.to_dict() or {}) if consent.exists else {}
     return export
+
+
+def _own_certificates(email: str) -> list:
+    """The certificates issued to this person: what each one says, not its file."""
+    try:
+        from services_certificates import for_person
+        return [{'number': c.get('number'), 'version': c.get('version'), 'status': c.get('status'),
+                 'type': c.get('cert_type'), 'event_id': c.get('event_id'),
+                 'name_on_certificate': c.get('name'), 'issued_at': str(c.get('issued_at') or '')}
+                for c in for_person([email])]
+    except Exception:
+        logger.exception("Could not list certificates for a data export")
+        return []
+
+
+def _forget_feedback(db, email: str, gone: str) -> int:
+    """A person's feedback responses without the person: the rating and tags
+    stay for the event's report; the name, email and comment go. The document
+    is written again under a new ID, because its ID holds the email."""
+    from google.cloud.firestore_v1.base_query import FieldFilter
+    done = 0
+    for doc in db.collection('feedback_responses').where(filter=FieldFilter('email', '==', email)).stream():
+        data = dict(doc.to_dict() or {})
+        data.update({'name': DELETED_NAME, 'email': gone, 'comments': ''})
+        new_id = str(doc.id).replace(email, gone) if email in str(doc.id) else f"{doc.id}-{gone.split('@')[0]}"
+        db.collection('feedback_responses').document(new_id).set(data)
+        db.collection('feedback_responses').document(doc.id).delete()
+        done += 1
+    return done
 
 
 def _placeholder_email(email: str) -> str:
@@ -166,6 +200,10 @@ def anonymise_account(db, email: str) -> dict:
                 counts[key] += 1
         except Exception:
             logger.exception("Anonymising %s for a deletion failed", collection)
+    try:
+        counts['feedback'] += _forget_feedback(db, email, gone)
+    except Exception:
+        logger.exception("Anonymising feedback responses for a deletion failed")
     try:
         for doc in db.collection('notifications_v2').where(filter=FieldFilter('user_email', '==', email)).stream():
             db.collection('notifications_v2').document(doc.id).delete()

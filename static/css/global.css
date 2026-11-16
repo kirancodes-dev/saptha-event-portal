@@ -2588,3 +2588,8 @@ body.status-page { background: var(--surface-page); min-height: 100vh; }
     .profile-hero__avatar-wrap { margin-top: -46px; }
     .profile-hero__avatar { font-size: 1.9rem; }
 }
+
+/* The live refresh shows and hides with the hidden attribute (UPG-267); buttons and
+   flex rows set their own display, so say it once for the live regions. */
+[data-live-action][hidden], [data-live-locked][hidden], [data-live-explanation][hidden],
+[data-live-status][hidden], [data-live-when-known][hidden] { display: none !important; }

@@ -54,6 +54,8 @@
         <section class="panel">
             <h2 class="ev-section-title"><i class="fas fa-align-left" aria-hidden="true"></i>About this event</h2>
             <p class="desc-text">{{ event.description }}</p>
+            {% if not event.is_fest %}{% set who = eligibility(event) %}{#- UPG-270: who may register, before the form -#}
+            <p class="mb-0 mt-3" data-eligibility="{{ who.mode }}"><i class="fas fa-user-check me-1" aria-hidden="true"></i><strong>Who can register:</strong> {{ who.line }}</p>{% endif %}
         </section>
 
         {% if event.is_fest %}
@@ -144,7 +146,9 @@
                 <div class="agenda-item">
                     <span class="agenda-dot" aria-hidden="true"></span>
                     <div class="agenda-time">{{ item.time }}{% if item.end %}–{{ item.end }}{% endif %}</div>
-                    <div class="agenda-name">{{ item.title }}</div>
+                    <div class="agenda-name">{{ item.title }}
+                        {%- if item.status == 'cancelled' %} <span class="se-badge se-badge--danger" data-agenda-status="cancelled">Cancelled</span>
+                        {%- elif item.status == 'delayed' %} <span class="se-badge se-badge--warning" data-agenda-status="delayed">Delayed</span>{% endif %}</div>
                     {% if item.room %}<div class="agenda-desc"><i class="fas fa-door-open" aria-hidden="true"></i> {{ item.room }}</div>{% endif %}
                     {% if item.desc %}<div class="agenda-desc">{{ item.desc }}</div>{% endif %}
                 </div>
@@ -196,7 +200,12 @@
                 <div class="cap-fill {{ 'full' if reg_count >= max_p|int else '' }}" style="width:{{ pct }}%;"></div>
             </div>
             {% if reg_count >= max_p|int %}
-            <p class="cap-msg cap-msg--full"><i class="fas fa-ban" aria-hidden="true"></i> Fully booked</p>
+            {#- the same words as the registration state beside it (UPG-266) -#}
+            {% if reg_state is defined and reg_state.key == 'waitlist' %}
+            <p class="cap-msg cap-msg--full" data-seats-full="waitlist"><i class="fas fa-hourglass-half" aria-hidden="true"></i> All seats taken: waitlist open</p>
+            {% else %}
+            <p class="cap-msg cap-msg--full" data-seats-full><i class="fas fa-ban" aria-hidden="true"></i> All seats taken</p>
+            {% endif %}
             {% else %}
             <p class="cap-msg">{{ max_p|int - reg_count }} spot{{ 's' if (max_p|int - reg_count) != 1 }} remaining</p>
             {% endif %}

@@ -1,9 +1,13 @@
 """
 services_reach.py — reaching beyond one campus (UPG-146).
 
-* Each event is "campus only" (the default) or "open to other colleges"
-  (`audience`); opening it lets external participants register (UPG-12's
-  `allowed_participants`), closing it takes that back.
+* Each event is "campus only" (the default), for "invited institutions" or
+  "open to other colleges" (`audience`); the last two let external
+  participants register (UPG-12's `allowed_participants`), campus-only takes
+  that back. An invited institution is a name and its email domains: an
+  outside participant registers with an address on one of them (UPG-270).
+* `eligibility(event)` is the one sentence saying who may register, shown on
+  the event page, its popup, the open-events page and the form (UPG-270).
 * `/open-events` lists upcoming open events, searchable, with no login.
 * Every public event page carries share cards (Open Graph and Twitter tags)
   and schema.org Event data, built here and encoded as JSON, never by hand.
@@ -14,10 +18,17 @@ services_reach.py — reaching beyond one campus (UPG-146).
   which the Super Admin can switch off (`settings/branding`).
 """
 import datetime
+import re
 import time
-from typing import List
+from typing import List, Optional, Tuple
 
-AUDIENCES = ('campus', 'open')
+AUDIENCES = ('campus', 'invited', 'open')
+MODE_LABELS = {'campus': 'This institution only', 'invited': 'Invited institutions', 'open': 'Open to everyone'}
+MAX_INVITED = 50
+# Anyone can have an address on these, so they can't stand for an institution
+PUBLIC_MAIL = ('gmail.com', 'googlemail.com', 'yahoo.com', 'yahoo.in', 'yahoo.co.in', 'outlook.com', 'hotmail.com',
+               'live.com', 'icloud.com', 'rediffmail.com', 'proton.me', 'protonmail.com', 'aol.com', 'zoho.com')
+_DOMAIN = re.compile(r'^(?=.{4,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$')
 OPEN_STATUSES = ('published', 'registration_open', 'active')
 SITES = (
     {'id': 'unstop', 'name': 'Unstop', 'submit': 'https://unstop.com/', 'summary_limit': 300,
@@ -40,18 +51,165 @@ def is_open(event: dict) -> bool:
     return str(event.get('audience') or 'campus') == 'open'
 
 
-def set_audience(db, event_id: str, audience: str, actor: str) -> None:
+def parse_invited(text) -> Tuple[List[dict], List[str]]:
+    """The invited institutions an organiser typed, one a line as
+    `Name, email-domain[, another-domain]`, and what's wrong with each line
+    that can't be used. Nothing is saved while there is a problem."""
+    out, problems, seen = [], [], {}
+    lines = [ln.strip() for ln in str(text or '').replace('\r', '').split('\n')]
+    for n, line in enumerate(lines, start=1):
+        if not line:
+            continue
+        parts = [p.strip() for p in line.split(',')]
+        name, domains = ' '.join(parts[0].split())[:150], []
+        if not name:
+            problems.append(f"Line {n}: give the institution's name first.")
+            continue
+        if len(parts) < 2 or not any(parts[1:]):
+            problems.append(f"Line {n}: add {name}'s email domain after a comma, for example \"{name}, college.edu.in\".")
+            continue
+        bad = False
+        for raw in parts[1:]:
+            domain = raw.lower().lstrip('@')
+            if not domain:
+                continue
+            if not _DOMAIN.match(domain):
+                problems.append(f"Line {n}: \"{raw}\" isn't an email domain. Use the part after the @, like college.edu.in.")
+                bad = True
+            elif domain in PUBLIC_MAIL:
+                problems.append(f"Line {n}: anyone can have an @{domain} address, so it can't stand for {name}. "
+                                "Use the institution's own domain.")
+                bad = True
+            elif domain in seen:
+                problems.append(f"Line {n}: {domain} is already on line {seen[domain]}.")
+                bad = True
+            else:
+                seen[domain] = n
+                domains.append(domain)
+        if not bad and domains:
+            out.append({'name': name, 'domains': domains})
+    if len(out) > MAX_INVITED:
+        problems.append(f"An event takes up to {MAX_INVITED} invited institutions; this list has {len(out)}.")
+    return out, problems
+
+
+def invited_institutions(event: dict) -> List[dict]:
+    """The event's invited institutions, each `{'name', 'domains'}`."""
+    out = []
+    for row in (event or {}).get('invited_institutions') or []:
+        if isinstance(row, dict) and row.get('name') and row.get('domains'):
+            out.append({'name': str(row['name']), 'domains': [str(d).lower() for d in row['domains'] if d]})
+    return out
+
+
+def invited_text(event: dict) -> str:
+    """The list as the organiser types it."""
+    return '\n'.join(f"{i['name']}, {', '.join(i['domains'])}" for i in invited_institutions(event))
+
+
+def access_mode(event: dict) -> str:
+    """Who may register: `campus`, `invited` or `open`. The event's
+    participant types decide (UPG-12), so an event that takes external
+    participants is open whichever page switched that on; `invited` narrows
+    the outside participants to the listed institutions."""
+    from services_participants import allowed_types
+    if 'external' not in allowed_types(event):
+        return 'campus'
+    return 'invited' if str((event or {}).get('audience') or '') == 'invited' else 'open'
+
+
+def invited_match(event: dict, email: str) -> Optional[dict]:
+    """The invited institution an email address belongs to, if any."""
+    domain = str(email or '').strip().lower().rpartition('@')[2]
+    if not domain:
+        return None
+    for inst in invited_institutions(event):
+        if any(domain == d or domain.endswith('.' + d) for d in inst['domains']):
+            return inst
+    return None
+
+
+def _home_name(db=None) -> str:
+    try:
+        import services_institution
+        if db is None:
+            from models import db
+        return services_institution.profile(db)['name']
+    except Exception:
+        return 'this institution'
+
+
+def eligibility(event: dict, db=None) -> dict:
+    """Who may register, in one sentence a visitor reads before the form."""
+    from services_participants import PLURALS, allowed_types
+    mode, home = access_mode(event), _home_name(db)
+    inside = [PLURALS[t] for t in allowed_types(event) if t != 'external']
+    ours = f"{' and '.join(inside)} of {home}" if inside else ''
+    invited = invited_institutions(event) if mode == 'invited' else []
+    names = ', '.join(i['name'] for i in invited)
+    domains = ', '.join('@' + d for i in invited for d in i['domains'])
+    if mode == 'campus':
+        line = f"For {ours} only."
+    elif mode == 'invited':
+        if invited:
+            line = (f"For {ours}, and for participants" if ours else "For participants") + \
+                   f" from the invited institutions: {names}. Invited participants register with their institution's email address ({domains})."
+        else:
+            line = f"For {ours} only. No other institution has been invited yet." if ours else \
+                   "By invitation only. No institution has been invited yet."
+    else:
+        line = (f"Open to {ours}, and to participants from other colleges and organisations." if ours
+                else "Open to participants from any college or organisation.")
+    return {'mode': mode, 'label': MODE_LABELS[mode], 'line': line, 'institutions': [i['name'] for i in invited],
+            'outside': mode != 'campus'}
+
+
+def refusal(event: dict, participant_type: str, email: str) -> Tuple[Optional[str], Optional[str]]:
+    """Why this person can't register as an outside participant, and the
+    invited institution their address belongs to. `(None, None)` when the
+    rule doesn't apply: only outside participants of an invitation-only
+    event are checked here; the participant types are checked by the form."""
+    if participant_type != 'external' or access_mode(event) != 'invited':
+        return None, None
+    match = invited_match(event, email)
+    if match:
+        return None, match['name']
+    invited = invited_institutions(event)
+    if not invited:
+        return "This event is by invitation, and no other institution has been invited yet.", None
+    return ("This event takes outside participants from the invited institutions only: "
+            + ', '.join(i['name'] for i in invited) + ". Register with your institution's email address ("
+            + ', '.join('@' + d for i in invited for d in i['domains']) + ")."), None
+
+
+def is_outside(reg: dict) -> bool:
+    """A registration from outside the institution (an external participant)."""
+    from services_participants import type_of
+    return type_of(reg) == 'external'
+
+
+def set_audience(db, event_id: str, audience: str, actor: str, invited_text: str = '') -> None:
     from services_participants import allowed_types
     from utils import log_action
     if audience not in AUDIENCES:
-        raise ValueError("Choose campus only or open to other colleges.")
+        raise ValueError("Choose this institution only, invited institutions, or open to everyone.")
     ref = db.collection('events').document(event_id)
     event = ref.get().to_dict() or {}
     allowed = [t for t in allowed_types(event) if t != 'external']
-    if audience == 'open':
+    updates = {'audience': audience}
+    if audience == 'invited':
+        invited, problems = parse_invited(invited_text)
+        if problems:
+            raise ValueError(' '.join(problems))
+        if not invited:
+            raise ValueError("List at least one invited institution with its email domain.")
+        updates['invited_institutions'] = invited
+    if audience in ('invited', 'open'):
         allowed.append('external')
-    ref.update({'audience': audience, 'allowed_participants': allowed or ['student']})
-    log_action(db, "EVENT_AUDIENCE", f"{actor}: event {event_id} is {audience}")
+    updates['allowed_participants'] = allowed or ['student']
+    ref.update(updates)
+    names = ', '.join(i['name'] for i in updates.get('invited_institutions', []))
+    log_action(db, "EVENT_AUDIENCE", f"{actor}: event {event_id} is {audience}" + (f" ({names})" if names else ''))
 
 
 def open_events(db, q: str = '', category: str = '', event_type: str = '', date_from: str = '',

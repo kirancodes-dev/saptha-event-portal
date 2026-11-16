@@ -45,6 +45,7 @@ h1,h2,h3,h4,h5,h6{font-family: var(--font-heading);}
       <div class="d-flex align-items-center justify-content-between mb-3">
         <div>
           <h2 class="h5 m-0">Teams</h2>
+          {% if submission_round and not submission_round.open %}<div class="small text-muted" data-judge-submission-round>Score each team's submission. Open it with "View submission".</div>{% endif %}
         </div>
         <span class="se-badge se-badge--neutral">
           {{ teams|selectattr('my_score')|list|length }} / {{ teams|length }} scored
@@ -91,12 +92,24 @@ h1,h2,h3,h4,h5,h6{font-family: var(--font-heading);}
       </div>
 
       {% else %}
-      <div style="text-align:center;padding:48px 24px;background:#fff;border-radius:14px;border:1px solid #e2e8f0;">
+      <div style="text-align:center;padding:48px 24px;background:#fff;border-radius:14px;border:1px solid #e2e8f0;" data-judge-teams-empty>
         <i class="fas fa-users fa-3x" style="color:#cbd5e1;display:block;margin-bottom:12px;"></i>
+        {% if submission_round and submission_round.open %}
+        <h5 class="fw-bold text-secondary mb-2">Submissions are still open</h5>
+        <p class="text-muted mb-0" style="font-size:14px;">
+          You score this round's submissions. Every team that submitted appears here after the submission deadline.
+        </p>
+        {% elif submission_round %}
+        <h5 class="fw-bold text-secondary mb-2">No submissions to score</h5>
+        <p class="text-muted mb-0" style="font-size:14px;">
+          No team still in this round submitted its work{% if not open_hall %}, or the teams that did are assigned to other judges{% endif %}.
+        </p>
+        {% else %}
         <h5 class="fw-bold text-secondary mb-2">No Teams Assigned</h5>
         <p class="text-muted mb-0" style="font-size:14px;">
           Teams appear here once they check in and are assigned to you.
         </p>
+        {% endif %}
       </div>
       {% endif %}
     </div>

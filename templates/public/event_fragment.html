@@ -10,10 +10,16 @@
   </div>
   {% if is_registered %}
   <span class="btn btn-lg btn-outline-success disabled" aria-disabled="true"><i class="fas fa-check-circle" aria-hidden="true"></i> Already registered</span>
-  {% elif closed %}
-  <span class="btn btn-lg btn-outline-secondary disabled" aria-disabled="true"><i class="fas fa-lock" aria-hidden="true"></i> Registration closed</span>
+  {% elif not reg_state.action %}
+  <div class="text-end" data-reg-state="{{ reg_state.key }}">
+    <span class="btn btn-lg btn-outline-secondary disabled" aria-disabled="true"><i class="fas fa-lock" aria-hidden="true"></i> {{ reg_state.label }}</span>
+    <div class="small mt-1" data-reg-explanation>{{ reg_state.explanation }}</div>
+  </div>
   {% else %}
-  <a class="btn btn-lg btn-gold" href="/forms/register/{{ event.id }}?next={{ ('/?event=' ~ event.id)|urlencode }}">Register now <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
+  <div class="text-end" data-reg-state="{{ reg_state.key }}">
+    <a class="btn btn-lg btn-gold" href="{{ reg_state.action_url }}?next={{ ('/?event=' ~ event.id)|urlencode }}" data-reg-action="{{ reg_state.action }}">{{ 'Register now' if reg_state.action == 'register' else reg_state.action_label }} <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
+    {% if reg_state.action == 'waitlist' %}<div class="small mt-1" data-reg-explanation>{{ reg_state.explanation }}</div>{% endif %}
+  </div>
   {% endif %}
 </div>
 {% endif %}

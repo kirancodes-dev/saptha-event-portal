@@ -69,6 +69,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // The live refresh must reach the server or fail: a cached answer would show
+  // an old registration state as if it were current (UPG-267)
+  if (url.pathname === '/live/state.json' || url.pathname === '/live/ops.json') {
+    return;
+  }
+
   // ── Static assets → Cache-First, background update ────
   if (url.pathname.startsWith('/static/')) {
     event.respondWith(cacheFirstWithUpdate(req));

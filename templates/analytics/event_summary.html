@@ -1,0 +1,142 @@
+{% extends "base_classic.html" %}
+{#- The event summary report (UPG-273): services_summary.build(). -#}
+{% set t = report.totals %}
+{% set f = report.filters %}
+{% block title %}Event summary report{% endblock %}
+{% block page_title %}Event summary report{% endblock %}
+{% block page_sub %}{{ 'Every event' if everything else 'The events you can see the figures of' }} · {{ report.described }}{% endblock %}
+{% block page_actions %}
+  <a href="/reports/events.csv{% if query %}?{{ query }}{% endif %}" class="btn btn-secondary" data-export="csv"><i class="fas fa-file-csv" aria-hidden="true"></i> CSV</a>
+  <a href="/reports/events.xlsx{% if query %}?{{ query }}{% endif %}" class="btn btn-secondary" data-export="xlsx"><i class="fas fa-file-excel" aria-hidden="true"></i> Excel, with definitions</a>
+{% endblock %}
+{% block extra_css %}
+<style>
+.es-table th, .es-table td { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.es-table td.es-name, .es-table th.es-name { white-space: normal; min-width: 200px; }
+.es-table tfoot td, .es-table tfoot th { font-weight: 700; border-top: 2px solid var(--border-strong, #94a3b8); }
+.es-defs dt { font-weight: 700; margin-top: 10px; }
+.es-defs dd { margin: 0; color: var(--text-muted); }
+@media print { .es-filters, .btn, .app-bar { display: none !important; } }
+</style>
+{% endblock %}
+{% macro num(value, suffix='') %}{% if value is none %}<span class="text-subtle" title="Not counted yet">—</span>{% else %}{{ value }}{{ suffix }}{% endif %}{% endmacro %}
+{% block content %}
+  {% for problem in f.problems %}
+  <div class="alert alert-warning" role="alert" data-filter-problem>{{ problem }}</div>
+  {% endfor %}
+
+  <form method="GET" action="/reports/events" class="card mb-4 es-filters" data-summary-filters>
+    <div class="row g-3 align-items-end" style="padding:16px 20px;">
+      <div class="col-auto">
+        <label class="form-label small fw-bold" for="es-from">Events from</label>
+        <input type="date" class="form-control form-control-sm" id="es-from" name="from" value="{{ f.from or '' }}">
+      </div>
+      <div class="col-auto">
+        <label class="form-label small fw-bold" for="es-to">to</label>
+        <input type="date" class="form-control form-control-sm" id="es-to" name="to" value="{{ f.to or '' }}">
+      </div>
+      <div class="col-auto">
+        <label class="form-label small fw-bold" for="es-category">Category</label>
+        <select class="form-select form-select-sm" id="es-category" name="category">
+          <option value="">Every category</option>
+          {% for c in report.categories %}<option value="{{ c }}"{% if c == f.category %} selected{% endif %}>{{ c }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small fw-bold" for="es-event">Event</label>
+        <select class="form-select form-select-sm" id="es-event" name="event" style="max-width:280px;">
+          <option value="">Every event</option>
+          {% for id, title, date in report.choices %}<option value="{{ id }}"{% if id == f.event %} selected{% endif %}>{{ title }}{% if date %} ({{ date }}){% endif %}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-auto d-flex gap-2">
+        <button type="submit" class="btn btn-primary btn-sm">Show</button>
+        <a href="/reports/events" class="btn btn-secondary btn-sm">Clear</a>
+      </div>
+    </div>
+    <p class="small text-subtle mb-0" style="padding:0 20px 14px;">
+      The dates are the day each event starts. Every figure is counted from the records as they are now
+      ({{ report.on }}); payments are not in this report.
+    </p>
+  </form>
+
+  <div class="card mb-4">
+    {% if report.rows %}
+    <div class="table-responsive">
+      <table class="table table-sm es-table mb-0" data-summary>
+        <caption class="visually-hidden">Registrations, attendance, results, feedback and certificates for each event</caption>
+        <thead>
+          <tr>
+            <th scope="col" class="es-name">Event</th>
+            <th scope="col">Date</th>
+            {% for key, heading, text in report.definitions %}
+            <th scope="col" class="text-end" title="{{ text }}">{{ heading }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in report.rows %}
+          <tr data-event="{{ r.id }}">
+            <th scope="row" class="es-name fw-normal">
+              <a href="/coordinator/registrations/{{ r.id }}">{{ r.title }}</a>
+              <div class="small text-subtle">{{ r.category }}{% if r.status %} · {{ r.status | replace('_', ' ') }}{% endif %}</div>
+            </th>
+            <td>{{ r.date or '—' }}</td>
+            <td class="text-end" data-k="registrations">{{ r.registrations }}</td>
+            <td class="text-end" data-k="confirmed">{{ r.confirmed }}</td>
+            <td class="text-end" data-k="waitlisted">{{ r.waitlisted }}</td>
+            <td class="text-end" data-k="pending">{{ r.pending }}</td>
+            <td class="text-end" data-k="cancelled">{{ r.cancelled }}</td>
+            <td class="text-end" data-k="attended">{{ r.attended }}</td>
+            <td class="text-end" data-k="not_selected">{{ r.not_selected }}</td>
+            <td class="text-end" data-k="no_shows">{{ num(r.no_shows) }}</td>
+            <td class="text-end" data-k="attendance_rate">{{ num(r.attendance_rate, '%') }}</td>
+            <td class="text-end" data-k="results">{{ 'Yes' if r.results else 'No' }}</td>
+            <td class="text-end" data-k="placed">{{ r.placed }}</td>
+            <td class="text-end" data-k="feedback">{% if r.feedback %}<a href="/feedback/analytics/{{ r.id }}">{{ r.feedback }}</a>{% else %}0{% endif %}</td>
+            <td class="text-end" data-k="rating">{{ num(r.rating) }}</td>
+            <td class="text-end" data-k="certificates">{% if r.certificates %}<a href="/certificates/events/{{ r.id }}">{{ r.certificates }}</a>{% else %}0{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr data-total>
+            <th scope="row" class="es-name">Total: {{ t.events }} event{{ '' if t.events == 1 else 's' }}, {{ t.finished }} finished</th>
+            <td></td>
+            <td class="text-end" data-k="registrations">{{ t.registrations }}</td>
+            <td class="text-end" data-k="confirmed">{{ t.confirmed }}</td>
+            <td class="text-end" data-k="waitlisted">{{ t.waitlisted }}</td>
+            <td class="text-end" data-k="pending">{{ t.pending }}</td>
+            <td class="text-end" data-k="cancelled">{{ t.cancelled }}</td>
+            <td class="text-end" data-k="attended">{{ t.attended }}</td>
+            <td class="text-end" data-k="not_selected">{{ t.not_selected }}</td>
+            <td class="text-end" data-k="no_shows">{{ t.no_shows }}</td>
+            <td class="text-end" data-k="attendance_rate">{{ num(t.attendance_rate, '%') }}</td>
+            <td class="text-end" data-k="results">{{ t.results }} of {{ t.events }}</td>
+            <td class="text-end" data-k="placed">{{ t.placed }}</td>
+            <td class="text-end" data-k="feedback">{{ t.feedback }}</td>
+            <td class="text-end" data-k="rating">{{ num(t.rating) }}</td>
+            <td class="text-end" data-k="certificates">{{ t.certificates }}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-subtle mb-0" style="padding:24px;" data-no-events>
+      No event matches these filters. Widen the dates or <a href="/reports/events">clear the filters</a>.
+    </p>
+    {% endif %}
+  </div>
+
+  <div class="card mb-4" style="max-width:920px;" id="definitions">
+    <div class="card-header justify-content-between">
+      <span><i class="fas fa-circle-info" aria-hidden="true"></i> What each column counts</span>
+      <a href="/reports/events/definitions.csv" class="btn btn-secondary btn-sm">Definitions (CSV)</a>
+    </div>
+    <dl class="es-defs mb-0" style="padding:8px 20px 18px;" data-definitions>
+      {% for key, heading, text in report.definitions %}
+      <dt>{{ heading }}</dt><dd>{{ text }}</dd>
+      {% endfor %}
+    </dl>
+  </div>
+{% endblock %}

@@ -1,6 +1,6 @@
 {% extends "base_classic.html" %}
 {#- Public live leaderboard (UPG-63): app layout; reloads every 15 s for projectors. -#}
-{% block robots %}index, follow{% endblock %}
+{% block robots %}{% if hidden or staff_only %}noindex, nofollow{% else %}index, follow{% endif %}{% endblock %}
 {% block title %}Live leaderboard — {{ event.get('title','Event') }}{% endblock %}
 {% block page_title %}{{ event.get('title','Event') }}{% endblock %}
 {% block page_sub %}Live leaderboard · Sapthagiri NPS University{% endblock %}
@@ -26,6 +26,20 @@
 </style>
 {% endblock %}
 {% block content %}
+  {#- Hidden until the organiser makes it public (UPG-300); this page reloads itself, so it appears once they do. -#}
+  {% if hidden %}
+  <div class="empty-state" data-leaderboard-hidden>
+    <i class="fas fa-eye-slash" aria-hidden="true"></i>
+    <h3>Not public yet</h3>
+    <p>{{ hidden }}</p>
+  </div>
+  <div class="updated" id="updated-ts" aria-live="polite">Last updated: loading…</div>
+  {% else %}
+  {% if staff_only %}
+  <div class="alert alert-warning" role="status" data-leaderboard-staff-only>
+    <i class="fas fa-user-shield" aria-hidden="true"></i> Only the event's staff can see these scores. The public sees "Not public yet" until the organiser makes the leaderboard public.
+  </div>
+  {% endif %}
   {% if board %}
 
   {#- Places come from services_leaderboard: equal scores share a place (UPG-84). -#}
@@ -86,9 +100,12 @@
 
   <div class="updated" id="updated-ts" aria-live="polite">Last updated: loading…</div>
 
+  {% if not staff_only %}
   {% set share_title = "Check out the live leaderboard for " ~ event.get('title','Event') ~ " at Sapthagiri NPS University! #SapthaEvent" %}
   {% set share_label = "Share leaderboard" %}
   {% include 'includes/share_strip.html' %}
+  {% endif %}
+  {% endif %}
 {% endblock %}
 {% block extra_js %}
 <script src="/static/js/pages/public__leaderboard.js"></script>

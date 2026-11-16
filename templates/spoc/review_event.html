@@ -17,11 +17,7 @@
 <a href="/certificates/events/{{ ev.id }}" class="btn btn-outline-primary"><i class="fas fa-award" aria-hidden="true"></i> Certificates</a>
 <a href="/naac/events/{{ ev.id }}/report" class="btn btn-outline-primary"><i class="fas fa-file-lines" aria-hidden="true"></i> NAAC report</a>
 <a href="/reach/events/{{ ev.id }}/listing-kit" class="btn btn-outline-primary"><i class="fas fa-bullhorn" aria-hidden="true"></i> Listing kit</a>
-<form method="POST" action="/reach/events/{{ ev.id }}/audience" class="d-inline">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  <input type="hidden" name="audience" value="{{ 'campus' if ev.audience == 'open' else 'open' }}">
-  <button type="submit" class="btn btn-outline-secondary">{{ 'Open to other colleges: make campus only' if ev.audience == 'open' else 'Campus only: open to other colleges' }}</button>
-</form>
+<a href="#who-can-register" class="btn btn-outline-secondary"><i class="fas fa-user-check" aria-hidden="true"></i> Who can register</a>
 {% if status in ('draft', 'published') %}
 <form method="POST" action="/spoc/event/{{ ev.id }}/publish" class="d-inline">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -76,7 +72,7 @@
         <dt>Category</dt><dd>{{ ev.category }}</dd>
         {% if not ev.is_fest %}
         <dt>Registration</dt><dd>{% if ev.reg_opens %}From {{ ev.reg_opens }} {% endif %}until {{ ev.reg_deadline or '—' }}</dd>
-        <dt>Who can register</dt><dd>{{ (ev.allowed_participants or ['student'])|map('capitalize')|join(', ') }}{% if (ev.limits or {}).allowed_years %} · years {{ ev.limits.allowed_years|join(', ') }}{% endif %}</dd>
+        <dt>Who can register</dt><dd>{{ eligibility(ev).line }}{% if (ev.limits or {}).allowed_years %} · years {{ ev.limits.allowed_years|join(', ') }}{% endif %}</dd>
         <dt>Seats</dt><dd>{{ ev.capacity if ev.capacity else 'No limit' }}</dd>
         <dt>Taking part as</dt><dd>{% if ev.is_team_event %}{{ 'Teams' if ev.participation_type == 'Team' else 'Individuals or teams' }} of {{ (ev.limits or {}).team_min }}–{{ (ev.limits or {}).team_max }}{% if (ev.limits or {}).max_teams %} · up to {{ ev.limits.max_teams }} teams{% endif %}{% else %}Individuals{% endif %}</dd>
         {% set fees = ev.fees or {} %}
@@ -129,6 +125,35 @@
   </div>
 
   <aside class="panel">
+    {#- UPG-270: this institution only, invited institutions, or everyone -#}
+    {% if not ev.is_fest %}
+    {% set who = eligibility(ev) %}
+    <section id="who-can-register" aria-labelledby="who-h" class="mb-3">
+      <h2 class="h6 fw-bold mb-2" id="who-h"><i class="fas fa-user-check text-gold me-1" aria-hidden="true"></i> Who can register</h2>
+      <p class="small mb-2" data-eligibility="{{ who.mode }}">{{ who.line }}</p>
+      <form method="POST" action="/reach/events/{{ ev.id }}/audience" data-audience-form>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <fieldset>
+          <legend class="visually-hidden">Who can register</legend>
+          {% for value, name, hint in [
+              ('campus', 'This institution only', 'Nobody from outside can register.'),
+              ('invited', 'Invited institutions', 'Outside participants register with an email address of an institution you list.'),
+              ('open', 'Open to everyone', 'Anyone from another college or organisation can register. The event is listed on the open-events page.')] %}
+          <div class="form-check mb-1">
+            <input class="form-check-input" type="radio" name="audience" id="aud-{{ value }}" value="{{ value }}" {% if who.mode == value %}checked{% endif %}>
+            <label class="form-check-label" for="aud-{{ value }}">{{ name }}<span class="d-block small text-muted">{{ hint }}</span></label>
+          </div>
+          {% endfor %}
+        </fieldset>
+        <label class="form-label small mb-1 mt-2" for="invited-list">Invited institutions, one a line: name, email domain</label>
+        <textarea class="form-control form-control-sm" id="invited-list" name="invited" rows="3" maxlength="4000" aria-describedby="invited-help"
+                  placeholder="City Engineering College, cityengg.edu.in">{{ invited_typed if invited_typed is not none else invited_text }}</textarea>
+        <div class="form-text" id="invited-help">Used only with "Invited institutions". The domain is the part of the email address after the @.</div>
+        <button type="submit" class="btn btn-sm btn-primary mt-2">Save who can register</button>
+      </form>
+    </section>
+    <hr>
+    {% endif %}
     <h2 class="h6 fw-bold mb-2"><i class="fas fa-list-check text-gold me-1" aria-hidden="true"></i> Before you publish</h2>
     {% if checklist %}
     <ul class="rv-check">

@@ -1,7 +1,8 @@
 """
 routes_reach.py — reaching beyond one campus (UPG-146): the public open-events
-page, the organiser's campus-only / open switch and listing kit, and the
-Super Admin's "Powered by SapthaEvent" switch.
+page, the organiser's campus-only / invited institutions / open choice
+(UPG-270) and listing kit, and the Super Admin's "Powered by SapthaEvent"
+switch.
 """
 from flask import Blueprint, abort, flash, redirect, render_template, request, session
 
@@ -40,12 +41,15 @@ def audience(event_id):
     import services_reach as reach
     _event_for_editor(event_id)
     try:
-        reach.set_audience(db, event_id, request.form.get('audience', ''), session.get('user_id', ''))
-        flash("This event is now open to other colleges." if request.form.get('audience') == 'open'
-              else "This event is now for this campus only.", 'success')
+        reach.set_audience(db, event_id, request.form.get('audience', ''), session.get('user_id', ''),
+                           request.form.get('invited', ''))
+        flash({'open': "This event is now open to other colleges.",
+               'invited': "This event now takes outside participants from the invited institutions only."}.get(
+                   request.form.get('audience'), "This event is now for this campus only."), 'success')
     except ValueError as exc:
         flash(str(exc), 'danger')
-    return redirect(f'/spoc/event/{event_id}/review')
+        session['invited_typed'] = {'event_id': event_id, 'text': request.form.get('invited', '')[:4000]}
+    return redirect(f'/spoc/event/{event_id}/review#who-can-register')
 
 
 @reach_bp.route('/reach/events/<event_id>/listing-kit')

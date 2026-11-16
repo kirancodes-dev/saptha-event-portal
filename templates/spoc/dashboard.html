@@ -1227,7 +1227,7 @@ h1, h2, h3, h4, h5, h6 {
             <div class="sidebar-event-title">{{ event.title }}</div>
             <div class="sidebar-event-meta">
               <span><i class="fas fa-tag" style="color:var(--brand-gold);"></i>{{ event.category }}</span>
-              <span><i class="fas fa-calendar" style="color:var(--snpsu-blue-lighter);"></i>{{ event.date | default('TBA') }}</span>
+              <span><i class="fas fa-calendar" style="color:var(--snpsu-blue-lighter);"></i>{{ event.date | default('TBA', true) | day }}</span>
             </div>
             
             <div class="sidebar-event-footer">
@@ -1235,9 +1235,8 @@ h1, h2, h3, h4, h5, h6 {
                 <div class="sidebar-event-fill" style="width: {{ fill_pct }}%;"></div>
               </div>
               <div class="sidebar-event-count">{{ rc }}{% if max_p > 0 %}/{{ max_p }}{% endif %}</div>
-              <span class="badge {{ 'bg-success' if event.status == 'active' else 'bg-secondary' }}" style="font-size: 9px; padding: 2px 6px;">
-                {{ event.status | capitalize }}
-              </span>
+              {% set os = organiser_status(event) %}{#- UPG-294: the status in plain words -#}
+              <span class="se-badge se-badge--{{ os.tone }}" title="{{ os.explanation }}" data-organiser-status="{{ os.key }}">{{ os.label }}</span>
             </div>
           </div>
           {% endfor %}
@@ -1421,7 +1420,7 @@ h1, h2, h3, h4, h5, h6 {
               </div>
               <h3 class="fw-extrabold mb-1" style="color:var(--ink-900); font-family: var(--font-heading); font-size:24px;">{{ event.title }}</h3>
               <div class="small text-muted">
-                <i class="fas fa-calendar-alt me-1"></i>{{ event.date }} &nbsp;·&nbsp; <i class="fas fa-clock me-1"></i>{{ event.time or "Time to be announced" }}
+                <i class="fas fa-calendar-alt me-1"></i>{{ event.date|day }} &nbsp;·&nbsp; <i class="fas fa-clock me-1"></i>{{ event.time or "Time to be announced" }}
               </div>
             </div>
             
@@ -1430,6 +1429,10 @@ h1, h2, h3, h4, h5, h6 {
                 <i class="fas fa-{{ 'circle fa-xs' if event.status in ('active', 'published', 'registration_open') else 'check-circle' }} me-1"></i>
                 {{ event.status | replace('_', ' ') | title }}
               </span>
+              {#- What visitors are told right now: the same state the public pages show (UPG-266) -#}
+              {% set rs = reg_state_of(event) %}
+              <span class="small text-muted text-end" data-visitor-state="{{ rs.key }}" data-live-event="{{ event.id }}" data-live-scope="ops">Visitors see: <strong data-live-label>{{ rs.label }}</strong><br><span data-live-explanation>{{ rs.explanation }}</span>
+                <span data-live-when-known hidden><br>Registered <strong data-live-count="registered"></strong> · checked in <strong data-live-count="checked_in"></strong> · waiting <strong data-live-count="waiting"></strong> · <span data-live-status role="status"></span></span></span>
               <div class="d-flex gap-2 flex-wrap justify-content-end">
                 {# Review, edit in the wizard, and publish (UPG-73); a fest adds its events there (UPG-74) #}
                 <a href="/spoc/event/{{ event.id }}/review" class="btn btn-sm {{ 'btn-gold' if event.status in ('draft', 'published') else 'btn-outline-primary' }}">
@@ -1722,6 +1725,9 @@ h1, h2, h3, h4, h5, h6 {
                     </button>
                     <a href="/spoc/agenda/{{ event.id }}" class="action-btn btn-outline justify-content-start">
                       <i class="fas fa-calendar-check"></i> Edit Public Agenda / Schedule
+                    </a>
+                    <a href="/coordinator/runsheet/{{ event.id }}" class="action-btn btn-outline justify-content-start" data-runsheet-link>
+                      <i class="fas fa-clipboard-list"></i> Run sheet: who does what, and when
                     </a>
                   </div>
                 </div>
@@ -2327,5 +2333,5 @@ h1, h2, h3, h4, h5, h6 {
 
 
 {% endblock %}
-{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/spoc__dashboard.js"></script>
+{% block handler_scripts %}{{ super() }}<script src="/static/js/live-refresh.js"></script><script src="/static/js/handlers/spoc__dashboard.js"></script>
 {% endblock %}

@@ -94,10 +94,12 @@
           <a role="menuitem" href="/admin/analytics"><i class="fas fa-chart-line" aria-hidden="true"></i>Analytics</a>
           <a role="menuitem" href="/admin/payments"><i class="fas fa-receipt" aria-hidden="true"></i>Payments &amp; refunds</a>
           <a role="menuitem" href="/admin/send_email"><i class="fas fa-bullhorn" aria-hidden="true"></i>Announcements</a>
+          <a role="menuitem" href="/reports/events"><i class="fas fa-table-list" aria-hidden="true"></i>Event summary report</a>
           <a role="menuitem" href="/admin/report"><i class="fas fa-file-alt" aria-hidden="true"></i>A4 report</a>
           <a role="menuitem" href="/admin/org_units"><i class="fas fa-sitemap" aria-hidden="true"></i>Units &amp; roles</a>
           <a role="menuitem" href="/admin/venues"><i class="fas fa-map-marker-alt" aria-hidden="true"></i>Venues</a>
           <a role="menuitem" href="/admin/sponsors"><i class="fas fa-handshake" aria-hidden="true"></i>Sponsors</a>
+          <a role="menuitem" href="/admin/institution"><i class="fas fa-university" aria-hidden="true"></i>Institution setup</a>
           <a role="menuitem" href="/admin/system"><i class="fas fa-server" aria-hidden="true"></i>System status</a>
           <a role="menuitem" href="/admin/audit_log"><i class="fas fa-clipboard-list" aria-hidden="true"></i>Audit log</a>
           <a role="menuitem" href="/diag/email"><i class="fas fa-stethoscope" aria-hidden="true"></i>Email diagnostics</a>
@@ -183,10 +185,10 @@
 
 {#- Profile photo (UPG-71): `value` is '' (initials), 'preset:<key>' (a brand
     avatar in static/img/avatars/) or a photo URL. Decorative next to a name. -#}
-{% macro avatar(value, name='', cls='') -%}
+{% macro avatar(value, name='', cls='', lazy=False) -%}
 {%- set initials = (((name or '').split('(')[0].split() | map('first') | list)[:2] | join('') | upper) or 'U' -%}
 {%- if value and value.startswith('preset:') -%}
-<span class="se-avatar {{ cls }}" aria-hidden="true"><img src="/static/img/avatars/{{ value[7:] }}.svg" alt="" width="128" height="128"></span>
+<span class="se-avatar {{ cls }}" aria-hidden="true"><img src="/static/img/avatars/{{ value[7:] }}.svg" alt=""{% if lazy %} loading="lazy"{% endif %} width="128" height="128"></span>
 {%- elif value -%}
 <span class="se-avatar {{ cls }}" aria-hidden="true"><img src="{{ value }}" alt="" referrerpolicy="no-referrer" loading="lazy" width="128" height="128"></span>
 {%- else -%}
@@ -196,15 +198,16 @@
 
 {#- Profile header (UPG-63/UPG-71): the whole campus photo, the person's photo and
     name; page-specific details go in the caller block. -#}
-{% macro profile_hero(name, email=None, avatar_value='', change_link=True) -%}
+{#- `lazy`: for a page that shows the card below its first screen (the student dashboard, UPG-294) -#}
+{% macro profile_hero(name, email=None, avatar_value='', change_link=True, lazy=False) -%}
 <section class="profile-hero" aria-label="Profile">
   <picture class="profile-hero__banner">
     <source type="image/webp" srcset="/static/img/campus-800.webp 800w, /static/img/campus.webp 1347w" sizes="(max-width: 860px) 100vw, 1347px">
-    <img src="/static/campus.jpg" alt="Sapthagiri NPS University campus" width="1347" height="533">
+    <img src="/static/campus.jpg" alt="Sapthagiri NPS University campus"{% if lazy %} loading="lazy" decoding="async"{% endif %} width="1347" height="533">
   </picture>
   <div class="profile-hero__body">
     <div class="profile-hero__avatar-wrap">
-      {{ avatar(avatar_value, name, 'profile-hero__avatar') }}
+      {{ avatar(avatar_value, name, 'profile-hero__avatar', lazy) }}
       {%- if change_link %}
       <a href="/profile/#photo" class="profile-hero__photo-btn" title="Change profile photo"><i class="fas fa-camera" aria-hidden="true"></i><span class="visually-hidden">Change profile photo</span></a>
       {%- endif %}

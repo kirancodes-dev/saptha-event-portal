@@ -1,7 +1,7 @@
 # routes_analytics.py — Analytics dashboard routes
 # Python 3.9 compatible
 
-from flask import Blueprint, jsonify, redirect, session
+from flask import Blueprint, Response, abort, jsonify, redirect, render_template, request, session
 from models import db
 from utils import login_required, role_required
 
@@ -19,6 +19,74 @@ def dashboard():
     if role == 'ClubSPOC':
         return redirect('/spoc/analytics')
     return redirect('/')
+
+
+# ── The event summary report (UPG-273) ─────────────────────────────────────
+
+REPORT_ROLES = ['SuperAdmin', 'Super Admin', 'UniversityAdmin', 'ClubSPOC', 'UnitAdmin', 'EventOrganizer',
+                'EventCoordinator', 'Coordinator', 'IQACCoordinator', 'DepartmentAdmin']
+
+
+def _summary():
+    """The report over the events this person may see the figures of."""
+    import services_summary
+    from services_permission import can
+    events = []
+    for doc in db.collection('events').stream():
+        event = dict(doc.to_dict() or {}, id=doc.id)
+        if can(session, 'view_analytics', event, db=db):
+            events.append(event)
+    return services_summary.build(db, events, services_summary.read_filters(request.args))
+
+
+@analytics_bp.route('/reports/events')
+@login_required
+@role_required(REPORT_ROLES)
+def event_summary():
+    """Registrations, attendance, results, feedback and certificates for each
+    event in a range of dates, with what each figure counts."""
+    report = _summary()
+    query = request.query_string.decode('utf-8', 'ignore')
+    return render_template('analytics/event_summary.html', report=report, query=query,
+                           everything=session.get('role') in ('SuperAdmin', 'Super Admin', 'UniversityAdmin'))
+
+
+@analytics_bp.route('/reports/events.<kind>')
+@login_required
+@role_required(REPORT_ROLES)
+def event_summary_file(kind):
+    """The same figures as a CSV file, or an Excel file with the definitions
+    on a second sheet."""
+    import services_export
+    import services_summary
+    from utils import log_action
+    if kind not in ('csv', 'xlsx'):
+        abort(404)
+    report = _summary()
+    f = report['filters']
+    name = 'event-summary' + (f"-from-{f['from']}" if f['from'] else '') + (f"-to-{f['to']}" if f['to'] else '')
+    log_action(db, 'REPORT_EXPORTED', f"{session.get('user_id', '')}: event summary ({kind}), {report['described']} "
+                                      f"{report['totals']['events']} events")
+    if kind == 'csv':
+        return Response(services_export.to_csv(services_summary.table(report), services_summary.COLUMNS),
+                        mimetype='text/csv', headers={'Content-Disposition': f'attachment; filename={name}.csv'})
+    workbook = services_export.to_xlsx([
+        ('Event summary', services_summary.COLUMNS, services_summary.table(report)),
+        ('What the columns count', ['Column', 'What it counts'], services_summary.definitions_table(report))])
+    return Response(workbook, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    headers={'Content-Disposition': f'attachment; filename={name}.xlsx'})
+
+
+@analytics_bp.route('/reports/events/definitions.csv')
+@login_required
+@role_required(REPORT_ROLES)
+def event_summary_definitions():
+    import services_export
+    import services_summary
+    return Response(services_export.to_csv([[h, text] for _, h, text in services_summary.DEFINITIONS],
+                                           ['Column', 'What it counts']),
+                    mimetype='text/csv',
+                    headers={'Content-Disposition': 'attachment; filename=event-summary-definitions.csv'})
 
 
 @analytics_bp.route('/analytics/api/stats')

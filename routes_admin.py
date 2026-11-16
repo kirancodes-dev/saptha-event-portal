@@ -1,13 +1,11 @@
 import collections
-import csv
 import datetime
-import io
 import json
 import logging
 import re
 import uuid
 
-from flask import Blueprint, current_app, flash, redirect, render_template, request, session, jsonify
+from flask import Blueprint, Response, current_app, flash, redirect, render_template, request, session, jsonify
 # Newest-first ordering: the SQL layer and Firestore both use this string
 # (google.cloud.firestore.Query.DESCENDING == 'DESCENDING').
 DESCENDING = 'DESCENDING'
@@ -382,125 +380,138 @@ def users():
 @login_required
 @role_required(SUPER_ROLES)
 def import_student_roster():
+    """Import a roster in one request, for scripts: the same checks as the
+    two-step import on the Users page (UPG-271), with nothing to confirm.
+    Rows with something wrong are left out and counted in the message."""
+    import services_roster
     file = request.files.get('file') or request.files.get('csv_file')
-    csv_text = ''
-    if file and file.filename:
-        raw = file.read()
-        try:
-            csv_text = raw.decode('utf-8-sig')
-        except UnicodeDecodeError:
-            csv_text = raw.decode('latin-1')
-    else:
-        csv_text = request.form.get('csv_data', '')
-
-    if not csv_text.strip():
-        flash("Please select a valid CSV file to upload.", "warning")
+    try:
+        csv_text = services_roster.decode(file.read()) if file and file.filename else request.form.get('csv_data', '')
+        if not csv_text.strip():
+            flash("Please select a valid CSV file to upload.", "warning")
+            return redirect('/admin/users')
+        checked = services_roster.check(db, csv_text)
+    except services_roster.RosterError as exc:
+        flash(str(exc), "danger")
         return redirect('/admin/users')
-
-    reader = csv.DictReader(io.StringIO(csv_text))
-    if not reader.fieldnames:
-        flash("CSV file is empty or missing a header row.", "danger")
-        return redirect('/admin/users')
-
-    created_count = 0
-    updated_count = 0
-
-    for row in reader:
-        norm = {
-            k.strip().lower().replace(' ', '_'): (v or '').strip()
-            for k, v in row.items() if k
-        }
-        email = (
-            norm.get('email')
-            or norm.get('email_id')
-            or norm.get('student_email')
-            or norm.get('mail')
-            or ''
-        ).lower()
-        if not email or '@' not in email:
-            continue
-
-        name = (
-            norm.get('name')
-            or norm.get('student_name')
-            or norm.get('full_name')
-            or ''
-        )
-        usn = (
-            norm.get('usn')
-            or norm.get('roll_no')
-            or norm.get('roll_number')
-            or norm.get('rollno')
-            or norm.get('reg_no')
-            or norm.get('registration_no')
-            or ''
-        )
-        department = (
-            norm.get('department')
-            or norm.get('dept')
-            or norm.get('branch')
-            or ''
-        )
-        year = (
-            norm.get('year')
-            or norm.get('class_year')
-            or norm.get('batch')
-            or ''
-        )
-        section = (
-            norm.get('section')
-            or norm.get('sec')
-            or ''
-        )
-        # Academic record for placement drives (UPG-57): only the roster sets these
-        academics = {}
-        cgpa_raw = norm.get('cgpa') or norm.get('gpa') or ''
-        backlogs_raw = norm.get('backlogs') or norm.get('active_backlogs') or ''
-        try:
-            if cgpa_raw:
-                academics['cgpa'] = round(float(cgpa_raw), 2)
-            if backlogs_raw:
-                academics['backlogs'] = int(float(backlogs_raw))
-        except ValueError:
-            pass
-
-        doc_ref = db.collection('users').document(email)
-        user_doc = doc_ref.get()
-
-        if user_doc.exists:
-            update_data = {}
-            if name:
-                update_data['name'] = name
-            if usn:
-                update_data['usn'] = usn
-            if department:
-                update_data['department'] = department
-            if year:
-                update_data['year'] = year
-            if section:
-                update_data['section'] = section
-            update_data.update(academics)
-            if update_data:
-                doc_ref.set(update_data, merge=True)
-            updated_count += 1
-        else:
-            create_unverified_account(
-                db,
-                email=email,
-                name=name or email.split('@')[0],
-                role='Student',
-                usn=usn,
-                department=department,
-                year=year,
-                section=section,
-                **academics,
-            )
-            created_count += 1
-
-    log_action(db, "STUDENT_ROSTER_IMPORTED",
-               f"Roster imported: {created_count} created, {updated_count} updated by {session.get('user_id')}")
-    flash(f"✅ Student roster imported: {created_count} created, {updated_count} updated.", "success")
+    done = services_roster.apply(db, checked, session.get('user_id', ''))
+    flash(f"Student roster imported: {done['created']} created, {done['updated'] + done['same']} updated."
+          + (f" {done['skipped']} rows had something wrong and were not used." if done['skipped'] else ''),
+          "warning" if done['skipped'] else "success")
     return redirect('/admin/users')
+
+
+# ── The roster, in two steps: check the file, then confirm (UPG-271) ────────
+
+@admin_bp.route('/users/import/check', methods=['POST'])
+@login_required
+@role_required(SUPER_ROLES)
+def roster_check():
+    import services_roster
+    file = request.files.get('file')
+    if not file or not file.filename:
+        flash("Choose a CSV file first.", "warning")
+        return redirect('/admin/users#roster')
+    try:
+        text = services_roster.decode(file.read())
+        services_roster.check(db, text)          # a file that can't be read at all is refused here
+    except services_roster.RosterError as exc:
+        flash(str(exc), "danger")
+        return redirect('/admin/users#roster')
+    import_id = services_roster.hold(db, text, file.filename, session.get('user_id', ''))
+    return redirect(f'/admin/users/import/{import_id}')
+
+
+@admin_bp.route('/users/import/sample.csv')
+@login_required
+@role_required(SUPER_ROLES)
+def roster_sample():
+    import services_roster
+    return Response(services_roster.SAMPLE, mimetype='text/csv',
+                    headers={'Content-Disposition': 'attachment; filename="roster-sample.csv"'})
+
+
+def _held_roster(import_id):
+    """The waiting file and what it would do now, or a redirect when it's gone."""
+    import services_roster
+    waiting = services_roster.held(db, import_id, session.get('user_id', ''))
+    if not waiting:
+        flash("That upload is no longer waiting (it is kept for an hour, and only for the person who uploaded it). "
+              "Upload the file again.", "warning")
+        return None, None, redirect('/admin/users#roster')
+    try:
+        return waiting, services_roster.check(db, waiting['text']), None
+    except services_roster.RosterError as exc:
+        services_roster.discard(db, import_id)
+        flash(str(exc), "danger")
+        return None, None, redirect('/admin/users#roster')
+
+
+@admin_bp.route('/users/import/<import_id>')
+@login_required
+@role_required(SUPER_ROLES)
+def roster_preview(import_id):
+    import services_roster
+    from utils_pagination import paginate_items
+    waiting, checked, gone = _held_roster(import_id)
+    if gone:
+        return gone
+    only = request.args.get('show', '')
+    rows = [r for r in checked['rows'] if not only or r['action'] == only]
+    return render_template('admin/roster_import.html', import_id=import_id, waiting=waiting, checked=checked,
+                           page=paginate_items(rows), show=only, keep_minutes=services_roster.KEEP_MINUTES,
+                           current_page='users')
+
+
+@admin_bp.route('/users/import/<import_id>/problems.csv')
+@login_required
+@role_required(SUPER_ROLES)
+def roster_problems(import_id):
+    import services_roster
+    waiting, checked, gone = _held_roster(import_id)
+    if gone:
+        return gone
+    return Response('\ufeff' + services_roster.problems_csv(checked), mimetype='text/csv', headers={
+        'Content-Disposition': 'attachment; filename="roster-rows-to-fix.csv"', 'Cache-Control': 'no-store'})
+
+
+@admin_bp.route('/users/import/<import_id>/confirm', methods=['POST'])
+@login_required
+@role_required(SUPER_ROLES)
+def roster_confirm(import_id):
+    import services_roster
+    waiting, checked, gone = _held_roster(import_id)
+    if gone:
+        return gone
+    if request.form.get('existing') not in ('update', 'leave'):
+        flash("Choose what to do with students who already have an account.", "warning")
+        return redirect(f'/admin/users/import/{import_id}')
+    if not checked['usable']:
+        flash("No row in this file can be used. Fix the rows listed and upload it again.", "warning")
+        return redirect(f'/admin/users/import/{import_id}')
+    done = services_roster.apply(db, checked, session.get('user_id', ''),
+                                 update_existing=request.form.get('existing') == 'update')
+    services_roster.discard(db, import_id)
+    parts = [f"{done['created']} new student{'' if done['created'] == 1 else 's'} added",
+             f"{done['updated']} updated"]
+    if done['left']:
+        parts.append(f"{done['left']} existing left as they were")
+    if done['skipped']:
+        parts.append(f"{done['skipped']} row{'' if done['skipped'] == 1 else 's'} not used")
+    flash("Roster imported: " + ', '.join(parts) + '.', "success")
+    return redirect('/admin/users')
+
+
+@admin_bp.route('/users/import/<import_id>/cancel', methods=['POST'])
+@login_required
+@role_required(SUPER_ROLES)
+def roster_cancel(import_id):
+    import services_roster
+    if services_roster.held(db, import_id, session.get('user_id', '')):
+        services_roster.discard(db, import_id)
+        log_action(db, "STUDENT_ROSTER_CANCELLED", f"{session.get('user_id')} cancelled a roster upload; nothing was changed")
+    flash("Upload cancelled. Nothing was changed.", "info")
+    return redirect('/admin/users#roster')
 
 
 @admin_bp.route('/users/<path:email>/academics', methods=['GET', 'POST'])
@@ -1776,6 +1787,31 @@ def _outbox_rows():
     except Exception as exc:
         logger.warning("Outbox read failed: %s", exc)
         return None
+
+
+@admin_bp.route('/institution', methods=['GET', 'POST'])
+@login_required
+@role_required(SUPER_ROLES)
+def institution_setup():
+    """Set this deployment up for its institution (UPG-268): its details, its
+    first administrators and what's still missing. Super Admin only."""
+    import services_institution as institution
+    values, problems = institution.profile(db), {}
+    if request.method == 'POST':
+        values, problems = institution.validate(request.form)
+        if not problems:
+            changed = institution.save(db, values, session.get('user_id', ''))
+            if changed:
+                log_action(db, "INSTITUTION_DETAILS_SAVED",
+                           f"{session.get('user_id')} changed the institution's {', '.join(changed)}")
+                flash("Saved. The footer, the help address and new certificates use these details now.", "success")
+            else:
+                flash("Nothing changed.", "info")
+            return redirect('/admin/institution')
+        flash("Nothing was saved. Fix the fields marked below.", "danger")
+    return render_template('admin/institution.html', values=values, problems=problems,
+                           checklist=institution.checklist(db, __import__('utils_links').request_address()),
+                           admins=institution.administrators(db), current_page='institution'), (400 if problems else 200)
 
 
 @admin_bp.route('/system', methods=['GET', 'POST'])

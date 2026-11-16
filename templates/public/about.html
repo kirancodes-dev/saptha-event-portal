@@ -1,0 +1,154 @@
+{% extends "base_classic.html" %}
+{#- What the portal is, for someone deciding whether an institution should use
+    it (UPG-275). Everything here is something the portal does today; nothing
+    is a price, a customer, a figure or a promise. -#}
+{% block title %}About this portal{% endblock %}
+{% block meta_description %}What SapthaEvent is, who it is for, which campus workflows it covers, how an institution gets started and what the demo can and cannot do.{% endblock %}
+{% block page_title %}About this portal{% endblock %}
+{% block page_sub %}SapthaEvent at {{ institution().name }}{% endblock %}
+{% block content %}
+{% set env = portal_environment() %}
+{% set inst = institution() %}
+<article class="panel prose" data-about>
+
+  <div class="callout callout--{{ 'warning' if env.key == 'demo' else 'brand' }}" data-environment="{{ env.key }}">
+    <p class="mb-0"><strong>{{ env.label }}.</strong> {{ env.explanation }}
+      {% if env.key != 'demo' %}A demo copy, where one exists, says "Demo" at the top of every page.{% endif %}</p>
+  </div>
+
+  <p>SapthaEvent is the event portal of {{ inst.name }}. It takes a campus event from the first announcement
+     to the last certificate in one place, so that students, organisers and the university's office all look
+     at the same record.</p>
+
+  <nav aria-label="On this page">
+    <ul>
+      <li><a href="#who">Who it is for</a></li>
+      <li><a href="#workflows">What it covers</a></li>
+      <li><a href="#limits">What it does not do</a></li>
+      <li><a href="#start">How an institution gets started</a></li>
+      <li><a href="#demo">What the demo can and cannot do</a></li>
+      <li><a href="#support">Support and more information</a></li>
+    </ul>
+  </nav>
+
+  <h2 id="who" data-section="who">Who it is for</h2>
+  <p>A university or college that runs many events a year through its clubs, departments and student
+     bodies, and wants one portal for all of them instead of a form and a spreadsheet for each.</p>
+  <ul>
+    <li><strong>Students and visitors</strong> find an event, register, get a ticket and later their certificate.</li>
+    <li><strong>Organisers</strong> (club and department coordinators) create events, manage registrations and
+        run the event day.</li>
+    <li><strong>Event-day staff</strong> (coordinators and volunteers) check people in and follow the run sheet.</li>
+    <li><strong>Judges</strong> score entries for competitions.</li>
+    <li><strong>The university's office</strong> approves events, manages accounts and reads the reports.</li>
+  </ul>
+
+  <h2 id="workflows" data-section="workflows">What it covers</h2>
+  <dl>
+    <dt>Publishing an event</dt>
+    <dd>A step-by-step form for {{ event_type_count }} kinds of event, from a guest lecture to a multi-day fest
+        with its own programme. An event can be sent for approval before it is published.</dd>
+    <dt>Registration</dt>
+    <dd>Individual or team registration with the organiser's own form questions, a seat limit and a waitlist.
+        An event is for this institution only, open to other institutions, or by invitation. Every page shows
+        the same registration state: open, waitlist, closed, not open yet, over or cancelled.</dd>
+    <dt>The event day</dt>
+    <dd>QR tickets and a scanner for the gate. If the scanner's connection drops it keeps the scans and the
+        server checks them when the connection returns. A schedule with rooms, people responsible and a status
+        for each item; a room booked twice is refused when the schedule is saved; a change of time or room can
+        be announced to the people registered.</dd>
+    <dt>Judging and results</dt>
+    <dd>Judges score against the organiser's criteria; results and a leaderboard are published when the
+        organiser decides.</dd>
+    <dt>Feedback and certificates</dt>
+    <dd>Attendees rate the event. Certificates are issued with a number that anyone can check on the
+        <a href="/verify">verification page</a>.</dd>
+    <dt>Reports</dt>
+    <dd>For each event and across events: registrations, attendance and no-shows, results, feedback and
+        certificates, with a date range, a statement of what each figure counts, and CSV and Excel downloads.</dd>
+    <dt>Campus data</dt>
+    <dd>The student roster comes in from a CSV file, with a preview of what will change before anything is
+        saved. Events can be added to a calendar. Sign in with Google is available when the institution sets
+        it up.</dd>
+    <dt>Messages</dt>
+    <dd>Email and in-portal notifications. WhatsApp messages are sent only where the institution has set that
+        up and the person has agreed.</dd>
+    <dt>Personal data</dt>
+    <dd>A <a href="/privacy">privacy notice</a>; each person can download their own data and ask for their
+        account to be deleted.</dd>
+  </dl>
+  <p>Paid events use the institution's own payment provider account, where it has set one up.</p>
+
+  <h2 id="limits" data-section="limits">What it does not do</h2>
+  <ul>
+    <li>One deployment serves one institution. Institutions do not share a deployment, and an institution
+        cannot sign itself up on this site.</li>
+    <li>It does not connect to a learning management system or an ERP. Student details come in from a CSV file.</li>
+    <li>Other than Sign in with Google, there is no campus single sign-on.</li>
+    <li>Its reports are counts from its own records. They have not been checked against the format of any
+        accreditation or regulatory return.</li>
+    <li>It holds no security or privacy certification, has not been independently audited, and comes with no
+        uptime commitment. The <a href="/compliance/sla">status page</a> shows what is running now, not a history.</li>
+    <li>This site has no price list.</li>
+  </ul>
+
+  <h2 id="start" data-section="start">How an institution gets started</h2>
+  <ol>
+    <li><strong>A deployment of its own.</strong> The portal is installed for the institution on a cloud
+        account, with its own database, file storage and mail sender.</li>
+    <li><strong>Its details.</strong> An administrator enters the institution's name, address, support contact
+        and certificate colours on the setup page, which also lists what is still missing before people use it.</li>
+    <li><strong>Its administrators.</strong> At least two people at the institution are given administrator
+        accounts, and the installer's own account is switched off.</li>
+    <li><strong>Its students.</strong> The roster is uploaded from a CSV file, or students create their own
+        accounts when they first register.</li>
+    <li><strong>Its organisers.</strong> Administrators give organiser accounts to club and department
+        coordinators, who then create events.</li>
+    <li><strong>A first event,</strong> run end to end: publish, register, check in, results, certificates, report.</li>
+  </ol>
+  <p>The institution can export its data and close its deployment down at any time; both are written up in
+     the setup guide that comes with the software.</p>
+
+  <h2 id="demo" data-section="demo">What the demo can and cannot do</h2>
+  {% if env.key == 'demo' %}
+  <p><strong>You are on a demo now.</strong></p>
+  {% elif env.key == 'production' %}
+  <p><strong>You are not on a demo.</strong> This is {{ inst.name }}'s own portal: a registration made here is
+     a real registration.</p>
+  {% else %}
+  <p><strong>This is a development copy,</strong> not the demo and not an institution's portal.</p>
+  {% endif %}
+  <p>A demo is a separate copy of the portal filled with sample people and events. On a demo you can:</p>
+  <ul data-demo-can>
+    <li>browse events and register for one as a visitor;</li>
+    <li>sign in as a student, an organiser, a coordinator or a judge, with the demo accounts given to you by
+        whoever is showing it;</li>
+    <li>create an event, build its schedule, scan a ticket, publish results and issue certificates;</li>
+    <li>open the reports and download them.</li>
+  </ul>
+  <p>A demo cannot show:</p>
+  <ul data-demo-cannot>
+    <li>your institution's name, students, departments or events: those exist only on a deployment of your own;</li>
+    <li>anything lasting: sample data is emptied and rebuilt, so do not put real personal details into a demo;</li>
+    <li>messages that this copy has no provider for: email, WhatsApp and online payment each work only when
+        that copy has been given an account for them. The <a href="/compliance/sla">status page</a> shows
+        which are set up, and whether online payment is in the provider's test mode;</li>
+    <li>how the portal behaves under your event's crowd: a demo is not a load test.</li>
+  </ul>
+
+  <h2 id="support" data-section="support">Support and more information</h2>
+  {% if inst.support_email %}
+  <p>For help with this portal, or to ask about using SapthaEvent at your institution, write to
+     <a href="mailto:{{ inst.support_email }}" data-support>{{ inst.support_email }}</a>.</p>
+  {% else %}
+  <p data-no-support>This portal has no support address set yet. Ask the person who gave you its link, or
+     {{ inst.name }}'s event office.</p>
+  {% endif %}
+  <ul>
+    <li><a href="/events">Events on this portal</a></li>
+    <li><a href="/verify">Check a certificate</a></li>
+    <li><a href="/privacy">Privacy notice</a> and <a href="/terms">terms</a></li>
+    <li><a href="/compliance/sla">What is running now</a></li>
+  </ul>
+</article>
+{% endblock %}

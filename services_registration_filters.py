@@ -13,6 +13,7 @@ so they keep working on their own and inside the combined form.
     size     below_min · room · full
     entry    selected · not_selected
     pay      paid · unpaid
+    origin   inside · outside   (this institution, or an external participant: UPG-270)
     sort     newest (default) · oldest · team · lead · most · fewest · waiting
 """
 from typing import Callable, Dict, List, Optional, Tuple
@@ -28,11 +29,12 @@ CHECKIN = [('in', 'Checked in'), ('out', 'Not checked in')]
 SIZE = [('below_min', 'Below the minimum size'), ('room', 'Has room for more'), ('full', 'Full')]
 ENTRY = [('selected', 'On the entry list'), ('not_selected', 'Not on the entry list')]
 PAY = [('paid', 'Paid'), ('unpaid', 'Not paid')]
+ORIGIN = [('inside', 'From this institution'), ('outside', 'From outside (external)')]
 SORTS = [('newest', 'Newest first'), ('oldest', 'Oldest first'), ('team', 'Team name A–Z'),
          ('lead', 'Lead name A–Z'), ('most', 'Most members'), ('fewest', 'Fewest members'),
          ('waiting', 'Most members not confirmed')]
 
-KEYS = ('status', 'members', 'checkin', 'size', 'entry', 'pay')
+KEYS = ('status', 'members', 'checkin', 'size', 'entry', 'pay', 'origin')
 
 
 def _status(reg: dict) -> str:
@@ -63,9 +65,15 @@ def _no_email(reg: dict) -> bool:
     return any(not confirm._email(m) for m in _others(reg))
 
 
-def choices(member_confirm: bool, team_event: bool, any_late: bool) -> Dict[str, list]:
+def _outside(reg: dict) -> bool:
+    from services_reach import is_outside
+    return is_outside(reg)
+
+
+def choices(member_confirm: bool, team_event: bool, any_late: bool, takes_outside: bool = False) -> Dict[str, list]:
     """The options the page offers for this event: no member or size filters
-    without teams, no confirmation filters when it's off."""
+    without teams, no confirmation filters when it's off, and inside/outside
+    only where someone from outside can be, or is, registered."""
     members = [(v, n) for v, n in MEMBERS
                if (v != 'late' or any_late) and (member_confirm or v not in ('unconfirmed', 'all_confirmed'))]
     return {
@@ -75,6 +83,7 @@ def choices(member_confirm: bool, team_event: bool, any_late: bool) -> Dict[str,
         'size': SIZE if team_event else [],
         'entry': ENTRY,
         'pay': PAY,
+        'origin': ORIGIN if takes_outside else [],
         'sort': [(v, n) for v, n in SORTS if team_event or v not in ('most', 'fewest', 'waiting')],
     }
 
@@ -82,7 +91,7 @@ def choices(member_confirm: bool, team_event: bool, any_late: bool) -> Dict[str,
 def chosen(args) -> Dict[str, str]:
     """The filters and sort in the request, only known values kept."""
     known = {'status': STATUS, 'members': MEMBERS, 'checkin': CHECKIN, 'size': SIZE, 'entry': ENTRY,
-             'pay': PAY, 'sort': SORTS}
+             'pay': PAY, 'origin': ORIGIN, 'sort': SORTS}
     out = {}
     for key, options in known.items():
         value = str(args.get(key) or '').strip()
@@ -131,6 +140,10 @@ def apply(regs: List[dict], picked: Dict[str, str], event: dict, on_list: Callab
             'paid': lambda r: str(r.get('payment_status') or '').strip().lower() in ('paid', 'completed'),
             'unpaid': lambda r: str(r.get('payment_status') or '').strip().lower() not in ('paid', 'completed'),
         }.get(picked.get('pay', ''))),
+        ('origin', {
+            'inside': lambda r: not _outside(r),
+            'outside': _outside,
+        }.get(picked.get('origin', ''))),
     ]
     shown = [r for r in regs if all(test(r) for _, test in tests if test)]
     return sort(shown, picked.get('sort', 'newest'))
@@ -187,7 +200,8 @@ def problems(reg: dict, event: dict, member_confirm: bool) -> List[str]:
 def describe(picked: Dict[str, str], q: str = '') -> str:
     """The chosen filters in words: "Members: a member not confirmed; Check-in: not checked in"."""
     names = {'status': ('Status', STATUS), 'members': ('Members', MEMBERS), 'checkin': ('Check-in', CHECKIN),
-             'size': ('Team size', SIZE), 'entry': ('Entry list', ENTRY), 'pay': ('Payment', PAY)}
+             'size': ('Team size', SIZE), 'entry': ('Entry list', ENTRY), 'pay': ('Payment', PAY),
+             'origin': ('From', ORIGIN)}
     parts = [f"{label}: {dict(options).get(picked[key], picked[key]).lower()}"
              for key, (label, options) in names.items() if picked.get(key)]
     if q:

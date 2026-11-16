@@ -2,7 +2,8 @@
    `site_footer_fixed` pins it to the bottom of the screen, for pages whose body
    centres a single card. #}
 <footer class="site-footer{% if site_footer_fixed %} site-footer--fixed{% endif %}" role="contentinfo">
-    © 2026 Sapthagiri NPS University ·
+    © 2026 {{ institution().name }} ·
+    <a href="/about">About</a> ·
     <a href="/privacy">Privacy notice</a> ·
     <a href="/terms">Terms</a>{% if powered_by() %} ·
     <span class="site-footer__powered">Powered by SapthaEvent</span>{% endif %}

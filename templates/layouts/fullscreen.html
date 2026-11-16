@@ -2,3 +2,5 @@
     board): the shared document without the footer (UPG-23). -#}
 {% extends "layouts/document.html" %}
 {% block site_footer %}{% endblock %}
+{#- Scanners, kiosks and printed pages fill the screen: no demo banner (UPG-275) -#}
+{% block environment_banner %}{% endblock %}

@@ -97,18 +97,8 @@
 </div>
 {% endif %}
 
-{# Tabs from the student's own registrations, with counts (UPG-104) #}
-<div class="portal-filter-pills seg" role="group" aria-label="Filter tickets">
-  {%- for key, label, n in (ticket_tabs or [('all', 'All', 0)]) %}
-  <button type="button" class="seg__btn{% if loop.first %} active{% endif %}" aria-pressed="{{ 'true' if loop.first else 'false' }}" data-filter="{{ key }}">{{ label }}<span class="seg__count">{{ n }}</span></button>
-  {%- endfor %}
-</div>
-<div id="tab-empty" class="empty-state" hidden>
-  <i class="fas fa-filter" aria-hidden="true"></i>
-  <h3>Nothing here yet</h3>
-  <p>No registrations match this tab. <a href="/events" class="fw-semibold">Explore events →</a></p>
-</div>
-
+{#- UPG-294: what the student came for is first: updates, then tickets and events to join;
+    the profile card and the activity figures follow. -#}
 <div class="page-head">
   <div class="page-head__text">
     <h1 class="page-head__title" id="page-title">Dashboard</h1>
@@ -122,15 +112,11 @@
   </div>
 </div>
 
-{% set nm = (user_name or '').split('(')[0].strip() %}
-{% call ui.profile_hero(user_name or 'Student', user_email, current_avatar) %}
-    <div class="portal-hero-meta-row">
-      <span class="portal-hero-meta-item">Register number: <strong>{{ up.get('usn') or '—' }}</strong></span>
-      <span class="portal-hero-meta-item">Degree: <strong>{{ up.get('degree') or (up.get('department') and 'B.E - ' ~ up.get('department')) or '—' }}</strong></span>
-      <span class="portal-hero-meta-item">Batch: <strong>{{ up.get('batch') or '—' }}</strong></span>
-      <span class="portal-hero-meta-item">College: <strong>{{ up.get('college') or 'Sapthagiri NPS University' }}</strong></span>
-    </div>
-{% endcall %}
+{% if announcements %}
+{% for ann in announcements %}
+<div class="callout"><i class="fas fa-bullhorn" aria-hidden="true"></i>{{ ann.message }}</div>
+{% endfor %}
+{% endif %}
 
 {#- UPG-257: teammates who haven't confirmed; maybe the lead mistyped an email -#}
 {% if unconfirmed %}
@@ -178,83 +164,17 @@
 </section>
 {% endif %}
 
-<section class="portal-widgets-grid" aria-label="Your activity">
-  <div class="panel portal-widget-card">
-    <div class="portal-widget-header"><span>Activity score</span><span class="se-badge se-badge--brand se-badge--plain">Points</span></div>
-    <div class="score-metric-label">Total points</div>
-    <div class="score-metric-value">{{ user_xp or 0 }}</div>
-    <div class="mt-2 small text-subtle"><i class="fas fa-medal me-1 text-gold" aria-hidden="true"></i> Level {{ ((user_xp or 0) // 100) + 1 }} · activity tier</div>
-  </div>
-  <div class="panel portal-widget-card">
-    <div class="portal-widget-header"><span>My registrations</span><span class="se-badge se-badge--neutral se-badge--plain">{{ active_tickets|length }} active</span></div>
-    {% if active_tickets %}
-    <div class="d-flex flex-column gap-2">
-      {% for t in active_tickets[:2] %}
-      <div class="mini-reg"><span>{{ t.event_title }}</span><span class="ticket-chip ticket-chip-upcoming">Registered</span></div>
-      {% endfor %}
-    </div>
-    {% else %}
-    <p class="text-subtle small mb-0">No upcoming registrations. <a href="/events" class="fw-semibold">Explore events →</a></p>
-    {% endif %}
-  </div>
-  <div class="panel portal-widget-card">
-    <div class="portal-widget-header"><span>Event attendance</span><span class="se-badge se-badge--success se-badge--plain">Verified</span></div>
-    <div class="attendance-metric-layout">
-      {% set turn_pct = ((attended_count / (total_regs_count or 1)) * 100)|int if total_regs_count else 0 %}
-      <div class="donut-chart-box" role="img" aria-label="Attended {{ attended_count or 0 }} of {{ total_regs_count or 0 }} events">
-        <svg viewBox="0 0 44 44" aria-hidden="true">
-          <circle cx="22" cy="22" r="18" fill="none" stroke="var(--surface-muted)" stroke-width="3.5" />
-          <circle cx="22" cy="22" r="18" fill="none" stroke="var(--brand-navy)" stroke-width="3.5" stroke-linecap="round"
-                  stroke-dasharray="113" stroke-dashoffset="{{ 113 - (turn_pct * 113 // 100) }}" />
-        </svg>
-        <div class="donut-chart-center">
-          <div class="donut-chart-center-num">{{ attended_count or 0 }}/{{ total_regs_count or 0 }}</div>
-          <div class="donut-chart-center-sub">events</div>
-        </div>
-      </div>
-      <div class="category-bars-list">
-        {% for key, label, color in [('technical', 'Technical', '#3b5bc9'), ('cultural', 'Cultural', '#b7791f'), ('sports', 'Sports', '#0f8fb0')] %}
-        <div>
-          <div class="category-bar-header"><span>{{ label }}</span><span>{{ cc.get(key, 0) }}</span></div>
-          <div class="progress" style="height:6px;" role="progressbar" aria-label="{{ label }} events" aria-valuenow="{{ cc.get(key, 0) }}" aria-valuemin="0">
-            <div class="progress-bar" style="width: {{ [(cc.get(key, 0) * 25), 100]|min }}%; background: {{ color }};"></div>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-    </div>
-  </div>
-</section>
-
-{% if announcements %}
-{% for ann in announcements %}
-<div class="callout"><i class="fas fa-bullhorn" aria-hidden="true"></i>{{ ann.message }}</div>
-{% endfor %}
-{% endif %}
-
-{% if config.get('REFERRALS_ENABLED') %}{# hidden until payouts exist (UPG-105) #}
-<section class="panel mb-4" aria-label="Referrals">
-  <div class="row align-items-center g-3">
-    <div class="col-md-7">
-      <h2 class="h6 mb-1"><i class="fas fa-gift me-2 text-gold" aria-hidden="true"></i>Refer students, earn rewards</h2>
-      <p class="text-muted small mb-3">Share your link. You get ₹50 when friends register and attend fests.</p>
-      <div class="input-group" style="max-width:460px;">
-        <input aria-label="Your referral link" type="text" id="ref-link-val" class="form-control form-control-sm font-monospace" readonly value="Loading link…">
-        <button type="button" class="btn btn-sm btn-primary" data-h-click="participant/dashboard:6"><i class="fas fa-copy" aria-hidden="true"></i> Copy</button>
-      </div>
-    </div>
-    <div class="col-md-5 text-md-end text-center">
-      <div class="ref-stats">
-        <div><span class="lbl">Referrals</span><div class="val" id="ref-count-val">—</div></div>
-        <div class="sep" aria-hidden="true"></div>
-        <div><span class="lbl">Earned</span><div class="val" id="ref-earned-val">—</div></div>
-        <div class="sep" aria-hidden="true"></div>
-        <button type="button" class="btn btn-sm btn-outline-secondary" data-h-click="participant/dashboard:7">Withdraw</button>
-      </div>
-    </div>
-  </div>
-</section>
-{% endif %}
+{# Tabs from the student's own registrations, with counts (UPG-104) #}
+<div class="portal-filter-pills seg" role="group" aria-label="Filter tickets">
+  {%- for key, label, n in (ticket_tabs or [('all', 'All', 0)]) %}
+  <button type="button" class="seg__btn{% if loop.first %} active{% endif %}" aria-pressed="{{ 'true' if loop.first else 'false' }}" data-filter="{{ key }}">{{ label }}<span class="seg__count">{{ n }}</span></button>
+  {%- endfor %}
+</div>
+<div id="tab-empty" class="empty-state" hidden>
+  <i class="fas fa-filter" aria-hidden="true"></i>
+  <h3>Nothing here yet</h3>
+  <p>No registrations match this tab. <a href="/events" class="fw-semibold">Explore events →</a></p>
+</div>
 
     <!-- ── ACTIVE TICKETS SECTION ── -->
     <div id="tickets-section">
@@ -271,7 +191,7 @@
           <div style="flex:1;min-width:0;">
             <h3 class="ticket-title-lms">{{ reg.event_title }}</h3>
             <div class="ticket-meta-lms">
-              <i class="fas fa-calendar-alt me-1"></i> {{ reg.event_date or 'TBD' }}
+              <i class="fas fa-calendar-alt me-1"></i> {{ (reg.event_date or 'TBD')|day }}
               &nbsp;·&nbsp;
               <i class="fas fa-map-marker-alt me-1"></i> {{ reg.event_venue or 'Venue to be announced' }}
             </div>
@@ -387,7 +307,9 @@
             {% endif %}
             <a href="/participant/badge/{{ reg.id }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-id-badge" aria-hidden="true"></i> Badge</a>
             <a href="/event/{{ reg.event_id }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-info-circle" aria-hidden="true"></i> Event info</a>
-            <a href="/participant/leaderboard/{{ reg.event_id }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-trophy" aria-hidden="true"></i> Leaderboard</a>
+            {% if reg.leaderboard_public %}
+            <a href="/participant/leaderboard/{{ reg.event_id }}" class="btn btn-outline-secondary btn-sm" data-leaderboard-link><i class="fas fa-trophy" aria-hidden="true"></i> Leaderboard</a>
+            {% endif %}
             {% if reg.cert_eligible %}
             <a href="/participant/certificate/{{ reg.id }}" class="btn btn-gold btn-sm"><i class="fas fa-certificate" aria-hidden="true"></i> Certificate</a>
             {% endif %}
@@ -429,7 +351,7 @@
             <div>
               <div class="past-card__title">{{ reg.event_title }}</div>
               <div class="past-card__meta">
-                {{ reg.event_date }}
+                {{ reg.event_date|day }}
                 {% if reg.final_rank %}&nbsp;·&nbsp;Rank #{{ reg.final_rank }}{% endif %}
                 {% if reg.is_cancelled %}&nbsp;<span class="ticket-chip ticket-chip-cancelled">Cancelled</span>{% endif %}
               </div>
@@ -462,7 +384,7 @@
           <div>
             <div class="d-flex justify-content-between align-items-center mb-1">
               <span class="se-badge se-badge--brand se-badge--plain">{{ evt.category or 'General' }}</span>
-              <span class="small text-subtle"><i class="far fa-calendar-alt me-1" aria-hidden="true"></i>{{ evt.date }}</span>
+              <span class="small text-subtle"><i class="far fa-calendar-alt me-1" aria-hidden="true"></i>{{ evt.date|day }}</span>
             </div>
             <h3 class="discover-card-lms__title">{{ evt.title }}</h3>
             <div class="small text-subtle mb-3"><i class="fas fa-map-marker-alt me-1" aria-hidden="true"></i>{{ venue_label(evt) }}</div>
@@ -471,13 +393,102 @@
             <span class="fw-bold text-strong">
               {% if evt.get('entry_fee') and evt.entry_fee|int > 0 %}₹{{ evt.entry_fee }}{% else %}Free{% endif %}
             </span>
-            <a href="/forms/register/{{ evt.id }}" class="btn btn-sm btn-primary"><i class="fas fa-plus" aria-hidden="true"></i> Register</a>
+            {% set rs = evt.reg_state or reg_state_of(evt) %}{#- UPG-266 -#}
+            {% if rs.action %}<a href="{{ rs.action_url }}" class="btn btn-sm btn-primary" data-reg-action="{{ rs.action }}"><i class="fas {{ 'fa-user-clock' if rs.action == 'waitlist' else 'fa-plus' }}" aria-hidden="true"></i> {{ rs.action_label }}</a>
+            {% else %}<a href="/event/{{ evt.id }}" class="btn btn-sm btn-outline-secondary" data-reg-action="details" title="{{ rs.explanation }}">{{ rs.label }}</a>{% endif %}
           </div>
         </div>
         {% endfor %}
       </div>
     </div>
     {% endif %}
+
+
+<div class="portal-section-title" id="profile-section">
+  <i class="fas fa-id-badge" aria-hidden="true"></i>
+  <span>Your profile and activity</span>
+</div>
+{% set nm = (user_name or '').split('(')[0].strip() %}
+{% call ui.profile_hero(user_name or 'Student', user_email, current_avatar, lazy=True) %}
+    <div class="portal-hero-meta-row">
+      <span class="portal-hero-meta-item">Register number: <strong>{{ up.get('usn') or '—' }}</strong></span>
+      <span class="portal-hero-meta-item">Degree: <strong>{{ up.get('degree') or (up.get('department') and 'B.E - ' ~ up.get('department')) or '—' }}</strong></span>
+      <span class="portal-hero-meta-item">Batch: <strong>{{ up.get('batch') or '—' }}</strong></span>
+      <span class="portal-hero-meta-item">College: <strong>{{ up.get('college') or 'Sapthagiri NPS University' }}</strong></span>
+    </div>
+{% endcall %}
+
+<section class="portal-widgets-grid" aria-label="Your activity">
+  <div class="panel portal-widget-card">
+    <div class="portal-widget-header"><span>Activity score</span><span class="se-badge se-badge--brand se-badge--plain">Points</span></div>
+    <div class="score-metric-label">Total points</div>
+    <div class="score-metric-value">{{ user_xp or 0 }}</div>
+    <div class="mt-2 small text-subtle"><i class="fas fa-medal me-1 text-gold" aria-hidden="true"></i> Level {{ ((user_xp or 0) // 100) + 1 }} · activity tier</div>
+  </div>
+  <div class="panel portal-widget-card">
+    <div class="portal-widget-header"><span>My registrations</span><span class="se-badge se-badge--neutral se-badge--plain">{{ active_tickets|length }} active</span></div>
+    {% if active_tickets %}
+    <div class="d-flex flex-column gap-2">
+      {% for t in active_tickets[:2] %}
+      <div class="mini-reg"><span>{{ t.event_title }}</span><span class="ticket-chip ticket-chip-upcoming">Registered</span></div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-subtle small mb-0">No upcoming registrations. <a href="/events" class="fw-semibold">Explore events →</a></p>
+    {% endif %}
+  </div>
+  <div class="panel portal-widget-card">
+    <div class="portal-widget-header"><span>Event attendance</span><span class="se-badge se-badge--success se-badge--plain">Verified</span></div>
+    <div class="attendance-metric-layout">
+      {% set turn_pct = ((attended_count / (total_regs_count or 1)) * 100)|int if total_regs_count else 0 %}
+      <div class="donut-chart-box" role="img" aria-label="Attended {{ attended_count or 0 }} of {{ total_regs_count or 0 }} events">
+        <svg viewBox="0 0 44 44" aria-hidden="true">
+          <circle cx="22" cy="22" r="18" fill="none" stroke="var(--surface-muted)" stroke-width="3.5" />
+          <circle cx="22" cy="22" r="18" fill="none" stroke="var(--brand-navy)" stroke-width="3.5" stroke-linecap="round"
+                  stroke-dasharray="113" stroke-dashoffset="{{ 113 - (turn_pct * 113 // 100) }}" />
+        </svg>
+        <div class="donut-chart-center">
+          <div class="donut-chart-center-num">{{ attended_count or 0 }}/{{ total_regs_count or 0 }}</div>
+          <div class="donut-chart-center-sub">events</div>
+        </div>
+      </div>
+      <div class="category-bars-list">
+        {% for key, label, color in [('technical', 'Technical', '#3b5bc9'), ('cultural', 'Cultural', '#b7791f'), ('sports', 'Sports', '#0f8fb0')] %}
+        <div>
+          <div class="category-bar-header"><span>{{ label }}</span><span>{{ cc.get(key, 0) }}</span></div>
+          <div class="progress" style="height:6px;" role="progressbar" aria-label="{{ label }} events" aria-valuenow="{{ cc.get(key, 0) }}" aria-valuemin="0">
+            <div class="progress-bar" style="width: {{ [(cc.get(key, 0) * 25), 100]|min }}%; background: {{ color }};"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+
+{% if config.get('REFERRALS_ENABLED') %}{# hidden until payouts exist (UPG-105) #}
+<section class="panel mb-4" aria-label="Referrals">
+  <div class="row align-items-center g-3">
+    <div class="col-md-7">
+      <h2 class="h6 mb-1"><i class="fas fa-gift me-2 text-gold" aria-hidden="true"></i>Refer students, earn rewards</h2>
+      <p class="text-muted small mb-3">Share your link. You get ₹50 when friends register and attend fests.</p>
+      <div class="input-group" style="max-width:460px;">
+        <input aria-label="Your referral link" type="text" id="ref-link-val" class="form-control form-control-sm font-monospace" readonly value="Loading link…">
+        <button type="button" class="btn btn-sm btn-primary" data-h-click="participant/dashboard:6"><i class="fas fa-copy" aria-hidden="true"></i> Copy</button>
+      </div>
+    </div>
+    <div class="col-md-5 text-md-end text-center">
+      <div class="ref-stats">
+        <div><span class="lbl">Referrals</span><div class="val" id="ref-count-val">—</div></div>
+        <div class="sep" aria-hidden="true"></div>
+        <div><span class="lbl">Earned</span><div class="val" id="ref-earned-val">—</div></div>
+        <div class="sep" aria-hidden="true"></div>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-h-click="participant/dashboard:7">Withdraw</button>
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
 
 <!-- ═══ SCORE MODAL ═══ -->
 <div class="modal fade" id="scoreModal" tabindex="-1" aria-labelledby="scoreModalTitle" aria-hidden="true">

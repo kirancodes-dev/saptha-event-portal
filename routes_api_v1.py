@@ -539,12 +539,28 @@ def _calc_level(xp: int) -> dict:
     return {"name": current[1], "emoji": current[2], "xp_threshold": current[0]}
 
 
+def _leaderboard_hidden(db, event_id):
+    """The API's answer while an event's leaderboard isn't public, else None.
+    These addresses need no login, so they answer only once the organiser has
+    made the leaderboard public (UPG-300)."""
+    import services_leaderboard
+    doc = db.collection("events").document(event_id).get()
+    if not doc.exists:
+        return api_error("not_found", "Event not found", status=404)
+    if not services_leaderboard.is_public(doc.to_dict() or {}):
+        return api_error("not_public", services_leaderboard.HIDDEN_MESSAGE, status=403)
+    return None
+
+
 @api_v1_bp.route("/leaderboard/<event_id>", methods=["GET"])
 def api_leaderboard(event_id):
     """Get event leaderboard."""
     db = _db()
     if db is None:
         return api_error("service_unavailable", "Database not available", status=503)
+    hidden = _leaderboard_hidden(db, event_id)
+    if hidden:
+        return hidden
 
     # Fetch scores for this event
     regs = []
@@ -1040,6 +1056,9 @@ def api_event_leaderboard(event_id):
     db = _db()
     if db is None:
         return api_error("service_unavailable", "Database not available", status=503)
+    hidden = _leaderboard_hidden(db, event_id)
+    if hidden:
+        return hidden
 
     round_arg = request.args.get("round")
     round_num = int(round_arg) if round_arg and round_arg.isdigit() else None

@@ -7,8 +7,9 @@
 
   <div class="callout callout--brand">
     <p class="mb-0">
-      This policy is issued in compliance with the <strong>Information Technology Act, 2008</strong>
-      and the <strong>Digital Personal Data Protection (DPDP) Act, 2023</strong> of India.
+      This notice explains how SapthaEvent handles your personal data, with reference to the
+      <strong>Information Technology Act, 2008</strong> and the
+      <strong>Digital Personal Data Protection (DPDP) Act, 2023</strong> of India.
     </p>
   </div>
 
@@ -16,7 +17,7 @@
   <p>When you use SapthaEvent, we collect:</p>
   <ul>
     <li><strong>Identity data:</strong> Full name, email address, phone number, University Serial Number (USN)</li>
-    <li><strong>Event data:</strong> Event registrations, attendance records, scores, certificates</li>
+    <li><strong>Event data:</strong> Event registrations and the answers you give on their forms, attendance records, scores, feedback you send, certificates</li>
     <li><strong>Payment data:</strong> Transaction IDs (processed securely via Razorpay — we do not store card details)</li>
     <li><strong>Usage data:</strong> Login timestamps, IP addresses (for security audit logs only)</li>
   </ul>
@@ -35,9 +36,13 @@
   <p>Your data may be shared with:</p>
   <ul>
     <li><strong>Sapthagiri NPS University</strong> — for academic records and event coordination</li>
-    <li><strong>Google Firebase/Firestore</strong> — our database provider (data stored in India)</li>
+    <li><strong>Google Cloud</strong> — hosts the portal, its database and its files</li>
     <li><strong>Razorpay</strong> — payment processing (PCI-DSS compliant)</li>
-    <li><strong>Brevo / Twilio</strong> — email and WhatsApp delivery services</li>
+    <li><strong>Brevo and Google (Gmail)</strong> — deliver the portal's emails</li>
+    <li><strong>Meta (WhatsApp) or Twilio</strong> — deliver WhatsApp messages, only where the university has
+        switched them on and you have agreed to receive them</li>
+    <li><strong>Google (Sign in with Google, Gemini)</strong> — if you choose to sign in with Google; and, where the
+        AI features are switched on, the text a feature works on (for example a question you ask the assistant)</li>
     <li><strong>Government authorities</strong> — if required by law</li>
   </ul>
 
@@ -48,10 +53,12 @@
     subject to legal retention requirements.
   </p>
   <p>
-    From your <a href="/profile/">profile page</a> you can download all your data
-    and delete your account. A deletion takes effect after 30 days (you can cancel until then): your
-    login is removed, and your name, email, phone, USN and form answers are erased from every
-    registration. Attendance and payment totals stay for the records, without your details.
+    From your <a href="/profile/">profile page</a> you can download your data (your profile, registrations,
+    form answers, feedback, certificates, notifications and consent) and delete your account. A deletion
+    takes effect after 30 days (you can cancel until then): your login is removed; your name, email, phone,
+    USN and form answers are erased from every registration; and your name and comments are removed from
+    feedback you sent. Attendance and payment totals stay for the records, without your details.
+    Certificates already issued in your name, payment records and the security audit log are kept.
   </p>
 
   <h2>5. Your Rights (DPDP Act 2023)</h2>
@@ -72,8 +79,9 @@
 
   <h2>7. Security</h2>
   <p>
-    Passwords are hashed using bcrypt/scrypt. All connections are TLS-encrypted (HTTPS).
-    Session data is stored server-side in Redis. We run regular security audits.
+    Passwords are stored only as salted hashes, never as the password itself. Connections are
+    TLS-encrypted (HTTPS). Your session is kept on the server; the cookie holds only its identifier.
+    Repeated failed sign-ins are slowed down, and administrative actions are recorded in an audit log.
   </p>
 
   <h2>8. Contact</h2>

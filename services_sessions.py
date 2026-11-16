@@ -38,12 +38,16 @@ def _num(value, kind=float):
     return number if number > 0 else None
 
 
-def parse_agenda(form) -> List[Dict]:
+STATUSES = ('planned', 'ready', 'running', 'done', 'delayed', 'cancelled')   # the run sheet (UPG-272)
+
+
+def parse_agenda(form, kept: Optional[List[int]] = None) -> List[Dict]:
     """The agenda from the schedule builder's rows (time[], end[], title[],
-    desc[], room[], capacity[], hours[], sid[]). Rows keep their ID; new rows
-    get one."""
+    desc[], room[], capacity[], hours[], sid[], status[]). Rows keep their ID;
+    new rows get one. `kept`, when given, receives the form row each item
+    came from, for the columns kept elsewhere (services_runsheet)."""
     columns = {name: form.getlist(f'{name}[]') for name in
-               ('time', 'end', 'title', 'desc', 'room', 'capacity', 'hours', 'sid')}
+               ('time', 'end', 'title', 'desc', 'room', 'capacity', 'hours', 'sid', 'status')}
     rows = len(columns['title'])
     agenda, seen = [], set()
     for i in range(min(rows, MAX_SESSIONS)):
@@ -67,7 +71,11 @@ def parse_agenda(form) -> List[Dict]:
             item['capacity'] = capacity
         if hours:
             item['hours'] = round(hours, 2)
+        if cell('status') in STATUSES and cell('status') != 'planned':
+            item['status'] = cell('status')
         agenda.append(item)
+        if kept is not None:
+            kept.append(i)
     return agenda
 
 
@@ -210,7 +218,7 @@ def ics(event_id: str, event: dict, sessions: List[Dict]) -> str:
     lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//SapthaEvent//My agenda//EN', 'CALSCALE:GREGORIAN']
     for s in sessions:
         start = _at(day, s.get('time', ''))
-        if start is None:
+        if start is None or s.get('status') == 'cancelled':     # a cancelled session isn't put in a calendar (UPG-272)
             continue
         end = _at(day, s.get('end', '')) or start + _dt.timedelta(hours=1)
         if end <= start:

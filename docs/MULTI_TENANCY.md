@@ -1,62 +1,43 @@
-# SapthaEvent Multi-Tenancy Architecture
+# Multi-tenancy: what exists and what does not
 
-## 1. Overview
-SapthaEvent supports true multi-tenancy (`middleware_tenant.py`). A single deployed cluster can concurrently host independent colleges, university departments, student clubs, and corporate partners with complete data isolation, branded discovery catalogs, and dedicated administration.
+**SapthaEvent runs one institution per deployment.** Each institution gets its
+own service, database, storage bucket and secrets. That separation, not
+anything in the application, is what keeps one institution's data away from
+another's. To add an institution, repeat
+[INSTITUTION_SETUP.md](INSTITUTION_SETUP.md).
 
----
+An earlier version of this page described several institutions sharing one
+deployment with "complete data isolation". That was never true of the code,
+and this page replaces it.
 
-## 2. Tenant Resolution Workflow
+## What the code has
 
-```mermaid
-flowchart TD
-    Req[Incoming HTTP Request] --> R1{1. Subdomain check}
-    R1 -- "eng.snpsu.edu" --> OrgFound[Set g.org = OrgData]
-    R1 -- No Match --> R2{2. URL Prefix /org/slug}
-    R2 -- "/org/robotics-club/..." --> OrgFound
-    R2 -- No Match --> R3{3. X-Tenant-Domain Header}
-    R3 -- Header Match --> OrgFound
-    R3 -- No Match --> R4{4. JWT org_id Claim}
-    R4 -- Valid Claim --> OrgFound
-    R4 -- No Match --> Default[Default Root Tenant]
-```
+| Piece | What it does | What it does not do |
+|---|---|---|
+| `middleware_tenant.py` | On non-public pages, looks up an organisation record from the subdomain, an `/org/<slug>/` path, an `X-Tenant-Domain` header, a token's `org_id` or the session, and puts it in `g.org` (templates see it as `org`). | It restricts nothing. No query filters by `g.org`, and no permission check reads it. |
+| `organization_id` columns | Present on core records; every record is written with `default`. | They are not used to separate data. |
+| `routes_onboarding.py` | A sign-up form that creates an organisation record and a `TenantAdmin` account. | It answers 404 unless `MULTI_TENANT_ENABLED=true`. It is off in production and must stay off: turning it on would let a stranger create an account in the one shared database. |
+| `services_control_plane.py` | Plan and quota bookkeeping for organisation records. | Nothing in the running app enforces those quotas. |
 
-### Resolution Hierarchy:
-1. **Subdomain Resolution**: `cs.snpsu.edu.in` resolves to the Department of Computer Science.
-2. **Path-Based Prefix**: `/org/acm-student-chapter/events` resolves to the ACM chapter.
-3. **HTTP Header**: `X-Tenant-Domain: biotech-dept.edu` for headless API clients and mobile applications.
-4. **JWT Claim**: API requests carrying Bearer tokens automatically extract `org_id` from token payload.
+So a request that names another organisation (a header, a path, a subdomain)
+changes at most which organisation record a template can read. It gives no
+access to anything: access is decided by the signed-in account's role and by
+ownership of the event or unit (`services_permission.can`).
 
----
+## What actually separates people's data inside a deployment
 
-## 3. Data Segregation Model
+- Roles and ownership: an organiser sees and changes only events they host or
+  are assigned to; department and unit admins only their unit's; Super Admins
+  everything. Tests: `tests/test_scoped_roles_e2e.py`, `tests/test_exports.py`,
+  `tests/test_institution_setup.py`.
+- A person's own data export contains only their own records
+  (`tests/test_privacy_rights.py`).
 
-### Logical Isolation via Discriminator Columns
-In the relational layer (and corresponding Firestore collections), all core records enforce an `organization_id` foreign key:
-```sql
-SELECT * FROM events 
-WHERE organization_id = :current_tenant_id 
-  AND status = 'active';
-```
+## If shared multi-tenancy is ever wanted
 
-### Administrative Guard
-The tenant middleware injects `g.org` into the Flask execution context. All service mutation methods (`services_event.py`, `services_workflow.py`) assert that the modifying actor's organizational boundary encompasses the target resource.
-
----
-
-## 4. Custom Tenant Branding & Theming
-Each tenant record stores customizable design tokens:
-```json
-{
-  "id": "org-robotics",
-  "slug": "robotics-club",
-  "name": "SNPSU Robotics & Autonomous Systems",
-  "branding": {
-    "primary_color": "#0ea5e9",
-    "accent_color": "#f43f5e",
-    "logo_url": "https://storage.googleapis.com/.../robotics-logo.svg",
-    "banner_url": "https://storage.googleapis.com/.../robotics-hero.jpg",
-    "custom_domain": "robotics.snpsu.edu.in"
-  }
-}
-```
-The Jinja2 base templates and CSS variables dynamically bind to `g.org.branding` to transform colors, logos, and header banners.
+It is a project of its own, not a switch: every query needs an organisation
+filter, every permission check an organisation boundary, uploads and
+certificates need per-organisation storage paths, sessions and sign-in need to
+be bound to an organisation, and each of those needs tests that try to cross
+the boundary. Until that is built and verified, do not set
+`MULTI_TENANT_ENABLED`, and do not describe the product as multi-tenant.

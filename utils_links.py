@@ -78,6 +78,19 @@ def request_origin(base_url: str) -> Optional[str]:
     return f"{request.scheme}://{host}"
 
 
+def request_address() -> str:
+    """'scheme://host' the current request came in on, trusted or not. Only for
+    showing or comparing (the institution page says when it was opened at an
+    address other than the saved one); never for building a link."""
+    try:
+        from flask import has_request_context, request
+    except ImportError:
+        return ''
+    if not has_request_context():
+        return ''
+    return f"{request.scheme}://{request.host}"
+
+
 def back_path(default: str, skip_prefix: str = '') -> str:
     """Where a "Back" link should go: the page on this site the visitor came
     from (?next=, else the referrer), as a path, never another site; else

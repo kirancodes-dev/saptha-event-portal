@@ -37,6 +37,7 @@ DEFAULT_CRITERIA = (
     ('completeness', 'Completeness'),
 )
 MAX_CRITERIA = 6
+DESCRIPTION_CHARS = 200    # what a criterion means, for the AI (UPG-299)
 SCALE = 10                    # each criterion is scored 0..10; the total is out of 100
 BATCH = 2                     # submissions per request (gunicorn's timeout is 60 s)
 CALL_TIMEOUT_MS = 25_000
@@ -44,6 +45,7 @@ MAX_CALLS_PER_EVENT = 500     # the cost cap: one call per submission, plus re-r
 PDF_PAGES, PDF_CHARS = 5, 12_000
 ANSWER_CHARS, PROBLEM_CHARS = 5_000, 4_000
 REPLY_CHARS, REASON_CHARS = 6_000, 500
+JUDGED = ("Judges score this round, not AI. Switch the round to AI evaluation to use AI scoring.")
 OFF = "AI scoring is off: no Gemini key is set (GEMINI_API_KEY). Rank the submissions with your own scores."
 
 
@@ -74,13 +76,32 @@ def ai_enabled() -> bool:
 
 
 def criteria(event: dict) -> list:
+    """The AI criteria: {'id', 'label'}, plus 'description' and 'weight' (marks
+    out of 100) when the SPOC gave them (UPG-299). No weights means equal."""
     saved = hk.data(event).get('ai_criteria')
     if isinstance(saved, list):
-        rows = [{'id': str(c['id']), 'label': str(c['label'])} for c in saved
-                if isinstance(c, dict) and c.get('id') and c.get('label')]
+        rows = []
+        for c in saved:
+            if not (isinstance(c, dict) and c.get('id') and c.get('label')):
+                continue
+            row: dict = {'id': str(c['id']), 'label': str(c['label'])}
+            if c.get('description'):
+                row['description'] = str(c['description'])
+            if isinstance(c.get('weight'), int) and not isinstance(c.get('weight'), bool) and c['weight'] > 0:
+                row['weight'] = c['weight']
+            rows.append(row)
         if rows:
             return rows
     return [{'id': i, 'label': label} for i, label in DEFAULT_CRITERIA]
+
+
+def weights(crits: list) -> list:
+    """Each criterion's marks out of 100: the SPOC's weights when every
+    criterion has one, else equal shares."""
+    given = [c.get('weight') for c in crits]
+    if crits and all(isinstance(w, (int, float)) and not isinstance(w, bool) and w > 0 for w in given):
+        return [float(w) for w in given]
+    return [100.0 / max(1, len(crits))] * len(crits)
 
 
 def state(event: dict) -> dict:
@@ -102,30 +123,142 @@ def _scored_any(subs) -> bool:
     return any((s.get('ai_eval') or {}).get('status') == 'scored' for s in subs)
 
 
-def set_criteria(db, event_id: str, event: dict, labels) -> tuple:
-    """(ok, message). The criteria can change until a submission is scored."""
-    clean = [' '.join(str(x or '').split())[:80] for x in labels or []]
-    clean = [x for x in clean if x]
+def set_criteria(db, event_id: str, event: dict, labels, descriptions=None, marks=None) -> tuple:
+    """(ok, message). The criteria can change until a submission is scored.
+    `descriptions` and `marks` line up with `labels` (UPG-299): a description
+    tells the AI what the criterion means; marks are its weight out of 100.
+    Give marks for every criterion (adding up to 100) or for none (equal)."""
+    labels, descriptions, marks = list(labels or []), list(descriptions or []), list(marks or [])
+    entered = []
+    for i, raw in enumerate(labels):
+        label = ' '.join(str(raw or '').split())[:80]
+        description = ' '.join(str(descriptions[i] if i < len(descriptions) else '').split())[:DESCRIPTION_CHARS]
+        mark = str(marks[i] if i < len(marks) else '').strip()
+        if label:
+            entered.append((label, description, mark))
+        elif description or mark:
+            return False, f"Criterion {i + 1} has a description or marks but no name."
+    clean = [label for label, _d, _m in entered]
     if not clean:
         return False, "Add at least one criterion."
     if len(clean) > MAX_CRITERIA:
         return False, f"At most {MAX_CRITERIA} criteria."
     if len({x.lower() for x in clean}) != len(clean):
         return False, "Two criteria have the same name."
+    given = [m for _l, _d, m in entered if m]
+    weights_in = []
+    if given:
+        if len(given) != len(entered):
+            return False, "Give marks for every criterion, or leave all of them empty for equal weights."
+        for label, _d, mark in entered:
+            if not re.fullmatch(r'\d{1,3}', mark) or not 1 <= int(mark) <= 100:
+                return False, f"{label}: marks are a whole number from 1 to 100."
+            weights_in.append(int(mark))
+        if sum(weights_in) != 100:
+            return False, f"The marks add up to {sum(weights_in)}; they must add up to 100."
     if _scored_any(hk.submissions(db, event_id)):
         return False, "Submissions are already scored with the current criteria; they can't change now."
     rows, ids = [], set()
-    for n, label in enumerate(clean, 1):
+    for n, (label, description, _mark) in enumerate(entered, 1):
         cid = re.sub(r'[^a-z0-9]+', '_', label.lower()).strip('_')[:24] or f'c{n}'
         if cid in ids:
             cid = f'{cid[:20]}_{n}'
         ids.add(cid)
-        rows.append({'id': cid, 'label': label})
+        row: dict = {'id': cid, 'label': label}
+        if description:
+            row['description'] = description
+        if weights_in:
+            row['weight'] = weights_in[n - 1]
+        rows.append(row)
     h = hk.data(event)
     h['ai_criteria'] = rows
     hk._save(db, event_id, h)
     event['hackathon'] = h
     return True, "Criteria saved."
+
+
+# ── Who scores the submission round: AI or judges (UPG-298) ─────────────────
+# The round that has the submission form is scored either by AI (the SPOC's
+# criteria above) or by the event's judges with the judges' rubric. Either
+# way the SPOC's own score overrides, and the SPOC picks who goes through.
+# Rounds after the shortlist are always scored by judges.
+
+AI, JUDGES = 'ai', 'judges'
+MODES = {AI: 'AI evaluation', JUDGES: 'Judges'}
+
+
+def mode(event: dict) -> str:
+    """'ai' (the default, as before UPG-298) or 'judges'."""
+    value = str(hk.data(event).get('evaluation_mode') or '').strip().lower()
+    return value if value in MODES else AI
+
+
+def judges_score_submissions(event: dict) -> bool:
+    """Judges score the submissions now: the submission round is set to
+    judges and the shortlist hasn't moved the event on."""
+    return hk.has_form(event) and mode(event) == JUDGES and not shortlist(event)
+
+
+def _judges_scored_any(db, event_id: str, event: dict) -> bool:
+    from services_leaderboard import score_of
+    from services_rounds import round_teams
+    return any(score_of(t['reg'])[0] is not None for t in round_teams(db, event_id, event))
+
+
+def set_mode(db, event_id: str, event: dict, new_mode: str, by: str = '') -> tuple:
+    """(ok, message). The mode can change until scoring in the current mode
+    has started, the shortlist is confirmed or results are published."""
+    new_mode = str(new_mode or '').strip().lower()
+    if new_mode not in MODES:
+        return False, "Choose AI evaluation or judges."
+    current = mode(event)
+    if new_mode == current:
+        return True, f"This round is already scored by {MODES[current].lower()}."
+    if event.get('results_published'):
+        return False, "Results are published; the round can't change now."
+    if shortlist(event):
+        return False, "The shortlist is confirmed; undo it before changing who scores the round."
+    if current == AI and (state(event)['status'] == 'running' or _scored_any(hk.submissions(db, event_id))):
+        return False, "AI scoring has started for this round, so it stays with AI evaluation."
+    if current == JUDGES and _judges_scored_any(db, event_id, event):
+        return False, "Judges have started scoring this round, so it stays with the judges."
+    h = hk.data(event)
+    h['evaluation_mode'] = new_mode
+    h['evaluation_mode_changed'] = {'at': _now_iso(), 'by': by, 'from': current}
+    hk._save(db, event_id, h)
+    event['hackathon'] = h
+    if new_mode == JUDGES:
+        return True, ("Judges score this round. After the deadline each judge sees every team that "
+                      "submitted (or the teams assigned to them) and scores it with the judges' criteria.")
+    return True, "AI scores this round, against the criteria below, after the deadline."
+
+
+def _judges_max(event: dict) -> float:
+    """The most a judge can give a team: the judges' criteria's maximums added up."""
+    from routes_judge import normalize_criteria
+    return float(sum(int(c['max_score']) for c in normalize_criteria(event.get('judging_criteria')))) or 100.0
+
+
+def judges_percent(reg: dict, out_of: float) -> tuple:
+    """(the judges' average as a score out of 100, or None; how many judges)."""
+    values = []
+    for entry in (reg.get('scores') or {}).values():
+        if not isinstance(entry, dict):
+            continue
+        raw = entry.get('raw_total')
+        if raw is None and isinstance(entry.get('details'), dict):
+            numbers = [v for v in entry['details'].values()
+                       if isinstance(v, (int, float)) and not isinstance(v, bool)]
+            raw = sum(numbers) if numbers else None
+        if raw is None:
+            continue
+        try:
+            values.append(float(raw) / out_of * 100)
+        except (TypeError, ValueError):
+            continue
+    if not values:
+        return None, 0
+    return round(sum(values) / len(values), 1), len(values)
 
 
 def _pending(sub: dict, ai: dict) -> bool:
@@ -151,6 +284,8 @@ def progress(db, event_id: str, event: dict, subs=None) -> dict:
 def start(db, event_id: str, event: dict, by: str = '') -> tuple:
     """(ok, message). Only after the deadline. Starting again resumes: what is
     scored stays, the rest (and earlier failures) are tried."""
+    if mode(event) == JUDGES:
+        return False, JUDGED
     if not ai_enabled():
         return False, OFF
     if hk.window(event) != 'closed':
@@ -195,6 +330,8 @@ def run_batch(db, event_id: str, event: dict, limit: int = BATCH) -> dict:
 
 def rerun(db, event_id: str, event: dict, sub_id: str) -> tuple:
     """(ok, message): score one submission again."""
+    if mode(event) == JUDGES:
+        return False, JUDGED
     if not ai_enabled():
         return False, OFF
     if hk.window(event) != 'closed':
@@ -220,7 +357,7 @@ def evaluate(db, event_id: str, event: dict, sub: dict, ai: dict) -> dict:
     try:
         raw = _call_model(instructions(crits), payload(event, sub))
         scores, reason = parse_reply(raw, crits)
-        result.update({'status': 'scored', 'scores': scores, 'total': total(scores, len(crits)),
+        result.update({'status': 'scored', 'scores': scores, 'total': total(scores, crits),
                        'reason': reason})
     except ReplyError as exc:
         result.update({'status': 'not_scored', 'error': str(exc)[:200]})
@@ -246,7 +383,14 @@ def _call_model(system: str, data: str) -> str:
 
 
 def instructions(crits: list) -> str:
-    lines = '\n'.join(f'- "{c["id"]}": {c["label"]}' for c in crits)
+    marks = weights(crits)
+
+    def line(c, w):
+        text = f'- "{c["id"]}": {c["label"]}'
+        if c.get('description'):
+            text += f' ({c["description"]})'
+        return text + f' [worth {w:g} of 100 marks]'
+    lines = '\n'.join(line(c, w) for c, w in zip(crits, marks))
     shape = ', '.join(f'"{c["id"]}": <0-{SCALE}>' for c in crits)
     return (
         "You help organisers of a student hackathon shortlist teams. You score ONE submission.\n"
@@ -342,8 +486,12 @@ def parse_reply(raw, crits: list) -> tuple:
     return scores, reason
 
 
-def total(scores: dict, n: int) -> float:
-    return round(sum(scores.values()) / (SCALE * max(1, n)) * 100, 1)
+def total(scores: dict, crits) -> float:
+    """Out of 100: each criterion's 0-SCALE score times its marks (UPG-299).
+    `crits` may be a count (the older call): equal weights."""
+    if isinstance(crits, int):
+        return round(sum(scores.values()) / (SCALE * max(1, crits)) * 100, 1)
+    return round(sum(float(scores.get(c['id'], 0)) / SCALE * w for c, w in zip(crits, weights(crits))), 1)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -355,29 +503,35 @@ def _team_name(reg: dict) -> str:
 
 
 def ranking(db, event_id: str, event: dict, sort: str = 'rank') -> list:
-    """The current round's teams with their submission, AI result and the
-    SPOC's review. `key` (what ranks a team) is the SPOC's score when set,
-    else the AI total; a team without a submission has none. sort: 'rank'
-    (by key) or 'ai' (by the AI total)."""
+    """The current round's teams with their submission, AI result, judges'
+    score and the SPOC's review. `key` (what ranks a team) is the SPOC's score
+    when set, else the round's own score: the AI total, or the judges' average
+    out of 100 when judges score the round (UPG-298); a team without a
+    submission has none. sort: 'rank' (by key) or 'ai' (by the round's score)."""
     from services_rounds import round_teams
     subs = {str(s.get('registration_id')): s for s in hk.submissions(db, event_id)}
+    judged = mode(event) == JUDGES
+    out_of = _judges_max(event) if judged else 100.0
     rows: list[dict] = []
     for t in round_teams(db, event_id, event):
         sub = subs.get(str(t['id']))
         ev = (sub or {}).get('ai_eval') or {}
         review = (sub or {}).get('spoc_review') or {}
         ai_total = ev.get('total') if ev.get('status') == 'scored' else None
+        judges, judges_n = judges_percent(t['reg'], out_of) if judged else (None, 0)
+        own = judges if judged else ai_total
         mine = review.get('score') if isinstance(review.get('score'), (int, float)) else None
         rows.append({'reg_id': t['id'], 'reg': t['reg'], 'team': _team_name(t['reg']),
                      'lead': t['reg'].get('lead_name') or '', 'sub': sub, 'sub_id': (sub or {}).get('id', ''),
                      'submitted': bool(sub), 'ai': ev, 'ai_total': ai_total, 'review': review,
-                     'spoc_score': mine, 'key': (mine if mine is not None else ai_total) if sub else None,
+                     'judged': judged, 'judges': judges, 'judges_n': judges_n, 'round_score': own,
+                     'spoc_score': mine, 'key': (mine if mine is not None else own) if sub else None,
                      'rank': None, 'tied': False})
     keyed = sorted((r for r in rows if r['key'] is not None), key=lambda r: -r['key'])
     for i, r in enumerate(keyed):
         r['rank'] = keyed[i - 1]['rank'] if i and keyed[i - 1]['key'] == r['key'] else i + 1
         r['tied'] = sum(1 for o in keyed if o['key'] == r['key']) > 1
-    field = 'ai_total' if sort == 'ai' else 'key'
+    field = 'round_score' if sort == 'ai' else 'key'
     rows.sort(key=lambda r: (r[field] is None, -(r[field] or 0), r['team'].lower()))
     return rows
 
@@ -423,7 +577,8 @@ def preview(rows: list, mode: str, n=0, picked=()) -> dict:
             return {**result, 'message': "Enter how many teams go to the finale."}
         keyed = sorted((r for r in rows if r['key'] is not None), key=lambda r: -r['key'])
         if not keyed:
-            return {**result, 'message': "No team has a score yet. Wait for the AI scores, give your own "
+            who = "judges' scores" if any(r.get('judged') for r in rows) else "AI scores"
+            return {**result, 'message': f"No team has a score yet. Wait for the {who}, give your own "
                                          "scores, or tick the teams by hand."}
         mark = keyed[min(n, len(keyed)) - 1]['key']
         go = [r for r in keyed if r['key'] >= mark]
@@ -536,6 +691,12 @@ def undo(db, event_id: str, event: dict, actor: str) -> tuple:
             'assigned_room': before.get('assigned_room'),
             'assigned_judge_email': before.get('assigned_judge_email'),
             'assigned_judge_name': before.get('assigned_judge_name')})
+        # A finalist's judges' scores from the submission round were moved to
+        # its history when it went through; put them back (UPG-298)
+        dropped = past[int(before.get('history_len') or 0):]
+        kept = next((h.get('scores') for h in dropped if h.get('kind') == 'shortlist' and h.get('scores')), None)
+        if kept and not reg.get('scores'):
+            db.collection('registrations').document(reg_id).set({'scores': kept}, merge=True)
         regs.append(reg)
     db.collection('events').document(event_id).update({
         'active_round': int(sl['from_round']), 'shortlist_published': False,

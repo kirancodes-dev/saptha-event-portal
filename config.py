@@ -244,10 +244,16 @@ class Config:
     REFERRALS_ENABLED = os.environ.get('REFERRALS_ENABLED', '').strip().lower() in ('1', 'true', 'yes')
 
     # Demo pages with no real data or backend behind them (UPG-65, D-8): the
-    # SaaS marketing pages (/platform, /pricing, /features: invented customers,
-    # prices and uptime) and the live streams and reels pages (simulated viewers,
-    # likes and chat). They answer 404 unless this is switched on.
+    # price list (/pricing: invented prices and fees) and the live streams and
+    # reels pages (simulated viewers, likes and chat). They answer 404 unless
+    # this is switched on. /platform and /features are behind the same switch
+    # and now show the About page, which invents nothing (UPG-275).
     DEMO_PAGES_ENABLED = os.environ.get('DEMO_PAGES_ENABLED', '').strip().lower() in ('1', 'true', 'yes')
+
+    # A demo or test copy of the portal, as against an institution's own
+    # deployment (UPG-275): every page then says its people, events and figures
+    # are sample data. It changes nothing else.
+    DEMO_ENVIRONMENT = os.environ.get('DEMO_ENVIRONMENT', '').strip().lower() in ('1', 'true', 'yes')
 
     # The teammate matchmaker suggests made-up people until it uses real
     # profiles, so /participant/matchmaker/ answers 404 unless this is on (UPG-14)

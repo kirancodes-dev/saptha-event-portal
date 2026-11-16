@@ -1,0 +1,85 @@
+{% extends "base_classic.html" %}
+{#- Set this deployment up for its institution (UPG-268). Super Admin only. -#}
+{% set app_active = 'system' %}
+{% block title %}Institution setup | Admin{% endblock %}
+{% block page_title %}Institution setup{% endblock %}
+{% block page_sub %}This portal serves one institution. Set its details, invite its first administrators, and see what is still missing before people use it.{% endblock %}
+{% block page_actions %}<a href="/admin/audit_log" class="btn btn-outline-primary"><i class="fas fa-clipboard-list" aria-hidden="true"></i> Audit log</a>{% endblock %}
+{% block extra_css %}
+<style>
+.inst-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 20px; align-items: start; }
+@media (max-width: 991.98px) { .inst-grid { grid-template-columns: 1fr; } }
+.inst-list { list-style: none; padding: 0; margin: 0; }
+.inst-list li { display: grid; grid-template-columns: 24px 1fr; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--divider); }
+.inst-list li:last-child { border-bottom: 0; }
+.inst-done { color: var(--success-text, #146c43); }
+.inst-todo { color: var(--warning-text, #8a6100); }
+.inst-detail { font-size: var(--fs-sm); color: var(--text-muted, #5b6070); }
+.inst-swatch { display: inline-block; width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(0,0,0,.2); vertical-align: -2px; }
+</style>
+{% endblock %}
+{% block content %}
+{% set done = checklist|selectattr('done')|list|length %}
+<div class="inst-grid">
+  <div>
+    <section class="panel mb-3" id="details" aria-labelledby="details-h">
+      <h2 class="h6 fw-bold mb-1" id="details-h">The institution's details</h2>
+      <p class="small text-muted">Used in the page footer, as the help address, and on certificates issued from now on.
+        {% if values.updated_at %}Last saved {{ values.updated_at[:10] }} by {{ values.updated_by }}.{% else %}Not saved yet: these are the built-in defaults.{% endif %}</p>
+      <form method="post" action="/admin/institution" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% macro field(name, label, help, type='text') %}
+        <div class="mb-3">
+          <label class="form-label fw-semibold" for="inst-{{ name }}">{{ label }}</label>
+          <input class="form-control{% if problems.get(name) %} is-invalid{% endif %}" type="{{ type }}" id="inst-{{ name }}" name="{{ name }}"
+                 value="{{ values.get(name, '') }}" aria-describedby="inst-{{ name }}-help"{% if problems.get(name) %} aria-invalid="true"{% endif %}>
+          <div class="{{ 'invalid-feedback d-block' if problems.get(name) else 'form-text' }}" id="inst-{{ name }}-help"{% if problems.get(name) %} data-problem="{{ name }}"{% endif %}>{{ problems.get(name) or help }}</div>
+        </div>
+        {% endmacro %}
+        {{ field('name', 'Name', 'As it should read on certificates and in the footer.') }}
+        {{ field('short_name', 'Short name', 'Optional. For example the initials.') }}
+        {{ field('public_url', 'Public address', 'The address people open, starting with https://. It must also be set as BASE_URL on the server: links in emails are built from that.', 'url') }}
+        {{ field('support_email', 'Support email', 'Optional. Shown on help and privacy pages to people who need a person.', 'email') }}
+        {{ field('primary_color', 'Certificate main colour', 'A # and six letters or digits.') }}
+        {{ field('accent_color', 'Certificate accent colour', 'A # and six letters or digits.') }}
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Save details</button>
+      </form>
+    </section>
+
+    <section class="panel" id="admins" aria-labelledby="admins-h">
+      <h2 class="h6 fw-bold mb-1" id="admins-h">Administrators</h2>
+      <p class="small text-muted">An administrator can see and change everything. Invite the institution's own administrator here; they choose their own password from the emailed link.</p>
+      <ul class="inst-list mb-3">
+        {% for a in admins %}
+        <li data-admin="{{ a.email }}"><i class="fas {{ 'fa-circle-check inst-done' if a.active else 'fa-hourglass-half inst-todo' }}" aria-hidden="true"></i>
+          <div><a href="/admin/users/{{ a.email }}">{{ a.name }}</a> <span class="inst-detail">{{ a.email }} · {{ a.role }}</span>
+            <div class="inst-detail">{{ 'Can sign in.' if a.active else "Invited: hasn't set a password yet. Resend the link from their page." }}</div></div></li>
+        {% endfor %}
+      </ul>
+      <form method="post" action="/admin/users/add" class="row g-2 align-items-end">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="role" value="SuperAdmin">
+        <div class="col-md-5"><label class="form-label fw-semibold" for="inv-name">Name</label><input class="form-control" id="inv-name" name="name" required maxlength="200"></div>
+        <div class="col-md-5"><label class="form-label fw-semibold" for="inv-email">Email</label><input class="form-control" type="email" id="inv-email" name="email" required></div>
+        <div class="col-md-2"><button type="submit" class="btn btn-outline-primary w-100">Invite</button></div>
+        <p class="form-text mb-0">Other roles (SPOCs, coordinators, department admins) are added under <a href="/admin/users">Users</a> and <a href="/admin/org_units">Units &amp; roles</a>.</p>
+      </form>
+    </section>
+  </div>
+
+  <section class="panel" aria-labelledby="ready-h">
+    <h2 class="h6 fw-bold mb-1" id="ready-h">Before people use it <span class="se-badge se-badge--{{ 'success' if done == checklist|length else 'warning' }} ms-1" data-ready="{{ done }}/{{ checklist|length }}">{{ done }} of {{ checklist|length }}</span></h2>
+    <p class="small text-muted">Read from this deployment just now. Nothing here is switched on by ticking a box.</p>
+    <ul class="inst-list">
+      {% for item in checklist %}
+      <li data-check="{{ item.key }}" data-done="{{ 'yes' if item.done else 'no' }}">
+        <i class="fas {{ 'fa-circle-check inst-done' if item.done else 'fa-circle-exclamation inst-todo' }}" aria-hidden="true"></i>
+        <div><strong>{{ item.label }}</strong> <span class="visually-hidden">{{ 'Done.' if item.done else 'Not done.' }}</span>
+          <div class="inst-detail">{{ item.detail }} {% if not item.done %}<a href="{{ item.link }}">Fix this</a>{% endif %}</div></div>
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="small text-muted mt-3 mb-0">Handing over, exporting everything and closing a deployment down are written up in <code>docs/INSTITUTION_SETUP.md</code>.</p>
+  </section>
+</div>
+{% endblock %}

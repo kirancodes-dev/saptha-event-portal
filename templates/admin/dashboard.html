@@ -479,12 +479,11 @@
                 <div class="ev-title">{{ event.title }}</div>
                 <div class="ev-cat"><i class="fas fa-map-marker-alt me-1"></i>{{ event.venue|default('TBA') }}</div>
               </td>
-              <td style="white-space:nowrap;font-size:12.5px;">{{ event.date|default('TBA') }}</td>
+              <td style="white-space:nowrap;font-size:12.5px;">{{ event.date|default('TBA', true)|day }}</td>
               <td><span class="status-pill" style="background:rgba(124,58,237,.08);color:var(--purple);">{{ event.category|default('General') }}</span></td>
               <td>
-                <span class="status-pill {{ 'pill-active' if event.status == 'active' else 'pill-done' }}">
-                  <i class="fas fa-circle fa-xs me-1"></i>{{ event.status|capitalize }}
-                </span>
+                {% set os = organiser_status(event) %}{#- UPG-294: the status in plain words -#}
+                <span class="se-badge se-badge--{{ os.tone }}" title="{{ os.explanation }}" data-organiser-status="{{ os.key }}">{{ os.label }}</span>
               </td>
               <td><strong style="color: var(--brand-ink);">{{ event.registration_count|default(0) }}</strong></td>
               <td style="font-size:12.5px;">

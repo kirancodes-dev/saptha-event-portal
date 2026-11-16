@@ -1,14 +1,14 @@
 {% extends "layouts/status.html" %}
+{#- Why nobody can register right now, in the words every other page uses (UPG-266) -#}
+{% set rs = reg_state or reg_state_of(event) %}
 {% set status_tone = 'warning' %}
-{% set status_icon = 'fa-user-slash' if reason == 'full' else 'fa-lock' %}
-{% block title %}Registration Closed — {{ event.title }}{% endblock %}
+{% set status_icon = {'not_open': 'fa-hourglass-start', 'full': 'fa-user-slash', 'ended': 'fa-flag-checkered', 'cancelled': 'fa-ban'}.get(rs.key, 'fa-lock') %}
+{% block title %}{{ rs.label }} — {{ event.title }}{% endblock %}
 {% block status %}
-  {% if reason == 'full' %}
-    <h1>This event is full</h1>
-    <p>Sorry, <strong>{{ event.title }}</strong> has reached its maximum capacity.</p>
-  {% else %}
-    <h1>Registration Closed</h1>
-    <p>The registration deadline for <strong>{{ event.title }}</strong> has passed.</p>
-  {% endif %}
-  <div class="status-actions"><a href="/events" class="btn btn-primary">Browse other events</a></div>
+  <h1 data-reg-state="{{ rs.key }}">{{ {'not_open': "Registration isn't open yet", 'closed': 'Registration Closed', 'ended': 'This event is over', 'cancelled': 'This event was cancelled', 'unpublished': 'Registration Closed', 'full': 'This event is full', 'programme': 'Register for an event in the programme'}.get(rs.key, 'Registration Closed') }}</h1>
+  <p><strong>{{ event.title }}</strong>: <span data-reg-explanation>{{ rs.explanation }}</span></p>
+  <div class="status-actions">
+    {% if rs.key in ('not_open', 'programme') %}<a href="/event/{{ event.id }}" class="btn btn-primary">See the event page</a>{% endif %}
+    <a href="/events" class="btn {{ 'btn-outline-primary' if rs.key in ('not_open', 'programme') else 'btn-primary' }}">Browse other events</a>
+  </div>
 {% endblock %}

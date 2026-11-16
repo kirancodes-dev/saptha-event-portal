@@ -42,10 +42,16 @@
             <i class="fas fa-check-circle" aria-hidden="true"></i> Already registered
         </button>
         {% else %}
-        {# The event's own registration form, which checks the event is open (UPG-34) #}
-        <a class="btn btn-lg btn-gold" href="/forms/register/{{ event.id }}">
-            Register now <i class="fas fa-arrow-right" aria-hidden="true"></i>
-        </a>
+        {# The event's own registration form applies the same state (UPG-34, UPG-266); the block follows
+           the state while the page stays open (UPG-267) #}
+        <div class="text-end" data-live-reg data-live-event="{{ event.id }}" data-reg-state="{{ reg_state.key }}">
+            <a class="btn btn-lg btn-gold" {% if reg_state.action %}href="{{ reg_state.action_url }}"{% else %}hidden{% endif %} data-live-action data-live-register="Register now" data-reg-action="{{ reg_state.action }}">
+                <span data-live-action-label>{{ 'Register now' if reg_state.action == 'register' else reg_state.action_label }}</span> <i class="fas fa-arrow-right" aria-hidden="true"></i>
+            </a>
+            <span class="btn btn-lg btn-outline-secondary disabled" aria-disabled="true" data-live-locked {% if reg_state.action %}hidden{% endif %}><i class="fas fa-lock" aria-hidden="true"></i> <span data-live-label>{{ reg_state.label }}</span></span>
+            <div class="small mt-1" data-reg-explanation data-live-explanation aria-live="polite">{{ reg_state.explanation }}</div>
+            <div class="small text-muted" data-live-status="stale-only" role="status" hidden></div>
+        </div>
         {% endif %}
     </div>
 </div>
@@ -84,4 +90,4 @@ function copyLink(){
 }
 </script>
 {% endblock %}
-{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/public__event_details.js"></script>{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/live-refresh.js"></script><script src="/static/js/handlers/public__event_details.js"></script>{% endblock %}

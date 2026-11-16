@@ -304,6 +304,42 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 | UPG-263 | `tests/test_email_paid_plan.py` writes a made-up MAIL_PASS value, which the repo's hygiene scan refuses | DONE | Found 2026-11-14 in UPG-262's full run: the scan reads committed files only, so the test passed before `49647da` committed it and failed after. |
 | UPG-264 | The SPOC's registrations list: filters that combine, and a sort | DONE | Owner, 2026-11-14: "add sorting, all confirmed and all that, a filter system with everything possible to make it easy" (for the SPOC). The list had one filter at a time (entry, payment, members) and only newest first. |
 | UPG-265 | The SPOC downloads the filtered list with what to fix, and sends it on WhatsApp | DONE (untested, owner's instruction) | Owner, 2026-11-14: "download the full details of that and send to WhatsApp, like all teams still not confirmed, so we can fix things; don't test anything, just add and deploy". |
+| UPG-266 | One answer to "can I register?", shown the same on every page | DONE | Every page reads `services_registration_state.state`; the form's gate is the same rule; each state says why. |
+| UPG-267 | A page that is already open follows registration changes | DONE | `/live/state.json` and `/live/ops.json`, polled every 30 seconds by `static/js/live-refresh.js`; says when it is stale. |
+| UPG-268 | Setting a deployment up for an institution: details, first administrators, a readiness list | DONE | `/admin/institution` (Super Admin), `services_institution.py`, `docs/INSTITUTION_SETUP.md`; one deployment per institution, no public sign-up. |
+| UPG-269 | Check-in that survives a lost connection, and says what happened | DONE | Offline scans count for the day they were made, belong to the account that made them, are cleared at sync and sign-out, and are reported back. |
+| UPG-270 | Who can register: this institution, invited institutions, or everyone | DONE | Three modes with an invited-domains list; one eligibility sentence on every page; outside registrations marked for the organiser. |
+| UPG-271 | The student roster comes in with a check first; the integration documents say only what exists | DONE | `services_roster.py` (check, preview, confirm); `docs/INTEGRATIONS.md`; `docs/API.md` lists exactly the routes served. |
+| UPG-272 | The run sheet: who is responsible, what is running, clashes refused, changes announced | DONE | `services_runsheet.py`, `/coordinator/runsheet/<event>`; owner and note kept off public pages; changes announced in the app only. |
+| UPG-273 | An event summary report whose figures are defined and match the lists | DONE | `/reports/events` with 14 defined columns, date/category/event filters, CSV and Excel; not an accreditation format. |
+| UPG-274 | The privacy and security documents say what the code does; the download and the deletion reach feedback and certificates | DONE | Notice, `docs/SECURITY.md`, `docs/PWA.md` corrected; `docs/DATA_HANDLING.md` new; legal questions in D-15. |
+| UPG-275 | An About page a university buyer can read, and a demo that says it is a demo | DONE | `/about`; `DEMO_ENVIRONMENT=1` puts a Demo banner on every page; the invented platform pages are gone. |
+| UPG-276 | The event's calendar file checks who may see the event | TODO | `/events/<slug>/calendar.ics` answers for any event, whatever its status or visibility (`app.py:893`). |
+| UPG-277 | The check-in time is written in IST, like the attendance day | TODO | `routes_ticket._now()` is the server's clock; the attendance day is IST. |
+| UPG-278 | The public API's event answer holds only public fields, and only for listed events | TODO | `GET /api/v1/events/<id>` needs no login and returns the whole document, staff emails and drafts included. Privacy: propose doing first. |
+| UPG-279 | The event popup, the open-events page and the student dashboard follow changes too | TODO | These three show the state when loaded but don't refresh (left by UPG-267). |
+| UPG-280 | "This institution only" checks that the person is from the institution | TODO | The mode refuses outside participant types but doesn't check a campus domain or the roster. Needs D-17. |
+| UPG-281 | Microsoft sign-in: verify it or take its routes out | TODO | `auth_oauth.py` has Microsoft routes, never run against a tenant and not offered. |
+| UPG-282 | The one-request roster upload for scripts gets a dry run | TODO | `POST /admin/users/import_csv` checks like the page but writes at once. |
+| UPG-283 | Remove `CLOSED_STATUSES` from routes_forms.py | TODO | `routes_forms.py:83` defines a name nothing reads since UPG-266. |
+| UPG-284 | The API's role checks use the role names accounts really have | TODO | `routes_api_v1.py` asks for `Admin`, `Coordinator`, `SPOC`; accounts are `SuperAdmin`, `EventCoordinator`, `ClubSPOC`. Not run. |
+| UPG-285 | Schedule items have a day | TODO | Items have a time and no day, so on a multi-day event every clash is only a warning. |
+| UPG-286 | The data download and the deletion reach the remaining records | TODO | Session stars, live votes and questions, push subscriptions, submissions, exam attempts, waitlist, tickets, check-ins and uploaded files aren't reached. Needs D-15. |
+| UPG-287 | The `/pricing` page: remove it or replace it with real terms | TODO | `templates/marketing/pricing.html` (hidden by default) states invented prices, a platform fee and Stripe. Needs D-16. |
+| UPG-288 | Three public statements the code doesn't back | TODO | The notice's "retained for 5 years", the home page's "Email & WhatsApp updates", and `docs/DEPLOY.md`'s 15-minute export links. |
+| UPG-289 | Two pagination tests fail at `a4809a8`, before this change | TODO | Both `[coordinator registrations]` cases of `tests/test_pagination_lists.py` fail on a clean `a4809a8` (list last changed by UPG-264/265). |
+| UPG-290 | Ticket signing has no key written in the code | TODO | `services_ticket._get_signing_key` falls back to a fixed text when no key is set (development only). |
+| UPG-291 | The audit log shows when it has been altered | TODO | Audit entries are ordinary rows; a change or deletion can't be seen. |
+| UPG-292 | A calendar feed of the institution's public events | TODO | A person has a feed and an event has a file; there is no feed of every public event. |
+| UPG-293 | `tests/test_certificate_delivery.py` has lost its first 65 lines in the working tree | TODO | An uncommitted change of 2026-11-13 broke the file; 3 test files can't be collected, 1 hygiene test and ruff fail on it. Owner's action. |
+| UPG-294 | The home page and each role's first page are easier to use | DONE | Events open for registration first; dates as "25 Nov 2026"; organisers see "Event over", not `Registration_open`; the student's tickets before the profile card; a coordinator with no events is pointed to the scanner. |
+| UPG-295 | The NAAC reminder goes out twice between midnight and 05:30 IST | TODO | `services_naac.daily_reminders` compares today's date in IST with the last reminder's time in UTC (`services_naac.py:332-337`). |
+| UPG-296 | Tests with fixed event dates that are about to pass | TODO | Since UPG-266 an event that is over takes no registrations; tests that register for an event dated 2026-11-20 to 2026-12-25 may start failing on those days. |
+| UPG-297 | Usability findings from the first-pages review, not built | TODO | Admin "Recent activity" shows codes and raw timestamps; the SPOC nav title is cut to "SPOC …"; the student's empty "My registrations" card repeats "My active tickets"; others. |
+| UPG-298 | A hackathon's submission round is scored by AI or by judges, as the SPOC chooses | DONE | "Who scores the submissions" on the hackathon page; in a judges round every judge sees each team that submitted after the deadline (no check-in), the SPOC ranks by the judges' average and shortlists; the finale is judged as before. |
+| UPG-299 | AI criteria have a description for the AI and marks that add up to 100 | DONE | Each criterion: name, what it means, marks; all marks or none (equal weights); the AI total is weighted; fixed once a submission is scored. |
+| UPG-300 | Every leaderboard is hidden from the public until the SPOC makes it public | DONE | A switch on the results page, the round panel and the hackathon page; the public, students and the projector see "Not public yet", the API answers 403 `not_public`; the event's staff always see it, marked as not public. |
+| UPG-301 | A copied hackathon keeps the old event's shortlist, AI run, updates and extensions | TODO | `clone_event` copies the whole `hackathon` block (`routes_spoc.py:1449`), and `active_round`, `total_rounds`, `shortlist_published`, `scoring_locked` too. |
 
 ## Open items
 
@@ -480,6 +516,7 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
   1. Test: the file passes after a test that makes 30 accounts sorting before its own.
 - **Re-verified 2026-11-05 (rule 8, end of hackathon Phase 1, UPG-190/191/195/196/197; uncommitted on `57a5922`):** still TODO; `tests/test_admin_users.py` and `routes_admin.py` are unchanged. Phase 1's tests add accounts (`hklead…`, `hkspoc…`, `role…`), so the order dependence can still show.
 - **Re-verified 2026-11-12 (UPG-244, uncommitted on `ddcc1a8`):** still TODO and showed again: in the full run, `::test_the_super_admin_sees_who_is_waiting_and_a_resend_button_only_for_them` failed ("waiting-…@test.edu listed 0 times") because UPG-244's new test file, then named `tests/test_add_team.py`, ran before it and with `tests/test_account_emails.py` made enough accounts sorting before its own; it passes alone and without either file. The new file is now `tests/test_spoc_add_team.py` (it runs after, with the other SPOC tests); `tests/test_admin_users.py` is unchanged. Any new test file sorting before `test_admin_users.py` that makes accounts can bring it back until this item is built.
+- **Re-verified 2026-11-15 (rule 8, end of the ten-gaps change, UPG-266 to UPG-275; uncommitted on `a4809a8`):** still TODO and showed again: in the full run the first page test failed ("waiting-…@test.edu listed 0 times") because a new test file, then named `tests/test_access_modes.py` (UPG-270), ran before it; it passed alone. Renamed `tests/test_audience_modes.py`, as the earlier ones were; `tests/test_admin_users.py` is unchanged.
 
 #### UPG-163 — Call for papers with reviewer scoring (conferences)
 - **Status:** TODO
@@ -700,7 +737,7 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 #### UPG-180 — Inter-college championship points for fests
 - **Status:** TODO
 - **Last verified:** 2026-11-02, on `57a5922` plus UPG-152's uncommitted work [C, market analysis 2026-11-02]
-- **Problem:** Beyond the market: Indian fests award an overall championship by college; no platform read does this. SapthaEvent has fests with sub-events (UPG-74, `parent_event_id`, `app.py:1009`) and external colleges (UPG-146), but no points per college.
+- **Problem:** Beyond the market: Indian fests award an overall championship by college; no platform read does this. SapthaEvent has fests with sub-events (UPG-74, `parent_event_id`, `app.py:1056`) and external colleges (UPG-146), but no points per college.
 - **Who benefits:** fest organisers, visiting colleges.
 - **What to build:** per fest: points for 1st/2nd/3rd (and participation) per sub-event, set in the wizard; points go to the winner's college from published results; a college leaderboard page and projector view (reuse `routes_live.py`); an overall-champion certificate type; college names normalised (pick from a list, not free text).
 - **Effort:** M · **Depends on:** none · **Risk:** college name spelling: use a managed list so points aren't split.
@@ -879,6 +916,7 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 - **Acceptance criteria:**
   1. Test: publishing results starts the summary job with the app and the coordinator's details, and no thread exception is raised.
 - **Re-verified 2026-11-06 (rule 8, end of hackathon Phase 2, UPG-192/193/194; uncommitted on `57a5922`):** still TODO; the thread now starts at `routes_coordinator.py:673-676` (corrected), after the new portal-mode result step (UPG-194), which runs in the request and is unaffected.
+- **Re-verified 2026-11-15 (rule 8, end of the ten-gaps change, UPG-266 to UPG-275; uncommitted on `a4809a8`):** still TODO; the thread's function is at `routes_coordinator.py:1335`, and "Working outside of application context" is in the full run's log. `publish_results` was not changed.
 
 #### UPG-208 — The organiser's certificate correction can't change a certificate's email
 - **Status:** TODO
@@ -985,6 +1023,232 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 - **Acceptance criteria:**
   1. Test: a bounce event for a member's address marks the member and notifies the lead; a request without the shared secret is refused.
 
+### Found while closing the ten gaps (2026-11-15)
+
+#### UPG-276 — The event's calendar file checks who may see the event
+- **Status:** TODO
+- **Last verified:** 2026-11-15, uncommitted on `a4809a8` [C]
+- **Problem:** Found in UPG-271. `GET /events/<slug>/calendar.ics` (`app.py:893-921`) returns the title, time and venue of any event by slug or ID, with no check of its status or visibility: a draft or a department-only event can be read by anyone who has the address.
+- **Who benefits:** organisers of events that aren't public yet.
+- **What to build:** apply the event page's own visibility rule before answering; 404 otherwise.
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: the file of a public, open event downloads; a draft, a cancelled-and-hidden or a department-only event answers 404 to a visitor.
+
+#### UPG-277 — The check-in time is written in IST, like the attendance day
+- **Status:** TODO
+- **Last verified:** 2026-11-15, uncommitted on `a4809a8` [C]
+- **Problem:** Found in UPG-269. `routes_ticket._now()` (`routes_ticket.py:110`) is the server's local time, while the attendance day is IST (`:243`). On Cloud Run (UTC) the saved check-in time is 5½ hours behind the gate's clock.
+- **Who benefits:** organisers reading check-in times.
+- **What to build:** write the time in IST (the same clock as the day), for online and offline scans.
+- **Effort:** S · **Depends on:** none · **Risk:** low (existing rows keep their old times).
+- **Acceptance criteria:**
+  1. Test: with the server's clock on UTC, a check-in at 10:00 IST is saved as 10:00.
+
+#### UPG-278 — The public API's event answer holds only public fields, and only for listed events
+- **Status:** TODO
+- **Last verified:** 2026-11-15, uncommitted on `a4809a8` [C]
+- **Problem:** Found in UPG-271 and seen in the browser check. `GET /api/v1/events/<id>` (`routes_api_v1.py:254-267`) needs no login and returns the whole event document, for any event whatever its status: the `staff` list with each person's email, and drafts. The run sheet's owner and note are not in it (UPG-272 keeps them apart).
+- **Who benefits:** the event's staff (their emails), and organisers of unpublished events.
+- **What to build:** answer with an allow-list of public fields, and 404 for an event the public pages wouldn't list; the full document only to a signed-in person who manages the event. Privacy: propose doing this before other UPG work.
+- **Effort:** S · **Depends on:** none · **Risk:** medium (a client reading other fields would lose them; none is known).
+- **Acceptance criteria:**
+  1. Test: a visitor's answer has no `staff`, no email address and none of the organiser-only fields; a draft answers 404.
+  2. Test: the event's SPOC still gets the full document.
+
+#### UPG-279 — The event popup, the open-events page and the student dashboard follow changes too
+- **Status:** TODO
+- **Last verified:** 2026-11-15, uncommitted on `a4809a8` [C]
+- **Problem:** Left by UPG-267. These three show UPG-266's state when loaded but have no live region, so they stay as they were until reloaded.
+- **Who benefits:** students and visitors with one of these pages open.
+- **What to build:** add the `data-live-event` regions and load `static/js/live-refresh.js` on them.
+- **Effort:** S · **Depends on:** UPG-267 (DONE) · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test (browser): each of the three follows a change from open to waitlist without a reload.
+
+#### UPG-280 — "This institution only" checks that the person is from the institution
+- **Status:** TODO
+- **Last verified:** 2026-11-15, uncommitted on `a4809a8` [C]
+- **Problem:** Left by UPG-270. The mode refuses the outside participant types, but a person who picks "student" isn't checked against a campus email domain or the roster (`services_reach.refusal`, `:167`).
+- **Who benefits:** organisers of campus-only events.
+- **What to build:** needs the owner's rule first (D-17): the campus email domain (`GOOGLE_ALLOWED_DOMAIN` or a new setting on the institution page), the roster, or both.
+- **Effort:** M · **Depends on:** D-17 · **Risk:** medium (a wrong rule locks real students out).
+- **Acceptance criteria:**
+  1. Test: with the rule on, an address outside it is refused with the reason; one inside registers.
+
+#### UPG-281 — Microsoft sign-in: verify it or take its routes out
+- **Status:** TODO
+- **Last verified:** 2026-11-15, uncommitted on `a4809a8` [C]
+- **Problem:** Found in UPG-271. `auth_oauth.py` has Microsoft routes; the login page doesn't offer them, they have never been run against a Microsoft tenant, and `docs/INTEGRATIONS.md` says so.
+- **Who benefits:** the owner (less unused sign-in code), or institutions on Microsoft 365 if it is finished.
+- **What to build:** owner's choice: finish and test against a Microsoft tenant (needs credentials), or remove the routes.
+- **Effort:** S to M · **Depends on:** Microsoft credentials or the owner's decision · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: either a sign-in round trip with the provider stubbed and the button shown only when configured, or the routes answer 404.
+
+#### UPG-282 — The one-request roster upload for scripts gets a dry run
+- **Status:** TODO
+- **Last verified:** 2026-11-15, uncommitted on `a4809a8` [C]
+- **Problem:** Left by UPG-271. `POST /admin/users/import_csv` (`routes_admin.py:382`) runs the same checks as the page but writes at once; a script can't see what a file would do first.
+- **Who benefits:** administrators who upload the roster from a script.
+- **What to build:** a `dry_run=1` argument that returns the check's counts and problems and writes nothing.
+- **Effort:** S · **Depends on:** UPG-271 (DONE) · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: with `dry_run=1` nothing changes and the answer has the counts; without it, as today.
+
+#### UPG-283 — Remove `CLOSED_STATUSES` from routes_forms.py
+- **Status:** TODO
+- **Last verified:** 2026-11-15, uncommitted on `a4809a8` [C]
+- **Problem:** Left by UPG-266. `routes_forms.py:83` still defines `CLOSED_STATUSES`; nothing reads it since the gate moved to `services_registration_state`.
+- **Who benefits:** whoever reads the form's code next.
+- **What to build:** delete it.
+- **Effort:** S · **Depends on:** none · **Risk:** none.
+- **Acceptance criteria:**
+  1. The name appears nowhere; the full suite passes.
+
+#### UPG-284 — The API's role checks use the role names accounts really have
+- **Status:** TODO
+- **Last verified:** 2026-11-15, uncommitted on `a4809a8` [C]
+- **Problem:** Found in UPG-271. `routes_api_v1.py` asks for `Admin`, `Coordinator`, `SPOC` and `Organizer` (`:339`, `:351`, `:747`), while accounts are stored as `SuperAdmin`, `EventCoordinator` and `ClubSPOC`. Not run: whether `jwt_roles_required` maps one to the other wasn't checked.
+- **Who benefits:** anyone using the API as a coordinator or SPOC.
+- **What to build:** check with a token for each stored role; make the lists use the stored names (or one mapping).
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: a token for each stored role reaches exactly the endpoints its role should, and no other.
+
+#### UPG-285 — Schedule items have a day
+- **Status:** TODO
+- **Last verified:** 2026-11-15, uncommitted on `a4809a8` [C]
+- **Problem:** Left by UPG-272. An agenda item has a time but no day, so for an event longer than a day every room or owner clash can only be a warning (`services_runsheet.py:89`).
+- **Who benefits:** organisers of multi-day events.
+- **What to build:** an optional day on each item (within the event's dates); clash checks per day; the schedule pages grouped by day.
+- **Effort:** M · **Depends on:** UPG-272 (DONE) · **Risk:** medium (session check-in and "My agenda" read the same items).
+- **Acceptance criteria:**
+  1. Test: on a two-day event, the same room at the same time on one day is refused, on different days it saves with no warning.
+
+#### UPG-286 — The data download and the deletion reach the remaining records
+- **Status:** TODO
+- **Last verified:** 2026-11-15, uncommitted on `a4809a8` [C]
+- **Problem:** Left by UPG-274, listed in `docs/DATA_HANDLING.md` ("Not reached by the download or the deletion today"): session stars, live votes and questions, push subscriptions, session attendance, project submissions, exam attempts, waitlist entries, the `tickets` and `checkins` records, and uploaded files.
+- **Who benefits:** anyone using their right to a copy or to deletion.
+- **What to build:** add each to `services_privacy.own_data` and `anonymise_account`, one collection at a time; what is kept for reports follows D-7 and D-15.
+- **Effort:** M · **Depends on:** D-15 for what must be kept · **Risk:** medium (deleting too much breaks event reports).
+- **Acceptance criteria:**
+  1. Test, per collection: the download holds the person's rows and nobody else's; after deletion the person's details are gone and the event's counts are unchanged.
+
+#### UPG-287 — The `/pricing` page: remove it or replace it with real terms
+- **Status:** TODO
+- **Last verified:** 2026-11-15, uncommitted on `a4809a8` [C]
+- **Problem:** Left by UPG-275. `templates/marketing/pricing.html` (behind `DEMO_PAGES_ENABLED`, off by default) states prices, a platform fee and Stripe checkout (`:90`, `:121`); none of it exists. Not edited in UPG-275 because it is fees copy.
+- **Who benefits:** any buyer who is shown the page.
+- **What to build:** owner's decision (D-16): delete the route and template, or write the real terms.
+- **Effort:** S · **Depends on:** D-16 · **Risk:** none while the flag is off.
+- **Acceptance criteria:**
+  1. Test: `/pricing` answers 404 with the flag on or off, or the page states only what D-16 decides.
+
+#### UPG-288 — Three public statements the code doesn't back
+- **Status:** TODO
+- **Last verified:** 2026-11-15, uncommitted on `a4809a8` [C]
+- **Problem:** Found in UPG-274 and UPG-275. (a) The privacy notice says registration and attendance data is "retained for 5 years" (`templates/public/privacy.html:51`); no job deletes anything after five years. (b) The home page's chip says "Email & WhatsApp updates" (`templates/index.html:405`); WhatsApp is sent only when a provider is configured. (c) `docs/DEPLOY.md:488-490` says exports are handed out through links that expire after 15 minutes; no code calls `utils_storage.signed_url`, exports are built on request and not kept.
+- **Who benefits:** people reading the notice, the home page or the deploy guide.
+- **What to build:** (a) follows D-15 (the period is a policy question); (b) say "Email updates" unless a WhatsApp provider is set; (c) correct the paragraph.
+- **Effort:** S · **Depends on:** D-15 for (a) · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: the chip names WhatsApp only when a provider is configured.
+  2. The deploy guide and the notice say what the code does.
+
+#### UPG-289 — Two pagination tests fail at `a4809a8`, before this change
+- **Status:** TODO
+- **Last verified:** 2026-11-15, uncommitted on `a4809a8` [R]
+- **Problem:** Found in the baseline run on a clean copy of `a4809a8`, and the same in this change's full runs: `tests/test_pagination_lists.py::test_each_list_shows_25_and_page_5_holds_the_last_20[coordinator registrations]` and `::test_search_narrows_each_list_and_combines_with_the_page[coordinator registrations]` fail. Both are about the coordinator's registrations list, last changed by UPG-264 and UPG-265 (built without a test run, owner's instruction). (The baseline copy also failed `tests/test_type_check_config.py`, only because that copy had no Python environment for Pyrefly; it passes in the repository.)
+- **Who benefits:** everyone running the suite.
+- **What to build:** find what UPG-264/265 changed in the list's paging with the filters; fix the code, not the tests.
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. The two tests pass, unchanged.
+
+#### UPG-290 — Ticket signing has no key written in the code
+- **Status:** TODO
+- **Last verified:** 2026-11-15, uncommitted on `a4809a8` [C]
+- **Problem:** Found in UPG-269. `services_ticket._get_signing_key` (`services_ticket.py:29-32`) falls back to a fixed text when neither `SECRET_KEY` nor `JWT_SECRET_KEY` is set. Production refuses to start without `SECRET_KEY`, so the fallback is reachable only in development, but a ticket signed there could be forged by anyone who reads the repository.
+- **Who benefits:** the gate.
+- **What to build:** take the key from the app's configuration and fail when there is none.
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: with no key configured, signing raises; with one, tickets verify as today.
+
+#### UPG-291 — The audit log shows when it has been altered
+- **Status:** TODO
+- **Last verified:** 2026-11-15, uncommitted on `a4809a8` [C]
+- **Problem:** Found in UPG-274. The audit log is ordinary rows; an administrator with database access can change or delete one unseen. `docs/SECURITY.md` ("Known limits") says so.
+- **Who benefits:** the institution, when an action is disputed.
+- **What to build:** chain each entry to the one before with a hash, and a check that reports the first broken link. How long entries and their IP addresses are kept is D-15.
+- **Effort:** M · **Depends on:** none · **Risk:** medium (`db_adapter.py` and `utils.log_action` are used everywhere).
+- **Acceptance criteria:**
+  1. Test: changing or deleting an entry makes the check report it.
+
+#### UPG-292 — A calendar feed of the institution's public events
+- **Status:** TODO
+- **Last verified:** 2026-11-15, uncommitted on `a4809a8` [C]
+- **Problem:** Found in UPG-271. A person has their own feed (`/calendar/feed.ics`) and each event has a file, but there is no one address a department or a notice board can subscribe to for every public event. `docs/INTEGRATIONS.md` says so.
+- **Who benefits:** departments, notice boards and students who want every event in their calendar.
+- **What to build:** `/calendar/public.ics`: the events the catalogue lists, nothing else.
+- **Effort:** S · **Depends on:** UPG-276 (the same visibility rule) · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: the feed holds the catalogue's events and no draft, cancelled or department-only event.
+
+#### UPG-293 — `tests/test_certificate_delivery.py` has lost its first 65 lines in the working tree
+- **Status:** TODO
+- **Last verified:** 2026-11-15, uncommitted on `a4809a8` [C]
+- **Problem:** Found before UPG-266 began. An uncommitted change dated 2026-11-13 removed the file's docstring, imports and its `mail` and `site` fixtures (`git diff HEAD -- tests/test_certificate_delivery.py`: 65 lines deleted). The file no longer parses, so it and the two files that import from it (`tests/test_certificate_awards.py`, `tests/test_certificate_changes.py`) can't be collected, `tests/test_repo_hygiene.py::test_no_mail_password_in_tracked_files` fails on it, and ruff reports one error. The committed copy is whole. Not touched: it is the owner's uncommitted change.
+- **Who benefits:** everyone running the suite.
+- **What to build:** owner: `git checkout -- tests/test_certificate_delivery.py` (unless the change was meant).
+- **Effort:** S · **Depends on:** the owner · **Risk:** none.
+- **Acceptance criteria:**
+  1. The three files collect and pass; the hygiene test passes; ruff is clean.
+
+### Found on 2026-11-16 (the final run and the first-pages review)
+
+#### UPG-295 — The NAAC reminder goes out twice between midnight and 05:30 IST
+- **Status:** TODO
+- **Last verified:** 2026-11-16, uncommitted on `a4809a8` [R, C]
+- **Problem:** Found in the final full run of the ten-gaps change, which reached `tests/test_naac.py` at 05:03 IST: `test_overdue_reports_get_one_reminder_a_day_and_the_iqac_coordinator_can_remind` got two emails where it expects one. `services_naac.daily_reminders` (`services_naac.py:329-341`) takes today's date in IST (`_today`, `:53`) and compares it with the first ten characters of the last reminder's time, which `remind` stores in UTC (`:321`, `_now`, `:48`). From 00:00 to 05:30 IST the two dates differ, so a second run of the job the same day sends again. The test passes after 05:30 (run alone at 05:32: passed). `services_naac.py` and the test were not changed.
+- **Who benefits:** event owners with an overdue report (one reminder a day, as promised), and anyone running the suite before 05:30.
+- **What to build:** compare the same day on both sides (turn the stored time into an IST date before comparing).
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: with the clock at 01:00 IST, two runs of the job send one reminder; the existing test passes, unchanged, at any hour.
+
+#### UPG-296 — Tests with fixed event dates that are about to pass
+- **Status:** TODO
+- **Last verified:** 2026-11-16, uncommitted on `a4809a8` [C]
+- **Problem:** Found in the same run. Since UPG-266 the registration form refuses an event whose last day has passed (before, only the status and the deadline were checked), so a test that registers for an event with a fixed date starts failing the day after that date. One did on 2026-11-16 (`tests/test_ticketing_and_forms.py:440`, dated 2026-11-15; its date is now 30 days ahead, UPG-266's changelog line). Others hold fixed dates from 2026-11-20 to 2026-12-25: `tests/test_seminar_e2e.py:83,321,424`, `tests/test_venues_and_calendar_e2e.py:523,534,679,710,733`, `tests/test_scoped_roles_e2e.py:43,59`, `tests/test_ticketing_and_forms.py:337`, `tests/test_workflow_engine.py:371`, `tests/test_db_adapter.py:366`. Not checked one by one: some never reach the registration form and will keep passing.
+- **Who benefits:** everyone running the suite after 2026-11-20.
+- **What to build:** for each, see whether it registers through the form (or reads a page that shows the registration state); where it does, make the date relative to today. Change nothing else in those tests.
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. The suite passes with the clock set to 2027-01-15 for these files (`services_registration_state.today` patched), with no assertion removed.
+
+#### UPG-297 — Usability findings from the first-pages review, not built
+- **Status:** TODO
+- **Last verified:** 2026-11-16, uncommitted on `a4809a8` [R in a browser, desktop and phone widths]
+- **Problem:** Seen while reviewing the home page and each role's first page for UPG-294, and left out of it to keep that change small. (a) The admin dashboard's "Recent activity" shows the log's codes (`LOGIN_SUCCESS`) and raw times (`2026-11-15T23:35`), and is mostly sign-ins (`templates/admin/dashboard.html`, "Recent Activity"). (b) At 1280 px the SPOC's navigation title is cut to "SPOC …". (c) On the student dashboard the empty "My registrations" card says the same as the empty "My active tickets" section above it, and the page title is "Dashboard · Last updated" where the student's name would say more. (d) The campus photo on the student's profile card is 480 px tall on a desktop (the whole photo at its own ratio was an earlier decision, `static/css/global.css` section 43); it is now below the tickets, but whether the dashboard needs it at all is the owner's choice. (e) The SPOC's event header still shows the stored status ("Registration Open") beside "Visitors see: Event over" (`templates/spoc/dashboard.html:1427-1431`). (f) The coordinator's three figures show 0 with no word that finished events are left out. (g) The home page is about 7,800 px long on a phone: every event card, then the university sections.
+- **Who benefits:** the Super Admin, SPOCs, coordinators and students.
+- **What to build:** decide which of (a) to (g) to do; each is small and separate.
+- **Effort:** S each · **Depends on:** the owner's choice for (d) and (g) · **Risk:** low.
+- **Acceptance criteria:**
+  1. One test for each part that is built.
+
+#### UPG-301 — A copied hackathon keeps the old event's shortlist, AI run, updates and extensions
+- **Status:** TODO
+- **Last verified:** 2026-11-16, uncommitted on `a4809a8` [C]
+- **Problem:** Found while building UPG-300 (a copied event must start with its leaderboard hidden). `clone_event` (`routes_spoc.py:1431-1474`) drops a short list of run-specific fields and copies the rest. The `hackathon` block goes across whole: the confirmed shortlist (`shortlist`, with its `before` snapshot of the old teams), the AI run's state and call count (`ai_eval`), posted updates, deadline extensions and the submission form's old open and close times; so do `active_round`, `total_rounds`, `shortlist_published` and `scoring_locked`. A copy can open on round 2 with "Finalists announced" naming another event's teams, and with the old event's AI calls counted against its limit. Not run.
+- **Who benefits:** SPOCs who copy last year's hackathon.
+- **What to build:** a copy keeps the hackathon's set-up (problem statements unreleased, the submission form's fields, criteria, who scores the round, email mode) and drops what belongs to a run (shortlist, AI state, updates, extensions, the form's times, the round fields).
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: copying a hackathon that has a shortlist, AI scores, updates and an extension gives an event on round 1 with none of them, and the same form fields and criteria.
+
 ## Open decisions
 
 | ID | Decision | Blocks | Status |
@@ -997,6 +1261,9 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 | D-12 | **Certificate design and member confirmation defaults (2026-11-09).** Proposed for UPG-206: own design for participation certificates only; the number and a small QR always printed (corner chosen); the name box defaults to 47% from the top, centred, 60% wide, 40 pt bold. Proposed for UPG-207: on by default for team events, including portal-mode hackathons (one extra email per member); a waiting member's certificate is still issued; 3 resends per member per 24 hours. | UPG-206, UPG-207 (only if changed) | Open: the owner confirms or changes any of these. **Built with these defaults (2026-11-09)**, except that the design is used for the event's attendance certificate (completion or extension for workshops and NSS events, participation elsewhere); the organiser turns member confirmation off per event on the registrations page. |
 | D-13 | **UPG-238, the waitlist's screening round.** (a) Questions: multiple choice scored automatically only, or also short answers the SPOC marks by hand? (b) People not accepted after the round: stay waiting, or told they weren't selected and taken off? (c) Team events: the lead answers for the team, or each member answers and the team's score is the average? (d) Watch for tab switching (as `/exams` does) or not? (e) Ties at the Nth place: all tied accepted, or the earlier joiner? | UPG-238 | **Decided (owner, 2026-11-12):** the proposed defaults: (a) multiple choice only; (b) stay waiting, nobody told; (c) the lead answers; (d) no; (e) the earlier joiner. Built in UPG-238. The round was removed at the owner's request on 2026-11-12 (UPG-246). |
 | D-14 | **UPG-255, the paid mail plan.** Which plan (Brevo Starter assumed), and which domain to send from (a verified domain sender, not a `@gmail.com` address)? | UPG-255's switch-over and UPG-258; not the code | Open (2026-11-14). UPG-255's code is built (DONE); the switch-over steps are in `docs/DEPLOY.md`, "A paid mail plan". |
+| D-15 | **Questions for a person with legal authority** (listed in `docs/DATA_HANDLING.md`, "Questions for human review"): how long each kind of record is kept (the notice says 5 years; no code enforces it); the notice's references to the IT Act and the DPDP Act and who the grievance contact is; whether a certificate may stay verifiable after its holder's account is deleted; a minimum age; where the data is stored; the payment provider's lines and the refund terms (not edited); which AI features may send what to Gemini; how long audit entries and their IP addresses are kept. | UPG-286, UPG-288 (a), UPG-291; the wording of `/privacy` and `/terms` | Open (2026-11-15). Nothing in the repository is a legal opinion, a certification or an audit, and the documents now say so. |
+| D-16 | **Is the live Cloud Run service a demo or the university's own deployment, and what happens to `/pricing`?** `DEMO_ENVIRONMENT=1` puts a "Demo" banner on every page (UPG-275); it is unset today, so the live service presents itself as the institution's own. `/pricing` (hidden behind `DEMO_PAGES_ENABLED`) still states invented prices, a platform fee and Stripe. | UPG-287; one environment variable on the next deploy | Open (2026-11-15). Proposed: leave the live service unmarked if it holds real registrations, and delete `/pricing`. |
+| D-17 | **UPG-280: what makes someone "from this institution"?** The campus email domain, the roster, or both; and what a real student with a personal address does. | UPG-280 | Open (2026-11-15). |
 
 *Decided decisions: `docs/archive/FEATURE_REVIEW_DONE.md` ("Decisions needed").*
 
@@ -1004,9 +1271,6 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 
 | Date | Commit | Item ID | What changed |
 |---|---|---|---|
-| 2026-11-10 | (uncommitted, on `6a2638c`) | UPG-221, UPG-222, UPG-223 | **The registrations export shows every detail (owner's request, with the SAPTHAHACKS'26 sheet):** UPG-222, the lead's USN and phone come from a question the SPOC added by hand (label USN, roll or register number; phone, mobile, WhatsApp), else the account; department and year from the university's USNs (25SUUBEAML231 → AML, 2025); each member has Name, USN, Email, Phone and Confirmed columns; each question on the form has a column in the form's order, then answers to questions since removed; the Members cell drops "()"; the CSV reads columns and rows once; the all-events export keeps its fixed columns. Saved registrations are unchanged. 5 tests (`tests/test_export_details.py`). Tests changed: none. Full pytest: 1,466 passed, 8 skipped. **New items** UPG-221 (the walk-in desk registers differently from the online form) and UPG-223 (a hand-added USN or phone isn't saved as the lead's). |
-| 2026-11-10 | (uncommitted, on `6a2638c`) | UPG-224 | **A backup Brevo account (owner's request: the daily email limit is near):** `BREVO_BACKUP_API_KEY` sends what the main account can't, once it reaches `EMAIL_DAILY_LIMIT` or when Brevo refuses an email, with its own `EMAIL_BACKUP_DAILY_LIMIT` (270) counted in `email_quota` under `YYYYMMDD-b` (no migration) and its own sender (`MAIL_FROM_BACKUP`, else `MAIL_FROM`); "contact the organizer" only when both are full; `/diag/email?via=backup` tests it alone and shows its count. Without the key nothing changes. 6 tests (`tests/test_email_backup.py`). Tests changed: none. Full pytest: 1,472 passed, 8 skipped. |
-| 2026-11-10 | (docs) | UPG-219, UPG-220, UPG-222, UPG-224 | **Deployed** by the owner from Cloud Shell: `ecf1bc0` live as revision `saptha-00016-den`, 100% of traffic (rollback `saptha-00008-bup`), after a Cloud SQL backup; no migration. The live mail turned out to be **Gmail SMTP** (`MAIL_USER`/`MAIL_PASS`, `BREVO_API_KEY` unset), so the main limit is `EMAIL_DAILY_LIMIT=496` (owner's choice, Gmail allows about 500) and a second Brevo account is the backup: secret `BREVO_BACKUP_API_KEY` (an API key, `xkeysib-`; Transactional email All, Account Read; the first try was an SMTP key, 401 "Key not found"), runtime service account granted access, `EMAIL_BACKUP_DAILY_LIMIT=270`. `/diag/email?via=backup` sent on the stage; live login, registration page and the new step 6 script answer. Revisions 00010 and 00013 to 00015 were stage-only. Left: the owner presses the resend buttons for held-back members and leads. |
 | 2026-11-10 | (uncommitted, on `6b62490`) | UPG-225, UPG-226 | **The SPOC and the team lead correct a registration's details (owner's request):** one edit page (`services_registration_edit.py`, `templates/registration_edit.html`) for the lead (own registration, until check-in or the event's end; dashboard and team page) and the organisers (`manage_registrations`, any time, from the registrations list); only changed values are checked, with the form's own rules, and each is written to every copy (registration, member rows and columns, answers incl. hand-added USN/phone and `member_N_*`, form responses); members changed under the registration lock (`services_team_confirm.update_members`); the lead's email stays; a waiting member's email through UPG-207's correction; audit log, and a portal notice to the lead when an organiser edits; old QR tickets still scan. Found: UPG-226 (the list's USN line reads `usn`). 9 tests (`tests/test_registration_edit.py`). Tests changed: none. |
 | 2026-11-10 | (uncommitted, on `6b62490`) | UPG-227, UPG-228 | **A team member sees their team (owner's request: the member's dashboard showed nothing):** the dashboard and My events also list registrations the person is a member of, found through the `team_members` rows (`member_registrations`, no migration): event, team and lead, ticket, team page, badge, round status, results, with the member's own attendance deciding their chip and certificate; cancel, edit and the hackathon page stay the lead's; members are told to ask the lead to correct details. Found: UPG-228 (activity points and privacy export scan every registration). 6 tests (`tests/test_member_dashboard.py`). Tests changed: none. Full pytest: 1,487 passed, 8 skipped (one new test's line, which depended on other tests' events, was dropped and re-run). |
 | 2026-11-10 | (docs) | UPG-225, UPG-227 | **Deployed** by the owner from Cloud Shell: `b10f553` live as revision `saptha-00015-h7z` (the name's number is lower than the previous `saptha-00016-den`, which is the rollback), 100% of traffic, after a Cloud SQL backup; no migration, no new setting. Both service URLs answer: login 200, `/health/ready` ready, the lead's and the organisers' edit pages exist (302 to login when signed out). |
@@ -1024,3 +1288,6 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 | 2026-11-14 | (uncommitted, on `73ef97b`) | UPG-263 | **Found in UPG-262's run:** `tests/test_email_paid_plan.py` (UPG-255) set `MAIL_PASS` to a written value, which `tests/test_repo_hygiene.py` refuses in committed files; now made up when the test runs (`uuid.uuid4().hex`, as UPG-93). That file and the hygiene tests: 78 passed. |
 | 2026-11-14 | (uncommitted, on `3fd9d6a`) | UPG-264 | **The SPOC's registrations list filters and sorts (owner's request: "sorting, all confirmed and all that, a filter system with everything possible"):** a folding "Filter and sort" form above the list: status (registered, waiting for payment, cancelled), members (a member not confirmed, everyone confirmed, a member with no email, added during window), check-in, team size (below the minimum, has room, full), entry list and payment, combined, with the search and across pages; sort newest or oldest first, team or lead name, most or fewest members, most members not confirmed; Apply, Clear filters, how many are on, "Showing N of M"; only what applies to the event is offered. The quick links and their URLs are unchanged (`services_registration_filters.py`). 4 new tests (`tests/test_registration_filters.py`); no test changed. Full run: 1,605 passed, 8 skipped, 0 failed. Ruff clean. Rule 8 (`routes_coordinator.py`): citations moved six lines for UPG-170, UPG-203, UPG-215, UPG-221; none changed status. |
 | 2026-11-14 | (uncommitted, on `ef56a74`) | UPG-265 | **The filtered list as a file and a WhatsApp message (owner's request):** under the filters, "Download this list with full details (CSV)" (every export column for just the teams shown, in the page's order, plus "What to fix": a member not confirmed with why — no link sent, email failed, held — a member with no email, a team below the minimum, waiting for payment), "Send on WhatsApp" (a wa.me link with the event, the filters in words, and each team with its lead's phone and what to fix, cut at 1,800 characters with "…and N more") and "Copy the message". **Built without tests at the owner's instruction** ("don't test anything, just add and deploy"), so this breaks rule 5 for this item only: only ruff, the template's and the script's syntax were checked; no pytest run. Rule 8 (`routes_coordinator.py`): citations moved for UPG-170, UPG-203, UPG-215, UPG-221; none changed status. |
+| 2026-11-15 | (uncommitted, on `a4809a8`) | UPG-266 to UPG-275; new UPG-276 to UPG-293; D-15, D-16, D-17 | **Ten product and operations gaps (owner's brief; payments left untouched):** UPG-266, one registration state on every page and in the form's gate (`services_registration_state.py`); UPG-267, open pages follow changes (`/live/state.json`, `/live/ops.json`, `static/js/live-refresh.js`); UPG-268, the institution setup page, readiness list and runbook (`/admin/institution`, `docs/INSTITUTION_SETUP.md`); UPG-269, offline check-in counts for the day of the scan, belongs to the account, is cleared at sync and sign-out and reports what the server said; UPG-270, three registration modes with an invited-domains list; UPG-271, the roster import checks first and confirms second, `docs/INTEGRATIONS.md`, `docs/API.md` lists only what is served; UPG-272, the run sheet (owners, statuses, clashes refused, changes announced in the app); UPG-273, the event summary report with definitions and CSV/Excel (`/reports/events`); UPG-274, the privacy notice, `docs/SECURITY.md`, `docs/PWA.md` and the new `docs/DATA_HANDLING.md` say what the code does, and the download and deletion reach feedback and certificates; UPG-275, `/about` and the Demo banner (`DEMO_ENVIRONMENT`), the invented platform pages removed. No migration; no payment file changed. 84 new tests in 11 files. Checked in a browser on a throwaway local database (test data, no outbound credentials). **Final full run, 2026-11-16 (39 min): 1,675 passed, 5 failed, 8 skipped, 3 files not collected.** From before this change: the two `[coordinator registrations]` pagination tests (UPG-289); `tests/test_repo_hygiene.py::test_no_mail_password_in_tracked_files` and the three uncollected certificate files, all from the broken `tests/test_certificate_delivery.py` in the working tree (UPG-293; with the committed copy swapped in for the check and the working copy put back: 80 passed in those four files, ruff clean; as it is, ruff reports that one file). From the date turning to 16 November: `tests/test_naac.py::test_overdue_reports_get_one_reminder_a_day…` (a second reminder between midnight and 05:30 IST, existing code: UPG-295; passes later in the day) and `tests/test_ticketing_and_forms.py::…test_event_registration_form_submission_success`, whose event had the fixed date 2026-11-15: under UPG-266 an event that is over takes no registrations, so the test's date now is always 30 days ahead (nothing else in it changed; other fixed dates: UPG-296). The first full run (2026-11-15) had six more failures from this change, all fixed before this run: the institution profile kept environment defaults for 30 seconds, a link built from the request host, `DEMO_ENVIRONMENT` missing from `.env.example`, two deleted templates still in the index, a new test file running before `tests/test_admin_users.py` (renamed `tests/test_audience_modes.py`; UPG-154), and a run sheet test that shared its room and day with other tests. Found and logged, not fixed: UPG-276 to UPG-293; legal and product questions in D-15 to D-17. End-of-phase re-verification of the open items (rule 8): each open item was checked against this change's diff, not re-run one by one: no open item's problem was fixed, changed or made worse; the functions touched in files the items cite are `submit_form`, `registration_page`, `registration_closed`, `check_in`, `api_checkin`, `view_registrations`, `review_event`, `manage_agenda`, `import_student_roster`, the student `dashboard`, `home`, `event_details` and `branding`, so line numbers the items cite in those files have moved by the lines added and were not renumbered; UPG-154 and UPG-203 showed again and are noted there; `db_adapter.py`, `models_pg.py`, `services_permission.py` and `tests/conftest.py` were not touched, and no payment file was. |
+| 2026-11-16 | (uncommitted, on `a4809a8`) | UPG-294; new UPG-295 to UPG-297 | **The home page and each role's first page are easier to use (owner's request, 2026-11-16: "enhance the user experience along all roles and the home page also, make it easy to use"; no item ID was given, so it was added as UPG-294 and built):** the home page and the catalogue list what can be registered for first, then what opens soon, what has closed, and finished events last (`services_registration_state.listing_key`); event dates read "25 Nov 2026" on the home page, the catalogue, the student dashboard, the SPOC console, the coordinator's pages, the judge panel and the admin dashboard (the `day` filter); the SPOC console and the admin's event table show the status in plain words ("Event over", "Opens soon", "Draft") where they showed `Registration_open` even for a finished event (`organiser_status`); the student dashboard starts with updates and tickets, the profile card and the scores follow; a coordinator with no events is told how they get one and is pointed to the entry scanner, in place of "Start building one!". No route, no stored data, no migration, no payment file changed. 16 new tests (`tests/test_ux_first_pages.py`). Checked in a browser at desktop and phone widths on the throwaway local database. Full pytest, twice on 2026-11-16. After the build: 4 failed, 1,692 passed, 8 skipped, 3 files not collected (35:06); one failure was this change's: `tests/test_images_and_focus.py::test_images_below_the_first_screen_load_lazily`, because the campus photo, now below the first screen, wasn't loaded lazily. Fixed in the code, not the test: `avatar` and `profile_hero` take `lazy` (`templates/includes/ui.html:188,202`) and the student dashboard passes `lazy=True` (`templates/participant/dashboard.html:410`); other pages' output is unchanged. After the fix: 3 failed, 1,693 passed, 8 skipped, 3 files not collected (34:55), none from this change: the two `[coordinator registrations]` pagination tests (UPG-289), and `test_repo_hygiene.py::test_no_mail_password_in_tracked_files` with three certificate files not collected, all from the broken working copy of `tests/test_certificate_delivery.py` (UPG-293); with the committed copy put in for the run, those four files give 80 passed and `ruff check .` is clean (the working copy was put back unchanged; with it ruff reports that file's 1 error). One existing test's fixed date (2026-11-15, now past) was made relative in `tests/test_ticketing_and_forms.py`; nothing else in it changed (UPG-296 has the rest). Three line references that had moved in `app.py` were corrected (UPG-276, UPG-180). Found and logged, not fixed: UPG-295 (NAAC reminder twice before 05:30 IST), UPG-296 (tests with fixed dates), UPG-297 (usability findings left out). Not re-verified one by one (rule 8): the open items were checked against this change's diff; it touches `home` and `events_catalog` in `app.py` and seven templates, and fixes no open item. |
+| 2026-11-16 | (uncommitted, on `a4809a8`) | UPG-298, UPG-299, UPG-300; new UPG-301 | **Judges or AI for the hackathon's submission round, weighted AI criteria, and a leaderboard switch (owner's request, 2026-11-16: "the 1st round is ai and the 2nd round is manual judging … the criteria need to be set separately … until the spoc allows, no leaderboard to all"; owner chose: hidden for every event until switched on, AI only for the submission round, marks plus a description per criterion):** UPG-298, the SPOC picks "AI evaluation" or "Judges" for the round teams submit in (`services_hackathon_eval.py:190-260`); with judges, after the deadline every judge sees each team that submitted, without check-in (a team assigned to a judge is that judge's only), scores it with the judges' criteria, and the SPOC's ranking uses the judges' average out of 100; AI scoring is refused; the choice is fixed once either side has scored; undoing a shortlist gives finalists their judges' scores back. UPG-299, each AI criterion has a description the AI is given and marks that add up to 100 (all or none), and the total is weighted by them. UPG-300, every leaderboard (the participant page and its JSON, the projector page and its live data and stream, both API paths) is hidden from the public until the event's SPOC turns it on from the results page, the round panel or the hackathon page; the event's staff always see it, with a note that it isn't public; a copy starts hidden; the student's Leaderboard button shows only when public. Two existing tests read a leaderboard anonymously; their setup now makes the board public first (`tests/test_rubric_judging.py:45`, `tests/test_evaluation_and_certs.py:311`), assertions unchanged. New `tests/test_judging_modes.py` (11). Full pytest: 3 failed, 1,704 passed, 8 skipped, 3 files not collected (35:11), all logged before this change: UPG-289 (coordinator registrations pagination, 2) and UPG-293 (the broken `tests/test_certificate_delivery.py`: the hygiene test and the 3 files not collected). Found: UPG-301 (a copied hackathon keeps the old run's shortlist and AI state). |

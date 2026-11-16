@@ -156,9 +156,18 @@ def branding() -> dict:
     logo_path = os.path.normpath(os.path.join(ROOT, logo))
     if not logo_path.startswith(os.path.join(ROOT, 'static')) or not os.path.isfile(logo_path):
         logo_path = ''
-    return {'name': os.environ.get('COLLEGE_NAME') or default_name, 'logo': logo_path,
-            'primary': os.environ.get('CERT_PRIMARY_COLOR') or '#0c1240',
-            'accent': os.environ.get('CERT_ACCENT_COLOR') or '#c9a020'}
+    brand = {'name': os.environ.get('COLLEGE_NAME') or default_name, 'logo': logo_path,
+             'primary': os.environ.get('CERT_PRIMARY_COLOR') or '#0c1240',
+             'accent': os.environ.get('CERT_ACCENT_COLOR') or '#c9a020'}
+    try:    # what the Super Admin saved on the institution page wins (UPG-268)
+        import services_institution
+        from models import db
+        kept = services_institution.saved(db)
+        brand.update({target: kept[key] for key, target in
+                      (('name', 'name'), ('primary_color', 'primary'), ('accent_color', 'accent')) if kept.get(key)})
+    except Exception:
+        pass
+    return brand
 
 
 def _color(value: str, fallback: str):

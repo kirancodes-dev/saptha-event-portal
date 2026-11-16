@@ -178,7 +178,19 @@ def _csrf_meta_token():
 
 app.jinja_env.globals.update(csrf_token=_safe_csrf_token, csrf_meta_token=_csrf_meta_token)
 from services_participants import allowed_types as _allowed_participant_types, LABELS as _participant_labels  # noqa: E402
+import services_registration_state as registration_state  # noqa: E402  (UPG-266)
 app.jinja_env.globals.update(allowed_types=_allowed_participant_types, participant_labels=_participant_labels)  # UPG-12
+
+
+def _eligibility(event):
+    """Who may register for an event, for any page (UPG-270)."""
+    import services_reach
+    if not isinstance(event, dict):
+        event = event.to_dict() if hasattr(event, 'to_dict') else {}
+    return services_reach.eligibility(event or {}, db)
+
+
+app.jinja_env.globals.update(eligibility=_eligibility)
 
 # ── Server-side sessions (BLK-08): Redis when configured, else the database ──
 if app.config.get('SESSION_TYPE') == 'redis':
@@ -294,6 +306,34 @@ if _USE_FIRESTORE and firebase_admin and not getattr(firebase_admin, '_apps', No
 
 # Initialize database client (reusing resolution logic in models)
 from models import db, DATABASE_TYPE
+# The registration state of an event, for any template (UPG-266)
+app.jinja_env.globals.update(reg_state_of=lambda ev: registration_state.of(db, ev))
+# Dates and organisers' statuses in plain words (UPG-294)
+app.jinja_env.filters['day'] = registration_state.day_text
+
+
+def _organiser_status(event):
+    data = event if isinstance(event, dict) else (event.to_dict() if hasattr(event, 'to_dict') else {})
+    return registration_state.organiser_status(data or {}, registration_state.of(db, event))
+
+
+app.jinja_env.globals.update(organiser_status=_organiser_status)
+def _checkin_staff_key():
+    """A key for the signed-in account that says nothing about it: the offline
+    check-in queue on a shared phone belongs to the account that scanned (UPG-269)."""
+    import hashlib
+    import hmac
+    from flask import session as _session
+    user = str(_session.get('user_id') or '')
+    if not user:
+        return ''
+    return hmac.new(str(app.secret_key).encode(), f'checkin-staff:{user}'.encode(), hashlib.sha256).hexdigest()[:20]
+
+
+app.jinja_env.globals.update(checkin_staff_key=_checkin_staff_key)
+# The institution this deployment serves: saved details over the built-in defaults (UPG-268)
+app.jinja_env.globals.update(institution=lambda: __import__('services_institution').profile(db))
+app.jinja_env.globals.update(portal_environment=lambda: __import__('services_institution').environment(app.config))  # UPG-275
 if db is not None:
     logger.info("Database: Connected successfully using models.db (Type: %s)", DATABASE_TYPE)
 else:
@@ -460,7 +500,7 @@ def inject_auth_features():
         'google_oauth_configured': google_configured,
         'twofa_available': twofa_available,
         # Help and privacy requests (D-4, UPG-42); unset, pages show no address
-        'support_email': (os.environ.get('SUPPORT_EMAIL') or '').strip(),
+        'support_email': __import__('services_institution').profile(db)['support_email'],
         # Browser push opt-in, only once VAPID keys are set (UPG-157)
         'push_enabled': (push_on := __import__('services_push').configured()),
         'push_public_key': __import__('services_push').public_key() if push_on else '',
@@ -693,11 +733,13 @@ def home():
                 d.setdefault('registration_count', 0)
                 d.setdefault('entry_fee', 0)
                 d.setdefault('category', 'General')
-                deadline = d.get('deadline') or d.get('reg_deadline', '')
-                d['is_closed'] = bool(deadline and current_date > deadline)
+                # One registration state for the card, the popup and the form (UPG-266)
+                d['reg_state'] = registration_state.for_event(db, d['id'], d)
+                d['is_closed'] = not d['reg_state']['registerable']
                 events.append(d)
 
-            events.sort(key=lambda x: str(x.get('date', '9999-99-99')))
+            # What a visitor can register for comes first; what is over, last (UPG-294)
+            events.sort(key=lambda x: registration_state.listing_key(x['reg_state'], x.get('date')))
     except Exception as exc:
         app.logger.error("Home page event loading error: %s", exc)
 
@@ -737,12 +779,14 @@ def home():
     # The hero's "Coming up" list and the counts beside it, from the events
     # above; the university's own facts come from university_info (UPG-86)
     from university_info import UNIVERSITY, SOURCE_URL
-    open_events = [d for d in events if str(d.get('date') or '') >= current_date and not d.get('is_closed')]
+    # "Coming up": upcoming events that take registrations or will (UPG-266)
+    upcoming = [d for d in events if d['reg_state']['key'] in ('open', 'waitlist', 'not_open', 'programme')]
+    open_events = [d for d in upcoming if d['reg_state']['registerable']]
     month = current_date[:7]
     _ctx = {
         'university': UNIVERSITY,
         'university_source': SOURCE_URL,
-        'coming_up': open_events[:3],
+        'coming_up': (open_events or upcoming)[:3],
         'open_count': len(open_events),
         'this_month_count': sum(1 for d in events if str(d.get('date') or '')[:7] == month),
         'events': events,
@@ -822,6 +866,9 @@ def events_catalog():
                     continue
 
                 events.append(ev)
+            # The same order as the home page: what can be registered for first (UPG-294)
+            events.sort(key=lambda ev: registration_state.listing_key(
+                registration_state.for_event(db, ev['id'], ev), ev.get('date')))
     except Exception as exc:
         logger.error("Error loading events catalog: %s", exc)
 
@@ -1026,8 +1073,9 @@ def event_details(event_id):
             days_until = (datetime.date.fromisoformat(str(event.get('date'))[:10]) - datetime.date.today()).days
         except ValueError:
             days_until = None
-        from routes_forms import registration_closed
-        page_args = dict(share_url=share_url, days_until=days_until, closed=registration_closed(event))
+        reg_state = registration_state.for_event(db, event_id, event)   # UPG-266
+        page_args = dict(share_url=share_url, days_until=days_until, closed=not reg_state['registerable'],
+                         reg_state=reg_state)
 
         # The home page's event popup shows the same content (UPG-92)
         if request.args.get('fragment') == '1':

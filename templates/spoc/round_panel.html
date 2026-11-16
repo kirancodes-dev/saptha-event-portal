@@ -286,6 +286,9 @@ h1,h2,h3,h4,h5,h6{font-family: var(--font-heading);}
 </div>
 {% endif %}
 
+<!-- Who sees the leaderboard (UPG-300) -->
+<div class="mb-3">{% with back='rounds' %}{% include 'includes/leaderboard_switch.html' %}{% endwith %}</div>
+
 <!-- QUICK LINKS -->
 <div class="d-flex flex-wrap gap-2">
   <a href="/spoc/room_allocation/{{ event.id }}" class="btn-action btn-outline">

@@ -73,6 +73,9 @@
         <td>
           <a href="/spoc/event/{{ e.id }}/review" class="ae-title">{{ e.title }}</a>{% if e.is_fest %} <span class="se-badge se-badge--gold">Fest</span>{% endif %}
           <div class="ae-meta">{{ e.type_label }} · {{ e.date or '—' }}{% if e.end_date and e.end_date != e.date %} – {{ e.end_date }}{% endif %} · {{ e.venue or e.event_mode or '—' }}</div>
+          {% set rs = reg_state_of(e) %}{#- what visitors are told (UPG-266) -#}
+          <div class="ae-meta" data-visitor-state="{{ rs.key }}" data-live-event="{{ e.id }}" data-live-scope="ops">Visitors see: <span data-live-label>{{ rs.label }}</span>. <span data-live-explanation>{{ rs.explanation }}</span>
+            <span data-live-when-known hidden> Now: <span data-live-count="registered"></span> registered, <span data-live-count="checked_in"></span> checked in, <span data-live-count="waiting"></span> waiting.</span></div>
         </td>
         <td><span class="se-badge se-badge--{{ lab[1] }}">{{ lab[0] }}</span></td>
         <td>{{ e.registration_count or 0 }}{% if e.capacity %} / {{ e.capacity }}{% endif %}</td>
@@ -119,4 +122,4 @@
 <div class="panel">{% from "includes/ui.html" import empty_state %}{{ empty_state('fa-calendar-xmark', 'No events match', 'Try another status or search.') }}</div>
 {% endif %}
 {% endblock %}
-{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/admin__events.js"></script>{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/live-refresh.js"></script><script src="/static/js/handlers/admin__events.js"></script>{% endblock %}

@@ -148,6 +148,7 @@ def dashboard():
         r['event_banner'] = evt.get('banner_url', '')
         r['event_date']   = evt.get('date', '')
         r['event_title']  = evt.get('title', r.get('event_title', ''))
+        r['leaderboard_public'] = evt.get('leaderboard_public') is True   # the button shows once it's public (UPG-300)
         r['event_venue']  = venue_label(evt)   # UPG-111
         r['event_cat']    = evt.get('category', 'General')
         r['days_until']   = _days_until(evt.get('date', ''))
@@ -210,22 +211,30 @@ def dashboard():
     upcoming_events = []
     calendar_events = []
 
-    # Single query with date pushdown to avoid double table scan
-    active_future_events = (
-        db.collection('events')
-        .where('status', '==', 'active')
-        .where('date', '>=', today)
-        .order_by('date')
-        .limit(100)
-        .stream()
-    )
+    # Events to discover: listed for this student and taking registrations, or
+    # about to, by the same state every page shows (UPG-266). Workflow states
+    # (registration_open, published, ...) count, not only the old `active`.
+    import services_registration_state as registration_state
+    from services_event_types import is_listed
+    try:
+        me = db.collection('users').document(session.get('user_id', '')).get()
+        my_dept = ((me.to_dict() or {}).get('department') or '') if me.exists else ''
+    except Exception:
+        my_dept = ''
+    active_future_events = db.collection('events').where('date', '>=', today).order_by('date').limit(200).stream()
 
     for e in active_future_events:
         d = e.to_dict()
         d['id'] = e.id
+        if not is_listed(d, viewer_dept=my_dept):
+            continue
+        view = registration_state.for_event(db, e.id, d)
+        if view['key'] not in ('open', 'waitlist', 'not_open'):
+            continue
         if e.id not in registered_event_ids and len(upcoming_events) < 6:
             d_copy = dict(d)
             d_copy['days_until'] = _days_until(d.get('date', ''))
+            d_copy['reg_state'] = view
             upcoming_events.append(d_copy)
 
         calendar_events.append({
@@ -392,19 +401,30 @@ def leaderboard(event_id):
     GET /participant/leaderboard/<event_id>
     """
     # One ranking for every board (UPG-84)
-    from services_leaderboard import for_event
+    import services_leaderboard
+    doc = db.collection('events').document(event_id).get()
+    event = (doc.to_dict() or {}) if doc.exists else {}
+    event['id'] = event_id
+    wants_html = request.headers.get('Accept', '').startswith('text/html')
+    # Hidden until the organiser makes it public; the event's staff see it (UPG-300)
+    if not services_leaderboard.may_see(event, db=db):
+        if wants_html:
+            return render_template('public/leaderboard.html', board=[], event=event, event_id=event_id,
+                                   hidden=services_leaderboard.HIDDEN_MESSAGE)
+        return jsonify({'status': 'hidden', 'message': services_leaderboard.HIDDEN_MESSAGE,
+                        'data': [], 'total': 0}), 403
     board = [{'team_name': row['team_name'], 'lead_name': row['lead_name'], 'score': row['score'],
               'score_text': row['score_text'], 'room': row['room'], 'round': row['round'],
               'judges_count': row['judges'], 'rank': row['rank'], 'tied': row['tied']}
-             for row in for_event(db, event_id)]
+             for row in services_leaderboard.for_event(db, event_id)]
+    staff_only = not services_leaderboard.is_public(event)
 
     # Also render a nice HTML page for projector display
-    if request.headers.get('Accept', '').startswith('text/html'):
-        event = db.collection('events').document(event_id).get().to_dict() or {}
-        return render_template('public/leaderboard.html',
-                                board=board, event=event, event_id=event_id)
+    if wants_html:
+        return render_template('public/leaderboard.html', board=board, event=event, event_id=event_id,
+                               staff_only=staff_only)
 
-    return jsonify({'status': 'ok', 'data': board, 'total': len(board)})
+    return jsonify({'status': 'ok', 'data': board, 'total': len(board), 'public': not staff_only})
 
 
 # =========================================================

@@ -235,6 +235,8 @@
         {% if event.get('venue') %}
         <li><i class="fas fa-map-marker-alt" aria-hidden="true"></i><span><span class="k">Venue</span><span class="v">{{ event.venue }}</span></span></li>
         {% endif %}
+        {% set who = eligibility(event) %}{#- UPG-270 -#}
+        <li data-eligibility="{{ who.mode }}"><i class="fas fa-user-check" aria-hidden="true"></i><span><span class="k">Who can register</span><span class="v">{{ who.line }}</span></span></li>
         <li><i class="fas fa-rupee-sign" aria-hidden="true"></i><span><span class="k">Entry fee</span><span class="v">{% if paid %}₹{{ event.entry_fee }}{% else %}Free{% endif %}</span></span></li>
         {% if team_size and team_size[1] > 1 %}
         <li><i class="fas fa-users" aria-hidden="true"></i><span><span class="k">Team size</span><span class="v">{{ team_size[0] }}–{{ team_size[1] }} people</span></span></li>

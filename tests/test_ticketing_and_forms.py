@@ -9,6 +9,7 @@ Verifies:
 5. Digital Ticket Wallet pass generation and HTTP endpoints.
 """
 
+import datetime
 import uuid
 import time
 import base64
@@ -437,7 +438,9 @@ class TestDigitalTicketWalletRoutes:
         mock_db.collection("events").document(event_id).set({
             "id": event_id,
             "title": "Code Sprint Challenge",
-            "date": "2026-11-15",
+            # a day still to come: an event that is over takes no registrations (UPG-266);
+            # this was the fixed date 2026-11-15 until that day passed
+            "date": (datetime.date.today() + datetime.timedelta(days=30)).isoformat(),
             "venue": "CS Lab 202",
             "capacity": 100,
             "status": "active",

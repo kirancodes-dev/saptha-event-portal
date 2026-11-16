@@ -135,3 +135,42 @@ def for_event(db, event_id: str, *, include_unscored: bool = False) -> list:
 def podium(rows: list) -> list:
     """Everyone placed 1st to 3rd (more than three when places are shared)."""
     return [r for r in rows if r['rank'] is not None and r['rank'] <= 3]
+
+
+# ── Who may see an event's leaderboard (UPG-300) ────────────────────────────
+# A leaderboard is hidden from the public until the event's organiser turns it
+# on; an event that never said is hidden. The event's staff (its organiser,
+# coordinators and judges, and the Super Admin) always see it.
+
+HIDDEN_MESSAGE = "The leaderboard isn't public yet. The organiser opens it when the scores are ready."
+STAFF_PERMISSIONS = ('edit_event', 'publish_results', 'score', 'manage_registrations')
+
+
+def is_public(event) -> bool:
+    return (event or {}).get('leaderboard_public') is True
+
+
+def is_staff(event, user=None, db=None) -> bool:
+    """The event's staff: anyone who may edit it, publish its results, score
+    it or manage its registrations."""
+    from services_permission import can
+    if user is None:
+        from flask import has_request_context, session
+        if not has_request_context():
+            return False
+        user = session
+    target = dict(event or {})
+    return any(can(user, permission, target, db=db) for permission in STAFF_PERMISSIONS)
+
+
+def may_see(event, user=None, db=None) -> bool:
+    return is_public(event) or is_staff(event, user, db)
+
+
+def set_public(db, event_id: str, public: bool, by: str = '') -> None:
+    import datetime
+    db.collection('events').document(event_id).update({
+        'leaderboard_public': bool(public),
+        'leaderboard_public_changed_at': datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds'),
+        'leaderboard_public_changed_by': by,
+    })

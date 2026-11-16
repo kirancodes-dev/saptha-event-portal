@@ -1,0 +1,16 @@
+{#- The organiser's switch for the public leaderboard (UPG-300). Needs `event`;
+    `back` says which page to return to ('results', 'rounds' or 'hackathon'). -#}
+{%- set lb_public = event.leaderboard_public is sameas true -%}
+<form method="POST" action="/spoc/leaderboard_visibility/{{ event.id }}" class="d-flex flex-wrap align-items-center gap-2 m-0" data-leaderboard-switch="{{ 'public' if lb_public else 'hidden' }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="back" value="{{ back or 'results' }}">
+  <input type="hidden" name="public" value="{{ '0' if lb_public else '1' }}">
+  {% if lb_public %}
+  <span class="se-badge se-badge--success"><i class="fas fa-eye" aria-hidden="true"></i> Leaderboard public</span>
+  <button type="submit" class="btn btn-sm btn-outline-secondary">Hide it from the public</button>
+  {% else %}
+  <span class="se-badge se-badge--neutral"><i class="fas fa-eye-slash" aria-hidden="true"></i> Leaderboard hidden</span>
+  <button type="submit" class="btn btn-sm btn-primary">Show the leaderboard publicly</button>
+  {% endif %}
+  <span class="small text-muted">{% if lb_public %}Anyone with the link and the projector screen see the scores.{% else %}The public and the projector screen say "Not public yet". You, coordinators and judges still see the scores.{% endif %}</span>
+</form>

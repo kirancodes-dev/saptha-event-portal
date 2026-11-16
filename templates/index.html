@@ -101,7 +101,9 @@
 }
 .ev-deadline--closed { background: var(--danger) !important; }
 .ev-deadline--past { background: rgba(71, 85, 105, 0.9) !important; }
-.btn-reg.btn-reg-closed { background: var(--surface-muted) !important; color: var(--text-muted) !important; cursor: not-allowed; }
+.btn-reg.btn-reg-closed { background: var(--surface-muted) !important; color: var(--text-muted) !important; }
+.btn-reg[hidden], .ev-state-note[hidden], .live-status[hidden] { display: none !important; }
+    .ev-state-note { margin: 10px 0 0; font-size: 12.5px; color: var(--text-muted); line-height: 1.4; }
 .skeleton-card { background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 0 0 1rem; height: auto; overflow: hidden; }
 .skeleton-card .skeleton-image { height: 172px; border-radius: 0; margin-bottom: 1rem; }
 .skeleton-card .skeleton-title, .skeleton-card .skeleton-text, .skeleton-card .skeleton-btn { margin-left: 1rem; }
@@ -409,7 +411,7 @@ button.hsc-cat { font-family: inherit; line-height: 1.2; }
         <section class="hero-next" aria-labelledby="hero-next-h">
           <div class="hero-next__head">
             <h2 class="hero-next__title" id="hero-next-h"><i class="fas fa-bolt" aria-hidden="true"></i> Coming up</h2>
-            {% if open_count %}<span class="hero-next__count">{{ open_count }} open for registration</span>{% endif %}
+            {% if open_count %}<span class="hero-next__count">{{ open_count }} open for registration</span>{% elif coming_up %}<span class="hero-next__count">Registration not open yet</span>{% endif %}
           </div>
           {% if coming_up %}
           <ul class="hero-next__list list-unstyled m-0">
@@ -431,7 +433,8 @@ button.hsc-cat { font-family: inherit; line-height: 1.2; }
             {% endfor %}
           </ul>
           {% else %}
-          <p class="hero-next__empty">New events are published through the semester. Check back soon.</p>
+          {#- "Check back soon" only when nothing is listed at all (UPG-266) -#}
+          <p class="hero-next__empty">{% if events %}Nothing new is coming up right now. The events below are closed or already over.{% else %}New events are published through the semester. Check back soon.{% endif %}</p>
           {% endif %}
           <div class="hsc-cats mt-3 mb-0" role="group" aria-label="Browse by category">
             <button type="button" class="hsc-cat" data-h-click="index:2"><i class="fas fa-code" aria-hidden="true"></i> Technical</button>
@@ -448,6 +451,7 @@ button.hsc-cat { font-family: inherit; line-height: 1.2; }
 
 <!-- ═══ EVENTS ═══ -->
 <section id="events" class="py-5" role="region" aria-label="Upcoming events for registration">
+  <p class="live-status text-center small text-muted" data-live-status="stale-only" role="status" hidden></p>
   <div class="container-xl px-3">
 
     <!-- Heading Row -->
@@ -548,9 +552,10 @@ button.hsc-cat { font-family: inherit; line-height: 1.2; }
         <div class="ev-card border-0 bg-transparent w-100 p-0 text-start d-flex flex-column h-100 ev-card-clickable" 
              style="cursor: pointer;"
              data-ev-id="{{ event.id }}"
+             {% if not (registered_event_ids and event.id in registered_event_ids) %}data-live-event="{{ event.id }}" data-reg-state="{{ event.reg_state.key }}"{% endif %}
              role="button"
              tabindex="0"
-             aria-label="Event: {{ event.title }}, {% if event.get('date') %}{{ event.date }}{% endif %}, Category: {{ event.get('category','General') }}">
+             aria-label="Event: {{ event.title }}, {% if event.get('date') %}{{ event.date|day }}{% endif %}, Category: {{ event.get('category','General') }}">
           <div class="ev-banner" aria-hidden="true">
             {% if event.get('banner_url') %}
               <img src="{{ event.banner_url }}" alt="" loading="lazy"
@@ -565,12 +570,20 @@ button.hsc-cat { font-family: inherit; line-height: 1.2; }
             {% set cat = event.get('category','General') %}
             <i class="ev-banner-icon fas {{ {'Technical': 'fa-laptop-code', 'Cultural': 'fa-masks-theater', 'Sports': 'fa-futbol', 'Management': 'fa-chart-pie'}.get(cat, 'fa-star') }}"></i>
             <span class="ev-cat cat-{{ cat|lower }}">{{ cat }}</span>
-            {% if event.is_closed %}
-            <span class="ev-deadline ev-deadline--closed"><i class="fas fa-lock" aria-hidden="true"></i> Registration closed</span>
-            {% elif event.get('date','') < current_date %}
-            <span class="ev-deadline ev-deadline--past"><i class="fas fa-history" aria-hidden="true"></i>Recently past</span>
-            {% elif event.get('deadline') %}
-            <span class="ev-deadline"><i class="fas fa-clock"></i>Deadline: {{ event.deadline }}</span>
+            {#- One registration state for every page (UPG-266) -#}
+            {% set rs = event.reg_state %}
+            {% if rs.key == 'ended' %}
+            <span class="ev-deadline ev-deadline--past" data-reg-state="{{ rs.key }}"><i class="fas fa-history" aria-hidden="true"></i> <span data-live-label-on-change>{{ rs.label }}</span></span>
+            {% elif rs.key in ('closed', 'cancelled', 'full') %}
+            <span class="ev-deadline ev-deadline--closed" data-reg-state="{{ rs.key }}"><i class="fas fa-lock" aria-hidden="true"></i> <span data-live-label-on-change>{{ rs.label }}</span></span>
+            {% elif rs.key == 'not_open' %}
+            <span class="ev-deadline" data-reg-state="{{ rs.key }}"><i class="fas fa-hourglass-start" aria-hidden="true"></i> <span data-live-label-on-change>{% if rs.opens %}Opens {{ rs.opens }}{% else %}{{ rs.label }}{% endif %}</span></span>
+            {% elif rs.key == 'waitlist' %}
+            <span class="ev-deadline" data-reg-state="{{ rs.key }}"><i class="fas fa-user-clock" aria-hidden="true"></i> <span data-live-label-on-change>{{ rs.label }}</span></span>
+            {% elif rs.key == 'programme' %}
+            <span class="ev-deadline" data-reg-state="{{ rs.key }}"><i class="fas fa-list" aria-hidden="true"></i> <span data-live-label-on-change>{{ rs.label }}</span></span>
+            {% elif rs.deadline %}
+            <span class="ev-deadline" data-reg-state="{{ rs.key }}"><i class="fas fa-clock" aria-hidden="true"></i> <span data-live-label-on-change>Register by {{ rs.deadline }}</span></span>
             {% endif %}
           </div>
           <div class="ev-body">
@@ -578,7 +591,7 @@ button.hsc-cat { font-family: inherit; line-height: 1.2; }
             <p class="ev-desc">{{ event.get('description', 'An exciting event hosted by Sapthagiri NPS University. Click to register.') }}</p>
             <div class="ev-meta">
               {% if event.get('date') %}
-              <span data-info="date"><i class="fas fa-calendar-alt" aria-hidden="true"></i>{{ event.date }}</span>
+              <span data-info="date"><i class="fas fa-calendar-alt" aria-hidden="true"></i>{{ event.date|day }}</span>
               {% endif %}
               {% if event.get('venue') %}
               <span data-info="venue"><i class="fas fa-map-marker-alt"></i>{{ event.venue }}</span>
@@ -597,16 +610,19 @@ button.hsc-cat { font-family: inherit; line-height: 1.2; }
               <a href="/ticket/{{ registered_events_map.get(event.id, '') }}" class="btn-reg text-decoration-none" data-h-click="index:19">
                 <i class="fas fa-ticket-alt" aria-hidden="true"></i>Ticket
               </a>
-              {% elif event.is_closed %}
-              <a href="#" class="btn-reg text-decoration-none btn-reg-closed" data-h-click="index:20" aria-disabled="true">
-                <i class="fas fa-lock" aria-hidden="true"></i>Closed
-              </a>
               {% else %}
-              <a href="/forms/register/{{ event.id }}" class="btn-reg text-decoration-none" data-h-click="index:21">
-                <i class="fas fa-arrow-right" aria-hidden="true"></i>Register
+              {#- Both are in the page; the live refresh shows the one that fits the state (UPG-267) -#}
+              <a {% if rs.action %}href="{{ rs.action_url }}"{% else %}hidden{% endif %} class="btn-reg text-decoration-none" data-h-click="index:21" data-live-action data-reg-action="{{ rs.action }}">
+                <i class="fas fa-arrow-right" aria-hidden="true"></i><span data-live-action-label>{{ rs.action_label }}</span>
+              </a>
+              <a href="/event/{{ event.id }}" class="btn-reg text-decoration-none btn-reg-closed" data-h-click="index:21" data-live-locked {% if rs.action %}hidden{% endif %}>
+                <i class="fas fa-circle-info" aria-hidden="true"></i>Details
               </a>
               {% endif %}
             </div>
+            {% if not (registered_event_ids and event.id in registered_event_ids) %}
+            <p class="ev-state-note" data-reg-explanation data-live-explanation data-live-only-refused {% if rs.registerable %}hidden{% endif %}>{{ '' if rs.registerable else rs.explanation }}</p>
+            {% endif %}
           </div>
         </div>
       </div>
@@ -807,6 +823,7 @@ button.hsc-cat { font-family: inherit; line-height: 1.2; }
         <div class="ft-heading">Portal</div>
         <a href="#events" class="ft-lnk">Browse events</a>
         <a href="/verify" class="ft-lnk">Verify a certificate</a>
+        <a href="/about" class="ft-lnk">About this portal</a>
         {% if session.get('user_id') %}
         <a href="/dashboard" class="ft-lnk">My dashboard</a>
         <a href="/logout" class="ft-lnk">Log out</a>
@@ -849,6 +866,7 @@ button.hsc-cat { font-family: inherit; line-height: 1.2; }
 
 <!-- Bootstrap JS -->
 {% include "layouts/_bootstrap_js.html" %}
+<script src="/static/js/live-refresh.js"></script>
 <script src="/static/js/pages/index.js"></script>
 <script src="/static/js/pages/index__2.js"></script>
 

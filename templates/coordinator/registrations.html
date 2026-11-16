@@ -338,13 +338,13 @@
       {% endif %}
     </div>
     {#- UPG-264: filters that combine, and a sort; the search is kept -#}
-    {% set labels = {'status': 'Status', 'members': 'Members', 'checkin': 'Check-in', 'size': 'Team size', 'entry': 'Entry list', 'pay': 'Payment', 'sort': 'Sort by'} %}
+    {% set labels = {'status': 'Status', 'members': 'Members', 'checkin': 'Check-in', 'size': 'Team size', 'entry': 'Entry list', 'pay': 'Payment', 'origin': 'From', 'sort': 'Sort by'} %}
     <details class="border rounded px-3 py-2 mb-2" data-filter-sort{% if picked %} open{% endif %}>
       <summary class="small fw-semibold">Filter and sort{% if picked %} <span class="badge text-bg-primary ms-1" data-filter-count>{{ picked | length }} on</span>{% endif %}</summary>
       <form method="get" action="{{ request.path }}#registrations" class="d-flex flex-wrap gap-2 align-items-end mt-2 mb-1" aria-label="Filter and sort the list">
         {% if page.q %}<input type="hidden" name="q" value="{{ page.q }}">{% endif %}
         {% if page.per_page != 25 %}<input type="hidden" name="per_page" value="{{ page.per_page }}">{% endif %}
-        {% for key in ['status', 'members', 'checkin', 'size', 'entry', 'pay', 'sort'] %}
+        {% for key in ['status', 'members', 'checkin', 'size', 'entry', 'pay', 'origin', 'sort'] %}
         {% set options = filter_choices[key] %}
         {% if options %}
         <div>
@@ -363,6 +363,7 @@
       </form>
     </details>
     {% if picked or page.q %}<p class="small text-muted mb-2" data-filter-summary>Showing {{ page.total }} of {{ total }}.</p>{% endif %}
+    {% if outside_count %}<p class="small text-muted mb-2" data-outside-count>{{ outside_count }} registration{{ '' if outside_count == 1 else 's' }} from outside this institution. <a href="{{ request.path }}?origin=outside#registrations">Show {{ 'it' if outside_count == 1 else 'them' }}</a></p>{% endif %}
     {#- UPG-265: this list as a file, and as a message for WhatsApp, with what to fix -#}
     {% if page.total %}
     <div class="d-flex flex-wrap gap-2 align-items-center mb-2" data-share-list>
@@ -407,6 +408,8 @@
             {% if reg.team_name %}<div class="fw-semibold">{{ reg.team_name }}</div>{% endif %}
             <div{% if not reg.team_name %} class="fw-semibold"{% endif %}>{% if reg.team_name %}<span class="text-muted">Lead:</span> {% endif %}{{ reg.lead_name or reg.name or '—' }}</div>
             {% if reg.lead_usn or reg.usn %}<div class="text-muted" data-lead-usn>{{ reg.lead_usn or reg.usn }}</div>{% endif %}
+            {#- UPG-270: someone from outside the institution is marked, with where they are from -#}
+            {% if reg.participant_type == 'external' %}<div data-outside><span class="se-badge se-badge--info">External</span>{% if reg.institution %} <span class="text-muted">{{ reg.institution }}</span>{% endif %}</div>{% endif %}
             {% if reg.members and reg.members|length > 1 %}<div class="text-muted">{{ reg.members|length }} members</div>{% endif %}
           </td>
           {% if team_event %}

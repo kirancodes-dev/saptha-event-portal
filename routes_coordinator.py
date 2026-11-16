@@ -160,6 +160,7 @@ def view_registrations(event_id):
         # Filters that combine, and a sort (UPG-264); the quick links' entry, pay
         # and members (UPG-214, UPG-257, UPG-252) are the same arguments
         import services_registration_filters as reg_filters
+        import services_reach
         picked = reg_filters.chosen(request.args)
         entry_filter, pay_filter = picked.get('entry', ''), picked.get('pay', '')
         members_filter = picked.get('members', '')
@@ -243,7 +244,13 @@ def view_registrations(event_id):
             entry=entry_counts, entry_filter=entry_filter, pay_filter=pay_filter, members_filter=members_filter,
             any_late=any_late,
             # The combined filters and sort (UPG-264)
-            filter_choices=reg_filters.choices(member_confirm, team_event, any_late), picked=picked,
+            filter_choices=reg_filters.choices(
+                member_confirm, team_event, any_late,
+                # inside / outside (UPG-270): where outsiders may register, or already have
+                takes_outside=services_reach.access_mode(event) != 'campus'
+                or any(services_reach.is_outside(r) for r in registrations)), picked=picked,
+            outside_count=sum(1 for r in registrations if services_reach.is_outside(r)
+                              and str(r.get('status') or '').lower() not in reg_filters.CANCELLED),
             share_text=share_text, filtered_export=reg_filters.export_args(picked, page.q),
             waitlist=waitlist, seats=seats_left(event),
             waitlist_auto=services_waitlist_auto(event),
@@ -1574,6 +1581,73 @@ def scan_page(event_id):
                             today=today_str,
                             scanning_open=scanning_open,
                             sessions=services_sessions.sessions_for(d))   # session mode (UPG-159)
+
+
+# ── The run sheet (UPG-272) ────────────────────────────────────────────────
+
+RUNSHEET_ROLES = COORD_ROLES + ['Volunteer']
+
+
+@coord_bp.route('/runsheet/<event_id>')
+@login_required
+@role_required(RUNSHEET_ROLES)
+def runsheet_page(event_id):
+    """The day's schedule for the event's staff: what, when, where, who is
+    responsible and how far along it is."""
+    import services_runsheet as runsheet
+    from services_permission import can
+    event = _event_or_abort(event_id, 'check_in')
+    sheet = runsheet.rows(event, runsheet.staff_fields(db, event_id))
+    # "you": the owner typed is this person's name, email, or their name on the event's staff list
+    email = str(session.get('user_id') or '').strip().casefold()
+    me = {str(session.get('name') or '').strip().casefold(), email} | {
+        str(m.get('name') or '').strip().casefold() for m in event.get('staff') or []
+        if isinstance(m, dict) and str(m.get('email') or '').strip().casefold() == email}
+    me.discard('')
+    may_edit = can(session, 'edit_event', event, db=db)
+    return render_template('coordinator/runsheet.html', event=event, sheet=sheet,
+                           groups=runsheet.by_owner(sheet), me=me, may_edit=may_edit,
+                           staff_statuses=[(k, runsheet.STATUS_LABELS[k]) for k in runsheet.STAFF_STATUSES],
+                           public_statuses=[(k, runsheet.STATUS_LABELS[k]) for k in runsheet.PUBLIC_STATUSES],
+                           multi_day=runsheet.multi_day(event))
+
+
+@coord_bp.route('/runsheet/<event_id>/status', methods=['POST'])
+@login_required
+@role_required(RUNSHEET_ROLES)
+def runsheet_status(event_id):
+    """Move one item along. The event's staff mark it ready, running or done;
+    delaying or cancelling it, which participants see, is the organiser's."""
+    import services_runsheet as runsheet
+    from flask import abort
+    from services_permission import can
+    event = _event_or_abort(event_id, 'check_in')
+    status = request.form.get('status', '')
+    item_id = request.form.get('item', '')
+    back = f'/coordinator/runsheet/{event_id}'
+    if status not in runsheet.STATUS_LABELS:
+        flash("Choose a status from the list.", "danger")
+        return redirect(back)
+    current = next((i for i in event.get('agenda') or []
+                    if isinstance(i, dict) and str(i.get('id') or '') == item_id), None)
+    if current is None:
+        flash("That item is no longer on the schedule. The run sheet below is the current one.", "warning")
+        return redirect(back)
+    seen_by_participants = status in runsheet.PUBLIC_STATUSES or runsheet.status_of(current) in runsheet.PUBLIC_STATUSES
+    if seen_by_participants and not can(session, 'edit_event', event, db=db):
+        abort(403)
+    actor = session.get('user_id', '')
+    after = [dict(i, status=status) if i is current else i for i in event.get('agenda') or []]
+    sentences = runsheet.changes(event.get('agenda') or [], after)
+    runsheet.set_status(db, event_id, event, item_id, status, actor)
+    flash(f"\u201c{current.get('title', '')}\u201d is now: {runsheet.STATUS_LABELS[status]}.", "success")
+    if sentences and request.form.get('announce') == '1':
+        told = runsheet.announce(db, event_id, event, sentences, actor)
+        flash(f"Posted to the event's announcements and sent to {told} registered "
+              f"{'person' if told == 1 else 'people'} as a notification: " + ' '.join(sentences), "info")
+    elif sentences:
+        flash("Participants were not told (the box was not ticked). The public schedule shows the mark.", "info")
+    return redirect(back)
 
 
 @coord_bp.route('/scan-hud/<event_id>')

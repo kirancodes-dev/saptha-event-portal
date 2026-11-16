@@ -308,6 +308,7 @@ class TestEvaluationAndCertificateEndpoints:
         mock_db.collection("events").document(event_id).set({
             "id": event_id,
             "title": "Hackathon API Test",
+            "leaderboard_public": True,   # UPG-300: the API answers once the organiser makes it public
             "evaluation_config": {
                 "type": "rubric",
                 "criteria": [{"key": "innovation", "max_score": 10, "weight": 100}]

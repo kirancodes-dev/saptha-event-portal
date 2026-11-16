@@ -86,11 +86,10 @@ CLOSED_STATUSES = ('draft', 'pending_approval', 'published', 'registration_close
 
 def registration_closed(event: dict) -> bool:
     """Not open yet, past its deadline, or over: the one check every
-    registration route applies (UPG-34)."""
-    if (event.get('status') or '').lower() in CLOSED_STATUSES:
-        return True
-    deadline = str(event.get('deadline') or event.get('reg_deadline') or '')[:10]
-    return bool(deadline) and datetime.datetime.now().strftime('%Y-%m-%d') > deadline
+    registration route applies (UPG-34). The rule itself, and the reason a
+    page shows, live in services_registration_state (UPG-266)."""
+    from services_registration_state import registerable
+    return not registerable(event or {})
 
 # The identity every registration needs, with the ids forms already use for it
 IDENTITY_FIELDS = (
@@ -704,7 +703,9 @@ def registration_page(event_id):
     organiser = _organiser_for(event_id, event)   # the SPOC adds a team by hand (UPG-244)
 
     if registration_closed(event) and not organiser:
-        return render_template('public/registration_closed.html', event=event)
+        import services_registration_state
+        return render_template('public/registration_closed.html', event=event,
+                               reg_state=services_registration_state.for_event(db, event_id, event))
 
     import services_share   # the share link the visitor came from, kept on the form (UPG-162)
     share_src = services_share.capture(session, event_id, event, request.args)
@@ -864,6 +865,18 @@ def submit_form(event_id):
                 field_errors.append(('institution', 'Please give your institution.'))
         if ptype not in NEEDS_AFFILIATION:
             designation = institution = ''
+        # An invitation-only event takes outside participants from the listed
+        # institutions, told by their email address (UPG-270). The hosting
+        # SPOC adding a team by hand decides for themselves.
+        if ptype in allowed and not organiser:
+            import services_reach as reach
+            why_not, invited_from = reach.refusal(
+                event_data, ptype, _extract_core(answers)['email'] or session_email)
+            if why_not:
+                field_errors.append(('email', why_not))
+            elif invited_from:
+                institution = invited_from
+                answers['institution'] = institution
         # The ticket type: on sale today, for this participant type, a seat
         # left (UPG-155). Events without ticket types skip this.
         import services_ticket_types as tt

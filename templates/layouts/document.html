@@ -12,6 +12,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     {% block csrf_meta %}<meta name="csrf-token" content="{{ csrf_meta_token() }}">{% endblock %}
+    {#- Whose offline check-in scans this device may send: empty when signed out (UPG-269) -#}
+    <meta name="checkin-staff" content="{{ checkin_staff_key() }}">
     {% include 'includes/csrf_fetch.html' %}
     <link rel="stylesheet" href="/static/css/fonts.css">
     <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
@@ -28,6 +30,11 @@
         .site-footer--fixed { position: fixed; left: 0; right: 0; bottom: 0; padding: 0.35rem; font-size: 0.75rem;
                               pointer-events: none; z-index: 1; }
         .site-footer--fixed a { pointer-events: auto; }
+        /* A demo copy of the portal says so (UPG-275) */
+        .env-banner { background: #fff4d6; color: #3d2c00; border-bottom: 1px solid #e0b84a; padding: 0.4rem 1rem;
+                      font-size: 0.85rem; text-align: center; position: relative; z-index: 1100; }
+        .env-banner a { color: inherit; text-decoration: underline; margin-left: 0.35rem; }
+        @media print { .env-banner { display: none; } }
         /* forms.js: the spinner on a submit button while its form is sent */
         .se-spinner { display: inline-block; width: 0.9em; height: 0.9em; border: 2px solid currentColor;
                       border-right-color: transparent; border-radius: 50%; vertical-align: -0.1em;
@@ -38,6 +45,13 @@
     {% block head %}{% endblock %}
 </head>
 <body{% block body_attrs %}{% endblock %}>
+{#- A demo copy says so on every page that has a footer (UPG-275) -#}
+{% block environment_banner %}{% if portal_environment().key == 'demo' %}
+<div class="env-banner" role="note" data-demo-banner>
+    <strong>Demo.</strong> The people, events and figures here are sample data, not real records.
+    <a href="/about#demo">What the demo can and cannot do</a>
+</div>
+{% endif %}{% endblock %}
 {% block body %}{% endblock %}
 {% block site_footer %}{% include 'includes/site_footer.html' %}{% endblock %}
 {# Each page's handler file, static/js/handlers/<page>.js (UPG-25) #}

@@ -205,6 +205,21 @@
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         }
         .btn-hud:active { transform: scale(0.96); }
+        a.btn-hud { text-decoration: none; }
+        .hud-actions { flex-wrap: wrap; justify-content: center; }
+        /* What happened to the scans kept offline, and scans another account left here (UPG-269) */
+        .hud-note { position: fixed; left: 12px; right: 12px; top: 96px; z-index: 30; background: #0c1240; color: #fff;
+                    border: 1px solid #c9a020; border-radius: 12px; padding: 12px 14px; font-size: 0.85rem;
+                    max-height: 45vh; overflow: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .hud-note[hidden] { display: none; }
+        .hud-note h2 { font-size: 0.95rem; margin-bottom: 6px; }
+        .hud-note ul { list-style: none; margin: 6px 0; }
+        .hud-note li { padding: 4px 0; border-top: 1px solid rgba(255,255,255,0.15); }
+        .hud-note button { background: #c9a020; color: #0c1240; border: 0; border-radius: 8px; padding: 6px 12px;
+                           font-weight: 700; margin-top: 6px; margin-right: 6px; }
+        .hud-note .note-bad { color: #ffb4b4; font-weight: 700; }
+        .hud-note .note-warn { color: #ffe08a; font-weight: 700; }
+        .hud-note .note-ok { color: #9be7b0; font-weight: 700; }
     </style>
 {% endblock %}
 {% block body %}
@@ -244,6 +259,21 @@
 <div class="hud-actions" id="hud-actions-bar">
     <button type="button" class="btn-hud" data-h-click="coordinator/scan_hud:1"><i class="fas fa-keyboard" aria-hidden="true"></i> Manual code</button>
     <button type="button" class="btn-hud" data-h-click="coordinator/scan_hud:2"><i class="fas fa-sync" aria-hidden="true"></i> Sync (<span id="sync-count">0</span>)</button>
+    {#- When a ticket can't be scanned: find the person by name and check them in (needs a connection) -#}
+    <a class="btn-hud" href="/checkin/kiosk?event_id={{ event_id }}" data-find-by-name><i class="fas fa-magnifying-glass" aria-hidden="true"></i> Find by name</a>
+</div>
+
+{#- UPG-269: what the server answered for each scan kept offline; stays until closed -#}
+<div class="hud-note" id="sync-report" role="status" aria-live="polite" hidden>
+    <h2 id="sync-report-title"></h2>
+    <ul id="sync-report-list"></ul>
+    <button type="button" id="sync-report-close">Close</button>
+</div>
+<div class="hud-note" id="other-scans" role="status" hidden>
+    <h2><span id="other-scans-count"></span> saved on this device by another account</h2>
+    <p>They are sent when that person signs in on this device. You can't see or send them.</p>
+    <button type="button" id="other-scans-discard">Delete them</button>
+    <button type="button" id="other-scans-close">Leave them</button>
 </div>
 
 <!-- Slide-Up Result HUD Banner -->
@@ -358,9 +388,18 @@ async function processScan(decodedText) {
             showFeedback('danger', 'Not On Entry List', 'Not on the entry list – no entry. (Offline: checked against the list saved on this phone.)');
             return;
         }
+        // A ticket that says it is for another event isn't kept (UPG-269)
+        const ticketEvent = window.offlineTicketEventId ? window.offlineTicketEventId(decodedText) : '';
+        if (ticketEvent && ticketEvent !== EVENT_ID) {
+            showFeedback('danger', 'Wrong Event', 'This ticket is for another event. (Offline: read from the ticket itself.)');
+            return;
+        }
         // Then keep the scan on this device and send it later
-        if (window.queueOfflineCheckin && await window.queueOfflineCheckin(decodedText, EVENT_ID)) {
-            showFeedback('warning', 'Offline Check-In Queued', 'Saved on this device. It will be sent when back online.');
+        const kept = window.queueOfflineCheckin ? await window.queueOfflineCheckin(decodedText, EVENT_ID) : false;
+        if (kept === 'duplicate') {
+            showFeedback('warning', 'Already Scanned', 'This ticket was already scanned on this device and is waiting to be sent.');
+        } else if (kept) {
+            showFeedback('warning', 'Offline Check-In Queued', 'Saved on this device. It will be sent when back online. The ticket is checked then.');
         } else {
             showFeedback('danger', 'Network Error', 'Connection failed. Please retry.');
         }
@@ -400,9 +439,51 @@ function promptManualEntry() {
 }
 
 function syncLocalQueue() {
+    if (!navigator.onLine) {
+        showFeedback('warning', 'No Connection', 'The saved scans stay on this device and are sent when the connection is back.');
+        return;
+    }
     if (window.syncOfflineCheckins) {
         window.syncOfflineCheckins().then(updateSyncCount);
     }
+}
+
+// What the server answered for each scan that was kept offline (UPG-269)
+const SYNC_WORDS = {
+    success: ['note-ok', 'Checked in'], already_in: ['note-warn', 'Already checked in'],
+    kept: ['note-warn', 'Still waiting'], unpaid: ['note-bad', 'Payment pending: not checked in'],
+    not_selected: ['note-bad', 'Not on the entry list'], cancelled: ['note-bad', 'Registration cancelled'],
+    wrong_event: ['note-bad', 'Ticket for another event'], transferred: ['note-bad', 'Ticket was transferred'],
+    invalid: ['note-bad', 'Not a valid ticket'],
+};
+function showSyncReport(summary) {
+    if (!summary || !summary.results || !summary.results.length) return;
+    document.getElementById('sync-report-title').textContent =
+        `Offline scans sent: ${summary.sent} checked in, ${summary.alreadyIn} already in, ` +
+        `${summary.refused} refused, ${summary.kept} still waiting`;
+    const list = document.getElementById('sync-report-list');
+    list.textContent = '';
+    summary.results.forEach((row) => {
+        const [cls, words] = SYNC_WORDS[row.status] || ['note-bad', 'Not checked in'];
+        const li = document.createElement('li');
+        const label = document.createElement('span');
+        label.className = cls;
+        label.textContent = words;
+        li.appendChild(label);
+        const who = [row.name, row.team].filter(Boolean).join(' · ');
+        li.appendChild(document.createTextNode((who ? ' — ' + who : '') + (row.message ? ' — ' + row.message : '')));
+        list.appendChild(li);
+    });
+    document.getElementById('sync-report').hidden = false;
+    if (summary.sent) {
+        const countEl = document.getElementById('count-in');
+        countEl.textContent = parseInt(countEl.textContent || '0', 10) + summary.sent;
+    }
+}
+async function showOtherScans() {
+    const others = window.countOtherOfflineCheckins ? await window.countOtherOfflineCheckins() : 0;
+    document.getElementById('other-scans-count').textContent = `${others} scan${others === 1 ? '' : 's'}`;
+    document.getElementById('other-scans').hidden = !others;
 }
 
 // Start Camera Viewfinder
@@ -450,7 +531,20 @@ window.addEventListener('DOMContentLoaded', () => {
     setInterval(refreshEntryList, 60000);
     window.addEventListener('online', refreshEntryList);
     updateSyncCount();
-    window.addEventListener('offline-checkins-synced', updateSyncCount);
+    window.addEventListener('offline-checkins-synced', (e) => { updateSyncCount(); showSyncReport(e.detail); });
+    document.getElementById('sync-report-close').addEventListener('click', () => {
+        document.getElementById('sync-report').hidden = true;
+    });
+    document.getElementById('other-scans-close').addEventListener('click', () => {
+        document.getElementById('other-scans').hidden = true;
+    });
+    document.getElementById('other-scans-discard').addEventListener('click', async () => {
+        if (window.confirm('Delete the scans the other account saved here? Those people will not be checked in by them.')) {
+            await window.discardOtherOfflineCheckins();
+            showOtherScans();
+        }
+    });
+    showOtherScans();
 });
 </script>
 {% endblock %}

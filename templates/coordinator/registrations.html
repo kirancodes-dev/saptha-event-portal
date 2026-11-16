@@ -188,7 +188,7 @@
 
   {#- UPG-230: the people waiting for a seat, and the hosting SPOC accepts them.
       UPG-234: folded away until the SPOC opens it -#}
-  <details class="card border mb-3 reg-fold" id="waitlist" data-waitlist data-remember="waitlist">
+  <details class="card border mb-3 reg-fold" id="waitlist" data-waitlist data-remember="waitlist"{% if wq %} open{% endif %}>
     <summary class="card-header bg-white">
       <h2 class="h6 fw-bold mb-0"><i class="fas fa-hourglass-half me-1 text-warning" aria-hidden="true"></i>Waitlist: {{ waitlist|length }} waiting</h2>
       <span class="small text-muted" data-seats>{% if seats.limit %}Seats: {{ seats.taken }} of {{ seats.limit }} taken · {% if seats.over %}{{ seats.over }} over the limit{% elif seats.free %}{{ seats.free }} free{% else %}full{% endif %}{% else %}No seat limit{% endif %}</span>
@@ -205,7 +205,20 @@
     {% endif %}
     {% if waitlist %}
     <p class="small text-muted px-3 pt-3 mb-2">In the order they joined. {% if waitlist_auto %}When a seat is freed, the first in line gets it on their own.{% else %}Nobody moves up on their own: a team stays here until you accept it.{% endif %} {% if may_accept %}You can also accept anyone now, even when the event is full: they're registered, emailed, and the count goes past the limit.{% endif %}</p>
-    <div class="table-responsive">
+    {#- UPG-302: find one team in a long line; capitals don't matter -#}
+    <form method="get" action="{{ request.path }}#waitlist" class="px-3 d-flex flex-wrap gap-2 align-items-end mb-2" role="search" data-waitlist-search>
+      {% for k, v in waitlist_keep.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+      <div>
+        <label for="waitlist-q" class="form-label small fw-semibold mb-1">Find on the waitlist: name, email, USN, team or phone</label>
+        <input type="search" id="waitlist-q" name="wq" value="{{ wq }}" class="form-control form-control-sm" maxlength="200" autocomplete="off">
+      </div>
+      <button type="submit" class="btn btn-sm btn-outline-primary"><i class="fas fa-search me-1" aria-hidden="true"></i>Find</button>
+      {% if wq %}<a href="{{ request.path }}{% if waitlist_keep %}?{{ waitlist_keep|urlencode }}{% endif %}#waitlist" class="btn btn-sm btn-link" data-waitlist-clear>Show everyone waiting</a>{% endif %}
+    </form>
+    {% if wq %}<p class="small px-3 mb-2" role="status" data-waitlist-found>{% if waitlist_shown %}{{ waitlist_shown|length }} of {{ waitlist|length }} waiting match “{{ wq }}”. The place is their place in the whole line.{% else %}Nobody on the waitlist matches “{{ wq }}”.{% endif %}</p>{% endif %}
+    {% if waitlist_shown %}
+    {#- A long line scrolls inside the card, its headings staying in view -#}
+    <div class="table-responsive wl-scroll" tabindex="0" aria-label="The waitlist; scroll for more" data-waitlist-scroll>
       <table class="table table-sm align-top small mb-0" data-waitlist-table>
         <caption class="visually-hidden">People on the waitlist, first in line first</caption>
         <thead class="table-light">
@@ -219,7 +232,7 @@
           </tr>
         </thead>
         <tbody>
-          {% for w in waitlist %}
+          {% for w in waitlist_shown %}
           {% set wlabel = w.reg.team_name or w.reg.lead_name or w.reg.lead_email or 'this person' %}
           <tr data-waitlist-entry="{{ w.id }}">
             <td class="fw-bold"><span class="visually-hidden">Place </span>#{{ w.place }}</td>
@@ -251,6 +264,7 @@
         </tbody>
       </table>
     </div>
+    {% endif %}
     {% else %}
     <div class="card-body py-2 small text-muted" data-waitlist-empty>Nobody is on the waitlist. When the event is full, people who register join it here.</div>
     {% endif %}
@@ -507,12 +521,13 @@
 
   {#- The dialogs live outside the folds and the table, so they open from anywhere -#}
   {% if may_accept %}
-  {% for w in waitlist %}
+  {% for w in waitlist_shown %}
   {% set wlabel = w.reg.team_name or w.reg.lead_name or w.reg.lead_email or 'this person' %}
   <dialog class="reg-dialog" id="accept-{{ w.id }}" aria-labelledby="accept-title-{{ w.id }}">
     <form method="post" action="/coordinator/registrations/{{ event.id }}/accept_waitlist" data-accept-form>
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="wl_id" value="{{ w.id }}">
+      {% if wq %}<input type="hidden" name="wq" value="{{ wq }}">{% endif %}
       <div class="reg-dialog__body small">
         <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
           <h2 class="h5 mb-0" id="accept-title-{{ w.id }}">Accept {{ wlabel }}?</h2>

@@ -227,6 +227,9 @@ def view_registrations(event_id):
             reg['delete_block'] = delete_refusal(reg['id'], reg, *kept) if may_edit else ''
         # The people waiting for a seat, in line, with what they filled in (UPG-230)
         waitlist = waitlist_rows(db, event, form_details)
+        # ...and a search of its own, so the SPOC finds one team in a long line (UPG-302)
+        wq = (request.args.get('wq') or '').strip()
+        waitlist_shown = [w for w in waitlist if waitlist_match(w, wq)]
         from services_waitlist import auto_moves_up as services_waitlist_auto   # UPG-243
         import services_event_documents
         # The window for teams to change after registration closes (UPG-250)
@@ -253,6 +256,8 @@ def view_registrations(event_id):
                               and str(r.get('status') or '').lower() not in reg_filters.CANCELLED),
             share_text=share_text, filtered_export=reg_filters.export_args(picked, page.q),
             waitlist=waitlist, seats=seats_left(event),
+            waitlist_shown=waitlist_shown, wq=wq,
+            waitlist_keep={k: v for k, v in request.args.items() if k != 'wq'},
             waitlist_auto=services_waitlist_auto(event),
             # Documents for registered teams (UPG-239)
             documents=services_event_documents.documents(event), may_edit_documents=may_edit,
@@ -554,6 +559,21 @@ def waitlist_rows(db, event: dict, form_details=None) -> list:
     return rows
 
 
+WAITLIST_SEARCH_FIELDS = ('team_name', 'lead_name', 'name', 'lead_email', 'email', 'student_email',
+                          'lead_usn', 'usn', 'lead_phone', 'phone')
+
+
+def waitlist_match(row: dict, q: str) -> bool:
+    """One waitlist row (from waitlist_rows) against the waitlist's search
+    (UPG-302): any part of the team name, the lead's name, email, USN or
+    phone, or a member's name, USN, email or phone, in any case."""
+    from utils_pagination import matches
+    reg = row.get('reg') or {}
+    text = ' '.join([str(reg.get(f) or '') for f in WAITLIST_SEARCH_FIELDS]
+                    + [str(m.get(k) or '') for m in row.get('members') or [] for k in ('name', 'usn', 'email', 'phone')])
+    return matches({'text': text}, q, ('text',))
+
+
 def _accept_entry(event: dict, wl_id: str, wl: dict, who: str, actor: str):
     """Register one waiting entry as accepted by the SPOC (UPG-230/235/240):
     a portal notice to each person on the team and ONE email to the lead.
@@ -609,7 +629,10 @@ def accept_waitlist(event_id):
     event = dict(event_doc.to_dict() or {}, id=event_id)
     if not can(session, 'edit_event', event, db=db):
         abort(403)
-    back = f'/coordinator/registrations/{event_id}#waitlist'
+    # Back to the waitlist, still searched as it was (UPG-302)
+    from urllib.parse import urlencode
+    wq = (request.form.get('wq') or '').strip()[:200]
+    back = f'/coordinator/registrations/{event_id}' + (f"?{urlencode({'wq': wq})}" if wq else '') + '#waitlist'
     wl_id = (request.form.get('wl_id') or '').strip()
     wl_doc = db.collection('waitlists').document(wl_id).get() if wl_id else None
     wl = (wl_doc.to_dict() or {}) if wl_doc is not None and wl_doc.exists else {}
@@ -638,7 +661,8 @@ def accept_waitlist(event_id):
             else "They were told in the portal, but the email could not be sent; please contact them.")
     flash(f"{who} is accepted and registered"
           + (" and must pay the fee to confirm their seat. " if paying else ". ") + told + count, "success")
-    return redirect(f'/coordinator/registrations/{event_id}')
+    # The top of the page, where the message is; a search stays on (UPG-302)
+    return redirect(back.split('#')[0])
 
 
 def _hosted_event(event_id):

@@ -231,8 +231,8 @@
               <span class="ticket-chip ticket-chip-absent"><i class="fas fa-times-circle"></i>Absent</span>
             {% endif %}
 
-            {% if reg.assigned_room %}
-              <span class="ticket-chip ticket-chip-room"><i class="fas fa-door-open"></i>Room {{ reg.assigned_room }}</span>
+            {% if reg.my_room %}
+              <span class="ticket-chip ticket-chip-room" data-my-room><i class="fas fa-door-open"></i>Room {{ reg.my_room }}</span>
             {% endif %}
 
             {% if reg.round_status %}{# multi-round events (UPG-149) #}

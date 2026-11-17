@@ -1676,7 +1676,7 @@ h1, h2, h3, h4, h5, h6 {
                       <i class="fas fa-door-open"></i> Rooms &amp; Capacities Configuration
                     </button>
                     <a href="/spoc/room_allocation/{{ event.id }}" class="action-btn btn-outline justify-content-start">
-                      <i class="fas fa-table"></i> View Auto-Allocated Rooms
+                      <i class="fas fa-table"></i> Room allocation: draft, check, final
                     </a>
                     <a href="/spoc/schedule/optimize/{{ event.id }}" class="action-btn btn-blue-outline justify-content-start">
                       <i class="fas fa-shuffle"></i> Run AI Schedule Optimizer
@@ -1978,14 +1978,14 @@ h1, h2, h3, h4, h5, h6 {
               <button data-h-click="spoc/dashboard:39" data-h-a17="{{ event.id }}" class="spoc-modal-close">×</button>
             </div>
             <div style="padding:24px;">
-              <p style="font-size:13px;color:var(--ink-600);margin-bottom:4px;">Define rooms and their capacity. The system auto-allocates registered participants evenly.</p>
+              <p style="font-size:13px;color:var(--ink-600);margin-bottom:4px;">Room no. or name and its capacity in people (a team of 4 takes 4 seats). Auto-fill makes a draft only you see; teams see their room after you check it and press Allocate final.</p>
               <p style="font-size:12px;color:var(--ink-400);margin-bottom:16px;">Registered: <strong style="color:var(--success);">{{ event.registration_count }}</strong></p>
               <form method="POST" action="/spoc/setup_rooms/{{ event.id }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div id="roomRows-{{ event.id }}">
                   <div class="room-row" style="display:grid;grid-template-columns:1fr 90px 32px;gap:8px;margin-bottom:8px;">
-                    <input aria-label="Room / Hall name" type="text" name="room_name[]" placeholder="Room / Hall name" required class="form-control">
-                    <input aria-label="Capacity" type="number" name="capacity[]" placeholder="Capacity" required min="1" class="form-control">
+                    <input aria-label="Room / Hall name" type="text" name="room_name[]" placeholder="Room no. or name" required class="form-control">
+                    <input aria-label="Capacity (people)" type="number" name="capacity[]" placeholder="Seats" required min="1" class="form-control">
                     <button type="button" data-h-click="spoc/dashboard:40" data-h-a18="{{ event.id }}"
                             style="background:var(--success);color:#fff;border:none;border-radius:7px;font-size:16px;cursor:pointer;">+</button>
                   </div>
@@ -1995,7 +1995,7 @@ h1, h2, h3, h4, h5, h6 {
                     <i class="fas fa-save me-1"></i> Save Rooms
                   </button>
                   <button type="submit" name="action" value="allocate" class="modal-btn-primary flex-1" style="background:var(--ink-900) !important;">
-                    <i class="fas fa-magic me-1"></i> Save &amp; Auto-Allocate
+                    <i class="fas fa-magic me-1"></i> Save &amp; make a draft
                   </button>
                 </div>
               </form>

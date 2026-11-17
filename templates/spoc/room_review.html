@@ -1,0 +1,111 @@
+{% extends "base_classic.html" %}
+{#- The final check before "Allocate final" (UPG-306). -#}
+{% block title %}Final check: rooms — {{ event.title }}{% endblock %}
+{% block page_title %}Rooms: final check{% endblock %}
+{% block page_sub %}{{ event.title }} · {{ summary.allocated }} of {{ summary.teams | length }} team(s) in a room · {{ summary.people }} people · {{ summary.seats }} seats{% endblock %}
+{% block page_actions %}<a href="/spoc/room_allocation/{{ event.id }}" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Back to the draft</a>{% endblock %}
+{% block extra_css %}
+<style>
+.card{background:#fff;border-radius:14px;border:1px solid #e2e8f0;padding:20px 24px;margin-bottom:20px;}
+.section-title{font-family: var(--font-heading);font-size:13px;font-weight:700;color: var(--brand-ink);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;}
+.fix{background:#fef2f2;border:1.5px solid #fca5a5;color:#991b1b;border-radius:12px;padding:14px 18px;margin-bottom:16px;font-size:13.5px;}
+.note{background:#fffbeb;border:1.5px solid #fcd34d;color:#92400e;border-radius:12px;padding:14px 18px;margin-bottom:16px;font-size:13.5px;}
+.room-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;}
+.room-head .over{color:#b91c1c;font-weight:700;}
+.list{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px;}
+.list th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#64748b;text-align:left;padding:6px 8px;border-bottom:1px solid #e2e8f0;}
+.list td{padding:6px 8px;border-bottom:1px solid #f1f5f9;}
+.tick{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;font-size:14px;}
+.tick input{margin-top:4px;width:18px;height:18px;}
+.btn-action{display:inline-flex;align-items:center;gap:7px;padding:10px 20px;border-radius:9px;font-size:14px;font-weight:700;border:none;cursor:pointer;text-decoration:none;}
+.btn-green{background:#15803d;color:#fff;}
+.btn-outline{background:#fff;border:1.5px solid #e2e8f0;color:#475569;}
+@media print{.no-print{display:none !important;}}
+</style>
+{% endblock %}
+{% block content %}
+<div>
+
+{% if summary.problems %}
+<div class="fix" data-room-problems>
+  <strong><i class="fas fa-exclamation-triangle me-1"></i>Fix before allocating final</strong>
+  <ul class="mb-0 mt-1">{% for p in summary.problems %}<li>{{ p }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+{% if summary.notes %}
+<div class="note" data-room-notes>
+  <strong><i class="fas fa-info-circle me-1"></i>Check</strong>
+  <ul class="mb-0 mt-1">{% for n in summary.notes %}<li>{{ n }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<div class="d-flex flex-wrap gap-2 mb-3 no-print">
+  <a href="/spoc/room_allocation/{{ event.id }}/export.csv" class="btn-action btn-outline"><i class="fas fa-file-csv"></i> Download CSV</a>
+  <button type="button" class="btn-action btn-outline" data-h-click="spoc/room_review:1"><i class="fas fa-print"></i> Print</button>
+</div>
+
+{% for r in summary.rooms %}
+<div class="card" data-review-room="{{ r.name }}">
+  <div class="room-head">
+    <div class="section-title mb-0"><i class="fas fa-door-open me-1"></i>{{ r.name }}</div>
+    <div class="{{ 'over' if r.over }}">{{ r.people }} of {{ r.capacity }} seats · {{ r.teams | length }} team(s){% if r.over %} · over by {{ r.people - r.capacity }}{% elif r.left %} · {{ r.left }} free{% endif %}</div>
+  </div>
+  {% if r.teams %}
+  <table class="list">
+    <thead><tr><th>Team</th><th>Lead</th><th>People</th><th>Members</th></tr></thead>
+    <tbody>
+    {% for t in r.teams %}
+      <tr><td>{{ t.team_name if t.team_name and t.team_name != 'Individual' else t.lead_name }}</td><td>{{ t.lead_name }}</td><td>{{ size(t) }}</td>
+          <td style="font-size:12px;color:#64748b;">{% for m in t.members or [] if m is mapping %}{{ m.name or m.email }}{% if not loop.last %}, {% endif %}{% endfor %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color:#94a3b8;font-size:13px;margin:8px 0 0;">No teams.</p>
+  {% endif %}
+</div>
+{% endfor %}
+
+{% if summary.unknown %}
+<div class="card" data-review-unknown>
+  <div class="section-title">Rooms not in your list</div>
+  <table class="list"><tbody>
+  {% for t, room in summary.unknown %}<tr><td>{{ t.team_name or t.lead_name }}</td><td>{{ room }}</td></tr>{% endfor %}
+  </tbody></table>
+</div>
+{% endif %}
+
+{% if summary.unallocated %}
+<div class="card" data-review-unallocated>
+  <div class="section-title">No room ({{ summary.unallocated | length }})</div>
+  <table class="list"><tbody>
+  {% for t in summary.unallocated %}<tr><td>{{ t.team_name if t.team_name and t.team_name != 'Individual' else t.lead_name }}</td><td>{{ t.lead_name }}</td><td>{{ size(t) }} people</td><td style="color:#94a3b8;font-size:12px;">registered {{ t.registered_at or '—' }}{% if t in summary.late %} · after the draft{% endif %}</td></tr>{% endfor %}
+  </tbody></table>
+</div>
+{% endif %}
+
+<div class="card no-print" style="border:2px solid #15803d;">
+  <div class="section-title">Allocate final</div>
+  {% if plan.final and not summary.changes %}
+  <p style="font-size:13px;color:#475569;">Nothing has changed since the last Allocate final. Pressing it again only reaches teams by a way you newly tick.</p>
+  {% elif plan.final %}
+  <p style="font-size:13px;color:#475569;">Only the {{ summary.changes | length }} team(s) whose room changed will be told.</p>
+  {% endif %}
+  <form method="POST" action="/spoc/room_allocation/{{ event.id }}/final" data-room-final data-h-submit="spoc/room_review:2">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="tick"><input type="checkbox" name="email" value="1" {% if not plan.final or plan.email %}checked{% endif %}>
+      <span><strong>Email the team lead</strong><br><small style="color:#64748b;">One email to each team's lead with the room, date, time and venue. Members aren't emailed.</small></span></label>
+    <label class="tick"><input type="checkbox" name="website" value="1" {% if not plan.final or plan.website %}checked{% endif %}>
+      <span><strong>Show on the website</strong><br><small style="color:#64748b;">The lead and every member see the room on their dashboard and get a notice. Unticked, the room isn't shown to participants on the site.</small></span></label>
+    {% if summary.problems %}
+    <label class="tick" style="color:#991b1b;"><input type="checkbox" name="anyway" value="1">
+      <span><strong>Allocate anyway</strong>: I've seen the problems above.</span></label>
+    {% endif %}
+    <button type="submit" class="btn-action btn-green"><i class="fas fa-paper-plane"></i> Allocate final</button>
+  </form>
+</div>
+
+</div>
+{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/spoc__room_review.js"></script>
+{% endblock %}

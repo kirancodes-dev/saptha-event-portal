@@ -20,4 +20,10 @@ Object.assign(window.SE_H = window.SE_H || {}, {
   "spoc/room_allocation:6": function (event) { with (document) { with (this.form || {}) { with (this) {
     reassignRoom(this)
   } } } },
+  "spoc/room_allocation:7": function (event) { with (document) { with (this.form || {}) { with (this) {
+    addRoomRow()
+  } } } },
+  "spoc/room_allocation:8": function (event) { with (document) { with (this.form || {}) { with (this) {
+    return confirm('Make a new draft in registration order? It replaces the draft (not what teams already see).')
+  } } } },
 });

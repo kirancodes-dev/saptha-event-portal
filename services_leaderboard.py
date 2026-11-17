@@ -13,6 +13,8 @@ the same score and place everywhere:
 """
 from typing import Optional
 
+import services_rooms
+
 TIEBREAK_CRITERIA = ('innovation', 'impact', 'clarity', 'presentation')
 
 
@@ -90,7 +92,7 @@ def rank(regs, *, include_unscored: bool = False) -> list:
             'lead_name': lead_name,
             'lead_email': reg.get('lead_email') or '',
             'members': len(reg.get('members') or []),
-            'room': reg.get('assigned_room') or '',
+            'room': services_rooms.on_site(reg),   # not when sent by email only (UPG-306)
             'round': int(reg.get('current_round') or 1),
             'attended': reg.get('attendance') == 'Present',
             'score': score,

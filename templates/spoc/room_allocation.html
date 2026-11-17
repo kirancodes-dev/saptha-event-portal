@@ -1,171 +1,153 @@
 {% extends "base_classic.html" %}
-{#- On the app layout and portal design system (UPG-63). -#}
+{#- Rooms: a draft only the SPOC sees, then the final check and Allocate final (UPG-306). -#}
 {% block csrf_meta %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endblock %}
 {% block title %}Room allocation — {{ event.title }}{% endblock %}
 {% block page_title %}Room allocation{% endblock %}
-{% block page_sub %}{{ event.title }} · {{ registrations | length }} registrants · {{ rooms | length }} room(s){% endblock %}
-{% block page_actions %}<a href="/spoc/dashboard" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Console</a>{% endblock %}
+{% block page_sub %}{{ event.title }} · {{ registrations | length }} team(s) · {{ rooms | length }} room(s) · {{ summary.seats }} seats{% endblock %}
+{% block page_actions %}<a href="/spoc/dashboard#event-{{ event.id }}" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Console</a>{% endblock %}
 {% block extra_css %}
 <style>
 h1,h2,h3,h4,h5,h6{font-family: var(--font-heading);}
 .card{background:#fff;border-radius:14px;border:1px solid #e2e8f0;padding:20px 24px;margin-bottom:20px;}
 .section-title{font-family: var(--font-heading);font-size:13px;font-weight:700;color: var(--brand-ink);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
-.room-legend{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;}
-.room-badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:5px 12px;border-radius:100px;border:1.5px solid;}
+.step-no{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--brand-navy);color:#fff;font-size:11px;}
+.plan-state{border-radius:12px;padding:14px 18px;margin-bottom:20px;font-size:13.5px;border:1.5px solid;}
+.plan-draft{background:#fffbeb;border-color:#fcd34d;color:#92400e;}
+.plan-final{background:#f0fdf4;border-color:#86efac;color:#166534;}
+.room-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;}
+.room-card{border:1.5px solid #e2e8f0;border-radius:12px;padding:12px 14px;background:#f8fafc;}
+.room-card.over{border-color:#fca5a5;background:#fef2f2;}
+.room-card .name{font-weight:700;color:var(--brand-ink);}
+.room-card .fill{font-size:12.5px;color:#475569;margin-top:4px;}
+.room-row{display:grid;grid-template-columns:1fr 110px;gap:8px;margin-bottom:8px;}
 .alloc-table{width:100%;border-collapse:collapse;font-size:13px;}
 .alloc-table thead th{background:var(--brand-navy);color:#fff;font-weight:600;padding:10px 14px;white-space:nowrap;font-family: var(--font-heading);font-size:11.5px;letter-spacing:.3px;}
-.alloc-table tbody tr{border-bottom:1px solid #f1f5f9;transition:.15s;}
-.alloc-table tbody tr:hover{background:#f8faff;}
+.alloc-table tbody tr{border-bottom:1px solid #f1f5f9;}
 .alloc-table td{padding:10px 14px;vertical-align:middle;}
-.room-select{font-size:12.5px;border:1.5px solid #e2e8f0;border-radius:7px;padding:5px 10px;color:#334155;outline:none;background:#f8fafc;cursor:pointer;transition:.15s;}
-.room-select:focus{border-color:var(--brand-navy);}
-.stat-pill{background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;text-align:center;}
-.stat-val{font-family: var(--font-heading);font-size:22px;font-weight:800;color: var(--brand-ink);}
-.stat-label{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.4px;}
-.btn-action{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;text-decoration:none;transition:.15s;}
+.room-select{font-size:12.5px;border:1.5px solid #e2e8f0;border-radius:7px;padding:5px 10px;color:#334155;background:#f8fafc;max-width:220px;}
+.btn-action{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;text-decoration:none;}
 .btn-blue{background:var(--brand-navy);color:#fff;}
 .btn-blue:hover{background:#141d42;color:#fff;}
 .btn-green{background:#15803d;color:#fff;}
 .btn-green:hover{background:#166534;color:#fff;}
 .btn-outline{background:#fff;border:1.5px solid #e2e8f0;color:#475569;}
-.btn-outline:hover{background:var(--brand-navy);color:#fff;border-color:var(--brand-navy);}
-.saved-badge{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:100px;background:#dcfce7;color:#166534;}
-.unassigned-badge{background:#fee2e2;color:#991b1b;}
+.final-chip{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:100px;background:#dcfce7;color:#166534;}
 </style>
 {% endblock %}
 {% block content %}
-
-
 <div>
 
-<!-- Flash messages -->
-
-
-<!-- STATS ROW -->
-{% set assigned_count = registrations | selectattr('assigned_room') | list | length %}
-{% set unassigned_count = registrations | length - assigned_count %}
-<div class="row g-3 mb-3">
-  <div class="col-6 col-md-3">
-    <div class="stat-pill">
-      <div class="stat-val">{{ registrations | length }}</div>
-      <div class="stat-label">Total</div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="stat-pill">
-      <div class="stat-val" style="color:#15803d;">{{ assigned_count }}</div>
-      <div class="stat-label">Assigned</div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="stat-pill">
-      <div class="stat-val" style="color:#dc2626;">{{ unassigned_count }}</div>
-      <div class="stat-label">Unassigned</div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="stat-pill">
-      <div class="stat-val" style="color:var(--brand-gold);">{{ rooms | length }}</div>
-      <div class="stat-label">Rooms</div>
-    </div>
-  </div>
+{# ── Where the plan stands ── #}
+{% if plan.final %}
+<div class="plan-state plan-final" data-room-state="final">
+  <i class="fas fa-check-circle me-1"></i>
+  {% if plan.legacy %}
+  These rooms were given before the draft step and are shown to teams.
+  {% else %}
+  <strong>Allocated final</strong>{% if plan.final_at %} on {{ plan.final_at }}{% endif %}{% if plan.final_by %} by {{ plan.final_by }}{% endif %}:
+  {% if plan.email and plan.website %}emailed to team leads and shown on the website{% elif plan.email %}emailed to team leads only (not shown on the website){% else %}shown on the website (no email){% endif %}.
+  {% endif %}
+  {% if summary.changes %}
+  <div class="mt-1" data-room-changes><strong>{{ summary.changes | length }} change(s) in the draft below aren't sent yet.</strong> Teams still see their final room until you press Allocate final again.</div>
+  {% endif %}
 </div>
-
-<!-- ACTIONS CARD -->
-<div class="card">
-  <div class="section-title"><i class="fas fa-bolt" style="color:var(--brand-gold);"></i>Actions</div>
-  <div class="d-flex flex-wrap gap-3 align-items-center">
-    <form method="POST" action="/spoc/send_room_emails/{{ event.id }}"
-          data-h-submit="spoc/room_allocation:2" data-h-a0="{{ assigned_count }}">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button type="submit" class="btn-action btn-green">
-        <i class="fas fa-paper-plane"></i>
-        Send Room Emails
-        {% if email_sent_count %}<span style="background:rgba(255,255,255,.25);padding:2px 8px;border-radius:100px;font-size:11px;">{{ email_sent_count }} sent</span>{% endif %}
-      </button>
-    </form>
-    <a href="/spoc/dashboard#event-{{ event.id }}" class="btn-action btn-outline">
-      <i class="fas fa-cog"></i> Re-setup Rooms
-    </a>
-    <a href="/spoc/round_panel/{{ event.id }}" class="btn-action btn-blue">
-      <i class="fas fa-layer-group"></i> Round Manager
-    </a>
-    {% if email_sent_count %}
-    <span style="font-size:12px;color:#15803d;font-weight:600;">
-      <i class="fas fa-check-circle me-1"></i>Room emails last sent to {{ email_sent_count }} participants.
-    </span>
-    {% endif %}
-  </div>
-</div>
-
-<!-- ROOM LEGEND -->
-{% if rooms %}
-<div class="card">
-  <div class="section-title"><i class="fas fa-map-marker-alt" style="color:#dc2626;"></i>Room Capacities</div>
-  {% set palette = ['#00185e','#15803d','#0891b2','#7c3aed','#dc2626','#d97706','#0f766e','#be185d'] %}
-  <div class="room-legend">
-    {% for room in rooms %}
-    {% set col = palette[loop.index0 % palette|length] %}
-    <span class="room-badge" style="background:{{ col }}18;color:{{ col }};border-color:{{ col }}40;">
-      <i class="fas fa-door-open"></i>
-      {{ room.name }}
-      <span style="opacity:.6;">cap {{ room.capacity }}</span>
-    </span>
-    {% endfor %}
-  </div>
+{% else %}
+<div class="plan-state plan-draft" data-room-state="draft">
+  <i class="fas fa-eye-slash me-1"></i>
+  <strong>Draft: nobody sees these rooms yet.</strong> Teams, judges and coordinators see a room only after you check the final list and press <strong>Allocate final</strong>.
 </div>
 {% endif %}
 
-<!-- ALLOCATION TABLE -->
+{# ── Step 1: rooms ── #}
+<div class="card">
+  <div class="section-title"><span class="step-no">1</span>Rooms and capacity (people)</div>
+  <form method="POST" action="/spoc/setup_rooms/{{ event.id }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div id="roomRows">
+      {% for room in rooms %}
+      <div class="room-row">
+        <input aria-label="Room no. or name" type="text" name="room_name[]" value="{{ room.name }}" class="form-control" placeholder="Room no. or name">
+        <input aria-label="Capacity (people)" type="number" name="capacity[]" value="{{ room.capacity }}" min="0" class="form-control" placeholder="Seats">
+      </div>
+      {% endfor %}
+      <div class="room-row" data-room-blank>
+        <input aria-label="Room no. or name" type="text" name="room_name[]" class="form-control" placeholder="Room no. or name">
+        <input aria-label="Capacity (people)" type="number" name="capacity[]" min="0" class="form-control" placeholder="Seats">
+      </div>
+    </div>
+    <p style="font-size:12px;color:#64748b;margin:4px 0 12px;">Capacity counts people: a team of 4 takes 4 seats. Clear a row's name to remove the room.</p>
+    <div class="d-flex flex-wrap gap-2">
+      <button type="button" class="btn-action btn-outline" data-h-click="spoc/room_allocation:7"><i class="fas fa-plus"></i> Another room</button>
+      <button type="submit" name="action" value="save" class="btn-action btn-blue"><i class="fas fa-save"></i> Save rooms</button>
+    </div>
+  </form>
+</div>
+
+{# ── Step 2: the draft ── #}
+<div class="card">
+  <div class="section-title"><span class="step-no">2</span>Draft allocation (only you see this)</div>
+  <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+    <form method="POST" action="/spoc/room_allocation/{{ event.id }}/autofill" data-h-submit="spoc/room_allocation:8">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn-action btn-blue" {% if not rooms %}disabled{% endif %}><i class="fas fa-magic"></i> Auto-fill the draft</button>
+    </form>
+    <span style="font-size:12.5px;color:#64748b;">Registration order, each team kept together in one room. Replaces the draft; then move any team below.</span>
+  </div>
+
+  {% if rooms %}
+  <div class="room-grid mb-2">
+    {% for r in summary.rooms %}
+    <div class="room-card{% if r.over %} over{% endif %}" data-room-card="{{ r.name }}">
+      <div class="name"><i class="fas fa-door-open me-1"></i>{{ r.name }}</div>
+      <div class="fill"><span data-room-people>{{ r.people }}</span> of {{ r.capacity }} seats · <span data-room-teams>{{ r.teams | length }}</span> team(s)</div>
+    </div>
+    {% endfor %}
+    <div class="room-card">
+      <div class="name"><i class="fas fa-user-clock me-1"></i>No room</div>
+      <div class="fill"><span data-room-unallocated>{{ summary.unallocated | length }}</span> team(s)</div>
+    </div>
+  </div>
+  {% else %}
+  <p style="color:#64748b;font-size:13px;">Add your rooms in step 1 first.</p>
+  {% endif %}
+</div>
+
 <div class="card" style="padding:0;overflow:hidden;">
-  <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9;">
-    <div class="section-title mb-0"><i class="fas fa-list-ol" style="color: var(--brand-ink);"></i>Participant Allocation</div>
-    <input aria-label="Search name or room" type="text" id="searchBox" placeholder="Search name or room…"
-           style="font-size:12.5px;border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 12px;outline:none;width:220px;"
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:16px 20px;border-bottom:1px solid #f1f5f9;">
+    <div class="section-title mb-0"><i class="fas fa-list-ol"></i>Teams ({{ registrations | length }}, cancelled left out)</div>
+    <input aria-label="Search team, name or room" type="text" id="searchBox" placeholder="Search team, name or room…"
+           style="font-size:12.5px;border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 12px;width:220px;"
            data-h-input="spoc/room_allocation:3" data-h-focus="spoc/room_allocation:4" data-h-blur="spoc/room_allocation:5">
   </div>
   <div style="overflow-x:auto;">
     <table class="alloc-table" id="allocTable">
       <thead>
-        <tr>
-          <th>#</th>
-          <th>Participant</th>
-          <th>Email</th>
-          <th>Registered At</th>
-          <th>Assigned Room</th>
-        </tr>
+        <tr><th>#</th><th>Team</th><th>People</th><th>Registered</th><th>Draft room</th><th>Final room</th></tr>
       </thead>
       <tbody id="allocBody">
         {% for reg in registrations %}
-        <tr data-search="{{ (reg.lead_name ~ ' ' ~ reg.lead_email ~ ' ' ~ (reg.assigned_room or '')) | lower }}">
+        {% set draft_room = plan.draft.get(reg.id) or '' %}
+        <tr data-reg-row="{{ reg.id }}" data-search="{{ (reg.lead_name ~ ' ' ~ reg.lead_email ~ ' ' ~ (reg.team_name or '') ~ ' ' ~ draft_room ~ ' ' ~ (reg.assigned_room or '')) | lower }}">
           <td style="color:#94a3b8;font-size:12px;">{{ loop.index }}</td>
           <td>
-            <div style="font-weight:600;color: var(--brand-ink);">{{ reg.lead_name or '—' }}</div>
-            {% if reg.team_name and reg.team_name != reg.lead_name %}
-            <div style="font-size:11.5px;color:#94a3b8;">{{ reg.team_name }}</div>
-            {% endif %}
+            <div style="font-weight:600;color: var(--brand-ink);">{{ reg.team_name if reg.team_name and reg.team_name != 'Individual' else (reg.lead_name or '—') }}</div>
+            <div style="font-size:11.5px;color:#94a3b8;">{{ reg.lead_name or '' }} · {{ reg.lead_email or '' }}{% if reg.status == 'pending_payment' %} · waiting for payment{% endif %}</div>
           </td>
-          <td style="font-size:12.5px;color:#64748b;">{{ reg.lead_email or '—' }}</td>
+          <td>{{ size(reg) }}</td>
           <td style="font-size:12px;color:#94a3b8;white-space:nowrap;">{{ reg.registered_at or '—' }}</td>
           <td>
-            {% if rooms %}
-            <select aria-label="Text" class="room-select" data-reg="{{ reg.id }}" data-event="{{ event.id }}"
-                    data-h-change="spoc/room_allocation:6">
-              <option value="">— Unassigned —</option>
+            <select aria-label="Draft room for {{ reg.team_name or reg.lead_name }}" class="room-select" data-reg="{{ reg.id }}" data-event="{{ event.id }}"
+                    data-orig="{{ draft_room }}" data-h-change="spoc/room_allocation:6">
+              <option value="">— No room —</option>
               {% for room in rooms %}
-              <option value="{{ room.name }}" {% if reg.get('assigned_room') == room.name %}selected{% endif %}>
-                {{ room.name }}
-              </option>
+              <option value="{{ room.name }}" {% if draft_room == room.name %}selected{% endif %}>{{ room.name }}</option>
               {% endfor %}
-            </select>
-            {% else %}
-              {% if reg.get('assigned_room') %}
-              <span class="saved-badge"><i class="fas fa-door-open"></i> {{ reg.assigned_room }}</span>
-              {% else %}
-              <span class="saved-badge unassigned-badge"><i class="fas fa-times-circle"></i> Unassigned</span>
+              {% if draft_room and draft_room not in rooms | map(attribute='name') | list %}
+              <option value="{{ draft_room }}" selected>{{ draft_room }} (not in your list)</option>
               {% endif %}
-            {% endif %}
+            </select>
           </td>
+          <td>{% if plan.final.get(reg.id) %}<span class="final-chip"><i class="fas fa-door-open"></i> {{ plan.final.get(reg.id) }}</span>{% else %}<span style="color:#94a3b8;font-size:12px;">—</span>{% endif %}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -179,7 +161,16 @@ h1,h2,h3,h4,h5,h6{font-family: var(--font-heading);}
   </div>
 </div>
 
-</div><!-- /container -->
+{# ── Steps 3 and 4 ── #}
+<div class="card d-flex flex-wrap gap-3 align-items-center justify-content-between">
+  <div>
+    <div class="section-title mb-1"><span class="step-no">3</span>Final check, then Allocate final</div>
+    <div style="font-size:13px;color:#475569;">See the final list room by room and what to fix, then choose email to team leads, the website, or both.</div>
+  </div>
+  <a href="/spoc/room_allocation/{{ event.id }}/review" class="btn-action btn-green" data-room-review><i class="fas fa-clipboard-check"></i> Final check &amp; allocate</a>
+</div>
+
+</div>
 
 {% include "layouts/_bootstrap_js.html" %}
 <script src="/static/js/pages/spoc__room_allocation.js"></script>

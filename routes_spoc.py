@@ -1835,167 +1835,142 @@ def add_judge(event_id):
 
 
 # =========================================================
-# 20. ROOM SETUP + AUTO-ALLOCATE
+# 20. ROOMS: DRAFT, FINAL CHECK, ALLOCATE FINAL (UPG-306)
 # =========================================================
+# The SPOC's rooms and the draft live on the event (services_rooms); nothing
+# reaches a registration, so nobody else sees a room, until "Allocate final".
+
+def _room_regs(event_id):
+    return [dict(d.to_dict() or {}, id=d.id)
+            for d in db.collection('registrations').where('event_id', '==', event_id).stream()]
+
+
 @spoc_bp.route('/setup_rooms/<event_id>', methods=['POST'])
 @login_required
 @role_required('ClubSPOC')
 def setup_rooms(event_id):
-    _event_or_abort(event_id, 'manage_registrations')  # BLK-17
-    doc = db.collection('events').document(event_id).get()
-    if not doc.exists:
-        flash("Event not found.", "danger")
-        return redirect('/spoc/dashboard')
-
-    room_names = request.form.getlist('room_name[]')
-    capacities = request.form.getlist('capacity[]')
-    action     = request.form.get('action', 'save')
-
-    rooms = []
-    for name, cap in zip(room_names, capacities):
-        name = name.strip()
-        try:
-            cap = int(cap)
-        except (ValueError, TypeError):
-            cap = 0
-        if name and cap > 0:
-            rooms.append({'name': name, 'capacity': cap})
-
+    event = _event_or_abort(event_id, 'manage_registrations')  # BLK-17
+    import services_rooms
+    rooms = services_rooms.parse_rooms(request.form.getlist('room_name[]'), request.form.getlist('capacity[]'))
     if not rooms:
-        flash("Please add at least one room with a valid capacity.", "warning")
-        return redirect(f'/spoc/dashboard#event-{event_id}')
-
-    db.collection('events').document(event_id).update({'rooms': rooms})
-
-    if action == 'allocate':
-        # Sort by registration timestamp — earliest registered gets a room first
-        regs = list(db.collection('registrations')
-                    .where('event_id', '==', event_id).stream())
-        regs.sort(key=lambda r: str(r.to_dict().get('registered_at', '') or ''))
-
-        idx = 0
-        batch_updates = 0
-        for room in rooms:
-            for _ in range(room['capacity']):
-                if idx >= len(regs):
-                    break
-                db.collection('registrations').document(regs[idx].id).update(
-                    {'assigned_room': room['name']}
-                )
-                idx += 1
-                batch_updates += 1
-
-        log_action(db, "ROOMS_ALLOCATED",
-                   f"SPOC {session.get('user_id')} allocated {batch_updates} participants "
-                   f"in {len(rooms)} rooms for event {event_id}")
-        flash(f"✅ Rooms saved and {batch_updates} participant(s) allocated by registration order. "
-              f"<a href='/spoc/room_allocation/{event_id}' style='color:#fff;font-weight:700;text-decoration:underline;'>View allocation →</a>",
-              "success")
+        flash("Add at least one room with a capacity of 1 or more.", "warning")
+        return redirect(f'/spoc/room_allocation/{event_id}')
+    regs = _room_regs(event_id)
+    services_rooms.save_rooms(db, event_id, event, regs, rooms, by=session.get('user_id', ''))
+    if request.form.get('action') == 'allocate':
+        services_rooms.fill(db, event_id, event, regs, by=session.get('user_id', ''))
+        log_action(db, "ROOMS_DRAFTED", f"SPOC {session.get('user_id')} saved {len(rooms)} rooms and "
+                                        f"auto-filled a draft for event {event_id}")
+        flash(f"✅ {len(rooms)} room(s) saved and a draft made. Nobody sees it until you press "
+              f"Allocate final.", "success")
     else:
         flash(f"✅ {len(rooms)} room(s) saved.", "success")
+    return redirect(f'/spoc/room_allocation/{event_id}')
 
-    return redirect(f'/spoc/dashboard#event-{event_id}')
+
+@spoc_bp.route('/room_allocation/<event_id>/autofill', methods=['POST'])
+@login_required
+@role_required('ClubSPOC')
+def room_autofill(event_id):
+    event = _event_or_abort(event_id, 'manage_registrations')
+    import services_rooms
+    try:
+        services_rooms.fill(db, event_id, event, _room_regs(event_id), by=session.get('user_id', ''))
+        flash("✅ Draft made in registration order, each team kept together. Nobody sees it yet.", "success")
+    except services_rooms.RoomError as exc:
+        flash(str(exc), "warning")
+    return redirect(f'/spoc/room_allocation/{event_id}')
 
 
-# =========================================================
-# ROOM ALLOCATION — view / manual reassign
-# =========================================================
 @spoc_bp.route('/room_allocation/<event_id>')
 @login_required
 @role_required('ClubSPOC')
 def room_allocation(event_id):
-    doc = db.collection('events').document(event_id).get()
-    if not doc.exists:
-        flash("Event not found.", "danger")
-        return redirect('/spoc/dashboard')
-    event = doc.to_dict() or {}
-    event['id'] = event_id
-    if event.get('spoc_id') != session.get('user_id'):
-        flash("Not authorised.", "danger")
-        return redirect('/spoc/dashboard')
-
-    regs_raw = list(db.collection('registrations')
-                    .where('event_id', '==', event_id).stream())
-    registrations = sorted(
-        [dict(r.to_dict(), id=r.id) for r in regs_raw],
-        key=lambda x: str(x.get('registered_at', '') or '')
-    )
-    rooms = event.get('rooms', [])
-    return render_template('spoc/room_allocation.html',
-                           event=event,
-                           registrations=registrations,
-                           rooms=rooms,
-                           email_sent_count=event.get('room_emails_sent', 0))
+    event = _event_or_abort(event_id, 'manage_registrations')
+    import services_rooms
+    regs = _room_regs(event_id)
+    summary = services_rooms.summary(event, regs)
+    return render_template('spoc/room_allocation.html', event=event, summary=summary, plan=summary['plan'],
+                           registrations=summary['teams'], rooms=summary['plan']['rooms'],
+                           size=services_rooms.size)
 
 
 @spoc_bp.route('/reassign_room/<event_id>/<reg_id>', methods=['POST'])
 @login_required
 @role_required('ClubSPOC')
 def reassign_room(event_id, reg_id):
-    _event_or_abort(event_id, 'manage_registrations')  # BLK-17
+    event = _event_or_abort(event_id, 'manage_registrations')  # BLK-17
     reg_doc = db.collection('registrations').document(reg_id).get()
     if not reg_doc.exists or (reg_doc.to_dict() or {}).get('event_id') != event_id:
         abort(404)  # only this event's registrations
-    new_room = (request.get_json() or {}).get('room', '').strip()
-    if not new_room:
-        return jsonify({'status': 'error', 'message': 'No room specified'}), 400
-    db.collection('registrations').document(reg_id).update({'assigned_room': new_room})
-    return jsonify({'status': 'ok', 'room': new_room})
+    import services_rooms
+    room = str((request.get_json(silent=True) or {}).get('room') or '').strip()
+    regs = _room_regs(event_id)
+    services_rooms.move(db, event_id, event, regs, reg_id, room, by=session.get('user_id', ''))
+    # The draft only: teams see nothing until Allocate final (UPG-306)
+    return jsonify(dict(services_rooms.counts(event, regs), status='ok', room=room))
+
+
+@spoc_bp.route('/room_allocation/<event_id>/review')
+@login_required
+@role_required('ClubSPOC')
+def room_review(event_id):
+    event = _event_or_abort(event_id, 'manage_registrations')
+    import services_rooms
+    summary = services_rooms.summary(event, _room_regs(event_id))
+    return render_template('spoc/room_review.html', event=event, summary=summary, plan=summary['plan'],
+                           size=services_rooms.size)
+
+
+@spoc_bp.route('/room_allocation/<event_id>/export.csv')
+@login_required
+@role_required('ClubSPOC')
+def room_export(event_id):
+    event = _event_or_abort(event_id, 'manage_registrations')
+    import services_export
+    import services_rooms
+    body = services_export.to_csv(services_rooms.rows(event, _room_regs(event_id)), services_rooms.CSV_COLUMNS)
+    return Response(body, mimetype='text/csv',
+                    headers={'Content-Disposition': f'attachment; filename=rooms_{event_id}.csv'})
+
+
+@spoc_bp.route('/room_allocation/<event_id>/final', methods=['POST'])
+@login_required
+@role_required('ClubSPOC')
+def room_final(event_id):
+    event = _event_or_abort(event_id, 'manage_registrations')
+    import services_rooms
+    email, website = request.form.get('email') == '1', request.form.get('website') == '1'
+    try:
+        done = services_rooms.finalize(db, event_id, event, _room_regs(event_id), email=email, website=website,
+                                       anyway=request.form.get('anyway') == '1', by=session.get('user_id', ''))
+    except services_rooms.RoomError as exc:
+        flash(str(exc), "warning")
+        return redirect(f'/spoc/room_allocation/{event_id}/review')
+    how = ' and '.join(w for w, on in (('email to team leads', email), ('the website', website)) if on)
+    log_action(db, "ROOMS_ALLOCATED",
+               f"SPOC {session.get('user_id')} allocated rooms final for {done['teams']} teams of event "
+               f"{event_id} by {how}: {done['emailed']} emails, {done['noticed']} teams noticed, "
+               f"{done['withdrawn']} withdrawn")
+    told = []
+    if email:
+        told.append(f"{done['emailed']} lead email(s)")
+    if website:
+        told.append(f"{done['noticed']} team(s) told on the website")
+    if done['withdrawn']:
+        told.append(f"{done['withdrawn']} team(s) told their room was withdrawn")
+    flash(f"✅ Rooms allocated final for {done['teams']} team(s): " + ', '.join(told) + '.', "success")
+    return redirect(f'/spoc/room_allocation/{event_id}')
 
 
 @spoc_bp.route('/send_room_emails/<event_id>', methods=['POST'])
 @login_required
 @role_required('ClubSPOC')
 def send_room_emails(event_id):
-    doc = db.collection('events').document(event_id).get()
-    if not doc.exists:
-        flash("Event not found.", "danger")
-        return redirect(f'/spoc/room_allocation/{event_id}')
-    event = doc.to_dict() or {}
-    if event.get('spoc_id') != session.get('user_id'):
-        flash("Not authorised.", "danger")
-        return redirect('/spoc/dashboard')
-
-    from utils_email import send_room_assignment_email
-
-    regs = list(db.collection('registrations')
-                .where('event_id', '==', event_id).stream())
-    sent = skipped = 0
-    for r in regs:
-        d = r.to_dict()
-        room  = d.get('assigned_room', '')
-        email = d.get('lead_email', '')
-        name  = d.get('lead_name', 'Participant')
-        if not room or not email:
-            skipped += 1
-            continue
-        import services_hackathon
-        if not services_hackathon.email_allowed(event, 'room'):   # a portal notice instead (UPG-195)
-            services_hackathon.notify(db, {**event, 'id': event_id}, d, f"Your room: {room}",
-                                      f"{event.get('title', 'Event')}: your team is in {room}.",
-                                      link=f"/hackathon/{event_id}")
-            sent += 1
-            continue
-        try:
-            send_room_assignment_email(
-                to_email=email, name=name,
-                event_title=event.get('title', 'Event'),
-                room_name=room,
-                event_date=str(event.get('date', '')),
-                event_time=str(event.get('time', '')),
-                venue=str(event.get('venue', '')),
-            )
-            sent += 1
-        except Exception:
-            skipped += 1
-
-    db.collection('events').document(event_id).update({'room_emails_sent': sent})
-    log_action(db, "ROOM_EMAILS_SENT",
-               f"SPOC {session.get('user_id')} sent room emails to {sent} participants "
-               f"for event {event_id}")
-    flash(f"✅ Room assignment emails sent to {sent} participant(s). "
-          f"{skipped} skipped (no room assigned or missing email).", "success")
-    return redirect(f'/spoc/room_allocation/{event_id}')
+    _event_or_abort(event_id, 'manage_registrations')
+    # Rooms go out with "Allocate final" now, after the final check (UPG-306)
+    flash("Rooms are sent from the final check: choose email, website or both, then Allocate final.", "info")
+    return redirect(f'/spoc/room_allocation/{event_id}/review')
 
 
 # =========================================================

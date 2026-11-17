@@ -177,6 +177,8 @@ def dashboard():
         # What the organiser gave registered teams to read and download (UPG-239)
         import services_event_documents
         r['documents'] = services_event_documents.documents(evt)
+        import services_rooms   # the final room, unless the SPOC sent it by email only (UPG-306)
+        r['my_room'] = services_rooms.on_site(r)
 
         # Certificate eligible: attended + event completed or certified
         r['cert_eligible'] = (

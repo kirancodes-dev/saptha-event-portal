@@ -13,6 +13,7 @@ except ImportError:
     FieldFilter = None
 from models import db
 from extensions import limiter
+import services_rooms
 
 logger     = logging.getLogger(__name__)
 chatbot_bp = Blueprint('chatbot', __name__, url_prefix='/chatbot')
@@ -127,7 +128,7 @@ def ask():
                         user_context += (
                             f"- Registered Event: {r_data.get('event_title')}\n"
                             f"  Ticket ID: {r_data.get('reg_id')}\n"
-                            f"  Assigned Room: {r_data.get('assigned_room') or 'Not assigned yet'}\n"
+                            f"  Assigned Room: {services_rooms.on_site(r_data) or 'Not assigned yet'}\n"
                             f"  Assigned Judge: {r_data.get('assigned_judge_name') or 'Not assigned yet'}\n"
                             f"  Attendance Status: {r_data.get('attendance') or 'Absent'}\n"
                         )

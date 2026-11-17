@@ -389,7 +389,9 @@ def regenerate_code(reg_id):
     if reg is None or not _is_lead(reg):
         flash("Only the team lead can change the invite code.", "danger")
         return redirect(f'/teams/{reg_id}' if reg else '/participant/dashboard')
-    db.collection('registrations').document(reg_id).update({'team_code': new_team_code(db)})
+    # The old code is kept: a file of marks made with it still matches the team (UPG-308)
+    old = [c for c in [*(reg.get('team_code_history') or []), reg.get('team_code')] if c][-10:]
+    db.collection('registrations').document(reg_id).update({'team_code': new_team_code(db), 'team_code_history': old})
     log_action(db, "TEAM_CODE_RESET", f"{_me()} replaced the invite code of {reg_id}")
     flash("New invite code made; the old one no longer works.", "success")
     return redirect(f'/teams/{reg_id}')

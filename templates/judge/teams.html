@@ -53,12 +53,15 @@ h1,h2,h3,h4,h5,h6{font-family: var(--font-heading);}
       </div>
 
       {% if teams %}
+      {#- Find a team by its name, code or lead (UPG-309) -#}
+      <input type="search" id="teamSearch" class="form-control mb-3" placeholder="Find a team by name or team code" aria-label="Find a team by name or team code" autocomplete="off" data-team-search>
+      <p class="text-muted small d-none" id="teamSearchNone" data-team-search-none>No team matches.</p>
       <div class="d-flex flex-column gap-3" id="teamsList">
         {% for team in teams %}
-        <div class="team-card {{ 'scored' if team.my_score else 'unscored' }}" id="card-{{ team.id }}">
+        <div class="team-card {{ 'scored' if team.my_score else 'unscored' }}" id="card-{{ team.id }}" data-team-find="{{ ((team.team_name or '') ~ ' ' ~ (team.team_code or '') ~ ' ' ~ (team.lead_name or '')) | lower }}">
           <div class="d-flex align-items-start justify-content-between gap-3">
             <div class="flex-grow-1">
-              <div class="team-name">{{ team.team_name }}</div>
+              <div class="team-name">{{ team.team_name }}</div>{% if team.team_code %}<div class="small text-muted">Team code <code data-team-code>{{ team.team_code }}</code></div>{% endif %}
               <div class="lead-name">{{ team.lead_name }}</div>
               <div class="room-tag mt-1">
                 <i class="fas fa-door-open me-1"></i>{{ team.assigned_room or 'No room' }}
@@ -76,7 +79,7 @@ h1,h2,h3,h4,h5,h6{font-family: var(--font-heading);}
             </div>
             <div class="d-flex flex-column align-items-end gap-2">
               {% if team.my_score %}
-              <div class="score-badge done">{{ team.my_score.total }}</div>
+              <div class="score-badge done">{{ team.my_score.raw_total if team.my_score.raw_total is not none else team.my_score.total }}</div>
               <button class="btn-edit-sm" data-h-click="judge/teams:1" data-h-a0="{{ team.id }}">
                 Edit
               </button>
@@ -164,6 +167,20 @@ h1,h2,h3,h4,h5,h6{font-family: var(--font-heading);}
 const EVENT_ID    = "{{ event.id }}";
 const CRITERIA    = {{ (event.judging_criteria_normalized or event.judging_criteria or ['Overall Score']) | tojson | safe }};
 const TEAMS_DATA  = {{ teams | tojson | safe }};
+(function () {   // the team search (UPG-309)
+  const box = document.getElementById('teamSearch');
+  if (!box) return;
+  box.addEventListener('input', function () {
+    const q = box.value.trim().toLowerCase().replace(/\s+/g, ' ');
+    let shown = 0;
+    document.querySelectorAll('[data-team-find]').forEach(function (card) {
+      const hit = !q || card.dataset.teamFind.indexOf(q) !== -1;
+      card.style.display = hit ? '' : 'none';
+      if (hit) shown += 1;
+    });
+    document.getElementById('teamSearchNone').classList.toggle('d-none', shown > 0);
+  });
+})();
 let   currentRegId = null;
 const scoreModal    = new bootstrap.Modal(document.getElementById('scoreModal'));
 
@@ -201,7 +218,7 @@ function openScoreModal(regId) {
                 display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
       <span style="font-size:13px;color:var(--text-muted);font-weight:600;">Average</span>
       <span id="totalDisplay" style="font-family: var(--font-heading);font-size:22px;
-            font-weight:800;color:var(--brand-gold);">${escapeHtml(existing.total || 0)}</span>
+            font-weight:800;color:var(--brand-gold);">${escapeHtml(existing.raw_total ?? existing.total ?? 0)}</span>
     </div>
     <div class="mt-3">
       <label style="font-size:12px;font-weight:700;color:var(--text-muted);
@@ -252,9 +269,10 @@ function updateTotal() {
       total += v;
     }
   });
-  const avg = CRITERIA.length > 0 ? (total / CRITERIA.length).toFixed(1) : 0;
+  // The marks added up, out of the criteria's total (UPG-309)
+  const outOf = CRITERIA.reduce((n, c) => n + (typeof c === 'object' && c.max_score ? Number(c.max_score) : 100), 0);
   const disp = document.getElementById('totalDisplay');
-  if (disp) disp.textContent = avg;
+  if (disp) disp.textContent = total + ' / ' + outOf;
 }
 
 async function submitScore() {
@@ -287,7 +305,7 @@ async function submitScore() {
         card.classList.add('scored');
         const badge = card.querySelector('.score-badge, .btn-score-sm');
         if (badge) {
-          badge.outerHTML = `<div class="score-badge done">${escapeHtml(data.avg)}</div>`;
+          badge.outerHTML = `<div class="score-badge done">${escapeHtml(data.total ?? data.avg)}</div>`;
         }
       }
       fetchLeaderboard();

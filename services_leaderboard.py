@@ -24,7 +24,8 @@ def judge_score(entry) -> Optional[float]:
         return float(entry)
     if not isinstance(entry, dict):
         return None
-    for key in ('total', 'final_score', 'score'):
+    # raw_total: the judge's marks added up (UPG-309); `total` is their average per criterion
+    for key in ('raw_total', 'total', 'final_score', 'score'):
         value = entry.get(key)
         if value in (None, ''):
             continue

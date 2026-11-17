@@ -1,0 +1,77 @@
+{% extends "base_classic.html" %}
+{#- The evaluators' marks before Submit (UPG-308): each team's score, the top N
+    and what to fix. Nothing is saved until Submit. -#}
+{% block title %}Check the evaluators' marks — {{ event.title }}{% endblock %}
+{% block page_title %}Check the evaluators' marks{% endblock %}
+{% block page_sub %}{{ event.title }} · round {{ round }} · {{ upload.file or 'uploaded file' }} · nothing is saved until you submit{% endblock %}
+{% block page_actions %}<a href="/spoc/hackathon/{{ event.id }}#evaluation" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Back without saving</a>{% endblock %}
+{% block extra_css %}
+<style>
+.hk-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:20px 22px;margin-bottom:18px;}
+.hk-card h2{font-size:14px;font-weight:700;color:var(--brand-ink,#1a2557);text-transform:uppercase;letter-spacing:.4px;margin:0 0 14px;}
+.hk-table{width:100%;font-size:13px;border-collapse:collapse;}
+.hk-table th{background:#f8fafc;text-align:left;padding:8px 10px;font-size:12px;color:#475569;}
+.hk-table td{padding:7px 10px;border-top:1px solid #f1f5f9;}
+.hk-go td{background:#f0fdf4;}
+.hk-note{font-size:12px;color:#64748b;}
+</style>
+{% endblock %}
+{% block content %}
+{% if p.fix %}
+<div class="alert alert-danger" role="alert" data-marks-fix>
+  <strong>Fix these in the file, then upload it again:</strong>
+  <ul class="mb-0 mt-1">{% for f in p.fix %}<li>{{ f }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+{% if p.missing %}
+<div class="alert alert-warning" data-marks-missing>
+  <strong>{{ p.missing | length }} team(s) submitted but aren't in the file</strong>, so they get no marks and don't go through:
+  {{ p.missing | map(attribute='team') | join(', ') }}.
+</div>
+{% endif %}
+{% if p.tie %}
+<div class="alert alert-warning" data-marks-tie>
+  <strong>Tie at the cut-off.</strong> {{ p.tie | length }} teams share {{ p.mark }} at place {{ p.n }}
+  ({{ p.tie | map(attribute='team') | join(', ') }}), so all of them go through: <strong>{{ p.go | length }}</strong> instead of {{ p.n }}.
+  To keep exactly {{ p.n }}, ask the evaluators to break the tie and upload the file again.
+</div>
+{% endif %}
+
+<section class="hk-card" aria-labelledby="sumHead">
+  <h2 id="sumHead">Summary</h2>
+  <p class="mb-2"><strong>{{ p.matched | length }}</strong> team(s) with marks · <strong>{{ p.go | length }}</strong> go to round {{ round + 1 }} · {{ p.teams }} team(s) in round {{ round }}.</p>
+  <form method="POST" action="/spoc/hackathon/{{ event.id }}/marks/preview" class="d-flex flex-wrap gap-2 align-items-end">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div><label class="form-label fw-semibold" for="mkN">Teams to the next round</label>
+      <input class="form-control" type="number" min="1" id="mkN" name="n" value="{{ p.n or 10 }}" style="width:100px"></div>
+    <button class="btn btn-outline-primary" type="submit">Show again</button>
+  </form>
+</section>
+
+<section class="hk-card" aria-labelledby="listHead">
+  <h2 id="listHead">Marks from the file ({{ p.matched | length }})</h2>
+  {% set through = p.go | map(attribute='reg_id') | list %}
+  <div class="table-responsive"><table class="hk-table" data-marks-table>
+    <thead><tr><th>Rank</th><th>Team code</th><th>Team</th><th>Score</th><th>Next round</th></tr></thead>
+    <tbody>
+    {% for r in p.matched %}
+      <tr class="{{ 'hk-go' if r.reg_id in through }}" data-marks-row="{{ r.code }}">
+        <td>{{ r.rank }}{% if r.tied %} <span class="se-badge se-badge--warning">tie</span>{% endif %}</td>
+        <td><code>{{ r.code }}</code></td><td><strong>{{ r.team }}</strong></td><td>{{ r.key }}</td>
+        <td>{% if r.reg_id in through %}<span class="text-success fw-semibold">Goes through</span>{% else %}<span class="text-muted">Out</span>{% endif %}</td>
+      </tr>
+    {% else %}<tr><td colspan="5" class="text-muted">No team matched.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</section>
+
+<form method="POST" action="/spoc/hackathon/{{ event.id }}/marks/submit" class="hk-card" data-marks-submit>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="upload_id" value="{{ upload.id }}">
+  <input type="hidden" name="n" value="{{ p.n }}">
+  <input type="hidden" name="expected_round" value="{{ round }}">
+  <p>Submit saves these marks as round {{ round }}'s scores, ends round {{ round }}, and sends the top {{ p.go | length }} to round {{ round + 1 }}. Every team gets a notice on its hackathon page and "Finalists announced" is posted; no email is sent. Judges then see only those {{ p.go | length }} teams. You can undo it until judges start scoring.</p>
+  <button class="btn btn-primary" type="submit" {% if not p.ok %}disabled{% endif %}>Submit the marks and start round {{ round + 1 }}</button>
+  {% if not p.ok %}<span class="hk-note ms-2">Fix the file first.</span>{% endif %}
+</form>
+{% endblock %}

@@ -78,6 +78,9 @@ def manage(event_id):
                            can_edit=_can(event, 'edit_event'), max_signatories=sigs.MAX_SIGNATORIES,
                            can_issue=_can(event, 'issue_certificates'), issue_problem=runs.ready_to_issue(event),
                            auto_issue=event.get('cert_auto_issue') is not False, runs=event_runs,
+                           cert_who=certs.who_gets(event), cert_whos=certs.WHO, cert_deliveries=certs.DELIVERY,
+                           cert_delivery=certs.delivery(event) or ('email' if certs.emails_certificates(event_id) else 'portal'),
+                           has_form=_has_form(event),
                            running=any(r['status'] in ('queued', 'running') for r in event_runs),
                            people=people, others=others, issued_count=len(issued),
                            corrections=changes.for_event(db, event_id),
@@ -110,6 +113,11 @@ def _sample_values(event):
 def _can(event, permission):
     from services_permission import can
     return can(session, permission, event, db=db)
+
+
+def _has_form(event):
+    import services_hackathon
+    return services_hackathon.has_form(event)
 
 
 def _back(event_id):
@@ -402,6 +410,24 @@ def auto_issue(event_id):
     log_action(db, "CERT_AUTO_ISSUE", f"{session.get('user_id')}: {'on' if on else 'off'} for event {event_id}")
     flash("Position certificates will be issued when results are published." if on else
           "Position certificates won't be issued automatically.", 'success')
+    return _back(event_id)
+
+
+@certificates_bp.route('/events/<event_id>/participation', methods=['POST'])
+@login_required
+def participation(event_id):
+    """Who gets the participation certificate, and the portal only or email too (UPG-310)."""
+    from utils import log_action
+    import services_certificates as certs
+    _event_or_abort(event_id, 'issue_certificates')
+    who = request.form.get('who', '')
+    how = request.form.get('delivery', '')
+    if who not in certs.WHO or how not in certs.DELIVERY:
+        flash("Choose who gets the certificate and how it reaches them.", 'danger')
+        return _back(event_id)
+    db.collection('events').document(event_id).update({'cert_who': who, 'cert_delivery': how})
+    log_action(db, "CERT_PARTICIPATION", f"{session.get('user_id')}: {who}, {how} for event {event_id}")
+    flash(f"Participation certificates: {certs.WHO[who].lower()}, {certs.DELIVERY[how].lower()}.", 'success')
     return _back(event_id)
 
 

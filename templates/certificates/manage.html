@@ -42,6 +42,25 @@
                 <i class="fas fa-award" aria-hidden="true"></i> Issue certificates</button>
         </form>
         {% if issue_problem %}<p class="small text-danger mt-2 mb-0" id="issue-problem">{{ issue_problem }}</p>{% endif %}
+        <form method="POST" action="/certificates/events/{{ event.id }}/participation" class="mt-3 row g-2 align-items-end" data-cert-participation>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="col-md-5">
+                <label class="form-label small" for="cert-who">Participation certificate goes to</label>
+                <select class="form-select form-select-sm" id="cert-who" name="who">
+                    {% for k, label in cert_whos.items() if k != 'submitted' or has_form or cert_who == k %}
+                    <option value="{{ k }}" {% if k == cert_who %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small" for="cert-delivery">Where they get it</label>
+                <select class="form-select form-select-sm" id="cert-delivery" name="delivery">
+                    {% for k, label in cert_deliveries.items() %}
+                    <option value="{{ k }}" {% if k == cert_delivery %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3"><button type="submit" class="btn btn-sm btn-outline-primary">Save</button></div>
+            <p class="small text-muted mb-0">Each person downloads theirs from My certificates{% if has_form %} and the hackathon page{% endif %}, and can share it on LinkedIn.</p>
+        </form>
         <form method="POST" action="/certificates/events/{{ event.id }}/auto" class="mt-3 d-flex gap-2 align-items-center flex-wrap">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="auto" value="{{ 'off' if auto_issue else 'on' }}">

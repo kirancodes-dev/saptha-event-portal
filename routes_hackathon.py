@@ -401,7 +401,7 @@ def _judging_summary(event_id, event):
     """For a submission round scored by judges: the judges' criteria and how
     far the judges are (UPG-298); None otherwise."""
     ev = services_hackathon_eval
-    if ev.mode(event) != ev.JUDGES:
+    if ev.mode(event) != ev.JUDGES and not ev.shortlist(event):   # the finale is always judged (UPG-309)
         return None
     from routes_judge import normalize_criteria
     from services_rounds import round_teams
@@ -412,10 +412,13 @@ def _judging_summary(event_id, event):
     judges = {str(j).strip().lower() for j in event.get('judges') or [] if str(j).strip()}
     judges |= {str(s.get('email') or '').strip().lower() for s in event.get('staff') or []
                if isinstance(s, dict) and s.get('role') == 'Judge' and s.get('email')}
-    return {'criteria': normalize_criteria(event.get('judging_criteria')),
-            'has_criteria': bool(event.get('judging_criteria')),
+    criteria = normalize_criteria(event.get('judging_criteria'))
+    unscored = sorted((services_hackathon_eval._team_name(t['reg']) for t in teams
+                       if not any(isinstance(v, dict) for v in (t['reg'].get('scores') or {}).values())), key=str.lower)
+    return {'criteria': criteria, 'criteria_total': sum(int(c['max_score']) for c in criteria),
+            'has_criteria': bool(event.get('judging_criteria')), 'unscored': unscored,
             'teams': len(teams), 'scored': scored, 'judges': len(judges),
-            'open_hall': bool(event.get('open_hall_mode')),
+            'open_hall': bool(event.get('open_hall_mode')), 'finale_open': ev.finale_open(event),
             'can_edit': services_permission.can(session, 'edit_event', event, db=db)}
 
 
@@ -547,6 +550,22 @@ def evaluation_mode(event_id):
     return _back(event_id, 'evaluation')
 
 
+@hackathon_bp.route('/spoc/hackathon/<event_id>/finale_judges', methods=['POST'])
+@login_required
+def finale_judges(event_id):
+    """Every judge sees every finalist, or only the checked-in teams assigned to them (UPG-309)."""
+    event = _managed(event_id)
+    ev = services_hackathon_eval
+    on = request.form.get('open') == '1'
+    if on != ev.finale_open(event):
+        ev.set_finale_open(db, event_id, event, on, by=_me())
+        _audit('HACKATHON_FINALE_JUDGES', f"{_me()} set the finale of {event_id} to "
+                                          f"{'every judge, every finalist' if on else 'assigned, checked-in teams'}")
+    flash("Every judge now sees every finalist and scores any of them." if on else
+          "Judges now see only the checked-in finalists assigned to them.", 'success')
+    return _back(event_id, 'ranking')
+
+
 # ── After the deadline: AI scoring (UPG-192) ────────────────────────────────
 
 def _wants_json():
@@ -656,6 +675,71 @@ def shortlist_undo(event_id):
         _audit('HACKATHON_SHORTLIST_UNDONE', f"{_me()} undid the shortlist of {event_id}")
     flash(message, 'success' if ok else 'danger')
     return _back(event_id, 'ranking')
+
+
+# ── Round marked outside the portal (UPG-308) ───────────────────────────────
+
+XLSX_MIMETYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+
+
+@hackathon_bp.route('/spoc/hackathon/<event_id>/evaluators.<kind>')
+@login_required
+def evaluators_file(event_id, kind):
+    """The submissions for the outside evaluators: team code, an empty score, the answers."""
+    import re
+    import services_export
+    import services_hackathon_marks as marks
+    event = _managed(event_id)
+    if kind not in ('xlsx', 'csv'):
+        abort(404)
+    columns, rows = marks.evaluator_table(db, event_id, event)
+    name = (re.sub(r'[^A-Za-z0-9_-]+', '_', str(event.get('title') or 'Hackathon')).strip('_') or 'Hackathon')
+    _audit('HACKATHON_EVALUATORS_FILE', f"{_me()} downloaded the evaluators' file of {event_id} ({len(rows)} teams)")
+    if kind == 'xlsx':
+        return Response(services_export.to_xlsx([('Submissions', columns, rows)]), mimetype=XLSX_MIMETYPE,
+                        headers={'Content-Disposition': f'attachment; filename={name}_for_evaluators.xlsx'})
+    return Response(services_export.to_csv(rows, columns), mimetype='text/csv',
+                    headers={'Content-Disposition': f'attachment; filename={name}_for_evaluators.csv'})
+
+
+@hackathon_bp.route('/spoc/hackathon/<event_id>/marks/preview', methods=['POST'])
+@login_required
+def marks_preview(event_id):
+    """Read the evaluators' file (or the one kept) and show what Submit would do."""
+    import services_hackathon_marks as marks
+    event = _managed(event_id)
+    upload = request.files.get('file')
+    try:
+        if upload and upload.filename:
+            data = upload.read(marks.MAX_BYTES + 1)
+            marks.keep(db, event_id, event, marks.read(data, upload.filename), upload.filename, _me())
+        elif not marks.kept(event):
+            raise marks.MarksError("Choose the evaluators' file to upload.")
+        elif marks._refusal(event):
+            raise marks.MarksError(marks._refusal(event))
+    except marks.MarksError as exc:
+        flash(str(exc), 'danger')
+        return _back(event_id, 'evaluation')
+    upload = marks.kept(event)
+    n = request.form.get('n') or marks.DEFAULT_N
+    from services_rounds import round_info
+    return render_template('hackathon/marks.html', event=event, upload=upload,
+                           p=marks.check(db, event_id, event, upload['lines'], n),
+                           round=round_info(event)['current'])
+
+
+@hackathon_bp.route('/spoc/hackathon/<event_id>/marks/submit', methods=['POST'])
+@login_required
+def marks_submit(event_id):
+    """Save the marks and send the top N to the next round, in one step."""
+    import services_hackathon_marks as marks
+    event = _managed(event_id)
+    ok, message = marks.submit(db, event_id, event, request.form.get('upload_id'), request.form.get('n'),
+                               request.form.get('expected_round'), _me())
+    if ok:
+        _audit('HACKATHON_MARKS_SUBMITTED', f"{_me()} submitted the evaluators' marks of {event_id}: {message}")
+    flash(message, 'success' if ok else 'danger')
+    return _back(event_id, 'ranking' if ok else 'evaluation')
 
 
 # ── Results (UPG-194) ───────────────────────────────────────────────────────

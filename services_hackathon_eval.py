@@ -183,12 +183,12 @@ def set_criteria(db, event_id: str, event: dict, labels, descriptions=None, mark
 # way the SPOC's own score overrides, and the SPOC picks who goes through.
 # Rounds after the shortlist are always scored by judges.
 
-AI, JUDGES = 'ai', 'judges'
-MODES = {AI: 'AI evaluation', JUDGES: 'Judges'}
+AI, JUDGES, FILE = 'ai', 'judges', 'file'
+MODES = {AI: 'AI evaluation', JUDGES: 'Judges', FILE: 'Outside evaluators (upload marks)'}   # FILE: UPG-308
 
 
 def mode(event: dict) -> str:
-    """'ai' (the default, as before UPG-298) or 'judges'."""
+    """'ai' (the default, as before UPG-298), 'judges' or 'file' (UPG-308)."""
     value = str(hk.data(event).get('evaluation_mode') or '').strip().lower()
     return value if value in MODES else AI
 
@@ -210,7 +210,7 @@ def set_mode(db, event_id: str, event: dict, new_mode: str, by: str = '') -> tup
     has started, the shortlist is confirmed or results are published."""
     new_mode = str(new_mode or '').strip().lower()
     if new_mode not in MODES:
-        return False, "Choose AI evaluation or judges."
+        return False, "Choose AI evaluation or judges. Or outside evaluators, who send marks in a file."
     current = mode(event)
     if new_mode == current:
         return True, f"This round is already scored by {MODES[current].lower()}."
@@ -222,11 +222,16 @@ def set_mode(db, event_id: str, event: dict, new_mode: str, by: str = '') -> tup
         return False, "AI scoring has started for this round, so it stays with AI evaluation."
     if current == JUDGES and _judges_scored_any(db, event_id, event):
         return False, "Judges have started scoring this round, so it stays with the judges."
+    if current == FILE and any(isinstance(s.get('file_score'), dict) for s in hk.submissions(db, event_id)):
+        return False, "The evaluators' marks are saved for this round, so it stays with them."
     h = hk.data(event)
     h['evaluation_mode'] = new_mode
     h['evaluation_mode_changed'] = {'at': _now_iso(), 'by': by, 'from': current}
     hk._save(db, event_id, h)
     event['hackathon'] = h
+    if new_mode == FILE:
+        return True, ("Outside evaluators mark this round. After the deadline download the file for the "
+                      "evaluators, then upload their team codes and scores.")
     if new_mode == JUDGES:
         return True, ("Judges score this round. After the deadline each judge sees every team that "
                       "submitted (or the teams assigned to them) and scores it with the judges' criteria.")
@@ -510,7 +515,9 @@ def ranking(db, event_id: str, event: dict, sort: str = 'rank') -> list:
     submission has none. sort: 'rank' (by key) or 'ai' (by the round's score)."""
     from services_rounds import round_teams
     subs = {str(s.get('registration_id')): s for s in hk.submissions(db, event_id)}
-    judged = mode(event) == JUDGES
+    finale = bool(shortlist(event))     # after the shortlist only the judges count (UPG-309)
+    judged = mode(event) == JUDGES or finale
+    filed = mode(event) == FILE and not finale   # the evaluators' marks decide; no SPOC override (UPG-308)
     out_of = _judges_max(event) if judged else 100.0
     rows: list[dict] = []
     for t in round_teams(db, event_id, event):
@@ -519,13 +526,16 @@ def ranking(db, event_id: str, event: dict, sort: str = 'rank') -> list:
         review = (sub or {}).get('spoc_review') or {}
         ai_total = ev.get('total') if ev.get('status') == 'scored' else None
         judges, judges_n = judges_percent(t['reg'], out_of) if judged else (None, 0)
-        own = judges if judged else ai_total
-        mine = review.get('score') if isinstance(review.get('score'), (int, float)) else None
+        marks = (sub or {}).get('file_score') if isinstance((sub or {}).get('file_score'), dict) else {}
+        file_total = marks.get('score') if isinstance(marks.get('score'), (int, float)) else None
+        own = judges if judged else file_total if filed else ai_total
+        mine = (review.get('score') if isinstance(review.get('score'), (int, float)) and not (filed or finale)
+                else None)
         rows.append({'reg_id': t['id'], 'reg': t['reg'], 'team': _team_name(t['reg']),
                      'lead': t['reg'].get('lead_name') or '', 'sub': sub, 'sub_id': (sub or {}).get('id', ''),
                      'submitted': bool(sub), 'ai': ev, 'ai_total': ai_total, 'review': review,
                      'judged': judged, 'judges': judges, 'judges_n': judges_n, 'round_score': own,
-                     'spoc_score': mine, 'key': (mine if mine is not None else own) if sub else None,
+                     'filed': filed, 'file_score': file_total, 'spoc_score': mine, 'key': (mine if mine is not None else own) if sub else None,
                      'rank': None, 'tied': False})
     keyed = sorted((r for r in rows if r['key'] is not None), key=lambda r: -r['key'])
     for i, r in enumerate(keyed):
@@ -555,6 +565,21 @@ def set_review(db, event_id: str, event: dict, reg_id: str, score, note: str, by
     review = {'score': value, 'note': ' '.join(str(note or '').split())[:500], 'by': by, 'at': _now_iso()}
     db.collection('project_submissions').document(row['sub_id']).set({'spoc_review': review}, merge=True)
     return True, f"Saved for {row['team']}."
+
+
+def finale_open(event: dict) -> bool:
+    """In the round after the shortlist, every judge sees and scores every
+    finalist, none assigned and none checked in (UPG-309). On by itself when
+    the evaluators' marks send teams through; the SPOC can switch it."""
+    return bool(hk.data(event).get('finale_open'))
+
+
+def set_finale_open(db, event_id: str, event: dict, on: bool, by: str = '') -> None:
+    h = hk.data(event)
+    h['finale_open'] = bool(on)
+    h['finale_open_by'] = by
+    hk._save(db, event_id, h)
+    event['hackathon'] = h
 
 
 def shortlist(event: dict) -> dict:

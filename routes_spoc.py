@@ -1856,7 +1856,8 @@ def setup_rooms(event_id):
         flash("Add at least one room with a capacity of 1 or more.", "warning")
         return redirect(f'/spoc/room_allocation/{event_id}')
     regs = _room_regs(event_id)
-    services_rooms.save_rooms(db, event_id, event, regs, rooms, by=session.get('user_id', ''))
+    services_rooms.save_rooms(db, event_id, event, regs, rooms, by=session.get('user_id', ''),
+                              unit=request.form.get('per'))   # a seat is a person or a team (UPG-312)
     if request.form.get('action') == 'allocate':
         services_rooms.fill(db, event_id, event, regs, by=session.get('user_id', ''))
         log_action(db, "ROOMS_DRAFTED", f"SPOC {session.get('user_id')} saved {len(rooms)} rooms and "
@@ -1904,11 +1905,16 @@ def reassign_room(event_id, reg_id):
     if not reg_doc.exists or (reg_doc.to_dict() or {}).get('event_id') != event_id:
         abort(404)  # only this event's registrations
     import services_rooms
-    room = str((request.get_json(silent=True) or {}).get('room') or '').strip()
+    body = request.get_json(silent=True) or {}
+    room = str(body.get('room') or '').strip()
     regs = _room_regs(event_id)
-    services_rooms.move(db, event_id, event, regs, reg_id, room, by=session.get('user_id', ''))
+    try:   # a room typed by hand joins the list if it's new (UPG-313)
+        p = services_rooms.move(db, event_id, event, regs, reg_id, room, by=session.get('user_id', ''),
+                                typed=bool(body.get('typed')))
+    except services_rooms.RoomError as exc:
+        return jsonify(status='error', message=str(exc)), 400
     # The draft only: teams see nothing until Allocate final (UPG-306)
-    return jsonify(dict(services_rooms.counts(event, regs), status='ok', room=room))
+    return jsonify(dict(services_rooms.counts(event, regs), status='ok', room=p['room'], added=p['added'] or ''))
 
 
 @spoc_bp.route('/room_allocation/<event_id>/review')

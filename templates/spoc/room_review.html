@@ -2,7 +2,7 @@
 {#- The final check before "Allocate final" (UPG-306). -#}
 {% block title %}Final check: rooms — {{ event.title }}{% endblock %}
 {% block page_title %}Rooms: final check{% endblock %}
-{% block page_sub %}{{ event.title }} · {{ summary.allocated }} of {{ summary.teams | length }} team(s) in a room · {{ summary.people }} people · {{ summary.seats }} seats{% endblock %}
+{% block page_sub %}{{ event.title }} · {{ summary.allocated }} of {{ summary.teams | length }} team(s) in a room · {{ summary.people }} people · {{ summary.seats }} seats{% if summary.per == 'team' %} (one per team){% endif %}{% endblock %}
 {% block page_actions %}<a href="/spoc/room_allocation/{{ event.id }}" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Back to the draft</a>{% endblock %}
 {% block extra_css %}
 <style>
@@ -48,7 +48,7 @@
 <div class="card" data-review-room="{{ r.name }}">
   <div class="room-head">
     <div class="section-title mb-0"><i class="fas fa-door-open me-1"></i>{{ r.name }}</div>
-    <div class="{{ 'over' if r.over }}">{{ r.people }} of {{ r.capacity }} seats · {{ r.teams | length }} team(s){% if r.over %} · over by {{ r.people - r.capacity }}{% elif r.left %} · {{ r.left }} free{% endif %}</div>
+    <div class="{{ 'over' if r.over }}">{{ r.used }} of {{ r.capacity }} seats · {{ r.teams | length }} team(s){% if summary.per == 'team' %} · {{ r.people }} people{% endif %}{% if r.over %} · over by {{ r.used - r.capacity }}{% elif r.left %} · {{ r.left }} free{% endif %}</div>
   </div>
   {% if r.teams %}
   <table class="list">

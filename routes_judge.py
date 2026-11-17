@@ -104,6 +104,19 @@ def submission_round(event: dict) -> dict | None:
     return {'open': services_hackathon.window(event) != 'closed'}
 
 
+def finale_round(event: dict) -> bool:
+    """A hackathon's round after its shortlist, set to "every judge sees every
+    finalist" (UPG-309): any judge scores any finalist, none assigned and none
+    checked in. Without that setting the finale is judged as any round."""
+    import services_hackathon
+    import services_hackathon_eval
+    from services_rounds import round_info
+    if not services_hackathon.has_form(event) or not services_hackathon_eval.finale_open(event):
+        return False
+    sl = services_hackathon_eval.shortlist(event)
+    return bool(sl) and round_info(event)['current'] == int(sl.get('to_round') or 0)
+
+
 def judge_teams(event_id: str, event: dict, judge_email: str) -> list:
     """The registrations this judge scores now, as (id, data) pairs.
     Usually: checked in, still in, the current round and (unless open hall)
@@ -111,6 +124,9 @@ def judge_teams(event_id: str, event: dict, judge_email: str) -> list:
     the deadline, every team still in that submitted; a team assigned to a
     judge is that judge's only."""
     cur_round = event.get('active_round', 1)
+    if finale_round(event):
+        from services_rounds import round_teams
+        return [(t['id'], t['reg']) for t in round_teams(db, event_id, event)]
     sub_round = submission_round(event)
     if sub_round is not None:
         if sub_round['open']:
@@ -183,7 +199,7 @@ def dashboard():
             # Count scored / total teams for progress bar: the teams this
             # judge scores now (UPG-298: a judged submission round counts
             # the teams that submitted)
-            if submission_round(data) is not None:
+            if submission_round(data) is not None or finale_round(data):
                 present = [d for _, d in judge_teams(e.id, data, email)]
             else:
                 regs    = [r.to_dict() or {} for r in db.collection('registrations')
@@ -307,8 +323,12 @@ def submit_score(reg_id):
             score_details[c_name] = val
             total_score += val
 
+        # A judge's score is the criteria marks added up (UPG-309): 35 + 25 + 20 is 80, not 26.7.
+        # It's stored as raw_total, which every reader takes first; `total` keeps the
+        # average per criterion it always held.
         avg_score = round(total_score / len(norm_criteria), 1) if norm_criteria else total_score
         avg_score = int(avg_score) if avg_score == int(avg_score) else avg_score
+        out_of = sum(c['max_score'] for c in norm_criteria) or 100
         judge_email = session.get('user_id')
         # A JSON score may leave out its remarks (UPG-04: None.strip() refused every such score)
         remarks     = str((json_data.get('remarks') if json_data else request.form.get('remarks', '')) or '').strip()
@@ -330,9 +350,10 @@ def submit_score(reg_id):
                    f"Judge {judge_email} scored {reg_id} — avg {avg_score}")
 
         if request.is_json or 'json' in request.headers.get('Accept', ''):
-            return jsonify({'status': 'ok', 'avg': avg_score, 'total': avg_score, 'scores': score_details, 'message': f"Score saved! Average: {avg_score}"}), 200
+            return jsonify({'status': 'ok', 'avg': avg_score, 'total': total_score, 'out_of': out_of,
+                            'scores': score_details, 'message': f"Score saved: {total_score} / {out_of}"}), 200
 
-        flash(f"Score saved! Average: {avg_score}", "success")
+        flash(f"Score saved: {total_score} / {out_of}", "success")
         return redirect(f'/judge/event/{event_id}')
 
     except Exception as exc:
@@ -400,8 +421,11 @@ def score_inline(reg_id):
             score_details[c_name] = val
             total += val
 
+        # The judge's score is the marks added up, stored as raw_total (UPG-309);
+        # `total` keeps the average per criterion it always held
         avg = round(total / len(norm_criteria), 1) if norm_criteria else total
         avg = int(avg) if avg == int(avg) else avg
+        out_of = sum(c['max_score'] for c in norm_criteria) or 100
 
         judge_email = session.get('user_id')
         reg_ref.set({
@@ -419,7 +443,8 @@ def score_inline(reg_id):
 
         log_action(db, "SCORE_INLINE",
                    f"Judge {judge_email} scored {reg_id} (AJAX) — avg {avg}")
-        return jsonify({'status': 'ok', 'avg': avg, 'message': f'Score saved — avg {avg}'})
+        return jsonify({'status': 'ok', 'avg': avg, 'total': total, 'out_of': out_of,
+                        'message': f'Score saved: {total} / {out_of}'})
 
     except Exception as exc:
         if getattr(exc, 'code', None) == 403:

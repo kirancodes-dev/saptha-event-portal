@@ -2,8 +2,9 @@
 services_rooms.py — rooms for an event: a draft only the SPOC sees, a final
 check, then "Allocate final" (UPG-306).
 
-1. Rooms: a room number or name and a capacity in people (a team of 4 takes 4
-   seats).
+1. Rooms: a room number or name and a capacity in seats. A seat is a person
+   (a team of 4 takes 4 seats) or, if the SPOC chooses, a whole team (a team
+   of 4 takes 1 seat; UPG-312).
 2. Draft: "Auto-fill" places teams in registration order, a team never split,
    into the first room with seats for the whole team; cancelled teams are left
    out. The SPOC moves teams by hand. The draft is saved on the event only.
@@ -17,6 +18,7 @@ check, then "Allocate final" (UPG-306).
 
 Everything lives in the event's `room_plan`:
     rooms       [{name, capacity}]
+    per         'person' (default) or 'team': what one seat is (UPG-312)
     draft       {reg_id: room}          draft_at, draft_by
     final       {reg_id: room}          final_at, final_by, email, website
     told        {reg_id: {room, email, website}}   what each team was told
@@ -29,6 +31,7 @@ import services_registration_filters as filters
 
 PLAN = 'room_plan'
 MAX_ROOMS = 200
+PER_PERSON, PER_TEAM = 'person', 'team'
 
 
 class RoomError(Exception):
@@ -47,6 +50,19 @@ def _rid(reg) -> str:
 def size(reg: dict) -> int:
     """Seats a team takes: everyone on it, the lead included."""
     return filters.size(reg)
+
+
+def per(p_or_event) -> str:
+    """What one seat is for this plan (or event): a person, or a whole team."""
+    d = p_or_event or {}
+    if PLAN in d:
+        d = d.get(PLAN) or {}
+    return PER_TEAM if d.get('per') == PER_TEAM else PER_PERSON
+
+
+def seats(reg: dict, unit: str = PER_PERSON) -> int:
+    """Seats a team takes: 1 when a seat is a team, else everyone on it."""
+    return 1 if unit == PER_TEAM else size(reg)
 
 
 def active(regs) -> list:
@@ -96,12 +112,12 @@ def _save(db, event_id: str, event: dict, p: dict) -> None:
     event['rooms'] = keep.get('rooms') or []
 
 
-def auto_fill(rooms, regs) -> dict:
+def auto_fill(rooms, regs, unit: str = PER_PERSON) -> dict:
     """{reg_id: room}: registration order, each team whole in the first room with seats for all of it."""
     left = [[r['name'], int(r.get('capacity') or 0)] for r in rooms]
     draft = {}
     for reg in active(regs):
-        need = size(reg)
+        need = seats(reg, unit)
         for slot in left:
             if slot[1] >= need:
                 draft[_rid(reg)] = slot[0]
@@ -110,9 +126,11 @@ def auto_fill(rooms, regs) -> dict:
     return draft
 
 
-def save_rooms(db, event_id, event, regs, rooms, by='') -> dict:
+def save_rooms(db, event_id, event, regs, rooms, by='', unit=None) -> dict:
     p = plan(event, regs)
     p['rooms'] = rooms
+    if unit in (PER_PERSON, PER_TEAM):
+        p['per'] = unit
     _save(db, event_id, event, p)
     return p
 
@@ -122,23 +140,38 @@ def fill(db, event_id, event, regs, by='') -> dict:
     p = plan(event, regs)
     if not p['rooms']:
         raise RoomError("Add at least one room with its capacity first.")
-    p.update(draft=auto_fill(p['rooms'], regs), draft_at=_now(), draft_by=by)
+    p.update(draft=auto_fill(p['rooms'], regs, per(p)), draft_at=_now(), draft_by=by)
     _save(db, event_id, event, p)
     return p
 
 
-def move(db, event_id, event, regs, reg_id, room, by='') -> dict:
-    """Put one team in a room ('' for no room), in the draft only."""
+def move(db, event_id, event, regs, reg_id, room, by='', typed=False) -> dict:
+    """Put one team in a room ('' for no room), in the draft only. A room the
+    SPOC typed (UPG-313) is the listed room of that name, whatever its capitals,
+    or else joins the list with seats for this team."""
     p = plan(event, regs)
     room = str(room or '').strip()[:100]
+    p.pop('added', None)
+    if room and typed:
+        known = {r['name'].lower(): r['name'] for r in p['rooms']}
+        if room.lower() in known:
+            room = known[room.lower()]
+        elif len(p['rooms']) >= MAX_ROOMS:
+            raise RoomError(f"You have {MAX_ROOMS} rooms already.")
+        else:
+            reg = next((r for r in regs or [] if _rid(r) == str(reg_id)), {})
+            p['rooms'] = [*p['rooms'], {'name': room, 'capacity': max(1, seats(reg, per(p)) if reg else 1),
+                                        'typed': True}]
+            p['added'] = room
     if room:
         p['draft'][str(reg_id)] = room
     else:
         p['draft'].pop(str(reg_id), None)
     p.setdefault('draft_at', _now())
     p['draft_by'] = by or p.get('draft_by', '')
+    added = p.pop('added', None)
     _save(db, event_id, event, p)
-    return p
+    return dict(p, room=room, added=added)
 
 
 def summary(event, regs, p=None) -> dict:
@@ -161,13 +194,16 @@ def summary(event, regs, p=None) -> dict:
             unknown.append((reg, room))
         if room and str(reg.get('status') or '').strip().lower() == 'pending_payment':
             pending.append(reg)
+    unit = per(p)
     rooms = []
     for r in p['rooms']:
         people = sum(size(t) for t in by_room[r['name']])
+        used = sum(seats(t, unit) for t in by_room[r['name']])
         cap = int(r.get('capacity') or 0)
         rooms.append({'name': r['name'], 'capacity': cap, 'teams': by_room[r['name']], 'people': people,
-                      'left': cap - people, 'over': people > cap})
-    problems = [f"{r['name']} has {r['people']} people for {r['capacity']} seats." for r in rooms if r['over']]
+                      'used': used, 'left': cap - used, 'over': used > cap})
+    what = 'teams' if unit == PER_TEAM else 'people'
+    problems = [f"{r['name']} has {r['used']} {what} for {r['capacity']} seats." for r in rooms if r['over']]
     for missing in sorted({room for _, room in unknown}):
         problems.append(f"{missing} isn't in your room list: add it, or move its teams.")
     notes = []
@@ -183,13 +219,13 @@ def summary(event, regs, p=None) -> dict:
             'problems': problems, 'notes': notes, 'changes': changes, 'teams': teams,
             'allocated': sum(1 for t in teams if p['draft'].get(_rid(t))),
             'people': sum(size(t) for t in teams if p['draft'].get(_rid(t))),
-            'seats': sum(int(r.get('capacity') or 0) for r in p['rooms']), 'plan': p}
+            'seats': sum(int(r.get('capacity') or 0) for r in p['rooms']), 'per': unit, 'plan': p}
 
 
 def counts(event, regs) -> dict:
     """What the page's room cards show after a change (for the page script)."""
     s = summary(event, regs)
-    return {'rooms': [{'name': r['name'], 'people': r['people'], 'capacity': r['capacity'],
+    return {'rooms': [{'name': r['name'], 'people': r['people'], 'used': r['used'], 'capacity': r['capacity'],
                        'teams': len(r['teams']), 'over': r['over']} for r in s['rooms']],
             'unallocated': len(s['unallocated']), 'changes': len(s['changes'])}
 

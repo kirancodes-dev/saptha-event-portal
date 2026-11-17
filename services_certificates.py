@@ -117,6 +117,45 @@ def attended_enough(reg: dict, event: dict, member: Optional[dict] = None) -> bo
     return attended * 100 >= min_attendance(event) * days
 
 
+# ── Who gets the participation certificate, and how (UPG-310) ───────────────
+# `cert_who`: present (checked in, the default), submitted (every member of a
+# team that submitted, hackathons), registered (everyone not cancelled).
+# `cert_delivery`: portal (no email) or email; unset follows the event's
+# email mode, as before.
+WHO = {'present': 'Checked in', 'submitted': 'Every member of a team that submitted',
+       'registered': 'Everyone registered (not cancelled)'}
+DELIVERY = {'portal': 'In the portal only', 'email': 'In the portal and by email'}
+
+
+def who_gets(event: dict) -> str:
+    w = str((event or {}).get('cert_who') or '').strip().lower()
+    return w if w in WHO else 'present'
+
+
+def delivery(event: dict) -> str:
+    """'portal', 'email', or '' (never chosen: the event's email mode decides)."""
+    d = str((event or {}).get('cert_delivery') or '').strip().lower()
+    return d if d in DELIVERY else ''
+
+
+def _submitted_regs(db, event_id: str, event: dict) -> set:
+    import services_hackathon
+    if not services_hackathon.has_form(event):
+        return set()
+    # the registration as the submission names it, and as the database layer keys it
+    return {str(s.get(k)) for s in services_hackathon.submissions(db, event_id)
+            for k in ('registration_id', 'reg_id') if s.get(k)}
+
+
+def gets_participation(reg: dict, event: dict, member: Optional[dict], reg_id: str, submitted: set) -> bool:
+    w = who_gets(event)
+    if w == 'registered':
+        return True                     # _active already left out the cancelled
+    if w == 'submitted':
+        return str(reg_id) in submitted
+    return attended_enough(reg, event, member)
+
+
 # ── Who gets which certificate ──────────────────────────────────────────────
 
 def attendance_type(event: dict) -> str:
@@ -233,6 +272,7 @@ def recipients(db, event_id: str, event: Optional[dict] = None) -> List[dict]:
               'points': float(event.get('activity_points') or 0) or None}
 
     regs = [(d.id, d.to_dict() or {}) for d in db.collection('registrations').where('event_id', '==', event_id).stream()]
+    submitted = _submitted_regs(db, event_id, event) if who_gets(event) == 'submitted' else set()
     for reg_id, reg in regs:
         if not _active(reg):
             continue
@@ -243,7 +283,7 @@ def recipients(db, event_id: str, event: Optional[dict] = None) -> List[dict]:
                       'designation': (reg.get('designation') if member is None else member.get('designation')) or '',
                       'institution': (reg.get('institution') if member is None else member.get('institution')) or '',
                       'team': reg.get('team_name') if reg.get('team_name') not in (None, '', 'Individual') else ''}
-            if attended_enough(reg, event, member):
+            if gets_participation(reg, event, member, reg_id, submitted):
                 out.append(dict(common, cert_type=base_type, **extras))
             if place:
                 kind = 'winner' if place == 1 else 'runner_up' if place == 2 else 'position'
@@ -662,12 +702,28 @@ def download_url(cert: dict) -> str:
     return f"{_base_url().rstrip('/')}/certificates/download/{download_token(cert)}"
 
 
+def emails_certificates(event_id, db=None) -> bool:
+    """Is an issued certificate emailed? The SPOC's choice (UPG-310), else the
+    event's email mode: a portal-only event keeps it in the portal (UPG-195)."""
+    import services_hackathon
+    if db is None:
+        from models import db
+    try:
+        doc = db.collection('events').document(str(event_id)).get()
+        event = (doc.to_dict() or {}) if doc.exists else {}
+    except Exception:
+        event = {}
+    chosen = delivery(event)
+    if chosen:
+        return chosen == 'email'
+    return services_hackathon.email_allowed(event, 'certificate') if event else True
+
+
 def deliver(cert: dict) -> None:
     """Queue the certificate's email (sent once; the outbox retries a failure)."""
     if not cert.get('email'):
         return
-    import services_hackathon   # a portal-only event: the certificate is in the portal (UPG-195)
-    if not services_hackathon.email_allowed_for(cert.get('event_id'), 'certificate'):
+    if not emails_certificates(cert.get('event_id')):
         return
     try:
         from tasks.email_tasks import send_certificate_email

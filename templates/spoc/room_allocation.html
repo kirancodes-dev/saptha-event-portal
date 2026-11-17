@@ -60,7 +60,7 @@ h1,h2,h3,h4,h5,h6{font-family: var(--font-heading);}
 
 {# ── Step 1: rooms ── #}
 <div class="card">
-  <div class="section-title"><span class="step-no">1</span>Rooms and capacity (people)</div>
+  <div class="section-title"><span class="step-no">1</span>Rooms and capacity ({{ 'teams' if summary.per == 'team' else 'people' }})</div>
   <form method="POST" action="/spoc/setup_rooms/{{ event.id }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div id="roomRows">
@@ -75,7 +75,12 @@ h1,h2,h3,h4,h5,h6{font-family: var(--font-heading);}
         <input aria-label="Capacity (people)" type="number" name="capacity[]" min="0" class="form-control" placeholder="Seats">
       </div>
     </div>
-    <p style="font-size:12px;color:#64748b;margin:4px 0 12px;">Capacity counts people: a team of 4 takes 4 seats. Clear a row's name to remove the room.</p>
+    <fieldset class="mt-2 mb-1" data-room-per>
+      <legend style="font-size:13px;font-weight:600;margin-bottom:4px;">One seat is</legend>
+      <label class="me-3"><input type="radio" name="per" value="person" {% if summary.per != 'team' %}checked{% endif %}> A person: a team of 4 takes 4 seats</label>
+      <label><input type="radio" name="per" value="team" {% if summary.per == 'team' %}checked{% endif %}> A whole team: a team of 4 takes 1 seat (a table, a bench)</label>
+    </fieldset>
+    <p style="font-size:12px;color:#64748b;margin:4px 0 12px;">{% if summary.per == 'team' %}Capacity counts teams: each team takes 1 seat, whatever its size.{% else %}Capacity counts people: a team of 4 takes 4 seats.{% endif %} Clear a row's name to remove the room.</p>
     <div class="d-flex flex-wrap gap-2">
       <button type="button" class="btn-action btn-outline" data-h-click="spoc/room_allocation:7"><i class="fas fa-plus"></i> Another room</button>
       <button type="submit" name="action" value="save" class="btn-action btn-blue"><i class="fas fa-save"></i> Save rooms</button>
@@ -99,7 +104,7 @@ h1,h2,h3,h4,h5,h6{font-family: var(--font-heading);}
     {% for r in summary.rooms %}
     <div class="room-card{% if r.over %} over{% endif %}" data-room-card="{{ r.name }}">
       <div class="name"><i class="fas fa-door-open me-1"></i>{{ r.name }}</div>
-      <div class="fill"><span data-room-people>{{ r.people }}</span> of {{ r.capacity }} seats · <span data-room-teams>{{ r.teams | length }}</span> team(s)</div>
+      <div class="fill"><span data-room-people>{{ r.used }}</span> of {{ r.capacity }} seats · <span data-room-teams>{{ r.teams | length }}</span> team(s)</div>
     </div>
     {% endfor %}
     <div class="room-card">
@@ -145,6 +150,7 @@ h1,h2,h3,h4,h5,h6{font-family: var(--font-heading);}
               {% if draft_room and draft_room not in rooms | map(attribute='name') | list %}
               <option value="{{ draft_room }}" selected>{{ draft_room }} (not in your list)</option>
               {% endif %}
+              <option value="__type__" data-room-type>+ Type a room no.…</option>
             </select>
           </td>
           <td>{% if plan.final.get(reg.id) %}<span class="final-chip"><i class="fas fa-door-open"></i> {{ plan.final.get(reg.id) }}</span>{% else %}<span style="color:#94a3b8;font-size:12px;">—</span>{% endif %}</td>

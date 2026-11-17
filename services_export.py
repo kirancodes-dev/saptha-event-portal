@@ -14,7 +14,8 @@ from collections import Counter, defaultdict
 import services_entry
 
 # One row per registration; a team's lead, then its other members
-COLUMNS = ['Ticket ID', 'Lead Name', 'Lead USN', 'Department', 'Year', 'Lead Email', 'Lead Phone', 'Team', 'Members',
+COLUMNS = ['Ticket ID', 'Lead Name', 'Lead USN', 'Department', 'Year', 'Lead Email', 'Lead Phone', 'Team',
+           'Team code', 'Members',   # the 6-character code teams join with; outside evaluators match on it (UPG-308)
            'Attendance', 'Check-in Time', 'Payment Status', 'Amount (Rs)', 'Score', 'Rank',
            'Certificate ID', 'Registered At', 'Participant Type', 'Designation', 'Institution',
            'Ticket Type']
@@ -310,7 +311,7 @@ def registration_table(db, event_id, sessions=True, only=None):
         row = [
             r.get('reg_id') or rid, r.get('lead_name', ''), usn, department, year,
             r.get('lead_email', ''), _lead(r, 'phone', phone_ids, profile),
-            r.get('team_name', ''), '; '.join(
+            r.get('team_name', ''), r.get('team_code') or '', '; '.join(
                 str(m.get('name', '')) + (f" ({m['usn']})" if str(m.get('usn') or '').strip() else '')
                 + (_confirm_label(m) if confirming else '') for m in others),
         ] + cells + [

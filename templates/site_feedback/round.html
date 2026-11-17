@@ -1,0 +1,170 @@
+{% extends "base_classic.html" %}
+{#- One website feedback round (UPG-304): its questions, who answers, on and
+    off, and the results. Super Admin only. -#}
+{% set app_active = 'system' %}
+{% block title %}{{ r.title }} | Website feedback{% endblock %}
+{% block page_title %}{{ r.title }}{% endblock %}
+{% block page_sub %}Website feedback round · {{ status_names.get(r.status, r.status) }}{% endblock %}
+{% block page_actions %}<a href="/admin/website-feedback" class="btn btn-outline-primary"><i class="fas fa-arrow-left" aria-hidden="true"></i> All rounds</a>{% endblock %}
+{% block extra_css %}
+<style>
+.sf-row { border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+.sf-bar { display: grid; grid-template-columns: minmax(7rem, 14rem) 1fr 4.5rem; gap: 8px; align-items: center; font-size: var(--fs-sm, .9rem); margin-bottom: 4px; }
+.sf-bar progress { width: 100%; height: 12px; }
+.sf-quote { border-left: 3px solid var(--brand, #0d6efd); padding: 6px 10px; margin-bottom: 8px; }
+</style>
+{% endblock %}
+{% block content %}
+{# ── Status and actions ── #}
+<section class="panel mb-3" aria-labelledby="state-h" data-round-state="{{ r.status }}">
+  <h2 class="h6 fw-bold mb-1" id="state-h">{% if r.status == 'on' %}<span class="badge text-bg-success me-1">On</span>Being asked now{% elif r.status == 'off' %}<span class="badge text-bg-light border me-1">Off</span>Not being asked{% else %}<span class="badge text-bg-light border me-1">Not started</span>Not asked yet{% endif %}</h2>
+  <p class="mb-2" data-progress><strong>{{ done }}</strong> of <strong>{{ asked }}</strong> {{ 'person has' if asked == 1 else 'people have' }} answered.
+    <span class="small text-muted">{% if r.audience == 'events' %}Asked: everyone registered for the chosen events, leads and team members.{% else %}Asked: everyone registered for any event, leads and team members.{% endif %} Cancelled registrations aren't asked. People are asked when they sign in, so someone who never signs in isn't counted as answered.</span></p>
+  {% if r.status == 'on' %}<p class="small mb-2">Until they send it, they can only open their ticket, the privacy and help pages, and sign out. Staff are never asked.</p>{% endif %}
+  <div class="d-flex flex-wrap gap-2">
+    {% if r.status == 'on' %}
+    <form method="post" action="/admin/website-feedback/{{ r.id }}/off" class="m-0"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-warning" data-turn-off><i class="fas fa-pause me-1" aria-hidden="true"></i>Turn off</button></form>
+    {% else %}
+    <form method="post" action="/admin/website-feedback/{{ r.id }}/on" class="m-0"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-success" data-turn-on><i class="fas fa-play me-1" aria-hidden="true"></i>{{ 'Turn on again' if r.status == 'off' else 'Turn on' }}</button></form>
+    {% endif %}
+    <a href="/admin/website-feedback/{{ r.id }}/preview" class="btn btn-outline-secondary" data-preview><i class="fas fa-eye me-1" aria-hidden="true"></i>See it as participants do</a>
+    <form method="post" action="/admin/website-feedback/{{ r.id }}/copy" class="m-0"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-outline-secondary"><i class="fas fa-copy me-1" aria-hidden="true"></i>Copy into a new round</button></form>
+    {% if r.status != 'on' and not done %}
+    <form method="post" action="/admin/website-feedback/{{ r.id }}/delete" class="m-0"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-outline-danger" data-delete-round><i class="fas fa-trash me-1" aria-hidden="true"></i>Delete</button></form>
+    {% endif %}
+  </div>
+</section>
+
+{# ── Questions ── #}
+<section class="panel mb-3" aria-labelledby="q-h" id="questions">
+  <h2 class="h6 fw-bold mb-1" id="q-h">Questions and who answers</h2>
+  {% if editable %}
+  <p class="small text-muted">Keep it short: at most {{ max_questions }} questions, about a minute to answer. Ratings and ticks get answers from everyone; written questions work best optional. The note about anonymity and the box to allow quoting are always added.</p>
+  {% if problems %}<div class="alert alert-danger small" role="alert" data-form-problems><ul class="mb-0">{% for p in problems %}<li>{{ p }}</li>{% endfor %}</ul></div>{% endif %}
+  <form method="post" action="/admin/website-feedback/{{ r.id }}" novalidate data-round-form>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-2">
+      <label class="form-label small fw-semibold" for="title">Title (participants see it at the top)</label>
+      <input class="form-control" id="title" name="title" maxlength="120" required value="{{ values.title }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label small fw-semibold" for="intro">A line under the title</label>
+      <input class="form-control" id="intro" name="intro" maxlength="400" value="{{ values.intro }}">
+    </div>
+    {% set rows = (values.questions or []) %}
+    {% set blanks = [3, max_questions - rows|length]|min %}
+    {% for q in rows + [{}] * blanks %}
+    {% set i = loop.index %}
+    <fieldset class="sf-row" data-question-row="{{ i }}">
+      <legend class="h6 small fw-bold mb-2 float-none w-auto">{% if q.label %}Question {{ i }}{% else %}New question (leave empty to skip){% endif %}</legend>
+      <input type="hidden" name="q_{{ i }}_id" value="{{ q.id or '' }}">
+      <div class="row g-2">
+        <div class="col-3 col-md-1">
+          <label class="form-label small" for="q_{{ i }}_order">Order</label>
+          <input class="form-control form-control-sm" type="number" id="q_{{ i }}_order" name="q_{{ i }}_order" value="{{ i }}" min="1" max="99">
+        </div>
+        <div class="col-9 col-md-3">
+          <label class="form-label small" for="q_{{ i }}_kind">Answer type</label>
+          <select class="form-select form-select-sm" id="q_{{ i }}_kind" name="q_{{ i }}_kind">
+            {% for k, name in kinds.items() %}<option value="{{ k }}"{% if (q.kind or 'text') == k %} selected{% endif %}>{{ name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-md-8">
+          <label class="form-label small" for="q_{{ i }}_label">Question</label>
+          <input class="form-control form-control-sm" id="q_{{ i }}_label" name="q_{{ i }}_label" maxlength="200" value="{{ q.label or '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small" for="q_{{ i }}_help">Hint under it (optional)</label>
+          <input class="form-control form-control-sm" id="q_{{ i }}_help" name="q_{{ i }}_help" maxlength="200" value="{{ q.help or '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small" for="q_{{ i }}_options">Choices, one per line (for "Pick one" and "Tick any")</label>
+          <textarea class="form-control form-control-sm" id="q_{{ i }}_options" name="q_{{ i }}_options" rows="3">{{ (q.options or [])|join('\n') }}</textarea>
+        </div>
+        <div class="col-12 d-flex flex-wrap gap-3">
+          <div class="form-check"><input class="form-check-input" type="checkbox" id="q_{{ i }}_required" name="q_{{ i }}_required" value="1"{% if q.required %} checked{% endif %}><label class="form-check-label small" for="q_{{ i }}_required">Needs an answer</label></div>
+          {% if q.label %}<div class="form-check"><input class="form-check-input" type="checkbox" id="q_{{ i }}_remove" name="q_{{ i }}_remove" value="1"><label class="form-check-label small" for="q_{{ i }}_remove">Remove this question</label></div>{% endif %}
+        </div>
+      </div>
+    </fieldset>
+    {% endfor %}
+    {% if rows|length >= max_questions %}<p class="small text-muted">That's the most questions a round can have.</p>{% endif %}
+    <fieldset class="sf-row" data-audience>
+      <legend class="h6 small fw-bold mb-2 float-none w-auto">Who must answer</legend>
+      {% for k, name in audiences.items() %}
+      <div class="form-check"><input class="form-check-input" type="radio" name="audience" id="audience-{{ k }}" value="{{ k }}"{% if (values.audience or 'all') == k %} checked{% endif %}><label class="form-check-label" for="audience-{{ k }}">{{ name }}</label></div>
+      {% endfor %}
+      <div class="mt-2 ms-4">
+        <p class="small text-muted mb-1">The events (for "Only the participants of the events I choose"): events that haven't ended.</p>
+        {% for e in events %}
+        <div class="form-check"><input class="form-check-input" type="checkbox" name="event_ids" id="ev-{{ e.id }}" value="{{ e.id }}"{% if e.id in (values.event_ids or []) %} checked{% endif %}><label class="form-check-label small" for="ev-{{ e.id }}">{{ e.title }}{% if e.date %} <span class="text-muted">({{ e.date[:10] }})</span>{% endif %}</label></div>
+        {% else %}<p class="small text-muted mb-0">No events that haven't ended.</p>{% endfor %}
+      </div>
+    </fieldset>
+    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1" aria-hidden="true"></i>Save</button>
+  </form>
+  {% else %}
+  <p class="small text-muted" data-locked>{% if r.status == 'on' %}The round is on, so its questions can't change now. Turn it off to change them while nobody has answered.{% else %}People have answered, so the questions stay as they were asked. Copy it into a new round to change them.{% endif %}</p>
+  <ol class="mb-2">{% for q in r.questions %}<li>{{ q.label }} <span class="small text-muted">({{ kinds[q.kind] }}{% if not q.required %}, optional{% endif %})</span></li>{% endfor %}</ol>
+  <p class="small mb-0">Who answers: {% if r.audience == 'events' %}the participants of {% for e in events if e.id in r.event_ids %}{{ e.title }}{{ ', ' if not loop.last }}{% endfor %}{% else %}everyone registered for any event{% endif %}.</p>
+  {% endif %}
+</section>
+
+{# ── Results ── #}
+<section class="panel mb-3" aria-labelledby="res-h" id="results" data-results>
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+    <h2 class="h6 fw-bold mb-0" id="res-h">Results: {{ result.total }} answer{{ 's' if result.total != 1 }}</h2>
+    {% if result.total %}<a href="/admin/website-feedback/{{ r.id }}/answers.csv" class="btn btn-sm btn-outline-primary" data-export><i class="fas fa-file-csv me-1" aria-hidden="true"></i>Download the answers (CSV, no names)</a>{% endif %}
+  </div>
+  {% if not result.total %}
+  <p class="small text-muted mb-0" data-no-answers>No answers yet.</p>
+  {% else %}
+  {% if result.devices %}<p class="small text-muted">Answered on: {% for d, n in result.devices %}{{ d }} {{ n }}{{ ' · ' if not loop.last }}{% endfor %}</p>{% endif %}
+  <form method="get" action="/admin/website-feedback/{{ r.id }}#results" class="d-flex flex-wrap gap-2 align-items-end mb-3" role="search">
+    <div><label for="text-q" class="form-label small mb-1">Search the written answers (capitals don't matter)</label>
+    <input type="search" id="text-q" name="q" value="{{ q }}" class="form-control form-control-sm" autocomplete="off"></div>
+    <button type="submit" class="btn btn-sm btn-outline-primary">Search</button>
+    {% if q %}<a href="/admin/website-feedback/{{ r.id }}#results" class="btn btn-sm btn-link">Clear</a>{% endif %}
+  </form>
+  {% for item in result.questions %}
+  {% set qq = item.q %}
+  <div class="sf-row" data-result="{{ qq.id }}">
+    <h3 class="h6 fw-bold mb-1">{{ loop.index }}. {{ qq.label }}</h3>
+    <p class="small text-muted mb-2">{{ item.answered }} answered</p>
+    {% if qq.kind in ('rating', 'scale') %}
+      {% if item.average is not none %}
+      <p class="mb-2" data-average>Average: <strong>{{ item.average }}</strong> out of {{ 5 if qq.kind == 'rating' else 10 }}</p>
+      {% if qq.kind == 'scale' %}
+      <p class="small mb-2" data-recommend-score>Recommend score: <strong>{{ item.recommend_score }}</strong> <span class="text-muted">({{ item.promoters }} gave 9–10, {{ item.passives }} gave 7–8, {{ item.detractors }} gave 0–6; the score is the share giving 9–10 minus the share giving 0–6, from −100 to 100)</span></p>
+      {% endif %}
+      {% for n, count in item.spread %}
+      <div class="sf-bar"><span>{{ n }}{% if qq.kind == 'rating' %} star{{ 's' if n != 1 }}{% endif %}</span><progress max="{{ item.answered }}" value="{{ count }}" aria-label="{{ n }}: {{ count }}"></progress><span>{{ count }}</span></div>
+      {% endfor %}
+      {% endif %}
+    {% elif qq.kind in with_options %}
+      {% for option, count, pct in item.counts %}
+      <div class="sf-bar"><span>{{ option }}</span><progress max="100" value="{{ pct }}" aria-label="{{ option }}: {{ count }}"></progress><span>{{ count }} ({{ pct }}%)</span></div>
+      {% endfor %}
+      {% if qq.kind == 'multi' %}<p class="small text-muted mb-0">People could tick more than one, so the shares add up to more than 100%.</p>{% endif %}
+    {% else %}
+      {% if item.texts %}
+      <ul class="list-unstyled mb-0" data-texts>
+        {% for t in item.texts %}
+        <li class="border-bottom py-2 small"><span class="d-block">{{ t.text }}</span><span class="text-muted">{{ t.day }}{% if t.device %} · {{ t.device }}{% endif %}{% if t.events %} · {{ t.events|join(', ') }}{% endif %}</span>{% if t.quote_ok %} <span class="badge text-bg-success">May be quoted</span>{% endif %}</li>
+        {% endfor %}
+      </ul>
+      {% else %}<p class="small text-muted mb-0">{% if q %}No written answer matches “{{ q }}”.{% else %}Nobody wrote anything here.{% endif %}</p>{% endif %}
+    {% endif %}
+  </div>
+  {% endfor %}
+  {% endif %}
+</section>
+
+<section class="panel" aria-labelledby="quotes-h" data-quotes>
+  <h2 class="h6 fw-bold mb-1" id="quotes-h">Quotes you may use: {{ result.quotes|length }}</h2>
+  <p class="small text-muted">Only from people who ticked “{{ quote_label }}” Use them without a name, as written (fixing a typo is fine). Don't publish an average or a count without saying how many answered and when.</p>
+  {% for qt in result.quotes %}
+  <blockquote class="sf-quote small mb-2"><p class="mb-1">“{{ qt.text }}”</p><footer class="text-muted">A participant, {{ qt.day[:7] }} · asked: {{ qt.question }}</footer></blockquote>
+  {% else %}<p class="small text-muted mb-0">None yet.</p>{% endfor %}
+</section>
+{% endblock %}

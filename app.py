@@ -431,6 +431,7 @@ from routes_onboarding      import onboarding_bp       # noqa: E402
 from routes_gamification    import gamification_bp     # noqa: E402
 from routes_exams           import exams_bp            # noqa: E402
 from routes_hackathon       import hackathon_bp        # noqa: E402
+from routes_site_feedback   import site_feedback_bp   # noqa: E402  (UPG-304)
 
 app.register_blueprint(api_v1_bp)
 app.register_blueprint(notif_v2_bp)
@@ -449,6 +450,7 @@ app.register_blueprint(onboarding_bp)
 app.register_blueprint(gamification_bp)
 app.register_blueprint(exams_bp)
 app.register_blueprint(hackathon_bp)
+app.register_blueprint(site_feedback_bp)
 
 # Initialise internationalization helpers on app
 init_i18n(app)
@@ -1421,6 +1423,33 @@ def end_sessions_of_deactivated_accounts():
         return jsonify({'error': 'account_deactivated'}), 401
     flash('This account has been deactivated. Contact the portal administrator.', 'danger')
     return redirect('/login')
+
+
+@app.before_request
+def site_feedback_gate():
+    """While a website feedback round is on (UPG-304), a participant who must
+    answer it is sent to its form from every page until they submit; their
+    ticket, signing out and the privacy and help pages stay open. Staff are
+    never asked. A failure to check never blocks anyone."""
+    email = session.get('user_id')
+    if not email or session.get('force_reset') or request.method == 'OPTIONS':
+        return None
+    import services_site_feedback as site_feedback
+    if session.get('role') not in site_feedback.PARTICIPANT_ROLES or site_feedback.gate_open(request.path):
+        return None
+    try:
+        due = site_feedback.must_answer(db, str(email), session.get('role', ''), session)
+    except Exception:
+        logger.exception("Website feedback check failed")
+        return None
+    if not due:
+        return None
+    if request.path.startswith('/api/') or request.accept_mimetypes.best == 'application/json' \
+            or request.method != 'GET':
+        return jsonify({'error': 'feedback_required', 'url': '/website-feedback'}), 403
+    from urllib.parse import quote
+    full = request.full_path.rstrip('?') if request.query_string else request.path
+    return redirect('/website-feedback?next=' + quote(full, safe='/'))
 
 
 @app.before_request

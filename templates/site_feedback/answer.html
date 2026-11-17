@@ -1,0 +1,89 @@
+{% extends "layouts/status.html" %}
+{#- The website feedback round a participant must answer (UPG-304). Shown in
+    place of any portal page until they submit; their ticket and signing out
+    stay one click away. -#}
+{% set site_footer_fixed = false %}
+{% set status_tone = 'brand' %}
+{% set status_icon = 'fa-comments' %}
+{% block title %}{{ r.title }}{% endblock %}
+{% block extra_css %}
+<style>
+.status-card { max-width: 640px; text-align: left; }
+.status-card__icon { margin-left: auto; margin-right: auto; }
+.sf-head { text-align: center; }
+.sf-q { border: 1px solid var(--border); border-radius: var(--radius-md, 10px); padding: 14px 16px; margin: 0 0 14px; }
+.sf-q legend { float: left; width: 100%; font-size: 1rem; font-weight: 600; margin-bottom: 4px; padding: 0; }
+.sf-q legend + * { clear: both; }
+.sf-q.is-invalid { border-color: var(--danger, #dc3545); }
+.sf-scale { display: flex; flex-wrap: wrap; gap: 6px; }
+.sf-scale .btn { min-width: 2.75rem; }
+.sf-ends { display: flex; justify-content: space-between; font-size: var(--fs-sm, .85rem); color: var(--text-muted); margin-top: 4px; }
+.sf-honest { background: var(--info-soft, #e7f1ff); border-radius: 8px; padding: 10px 12px; font-size: var(--fs-sm, .9rem); }
+.sf-required { color: var(--danger, #b02a37); }
+</style>
+{% endblock %}
+{% block status %}
+{% if preview %}<div class="alert alert-info small" role="note" data-preview-note>Preview: this is what participants see. Nothing here is sent. <a href="/admin/website-feedback/{{ r.id }}">Back to the round</a></div>{% endif %}
+<div class="sf-head">
+  <h1>{{ r.title }}</h1>
+  {% if r.intro %}<p>{{ r.intro }}</p>{% endif %}
+</div>
+<p class="sf-honest" data-honest><i class="fas fa-user-secret me-1" aria-hidden="true"></i>{{ honest }}</p>
+<p class="small text-muted mb-3">You can use the portal again as soon as you send this. Questions marked <span class="sf-required" aria-hidden="true">*</span><span class="visually-hidden">required</span> need an answer.</p>
+{% if problems %}<div class="alert alert-danger py-2 small" role="alert" data-problems>Some answers are missing: they're marked below.</div>{% endif %}
+<form method="post" action="{{ '#' if preview else '/website-feedback' }}" novalidate data-site-feedback-form>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="next" value="{{ nxt }}">
+  {% for q in r.questions %}
+  {% set name = 'a_' ~ q.id %}
+  {% set value = answers.get(q.id) %}
+  {% set err = problems.get(q.id) %}
+  <fieldset class="sf-q{% if err %} is-invalid{% endif %}" data-question="{{ q.id }}"{% if q.help or err %} aria-describedby="{% if q.help %}h-{{ q.id }}{% endif %}{% if err %} e-{{ q.id }}{% endif %}"{% endif %}>
+    <legend>{{ loop.index }}. {{ q.label }}{% if q.required %} <span class="sf-required" aria-hidden="true">*</span><span class="visually-hidden">(required)</span>{% endif %}</legend>
+    {% if q.help %}<div class="small text-muted mb-2" id="h-{{ q.id }}">{{ q.help }}</div>{% endif %}
+    {% if q.kind in ('rating', 'scale') %}
+    {% set low, high = (1, 5) if q.kind == 'rating' else (0, 10) %}
+    <div class="sf-scale" role="radiogroup">
+      {% for n in range(low, high + 1) %}
+      <input type="radio" class="btn-check" name="{{ name }}" id="{{ name }}-{{ n }}" value="{{ n }}"{% if value == n %} checked{% endif %}{% if q.required %} required{% endif %}>
+      <label class="btn btn-outline-primary" for="{{ name }}-{{ n }}">{% if q.kind == 'rating' %}{{ n }}<i class="fas fa-star ms-1" aria-hidden="true"></i>{% else %}{{ n }}{% endif %}</label>
+      {% endfor %}
+    </div>
+    {% elif q.kind == 'choice' %}
+    {% for o in q.options %}
+    <div class="form-check">
+      <input class="form-check-input" type="radio" name="{{ name }}" id="{{ name }}-{{ loop.index }}" value="{{ o }}"{% if value == o %} checked{% endif %}>
+      <label class="form-check-label" for="{{ name }}-{{ loop.index }}">{{ o }}</label>
+    </div>
+    {% endfor %}
+    {% elif q.kind == 'multi' %}
+    {% for o in q.options %}
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" name="{{ name }}" id="{{ name }}-{{ loop.index }}" value="{{ o }}"{% if value and o in value %} checked{% endif %}>
+      <label class="form-check-label" for="{{ name }}-{{ loop.index }}">{{ o }}</label>
+    </div>
+    {% endfor %}
+    {% else %}
+    <label class="visually-hidden" for="{{ name }}">{{ q.label }}</label>
+    <textarea class="form-control" id="{{ name }}" name="{{ name }}" rows="3" maxlength="2000">{{ value or '' }}</textarea>
+    {% endif %}
+    {% if err %}<div class="small text-danger mt-1" id="e-{{ q.id }}" data-error>{{ err }}</div>{% endif %}
+  </fieldset>
+  {% endfor %}
+  <div class="form-check mb-3">
+    <input class="form-check-input" type="checkbox" name="quote_ok" id="quote_ok" value="1"{% if quote_ok %} checked{% endif %} data-quote-ok>
+    <label class="form-check-label small" for="quote_ok">{{ quote_label }}</label>
+  </div>
+  <button type="submit" class="btn btn-primary w-100"{% if preview %} disabled{% endif %}><i class="fas fa-paper-plane me-1" aria-hidden="true"></i>Send my feedback</button>
+</form>
+<hr>
+<div class="small" data-feedback-way-out>
+  {% if tickets %}
+  <p class="mb-1 fw-semibold">Need your ticket right now?</p>
+  <ul class="list-unstyled mb-2">
+    {% for t in tickets %}<li><a href="/ticket/{{ t.id }}"><i class="fas fa-qrcode me-1" aria-hidden="true"></i>Ticket: {{ t.title }}</a></li>{% endfor %}
+  </ul>
+  {% endif %}
+  <p class="mb-0"><a href="/privacy">Privacy notice</a> · <a href="/logout">Sign out</a></p>
+</div>
+{% endblock %}

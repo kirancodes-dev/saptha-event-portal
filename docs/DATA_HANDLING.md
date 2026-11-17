@@ -17,6 +17,7 @@ Related: [SECURITY.md](SECURITY.md), [PWA.md](PWA.md),
 | Account: name, email, role, password hash, and for students USN, department, year, section, phone, CGPA and backlogs when the roster or the student supplied them | Everyone with an account | `users` |
 | Registrations: the lead and each team member's name, email, phone and USN; the answers to the event's form; the ticket; attendance; any result | People who register | `registrations`, `form_submissions` |
 | Feedback: a rating, tags and an optional comment, with the name and email of who gave it | Attendees who answer | `feedback_responses` |
+| Website feedback rounds: the answers (ratings, ticks, optional writing, the day, the kind of device, and the event names when the round is for chosen events) are stored without the person's name or email. A separate note says who has answered a round (email, round, day) so they are not asked again; the two are not linked | Participants asked by a round the Super Admin turns on | `site_feedback_answers`, `site_feedback_done`, `site_feedback_rounds` |
 | Certificates: the name printed, the event, the number, the PDF file | People a certificate was issued to | `certificates` (SQL), private file storage |
 | Payments: order and payment references for paid events. Card and UPI details are entered on the payment provider's page and are not stored here | People who pay | payment records (not changed by this work) |
 | Consent: which notice version was accepted and when; WhatsApp opt-in | Everyone with an account | `user_consent`, `users` |
@@ -127,7 +128,8 @@ Signed in, at Privacy & data (`/compliance/settings`):
 the profile (without the password hash or two-factor secrets), every
 registration they lead or are a member of (other team members' details
 removed), form submissions, feedback, certificates issued to them (what each
-says, not the PDF), notifications and consent. The download is recorded in the
+says, not the PDF), notifications, consent, and which website feedback rounds
+they answered (not the answers, which are not linked to them). The download is recorded in the
 audit log.
 
 **Delete my account** (`POST /compliance/delete-request`) schedules deletion
@@ -140,6 +142,7 @@ in 30 days; it can be cancelled until then. When it is carried out:
 | Form submissions: name, email, phone and answers cleared | The audit log |
 | Feedback: name, email and comment removed; the rating and tags stay, with no link to the person | Attendance and result rows, without the person's name |
 | Notifications deleted | |
+| The note of which website feedback rounds they answered is deleted | Their website feedback answers, which never held their name or email |
 
 **Not reached by the download or the deletion today** (logged as an open item
 in FEATURE_REVIEW.md): session stars and session attendance, live poll votes

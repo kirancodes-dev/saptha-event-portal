@@ -129,6 +129,13 @@ def own_data(db, email: str) -> dict:
     # `feedback` is where older ones were kept (UPG-274)
     export['sections']['feedback'] = by_email('feedback_responses') + by_email('feedback')
     export['sections']['certificates'] = _own_certificates(email)
+    # Which website feedback rounds they answered; the answers aren't linked to them (UPG-304)
+    try:
+        from services_site_feedback import own_records
+        export['sections']['website_feedback_answered'] = own_records(db, email)
+    except Exception:
+        logger.exception("Could not list website feedback rounds for a data export")
+        export['sections']['website_feedback_answered'] = []
     export['sections']['notifications'] = by_email('notifications_v2', 'user_email')
     consent = db.collection('user_consent').document(email).get()
     export['sections']['consent'] = (consent.to_dict() or {}) if consent.exists else {}
@@ -211,6 +218,11 @@ def anonymise_account(db, email: str) -> dict:
     except Exception:
         logger.exception("Deleting notifications for a deletion failed")
 
+    try:   # which website feedback rounds they answered (UPG-304); the answers were never linked to them
+        from services_site_feedback import forget
+        counts['website_feedback'] = forget(db, email)
+    except Exception:
+        logger.exception("Removing website feedback records for a deletion failed")
     db.collection('user_consent').document(email).delete()
     db.collection('users').document(email).delete()   # no account: no login, no reset link
     return counts

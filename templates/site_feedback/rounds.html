@@ -1,0 +1,59 @@
+{% extends "base_classic.html" %}
+{#- Website feedback rounds (UPG-304). Super Admin only. -#}
+{% set app_active = 'system' %}
+{% block title %}Website feedback | Admin{% endblock %}
+{% block page_title %}Website feedback{% endblock %}
+{% block page_sub %}Ask participants what they think of the website. While a round is on, everyone who must answer sees its form when they open the portal, until they send it. Answers are anonymous.{% endblock %}
+{% block content %}
+<section class="panel mb-3" aria-labelledby="new-h" data-new-round>
+  <h2 class="h6 fw-bold mb-1" id="new-h">Start a round</h2>
+  <p class="small text-muted">Start from a sample and change anything before you turn it on, or start blank.</p>
+  <div class="row g-3">
+    {% for key, s in samples.items() %}
+    <div class="col-md-6">
+      <div class="border rounded p-3 h-100 d-flex flex-column" data-sample="{{ key }}">
+        <h3 class="h6 fw-bold mb-1">{{ s.name }}</h3>
+        <p class="small mb-2">“{{ s.title }}”</p>
+        <ol class="small text-muted ps-3 mb-3">
+          {% for q in s.questions %}<li>{{ q.label }}{% if not q.required %} <em>(optional)</em>{% endif %}</li>{% endfor %}
+        </ol>
+        <form method="post" action="/admin/website-feedback/new" class="mt-auto">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="sample" value="{{ key }}">
+          <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-plus me-1" aria-hidden="true"></i>Use this sample</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <form method="post" action="/admin/website-feedback/new" class="mt-3">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-sm btn-outline-secondary">Start a blank round</button>
+  </form>
+</section>
+
+<section class="panel" aria-labelledby="rounds-h">
+  <h2 class="h6 fw-bold mb-2" id="rounds-h">Rounds</h2>
+  {% if rounds %}
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0" data-rounds>
+      <caption class="visually-hidden">Website feedback rounds, newest first</caption>
+      <thead class="table-light"><tr><th scope="col">Round</th><th scope="col">Status</th><th scope="col">Who answers</th><th scope="col">Answers</th><th scope="col">Made</th></tr></thead>
+      <tbody>
+        {% for r in rounds %}
+        <tr data-round="{{ r.id }}">
+          <td><a href="/admin/website-feedback/{{ r.id }}" class="fw-semibold">{{ r.title }}</a></td>
+          <td>{% if r.status == 'on' %}<span class="badge text-bg-success">{{ status_names[r.status] }}</span>{% else %}<span class="badge text-bg-light border">{{ status_names.get(r.status, r.status) }}</span>{% endif %}</td>
+          <td class="small">{% if r.audience == 'events' %}{{ r.event_ids|length }} chosen event{{ 's' if r.event_ids|length != 1 }}{% else %}Everyone registered{% endif %}</td>
+          <td>{{ r.answers }}</td>
+          <td class="small text-muted">{{ (r.created_at or '')[:10] }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="small text-muted mb-0" data-no-rounds>No rounds yet. Start one from a sample above.</p>
+  {% endif %}
+</section>
+{% endblock %}

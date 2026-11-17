@@ -7,7 +7,9 @@ attended gets: participation, or completion / service for workshops and NSS
 events (services_certificates.attendance_type). Logos, borders and signatures
 are already on the design, so the app writes only the person's name (and,
 when switched on, the team, USN and college) in boxes the organiser places,
-plus the certificate number and a small QR code to its verification page.
+plus the certificate number and a small QR code to its verification page:
+in a corner, or (UPG-315) in a box the organiser places, such as the design's
+own "scan to verify" box, with the number then in a box of its own.
 
 The design is normalised once on upload (flattened on white, at most 3508 px
 on the long side, JPEG) and stored privately (utils_storage.put_private),
@@ -30,18 +32,25 @@ BEST = (3508, 2480)
 LOW_RES = 2000
 LONG_SIDE = 3508
 CORNERS = ('br', 'bl', 'tr', 'tl')
+PLACE = 'place'                     # the QR where the organiser puts it (UPG-315)
+QR_CHOICES = CORNERS + (PLACE,)
 ALIGNS = ('left', 'center', 'right')
-FIELDS = ('name', 'team', 'usn', 'college')
-LABELS = {'name': 'Name', 'team': 'Team name', 'usn': 'USN', 'college': 'College / institution'}
-SAMPLES = {'team': 'Team Sample', 'usn': '1SG22CS000', 'college': 'Sample Institute of Technology'}
+FIELDS = ('name', 'team', 'usn', 'college', 'number')
+LABELS = {'name': 'Name', 'team': 'Team name', 'usn': 'USN', 'college': 'College / institution',
+          'number': 'Certificate number'}
+SAMPLES = {'team': 'Team Sample', 'usn': '1SG22CS000', 'college': 'Sample Institute of Technology',
+           'number': 'SE-2026-AB12-CD34-5'}
 
 DEFAULT_FIELDS = {
     'name':    {'on': True, 'x': 20.0, 'y': 47.0, 'w': 60.0, 'size': 40.0, 'color': '#1a1a1a', 'align': 'center', 'bold': True},
     'team':    {'on': False, 'x': 25.0, 'y': 56.0, 'w': 50.0, 'size': 18.0, 'color': '#1a1a1a', 'align': 'center', 'bold': False},
     'usn':     {'on': False, 'x': 25.0, 'y': 62.0, 'w': 50.0, 'size': 14.0, 'color': '#1a1a1a', 'align': 'center', 'bold': False},
     'college': {'on': False, 'x': 20.0, 'y': 67.0, 'w': 60.0, 'size': 16.0, 'color': '#1a1a1a', 'align': 'center', 'bold': False},
+    'number':  {'on': False, 'x': 70.0, 'y': 92.0, 'w': 25.0, 'size': 8.0, 'color': '#333a4d', 'align': 'center', 'bold': False},
 }
-DEFAULT_QR = {'corner': 'br'}
+# x and y: the QR's top-left corner, % of the page's width and height; size: its side, % of the page's width
+DEFAULT_QR = {'corner': 'br', 'x': 82.2, 'y': 44.8, 'size': 11.8}
+QR_MIN, QR_MAX = 5.0, 30.0
 
 
 class DesignError(ValueError):
@@ -122,7 +131,26 @@ def get(event: dict) -> Optional[dict]:
         fields[key] = dict(DEFAULT_FIELDS[key], **(saved if isinstance(saved, dict) else {}))
     fields['name']['on'] = True
     qr = dict(DEFAULT_QR, **(design.get('qr') if isinstance(design.get('qr'), dict) else {}))
+    if qr['corner'] not in QR_CHOICES:
+        qr['corner'] = DEFAULT_QR['corner']
     return dict(design, fields=fields, qr=qr)
+
+
+def page_ratio(design: dict) -> float:
+    """The page's height over its width (A4, as the PDF is drawn)."""
+    return 297 / 210 if design.get('orientation') == 'portrait' else 210 / 297
+
+
+def parse_qr(form, current: dict, ratio: float) -> dict:
+    """The QR's corner, or its box when placed (UPG-315), clamped so it stays on the page."""
+    current = dict(DEFAULT_QR, **(current or {}))
+    corner = str(form.get('qr_corner') or current['corner'])
+    corner = corner if corner in QR_CHOICES else current['corner']
+    size = _number(form.get('qr_size'), float(current['size']), QR_MIN, QR_MAX)
+    x = _number(form.get('qr_x'), float(current['x']), 0, 100)
+    y = _number(form.get('qr_y'), float(current['y']), 0, 100)
+    tall = size / ratio                     # the square's height, % of the page's height
+    return {'corner': corner, 'size': size, 'x': min(x, round(100 - size, 2)), 'y': min(y, round(100 - tall, 2))}
 
 
 def covers(event: dict, cert_type: str) -> bool:
@@ -192,15 +220,20 @@ def save_settings(db, event_id: str, event: dict, form, actor: str = '') -> dict
     design = get(event)
     if design is None:
         raise DesignError("Upload a design first.")
-    corner = str(form.get('qr_corner') or design['qr']['corner'])
     design = dict(design, fields=parse_fields(form, design['fields']),
-                  qr={'corner': corner if corner in CORNERS else design['qr']['corner']})
+                  qr=parse_qr(form, design['qr'], page_ratio(design)))
     db.collection('events').document(event_id).update({FIELD: design})
     name = design['fields']['name']
     _audit(db, actor, "CERT_DESIGN_CHANGED",
            f"event {event_id}: name at {name['y']}% from the top, {name['x']}% from the left, "
-           f"{name['w']}% wide, {name['size']} pt; QR {design['qr']['corner']}")
+           f"{name['w']}% wide, {name['size']} pt; QR {_qr_text(design['qr'])}")
     return design
+
+
+def _qr_text(qr: dict) -> str:
+    if qr['corner'] != PLACE:
+        return qr['corner']
+    return f"placed {qr['y']}% from the top, {qr['x']}% from the left, {qr['size']}% wide"
 
 
 def remove(db, event_id: str, actor: str = '') -> None:
@@ -222,7 +255,7 @@ def image(design: dict) -> bytes:
     return get_private(design['image_key'])
 
 
-def values(name: str, data: dict) -> dict:
+def values(name: str, data: dict, number: str = '') -> dict:
     """What goes in each box for one certificate."""
     return {'name': name, 'team': data.get('team') or '', 'usn': data.get('usn') or '',
-            'college': data.get('institution') or data.get('college') or ''}
+            'college': data.get('institution') or data.get('college') or '', 'number': number}

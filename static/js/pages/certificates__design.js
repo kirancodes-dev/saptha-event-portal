@@ -1,5 +1,5 @@
 // The organiser's own certificate design (UPG-206): drag the name box (and the
-// other boxes switched on) over the design, pull a box's right edge to change
+// other boxes switched on, and a placed QR, UPG-315) over the design, pull a box's right edge to change
 // its width, or type the numbers; the boxes and the form stay in step. The
 // server draws the real certificate; this only shows where things go.
 (function () {
@@ -44,11 +44,34 @@
         text.style.textAlign = align === 'center' ? 'center' : align;
     }
 
+    function qrNum(name, fallback) {
+        var el = form.querySelector('[name="qr_' + name + '"]');
+        var v = el ? parseFloat(el.value) : NaN;
+        return isNaN(v) ? fallback : v;
+    }
+    function setQr(name, value) {
+        var el = form.querySelector('[name="qr_' + name + '"]');
+        if (el) { el.value = round(value); }
+    }
+    function placed() {
+        var select = form.querySelector('[name="qr_corner"]');
+        return !!select && select.value === 'place';
+    }
+
     function placeQr() {
         var select = form.querySelector('[name="qr_corner"]');
         var corner = select ? select.value : 'br';
         var margin = 24 / pageW * 100;                          // as certificate_pdf.QR_MARGIN
+        var fields = form.querySelector('[data-qr-place]');
+        if (fields) { fields.hidden = !placed(); }
+        qr.classList.toggle('is-placed', placed());
         qr.style.left = qr.style.right = qr.style.top = qr.style.bottom = '';
+        if (placed()) {                                         // the organiser's box (UPG-315), as certificate_pdf.placed_qr
+            qr.style.width = qrNum('size', 11.8) + '%';
+            qr.style.left = qrNum('x', 82.2) + '%';
+            qr.style.top = qrNum('y', 44.8) + '%';
+            return;
+        }
         qr.style.width = (62 / pageW * 100) + '%';
         if (corner.charAt(1) === 'l') { qr.style.left = margin + '%'; } else { qr.style.right = margin + '%'; }
         if (corner.charAt(0) === 't') { qr.style.top = (24 / pageH * 100) + '%'; }
@@ -98,6 +121,41 @@
             box.addEventListener('pointerup', up);
             box.addEventListener('pointercancel', up);
         });
+    });
+
+    // The placed QR (UPG-315): drag to move, drag the round handle to resize; it stays square and on the page
+    qr.addEventListener('pointerdown', function (e) {
+        if (!placed()) { return; }
+        e.preventDefault();
+        var resizing = !!e.target.closest('[data-handle]');
+        var startX = e.clientX, startY = e.clientY;
+        var x0 = qrNum('x', 82.2), y0 = qrNum('y', 44.8), s0 = qrNum('size', 11.8);
+        var ratio = stage.clientHeight / stage.clientWidth;    // the page's height over its width
+        qr.classList.add('is-active');
+        qr.setPointerCapture(e.pointerId);
+
+        function move(ev) {
+            var dx = (ev.clientX - startX) / stage.clientWidth * 100;
+            var dy = (ev.clientY - startY) / stage.clientHeight * 100;
+            if (resizing) {
+                var grow = Math.max(dx, dy * ratio);
+                setQr('size', clamp(s0 + grow, 5, Math.min(30, 100 - x0, (100 - y0) * ratio)));
+            } else {
+                setQr('x', clamp(x0 + dx, 0, 100 - s0));
+                setQr('y', clamp(y0 + dy, 0, 100 - s0 / ratio));
+            }
+            placeQr();
+        }
+        function up(ev) {
+            qr.classList.remove('is-active');
+            qr.releasePointerCapture(ev.pointerId);
+            qr.removeEventListener('pointermove', move);
+            qr.removeEventListener('pointerup', up);
+            qr.removeEventListener('pointercancel', up);
+        }
+        qr.addEventListener('pointermove', move);
+        qr.addEventListener('pointerup', up);
+        qr.addEventListener('pointercancel', up);
     });
 
     form.addEventListener('input', all);

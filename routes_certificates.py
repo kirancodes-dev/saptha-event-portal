@@ -107,7 +107,8 @@ def _sample_values(event):
     longest = max(people, key=lambda p: len(p['name'] or ''), default=None)
     pick = (lambda k: max((str(p.get(k) or '') for p in people), key=len, default='') or design.SAMPLES[k])
     return {'name': longest['name'] if longest else SAMPLE['name'], 'team': pick('team'), 'usn': pick('usn'),
-            'college': pick('institution') if any(p.get('institution') for p in people) else design.SAMPLES['college']}
+            'college': pick('institution') if any(p.get('institution') for p in people) else design.SAMPLES['college'],
+            'number': SAMPLE['number']}
 
 
 def _can(event, permission):

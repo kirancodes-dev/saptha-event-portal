@@ -322,10 +322,21 @@ def qr_box(corner: str, W: float, H: float) -> tuple:
     return x, y
 
 
+def placed_qr(qr: dict, W: float, H: float) -> tuple:
+    """(side, x, y) of a QR placed by the organiser (UPG-315): its side from
+    `size` (% of the page's width), its top-left corner from `x` and `y` (% of
+    the page), returned as the bottom-left corner in points."""
+    side = W * min(max(float(qr.get('size') or 12), 5), 30) / 100
+    x = min(max(W * float(qr.get('x') or 0) / 100, 0), W - side)
+    top = min(max(H * float(qr.get('y') or 0) / 100, 0), H - side)
+    return side, x, H - top - side
+
+
 def render_design(*, number: str, name: str, data: dict, design: dict, image: bytes, verify_url: str) -> bytes:
     """A certificate on the organiser's own design (UPG-206): the design full
     page, the name (and any other boxes switched on) where the organiser
-    placed them, and the number with a small QR code in the chosen corner."""
+    placed them, and the number with a small QR code in the chosen corner,
+    or the QR alone in the box the organiser placed (UPG-315)."""
     from services_certificate_design import FIELDS, values
     _register_fonts()
     W, H = landscape(A4) if design.get('orientation') != 'portrait' else A4
@@ -336,7 +347,7 @@ def render_design(*, number: str, name: str, data: dict, design: dict, image: by
     c.setSubject(f'Certificate {number}')
     c.drawImage(ImageReader(io.BytesIO(image)), 0, 0, width=W, height=H)
 
-    texts = values(name, data)
+    texts = values(name, data, number)
     for key in FIELDS:
         box = (design.get('fields') or {}).get(key) or {}
         text = str(texts.get(key) or '').strip()
@@ -355,7 +366,14 @@ def render_design(*, number: str, name: str, data: dict, design: dict, image: by
             draw_text(c, x, first - gap * i, line, size, bold=bold, align=align,
                       color=_color(str(box.get('color') or ''), '#1a1a1a'))
 
-    qx, qy = qr_box((design.get('qr') or {}).get('corner') or 'br', W, H)
+    qr = design.get('qr') or {}
+    if qr.get('corner') == 'place':          # in the organiser's box (UPG-315): the design frames it
+        side, qx, qy = placed_qr(qr, W, H)
+        c.drawImage(_qr(verify_url), qx, qy, width=side, height=side)
+        c.showPage()
+        c.save()
+        return buf.getvalue()
+    qx, qy = qr_box(qr.get('corner') or 'br', W, H)
     label = f'No. {number}'
     size = fit_size(label, QR_SIZE + 2 * QR_MARGIN - 8, 7, minimum=5, bold=False)
     half = max(QR_SIZE, text_width(label, size)) / 2 + 3

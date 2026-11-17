@@ -17,6 +17,10 @@
 .cd-tag{position:absolute;left:0;top:-1px;font:600 10px/1.4 system-ui,sans-serif;background:#2563eb;color:#fff;padding:0 4px;border-radius:0 0 4px 0}
 .cd-handle{position:absolute;right:-2px;top:0;bottom:0;width:12px;cursor:ew-resize;background:rgba(37,99,235,.5)}
 .cd-qr{position:absolute;width:7.4%;aspect-ratio:1;background:repeating-linear-gradient(45deg,#333 0 4px,#fff 4px 8px);border:2px solid #fff;outline:1px solid #333}
+.cd-qr .cd-handle{display:none}
+.cd-qr.is-placed{cursor:move;touch-action:none}
+.cd-qr.is-placed .cd-handle{display:block;top:auto;left:auto;right:-6px;bottom:-6px;width:14px;height:14px;border-radius:50%;cursor:nwse-resize;background:#2563eb;border:2px solid #fff}
+.cd-qr.is-active{outline:2px solid #dc2626}
 .cd-fields fieldset{border:1px solid #e3e6ee;border-radius:6px;padding:.5rem .75rem;margin-bottom:.75rem}
 .cd-fields legend{font-size:.95rem;font-weight:600;float:none;width:auto;padding:0 .25rem;margin:0}
 .cd-fields .form-control,.cd-fields .form-select{min-width:0}
@@ -135,7 +139,7 @@
                         <span class="cd-handle" data-handle aria-hidden="true"></span>
                     </div>
                     {% endfor %}
-                    <div class="cd-qr" id="cdQr" title="Certificate number and QR code"></div>
+                    <div class="cd-qr" id="cdQr" title="Certificate number and QR code" data-qr-box><span class="cd-handle" data-handle aria-hidden="true"></span></div>
                 </div>
                 <p class="small text-muted mt-1 mb-0">The preview uses the longest registered name: <strong>{{ sample_values.name }}</strong>.
                     A name too wide for its box shrinks, then goes onto two lines.</p>
@@ -174,13 +178,23 @@
                         </div>
                     </fieldset>
                     {% endfor %}
-                    <div class="mb-2">
-                        <label class="form-label small mb-0" for="qr_corner">Certificate number and QR code</label>
+                    <fieldset class="mb-2" data-qr-fieldset>
+                        <legend>QR code</legend>
+                        <label class="form-label small mb-0" for="qr_corner">Where it goes</label>
                         <select class="form-select form-select-sm" id="qr_corner" name="qr_corner">
-                            {% for c, label in (('br', 'Bottom right'), ('bl', 'Bottom left'), ('tr', 'Top right'), ('tl', 'Top left')) %}
+                            {% for c, label in (('br', 'Bottom right, with the number'), ('bl', 'Bottom left, with the number'), ('tr', 'Top right, with the number'), ('tl', 'Top left, with the number'), ('place', 'Where I place it (your design’s QR box)')) %}
                             <option value="{{ c }}" {% if design.qr.corner == c %}selected{% endif %}>{{ label }}</option>{% endfor %}
                         </select>
-                    </div>
+                        <div class="row g-1 mt-1" data-qr-place {% if design.qr.corner != 'place' %}hidden{% endif %}>
+                            <p class="small text-muted mb-1">Drag the dark square onto your design's QR box and pull its corner to fit. Nothing else is printed with it; switch on the certificate number above to print it too.</p>
+                            <div class="col-4"><label class="form-label small mb-0" for="qr_y">From top %</label>
+                                <input class="form-control form-control-sm" type="number" step="0.1" min="0" max="95" id="qr_y" name="qr_y" value="{{ design.qr.y }}"></div>
+                            <div class="col-4"><label class="form-label small mb-0" for="qr_x">From left %</label>
+                                <input class="form-control form-control-sm" type="number" step="0.1" min="0" max="95" id="qr_x" name="qr_x" value="{{ design.qr.x }}"></div>
+                            <div class="col-4"><label class="form-label small mb-0" for="qr_size">Size %</label>
+                                <input class="form-control form-control-sm" type="number" step="0.1" min="5" max="30" id="qr_size" name="qr_size" value="{{ design.qr.size }}"></div>
+                        </div>
+                    </fieldset>
                     <button type="submit" class="btn btn-primary w-100">Save placement</button>
                 </form>
             </div>

@@ -41,6 +41,17 @@ def waiting(db, event_id: str) -> list:
     return sorted(entries, key=lambda e: (str(e[1].get('joined_at') or ''), str(e[0])))
 
 
+def delete_waiting(db, event_id: str, wl_id: str = '') -> list:
+    """The SPOC deletes one entry still waiting for this event, or (no
+    `wl_id`) everyone still waiting (UPG-317). Entries erased for good; the
+    people aren't told and their accounts stay. Accepted, left or removed
+    entries are kept. Returns the [(id, entry)] deleted."""
+    gone = [(i, e) for i, e in waiting(db, str(event_id)) if not wl_id or i == str(wl_id)]
+    for i, _ in gone:
+        db.collection('waitlists').document(i).delete()
+    return gone
+
+
 def place_in_line(db, event_id: str, email: str):
     """This person's place (1 = next to be promoted), or None if they aren't waiting."""
     email = (email or '').strip().lower()

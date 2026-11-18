@@ -205,6 +205,12 @@
     {% endif %}
     {% if waitlist %}
     <p class="small text-muted px-3 pt-3 mb-2">In the order they joined. {% if waitlist_auto %}When a seat is freed, the first in line gets it on their own.{% else %}Nobody moves up on their own: a team stays here until you accept it.{% endif %} {% if may_accept %}You can also accept anyone now, even when the event is full: they're registered, emailed, and the count goes past the limit.{% endif %}</p>
+    {% if may_accept %}
+    {#- UPG-317: delete the whole waitlist (one person: Delete on their row) -#}
+    <div class="px-3 mb-2">
+      <button type="button" class="btn btn-sm btn-outline-danger" data-dialog-open data-bs-target="#wl-delete-all" aria-haspopup="dialog" data-delete-waitlist-all><i class="fas fa-trash me-1" aria-hidden="true"></i>Delete the whole waitlist ({{ waitlist|length }})</button>
+    </div>
+    {% endif %}
     {#- UPG-302: find one team in a long line; capitals don't matter -#}
     <form method="get" action="{{ request.path }}#waitlist" class="px-3 d-flex flex-wrap gap-2 align-items-end mb-2" role="search" data-waitlist-search>
       {% for k, v in waitlist_keep.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
@@ -253,6 +259,7 @@
                 <button type="button" class="btn btn-sm btn-outline-secondary" data-toggle-row data-bs-target="#wl-details-{{ w.id }}" aria-expanded="false" aria-controls="wl-details-{{ w.id }}" data-details-toggle><i class="fas fa-list me-1" aria-hidden="true"></i><span data-label>Details</span><span class="visually-hidden"> of {{ wlabel }}</span></button>
                 {% if may_accept %}
                 <button type="button" class="btn btn-sm btn-success" data-dialog-open data-bs-target="#accept-{{ w.id }}" aria-haspopup="dialog" data-accept-waitlist><i class="fas fa-check me-1" aria-hidden="true"></i>Accept<span class="visually-hidden"> {{ wlabel }}</span></button>
+                <button type="button" class="btn btn-sm btn-outline-danger" data-dialog-open data-bs-target="#wl-delete-{{ w.id }}" aria-haspopup="dialog" data-delete-waitlist><i class="fas fa-trash me-1" aria-hidden="true"></i>Delete<span class="visually-hidden"> {{ wlabel }} from the waitlist</span></button>
                 {% endif %}
               </div>
             </td>
@@ -543,7 +550,54 @@
       </div>
     </form>
   </dialog>
+  {#- UPG-317: delete one from the waitlist -#}
+  <dialog class="reg-dialog" id="wl-delete-{{ w.id }}" aria-labelledby="wl-delete-title-{{ w.id }}">
+    <form method="post" action="/coordinator/registrations/{{ event.id }}/delete_waitlist" data-delete-waitlist-form>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="wl_id" value="{{ w.id }}">
+      {% if wq %}<input type="hidden" name="wq" value="{{ wq }}">{% endif %}
+      <div class="reg-dialog__body small">
+        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+          <h2 class="h5 mb-0 text-danger" id="wl-delete-title-{{ w.id }}">Delete {{ wlabel }} from the waitlist?</h2>
+          <button type="button" class="btn-close" data-dialog-close aria-label="Close"></button>
+        </div>
+        <p>{{ wlabel }} (#{{ w.place }} in line) is taken off the waitlist for good and won't get a seat from it. They aren't told. Their account stays, so they can sign up again.</p>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="confirm" value="yes" id="wl-confirm-{{ w.id }}" required>
+          <label class="form-check-label" for="wl-confirm-{{ w.id }}">I understand {{ wlabel }} will be deleted from the waitlist.</label>
+        </div>
+      </div>
+      <div class="reg-dialog__actions">
+        <button type="button" class="btn btn-outline-secondary" data-dialog-close autofocus>Keep them</button>
+        <button type="submit" class="btn btn-danger">Delete from the waitlist</button>
+      </div>
+    </form>
+  </dialog>
   {% endfor %}
+  {% if waitlist %}
+  {#- UPG-317: delete the whole waitlist -#}
+  <dialog class="reg-dialog" id="wl-delete-all" aria-labelledby="wl-delete-all-title">
+    <form method="post" action="/coordinator/registrations/{{ event.id }}/delete_waitlist" data-delete-waitlist-all-form>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="all" value="1">
+      <div class="reg-dialog__body small">
+        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+          <h2 class="h5 mb-0 text-danger" id="wl-delete-all-title">Delete the whole waitlist?</h2>
+          <button type="button" class="btn-close" data-dialog-close aria-label="Close"></button>
+        </div>
+        <p>All {{ waitlist|length }} waiting{% if wq %} (everyone, not only the ones your search shows){% endif %} are taken off the waitlist for good and won't get a seat from it. They aren't told. Teams you already accepted stay registered. Their accounts stay, so they can sign up again.</p>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="confirm" value="yes" id="wl-confirm-all" required>
+          <label class="form-check-label" for="wl-confirm-all">I understand all {{ waitlist|length }} waiting will be deleted.</label>
+        </div>
+      </div>
+      <div class="reg-dialog__actions">
+        <button type="button" class="btn btn-outline-secondary" data-dialog-close autofocus>Keep the waitlist</button>
+        <button type="submit" class="btn btn-danger">Delete all {{ waitlist|length }}</button>
+      </div>
+    </form>
+  </dialog>
+  {% endif %}
   {% endif %}
 
   {% if may_cancel %}

@@ -742,6 +742,44 @@ def waitlist_auto(event_id):
     return redirect(f'/coordinator/registrations/{event_id}#waitlist')
 
 
+@coord_bp.route('/registrations/<event_id>/delete_waitlist', methods=['POST'])
+@login_required
+@role_required(COORD_ROLES)
+def delete_waitlist(event_id):
+    """The hosting SPOC deletes one person or team from the waitlist, or the
+    whole waitlist (`all`), after ticking to confirm (UPG-317). Only those
+    still waiting go; nobody is told."""
+    import services_waitlist
+    from urllib.parse import urlencode
+    _hosted_event(event_id)
+    wq = (request.form.get('wq') or '').strip()[:200]
+    back = f'/coordinator/registrations/{event_id}' + (f"?{urlencode({'wq': wq})}" if wq else '')
+    everyone = request.form.get('all') == '1'
+    wl_id = '' if everyone else (request.form.get('wl_id') or '').strip()
+    if not everyone and not wl_id:
+        flash("Choose who to delete from the waitlist; nothing was deleted.", "warning")
+        return redirect(back + '#waitlist')
+    if request.form.get('confirm') != 'yes':
+        flash("Tick the box to confirm; nothing was deleted from the waitlist.", "warning")
+        return redirect(back + '#waitlist')
+    gone = services_waitlist.delete_waiting(db, event_id, wl_id)
+    if not gone:
+        flash("Nobody was deleted: they're no longer waiting." if wl_id else "Nobody is waiting, so nothing "
+              "was deleted.", "info")
+        return redirect(back + '#waitlist')
+    actor = session.get('user_id', '')
+    who = ', '.join(str(e.get('user_email') or e.get('email') or i) for i, e in gone)
+    log_action(db, "WAITLIST_DELETED", f"{actor} deleted {len(gone)} from the waitlist of event {event_id}: {who}"[:1000])
+    if everyone:
+        flash(f"The waitlist is deleted: {len(gone)} waiting removed.", "success")
+    else:
+        e = gone[0][1]
+        reg = e.get('reg_data') if isinstance(e.get('reg_data'), dict) else {}
+        label = reg.get('team_name') or reg.get('lead_name') or e.get('name') or e.get('user_email') or 'They'
+        flash(f"{label} deleted from the waitlist.", "success")
+    return redirect(back + '#waitlist')
+
+
 @coord_bp.route('/registrations/<event_id>/add_members_window', methods=['POST'])
 @login_required
 @role_required(COORD_ROLES)

@@ -10,6 +10,12 @@ function _roomCounts(data) {
       card.querySelector('[data-room-people]').textContent = r.used ?? r.people;
       card.querySelector('[data-room-teams]').textContent = r.teams;
       card.classList.toggle('over', !!r.over);
+      const sizes = card.querySelector('[data-room-sizes]');      // the team sizes in it (UPG-316)
+      if (sizes && r.sizes) {
+        sizes.textContent = r.sizes.length ? 'Teams of ' + r.sizes.join(' and ') : '';
+        const anySize = sizes.dataset.roomMixed === '1';         // a "Mixed" room may hold any size
+        sizes.classList.toggle('mixed', (r.sizes.length > 1 && !anySize) || (!!r.team_size && r.sizes.some(n => n !== r.team_size)));
+      }
     });
   });
   const none = document.querySelector('[data-room-unallocated]');

@@ -47,8 +47,8 @@
 {% for r in summary.rooms %}
 <div class="card" data-review-room="{{ r.name }}">
   <div class="room-head">
-    <div class="section-title mb-0"><i class="fas fa-door-open me-1"></i>{{ r.name }}</div>
-    <div class="{{ 'over' if r.over }}">{{ r.used }} of {{ r.capacity }} seats · {{ r.teams | length }} team(s){% if summary.per == 'team' %} · {{ r.people }} people{% endif %}{% if r.over %} · over by {{ r.used - r.capacity }}{% elif r.left %} · {{ r.left }} free{% endif %}</div>
+    <div class="section-title mb-0"><i class="fas fa-door-open me-1"></i>{{ r.name }}{% if r.team_size %} · for teams of {{ r.team_size }}{% elif r.mixed %} · mixed sizes{% endif %}</div>
+    <div class="{{ 'over' if r.over }}">{{ r.used }} of {{ r.capacity }} seats · {{ r.teams | length }} team(s){% if summary.per == 'team' %} · {{ r.people }} people{% endif %}{% if r.sizes %} · <span data-review-sizes>teams of {{ r.sizes | join(' and ') }}</span>{% endif %}{% if r.over %} · over by {{ r.used - r.capacity }}{% elif r.left %} · {{ r.left }} free{% endif %}</div>
   </div>
   {% if r.teams %}
   <table class="list">

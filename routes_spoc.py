@@ -1851,13 +1851,15 @@ def _room_regs(event_id):
 def setup_rooms(event_id):
     event = _event_or_abort(event_id, 'manage_registrations')  # BLK-17
     import services_rooms
-    rooms = services_rooms.parse_rooms(request.form.getlist('room_name[]'), request.form.getlist('capacity[]'))
+    rooms = services_rooms.parse_rooms(request.form.getlist('room_name[]'), request.form.getlist('capacity[]'),
+                                       request.form.getlist('team_size[]'))   # "Teams of 4" (UPG-316)
     if not rooms:
         flash("Add at least one room with a capacity of 1 or more.", "warning")
         return redirect(f'/spoc/room_allocation/{event_id}')
     regs = _room_regs(event_id)
     services_rooms.save_rooms(db, event_id, event, regs, rooms, by=session.get('user_id', ''),
-                              unit=request.form.get('per'))   # a seat is a person or a team (UPG-312)
+                              unit=request.form.get('per'),   # a seat is a person or a team (UPG-312)
+                              by_size=request.form.get('by_size') == '1')   # sizes kept apart (UPG-316)
     if request.form.get('action') == 'allocate':
         services_rooms.fill(db, event_id, event, regs, by=session.get('user_id', ''))
         log_action(db, "ROOMS_DRAFTED", f"SPOC {session.get('user_id')} saved {len(rooms)} rooms and "
@@ -1877,7 +1879,7 @@ def room_autofill(event_id):
     import services_rooms
     try:
         services_rooms.fill(db, event_id, event, _room_regs(event_id), by=session.get('user_id', ''))
-        flash("✅ Draft made in registration order, each team kept together. Nobody sees it yet.", "success")
+        flash("✅ Draft made, each team kept together in one room. Nobody sees it yet.", "success")
     except services_rooms.RoomError as exc:
         flash(str(exc), "warning")
     return redirect(f'/spoc/room_allocation/{event_id}')
@@ -1893,7 +1895,8 @@ def room_allocation(event_id):
     summary = services_rooms.summary(event, regs)
     return render_template('spoc/room_allocation.html', event=event, summary=summary, plan=summary['plan'],
                            registrations=summary['teams'], rooms=summary['plan']['rooms'],
-                           size=services_rooms.size)
+                           size=services_rooms.size,
+                           size_choices=services_rooms.size_choices(summary['plan']['rooms'], regs))
 
 
 @spoc_bp.route('/reassign_room/<event_id>/<reg_id>', methods=['POST'])

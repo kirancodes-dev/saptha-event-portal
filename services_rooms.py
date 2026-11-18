@@ -8,6 +8,11 @@ check, then "Allocate final" (UPG-306).
 2. Draft: "Auto-fill" places teams in registration order, a team never split,
    into the first room with seats for the whole team; cancelled teams are left
    out. The SPOC moves teams by hand. The draft is saved on the event only.
+   Team sizes (UPG-316), chosen by the SPOC before Auto-fill: "Mixed" (teams
+   of 3 and 4 may share a room, as before) or "Separate" (they never do).
+   Each room can also follow that choice, be "Mixed" whatever it is (any
+   team), or take only teams of one size ("Teams of 4"). Moving by
+   hand still puts any team anywhere.
 3. Final check: each room's teams and people, and what to fix.
 4. Allocate final: the SPOC ticks "Email the team lead", "Show on the
    website", or both. Only now is `assigned_room` written on registrations,
@@ -17,8 +22,9 @@ check, then "Allocate final" (UPG-306).
    tells only teams whose room changed, or by a channel newly ticked.
 
 Everything lives in the event's `room_plan`:
-    rooms       [{name, capacity}]
+    rooms       [{name, capacity, team_size?, mixed?}]   team_size: only that size; mixed: any size (UPG-316)
     per         'person' (default) or 'team': what one seat is (UPG-312)
+    by_size     True ("Separate"): teams of different sizes never share a room (UPG-316)
     draft       {reg_id: room}          draft_at, draft_by
     final       {reg_id: room}          final_at, final_by, email, website
     told        {reg_id: {room, email, website}}   what each team was told
@@ -32,6 +38,8 @@ import services_registration_filters as filters
 PLAN = 'room_plan'
 MAX_ROOMS = 200
 PER_PERSON, PER_TEAM = 'person', 'team'
+MAX_TEAM_SIZE = 50
+MIXED = 'mix'          # a room's "Teams of": any size, even when sizes are kept apart (UPG-316)
 
 
 class RoomError(Exception):
@@ -71,10 +79,20 @@ def active(regs) -> list:
     return sorted(keep, key=lambda r: (str(r.get('registered_at') or ''), _rid(r)))
 
 
-def parse_rooms(names, capacities) -> list:
-    """[{name, capacity}] from the form's rows: blank or 0 rows dropped, each name once."""
+def _team_size(value) -> int:
+    """A room's "Teams of" size: 1 to 50, or 0 for any size."""
+    try:
+        n = int(str(value).strip())
+    except (TypeError, ValueError):
+        return 0
+    return n if 1 <= n <= MAX_TEAM_SIZE else 0
+
+
+def parse_rooms(names, capacities, team_sizes=None) -> list:
+    """[{name, capacity, team_size?}] from the form's rows: blank or 0 rows dropped, each name once."""
     rooms, seen = [], set()
-    for name, cap in zip(names or [], capacities or []):
+    sizes = list(team_sizes or [])
+    for i, (name, cap) in enumerate(zip(names or [], capacities or [])):
         name = str(name or '').strip()[:100]
         try:
             cap = int(str(cap).strip())
@@ -83,7 +101,13 @@ def parse_rooms(names, capacities) -> list:
         if not name or cap <= 0 or name.lower() in seen:
             continue
         seen.add(name.lower())
-        rooms.append({'name': name, 'capacity': min(cap, 100000)})
+        room = {'name': name, 'capacity': min(cap, 100000)}
+        choice = str(sizes[i] if i < len(sizes) else '').strip().lower()
+        if choice == MIXED:
+            room['mixed'] = True
+        elif _team_size(choice):
+            room['team_size'] = _team_size(choice)
+        rooms.append(room)
     return rooms[:MAX_ROOMS]
 
 
@@ -112,25 +136,51 @@ def _save(db, event_id: str, event: dict, p: dict) -> None:
     event['rooms'] = keep.get('rooms') or []
 
 
-def auto_fill(rooms, regs, unit: str = PER_PERSON) -> dict:
-    """{reg_id: room}: registration order, each team whole in the first room with seats for all of it."""
-    left = [[r['name'], int(r.get('capacity') or 0)] for r in rooms]
+def auto_fill(rooms, regs, unit: str = PER_PERSON, by_size: bool = False) -> dict:
+    """{reg_id: room}: registration order, each team whole in the first room with seats for all of it.
+
+    A room with a team size takes only teams of that size (UPG-316). With
+    `by_size` ("Separate"), the biggest teams go first (registration order
+    within a size) and a room that follows the choice takes only the size of
+    the first team put in it, so it never mixes sizes. A team tries a room
+    already kept for its size, then a "Mixed" room, then a free room (which is
+    then kept for its size), so free rooms stay free for the other sizes."""
+    left = [{'name': r['name'], 'free': int(r.get('capacity') or 0), 'size': _team_size(r.get('team_size')),
+             'mixed': bool(r.get('mixed'))} for r in rooms]
+    teams = active(regs)
+    if by_size:
+        teams = sorted(teams, key=lambda r: -size(r))           # stable: registration order within a size
     draft = {}
-    for reg in active(regs):
-        need = seats(reg, unit)
-        for slot in left:
-            if slot[1] >= need:
-                draft[_rid(reg)] = slot[0]
-                slot[1] -= need
+    for reg in teams:
+        need, n = seats(reg, unit), size(reg)
+        kept = [s for s in left if s['size'] == n]
+        open_ = [s for s in left if not s['size']]
+        if by_size:          # a "Mixed" room before a free one, which the team would keep for its size
+            open_ = [s for s in open_ if s['mixed']] + [s for s in open_ if not s['mixed']]
+        for slot in kept + open_:
+            if slot['free'] >= need:
+                draft[_rid(reg)] = slot['name']
+                slot['free'] -= need
+                if by_size and not slot['size'] and not slot['mixed']:
+                    slot['size'] = n                             # this room is now for teams of n
                 break
     return draft
 
 
-def save_rooms(db, event_id, event, regs, rooms, by='', unit=None) -> dict:
+def size_choices(rooms, regs) -> list:
+    """The sizes a room's "Teams of" list offers: 1 to 10, every team's size, and any size already set."""
+    sizes = set(range(1, 11)) | {size(r) for r in active(regs or [])}
+    sizes |= {_team_size(r.get('team_size')) for r in rooms or []}
+    return sorted(n for n in sizes if 1 <= n <= MAX_TEAM_SIZE)
+
+
+def save_rooms(db, event_id, event, regs, rooms, by='', unit=None, by_size=None) -> dict:
     p = plan(event, regs)
     p['rooms'] = rooms
     if unit in (PER_PERSON, PER_TEAM):
         p['per'] = unit
+    if by_size is not None:
+        p['by_size'] = bool(by_size)
     _save(db, event_id, event, p)
     return p
 
@@ -140,7 +190,7 @@ def fill(db, event_id, event, regs, by='') -> dict:
     p = plan(event, regs)
     if not p['rooms']:
         raise RoomError("Add at least one room with its capacity first.")
-    p.update(draft=auto_fill(p['rooms'], regs, per(p)), draft_at=_now(), draft_by=by)
+    p.update(draft=auto_fill(p['rooms'], regs, per(p), bool(p.get('by_size'))), draft_at=_now(), draft_by=by)
     _save(db, event_id, event, p)
     return p
 
@@ -201,12 +251,21 @@ def summary(event, regs, p=None) -> dict:
         used = sum(seats(t, unit) for t in by_room[r['name']])
         cap = int(r.get('capacity') or 0)
         rooms.append({'name': r['name'], 'capacity': cap, 'teams': by_room[r['name']], 'people': people,
-                      'used': used, 'left': cap - used, 'over': used > cap})
+                      'used': used, 'left': cap - used, 'over': used > cap,
+                      'team_size': _team_size(r.get('team_size')), 'mixed': bool(r.get('mixed')),
+                      'sizes': sorted({size(t) for t in by_room[r['name']]})})
     what = 'teams' if unit == PER_TEAM else 'people'
     problems = [f"{r['name']} has {r['used']} {what} for {r['capacity']} seats." for r in rooms if r['over']]
     for missing in sorted({room for _, room in unknown}):
         problems.append(f"{missing} isn't in your room list: add it, or move its teams.")
     notes = []
+    for r in rooms:          # team sizes (UPG-316): noted, not blocking; the SPOC may have moved them on purpose
+        other = [n for n in r['sizes'] if r['team_size'] and n != r['team_size']]
+        if other:
+            notes.append(f"{r['name']} is for teams of {r['team_size']} but has a team of "
+                         f"{' and '.join(map(str, other))}.")
+        elif p.get('by_size') and not r['mixed'] and len(r['sizes']) > 1:
+            notes.append(f"{r['name']} mixes teams of {' and '.join(map(str, r['sizes']))}.")
     if unallocated:
         notes.append(f"{len(unallocated)} team(s) have no room and won't get one.")
     if late:
@@ -219,14 +278,16 @@ def summary(event, regs, p=None) -> dict:
             'problems': problems, 'notes': notes, 'changes': changes, 'teams': teams,
             'allocated': sum(1 for t in teams if p['draft'].get(_rid(t))),
             'people': sum(size(t) for t in teams if p['draft'].get(_rid(t))),
-            'seats': sum(int(r.get('capacity') or 0) for r in p['rooms']), 'per': unit, 'plan': p}
+            'seats': sum(int(r.get('capacity') or 0) for r in p['rooms']), 'per': unit,
+            'by_size': bool(p.get('by_size')), 'plan': p}
 
 
 def counts(event, regs) -> dict:
     """What the page's room cards show after a change (for the page script)."""
     s = summary(event, regs)
     return {'rooms': [{'name': r['name'], 'people': r['people'], 'used': r['used'], 'capacity': r['capacity'],
-                       'teams': len(r['teams']), 'over': r['over']} for r in s['rooms']],
+                       'teams': len(r['teams']), 'over': r['over'], 'sizes': r['sizes'],
+                       'team_size': r['team_size']} for r in s['rooms']],
             'unallocated': len(s['unallocated']), 'changes': len(s['changes'])}
 
 

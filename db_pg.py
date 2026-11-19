@@ -38,10 +38,19 @@ DB_PASS           = os.environ.get("DB_PASS", "")
 DB_NAME           = os.environ.get("DB_NAME", "saptha")
 READ_REPLICA_URL  = os.environ.get("READ_REPLICA_URL", "")
 
-# PgBouncer Optimizations
-PGBOUNCER_POOL_SIZE = int(os.environ.get("PGBOUNCER_POOL_SIZE", "20"))
-PGBOUNCER_MAX_OVERFLOW = int(os.environ.get("PGBOUNCER_MAX_OVERFLOW", "10"))
+# Database connections per server process (UPG-319). The database has a fixed
+# number of connection slots (25 on Cloud SQL db-f1-micro, 3 kept for its own
+# administrator), and every Cloud Run copy of the app, the old ones during a
+# deploy too, holds its own pool. Past the limit every request, even a picture,
+# failed with "remaining connection slots are reserved". So each process keeps
+# at most POOL_SIZE connections open and opens at most MAX_OVERFLOW more under
+# load; a request that finds them all busy waits up to POOL_TIMEOUT seconds for
+# one instead of failing. docs/DEPLOY.md ("Traffic and database connections")
+# gives the numbers for each database size.
+PGBOUNCER_POOL_SIZE = int(os.environ.get("PGBOUNCER_POOL_SIZE", "2"))
+PGBOUNCER_MAX_OVERFLOW = int(os.environ.get("PGBOUNCER_MAX_OVERFLOW", "3"))
 PGBOUNCER_POOL_RECYCLE = int(os.environ.get("PGBOUNCER_POOL_RECYCLE", "1800"))
+PGBOUNCER_POOL_TIMEOUT = int(os.environ.get("PGBOUNCER_POOL_TIMEOUT", "15"))
 
 _engine = None
 _replica_engine = None
@@ -86,6 +95,7 @@ def _postgres_engine(url, **kwargs):
         pool_size=PGBOUNCER_POOL_SIZE,
         max_overflow=PGBOUNCER_MAX_OVERFLOW,
         pool_recycle=PGBOUNCER_POOL_RECYCLE,
+        pool_timeout=PGBOUNCER_POOL_TIMEOUT,
         **kwargs,
     )
 

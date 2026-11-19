@@ -54,6 +54,15 @@ class SQLSession(CallbackDict, SessionMixin):
         self.stored_expiry = None
 
 
+NO_SESSION_PATHS = ('/sw.js', '/favicon.ico', '/robots.txt', '/health', '/health/ready')
+
+
+def needs_no_session(app, path: str) -> bool:
+    """Static files, the service worker and the health checks (UPG-319)."""
+    static = (app.static_url_path or '/static').rstrip('/') + '/'
+    return path.startswith(static) or path in NO_SESSION_PATHS
+
+
 class SQLSessionInterface(SessionInterface):
     """Flask session interface backed by models_pg.FlaskSession."""
 
@@ -70,6 +79,11 @@ class SQLSessionInterface(SessionInterface):
         from models_pg import FlaskSession
 
         sid = request.cookies.get(self.get_cookie_name(app))
+        if sid and needs_no_session(app, request.path):
+            # A file or a health check never reads the session: no database
+            # connection for each picture, font and script on a page (UPG-319).
+            # Nothing is saved for it, so the visitor's own session is untouched.
+            return SQLSession(sid=sid)
         if sid:
             with _primary() as s:
                 row = s.get(FlaskSession, sid)

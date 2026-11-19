@@ -1,29 +1,25 @@
 """
 gunicorn.conf.py — Production Gunicorn configuration for SapthaEvent
 =====================================================================
-Multi-worker, stateless web fleet.
+One process with several threads per copy, sized to the database's
+connection slots (UPG-319; docs/DEPLOY.md, "Traffic and database
+connections"). WEB_CONCURRENCY sets the processes, GUNICORN_THREADS the
+threads in each.
 
-APScheduler has been removed from the web process — all scheduled and
-async work now runs in the celery-worker / celery-beat containers.
-This means we can safely run multiple Gunicorn workers without duplicate
-job execution.
-
-Tuned for:
-  - 3-5 web replicas behind Nginx (docker-compose scale)
-  - Each replica: 2-4 workers × N threads
-  - 512 MB RAM per replica (Railway / Cloud Run tier)
-  - Redis-backed sessions (no shared filesystem needed)
+APScheduler is not in the web process; scheduled work comes in through the
+/cron endpoints, so several processes never run a job twice.
 """
 
 import os
 
-# Use WEB_CONCURRENCY if set (Render/Heroku standard), otherwise default to 2 workers for 512MB safety
-workers = int(os.environ.get('WEB_CONCURRENCY', os.environ.get('WORKERS', '2')))
-
-# Threads give concurrency within each worker for I/O-bound requests.
-# Most of our I/O (email, Firestore) is now offloaded to Celery,
-# so requests complete quickly — threads reduce latency spikes.
-threads = 2
+# One process with several threads per Cloud Run copy (UPG-319): the copies
+# share one small database pool per process, so fewer processes means fewer
+# database connections for the same number of requests at once. Requests
+# mostly wait on the database and mail, which threads overlap. Cloud Run's
+# --concurrency should equal workers × threads, so it starts another copy
+# instead of queueing more requests than this one can work on.
+workers = int(os.environ.get('WEB_CONCURRENCY', os.environ.get('WORKERS', '1')))
+threads = int(os.environ.get('GUNICORN_THREADS', '8'))
 
 # Use gevent event loop if available (install greenlet + gevent for it).
 # Falls back to sync worker class automatically.

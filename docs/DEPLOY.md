@@ -49,17 +49,69 @@ gcloud artifacts repositories create saptha --repository-format=docker --locatio
 gcloud builds submit --tag "$IMAGE"
 # Migrations first (next section), then the service:
 gcloud run deploy saptha --image "$IMAGE" --region "$REGION" --allow-unauthenticated \
-  --min-instances=0 --max-instances=3 --memory=1Gi --timeout=1800 \
+  --min-instances=1 --max-instances=3 --concurrency=8 --memory=1Gi --timeout=1800 \
   --add-cloudsql-instances="$PROJECT:$REGION:saptha-db" \
-  --set-env-vars=FLASK_ENV=production,CLOUD_SQL_INSTANCE=$PROJECT:$REGION:saptha-db,DB_USER=saptha,DB_NAME=saptha,BASE_URL=https://<your-service-url>,WEB_CONCURRENCY=2 \
+  --set-env-vars=FLASK_ENV=production,CLOUD_SQL_INSTANCE=$PROJECT:$REGION:saptha-db,DB_USER=saptha,DB_NAME=saptha,BASE_URL=https://<your-service-url>,WEB_CONCURRENCY=1,GUNICORN_THREADS=8,PGBOUNCER_POOL_SIZE=2,PGBOUNCER_MAX_OVERFLOW=3 \
   --set-secrets=SECRET_KEY=SECRET_KEY:latest,MASTER_SECRET_KEY=MASTER_SECRET_KEY:latest,JWT_SECRET_KEY=JWT_SECRET_KEY:latest,DB_PASS=DB_PASS:latest,CRON_SECRET=CRON_SECRET:latest,BREVO_API_KEY=BREVO_API_KEY:latest
 ```
+
+The sizes (one copy always running, 8 requests at once per copy, at most 3
+copies, 2 + 3 database connections per copy) fit the smallest database, db-f1-micro;
+see "Traffic and database connections" below before changing any of them.
 
 Add the Razorpay, mail sender, storage and optional settings the same way. The
 first deploy prints the service URL; set `BASE_URL` to it (or to the university
 domain once it points there) and deploy again. The service account Cloud Run
 uses needs **Cloud SQL Client**, **Secret Manager Secret Accessor** and, for
 uploads, **Storage Object Admin** on the bucket.
+
+## Traffic and database connections
+
+The database has a fixed number of connection slots: 25 on Cloud SQL
+**db-f1-micro**, 50 on **db-g1-small**, 100 on **db-custom-1-3840**, of which 3
+are kept for Google's administrator. Every copy of the app Cloud Run starts holds
+its own connections, and during a deploy the old copies keep theirs for a while.
+When they all add up to more than the database has, every request fails with
+"Internal Server Error", pictures and fonts too; the log says `remaining
+connection slots are reserved for roles with the SUPERUSER attribute`. That
+happened on 2026-11-19 (UPG-319), with 2 processes per copy holding up to 30
+connections each.
+
+What decides it, per copy of the app:
+
+| Setting | Where | Value for db-f1-micro |
+|---|---|---|
+| Processes | `WEB_CONCURRENCY` | 1 |
+| Threads per process (requests worked on at once) | `GUNICORN_THREADS` | 8 |
+| Requests Cloud Run sends one copy at once | `--concurrency` | 8 (processes × threads) |
+| Connections kept open per process | `PGBOUNCER_POOL_SIZE` | 2 |
+| Extra connections under load per process | `PGBOUNCER_MAX_OVERFLOW` | 3 |
+| Seconds a request waits for a free connection | `PGBOUNCER_POOL_TIMEOUT` | 15 |
+| Copies at most | `--max-instances` | 3 |
+| Copies always running (no slow first visit) | `--min-instances` | 1 |
+
+The rule: max-instances × (POOL_SIZE + MAX_OVERFLOW) for the new copies, plus
+max-instances × POOL_SIZE for old copies still alive after a deploy, plus 1 for
+the migration job, must not exceed the database's slots minus 3. For db-f1-micro:
+3 × 5 + 3 × 2 + 1 = 22 = 25 − 3. When all of a process's connections are busy, a
+request waits for one (up to the timeout) instead of failing.
+
+So db-f1-micro serves about 24 requests at once (3 copies × 8); more wait in
+Cloud Run's queue for a moment. For more, make the database bigger first, then
+raise `--max-instances` by the rule: db-g1-small allows 6 copies
+(6 × 5 + 6 × 2 + 1 = 43 ≤ 47), db-custom-1-3840 allows 12 (85 ≤ 97). Pictures,
+fonts, scripts and the health checks don't touch the database.
+
+To change them on the running service (no rebuild):
+
+```bash
+gcloud run services update saptha --region "$REGION" --min-instances=1 --max-instances=3 --concurrency=8 \
+  --update-env-vars=WEB_CONCURRENCY=1,GUNICORN_THREADS=8,PGBOUNCER_POOL_SIZE=2,PGBOUNCER_MAX_OVERFLOW=3
+```
+
+`--min-instances=1` keeps one copy running all the time, which Google bills
+whether or not anyone visits; `--min-instances=0` saves that, and the first
+visitor after a quiet spell waits 10 to 20 seconds while a copy starts.
 
 ## Settings
 

@@ -261,7 +261,21 @@ def _portal_context(event, reg_id, reg):
         'results': (services_hackathon_eval.results_for(db, event['id'], event, reg)
                     if event.get('results_published') else None),
         'certificates': services_hackathon_eval.certificates_for(event['id'], reg),
+        'selection': _selection_context(event, reg, now),
     }
+
+
+def _selection_context(event, reg, now):
+    """What the page shows about choosing a problem statement (UPG-321)."""
+    h = services_hackathon
+    state = h.selection_window(event, now)
+    if state == 'not_set':
+        return None
+    s, cap = h.selection(event), h.selection_cap(event)
+    counts = h.taken(event['id'], event) if cap and state == 'open' else {}
+    return {'state': state, 'opens': h.show(s.get('opens_at'), event), 'closes': h.show(s.get('closes_at'), event),
+            'closes_iso': s.get('closes_at') or '', 'cap': cap, 'choice': h.choice_of(reg),
+            'full': {pid for pid, n in counts.items() if n >= cap}, 'counts': counts}
 
 
 @hackathon_bp.route('/hackathon/<event_id>')
@@ -291,6 +305,19 @@ def portal_state(event_id):
     _sub_id, submission = services_hackathon.submission_for(db, reg_id)
     return jsonify({'version': services_hackathon.page_version(event, reg, submission),
                     'now': services_hackathon._iso(services_hackathon._now())})
+
+
+@hackathon_bp.route('/hackathon/<event_id>/choose', methods=['POST'])
+@login_required
+def portal_choose(event_id):
+    """The team lead chooses or changes the team's problem statement (UPG-321)."""
+    event = _event(event_id)
+    reg_id, reg = _my_team(event_id)
+    if not reg_id:
+        abort(403)
+    ok, message = services_hackathon.choose(db, event_id, event, reg_id, reg, request.form.get('pid', ''), _me())
+    flash(message, 'success' if ok else 'danger')
+    return redirect(url_for('hackathon.portal', event_id=event_id) + '#choose')
 
 
 @hackathon_bp.route('/hackathon/<event_id>/submit', methods=['POST'])
@@ -394,7 +421,10 @@ def manage(event_id):
         criteria=ev.criteria(event), max_criteria=ev.MAX_CRITERIA, max_description=ev.DESCRIPTION_CHARS, ranking=ev.ranking(db, event_id, event, sort),
         sort=sort, shortlist=ev.shortlist(event), undo_ok=undo_ok, undo_why=undo_why,
         round=round_info(event)['current'], unsent_results=_unsent_results(event_id, event),
-        eval_mode=ev.mode(event), eval_modes=ev.MODES, judging=_judging_summary(event_id, event))
+        eval_mode=ev.mode(event), eval_modes=ev.MODES, judging=_judging_summary(event_id, event),
+        selection=h.selection(event), sel_window=h.selection_window(event),
+        sel_board=h.selection_board(db, event_id, event) if h.selection_on(event) else None,
+        sel_extensions=list(reversed(h.selection(event).get('extensions') or [])))
 
 
 def _judging_summary(event_id, event):
@@ -505,6 +535,71 @@ def extend(event_id):
         _audit('HACKATHON_DEADLINE_EXTENDED', f"{_me()} extended {event_id}: {message}")
     flash(message, 'success' if ok else 'danger')
     return _back(event_id, 'deadline')
+
+
+# ── Choosing a problem statement (UPG-321) ──────────────────────────────────
+
+@hackathon_bp.route('/spoc/hackathon/<event_id>/selection', methods=['POST'])
+@login_required
+def selection_save(event_id):
+    event = _managed(event_id)
+    ok, message = services_hackathon.save_selection(db, event_id, event, request.form, by=_me())
+    if ok:
+        _audit('HACKATHON_SELECTION_SAVED', f"{_me()} set the problem statement choice of {event_id}")
+    flash(message, 'success' if ok else 'danger')
+    return _back(event_id, 'selection')
+
+
+@hackathon_bp.route('/spoc/hackathon/<event_id>/selection/extend', methods=['POST'])
+@login_required
+def selection_extend(event_id):
+    event = _managed(event_id)
+    minutes = request.form.get('minutes', '')
+    if minutes == 'custom':
+        try:
+            minutes = int(request.form.get('custom_hours') or 0) * 60 + int(request.form.get('custom_minutes') or 0)
+        except ValueError:
+            minutes = 0
+    ok, message = services_hackathon.extend_selection(db, event_id, event, minutes,
+                                                      request.form.get('reason', ''), by=_me())
+    if ok:
+        _audit('HACKATHON_SELECTION_EXTENDED', f"{_me()} extended the problem statement choice of {event_id}: {message}")
+    flash(message, 'success' if ok else 'danger')
+    return _back(event_id, 'selection')
+
+
+@hackathon_bp.route('/spoc/hackathon/<event_id>/selection/lock', methods=['POST'])
+@login_required
+def selection_lock(event_id):
+    event = _managed(event_id)
+    ok, message = services_hackathon.lock_selection(db, event_id, event, by=_me())
+    if ok:
+        _audit('HACKATHON_SELECTION_LOCKED', f"{_me()} locked the problem statement choice of {event_id}")
+    flash(message, 'success' if ok else 'warning')
+    return _back(event_id, 'selection')
+
+
+@hackathon_bp.route('/spoc/hackathon/<event_id>/selection/reopen', methods=['POST'])
+@login_required
+def selection_reopen(event_id):
+    event = _managed(event_id)
+    ok, message = services_hackathon.reopen_selection(db, event_id, event, by=_me())
+    if ok:
+        _audit('HACKATHON_SELECTION_REOPENED', f"{_me()} reopened the problem statement choice of {event_id}")
+    flash(message, 'success' if ok else 'warning')
+    return _back(event_id, 'selection')
+
+
+@hackathon_bp.route('/spoc/hackathon/<event_id>/selection/assign', methods=['POST'])
+@login_required
+def selection_assign(event_id):
+    event = _managed(event_id)
+    reg_id, pid = request.form.get('reg_id', ''), request.form.get('pid', '')
+    ok, message = services_hackathon.assign(db, event_id, event, reg_id, pid, _me())
+    if ok:
+        _audit('HACKATHON_PROBLEM_ASSIGNED', f"{_me()} set team {reg_id} of {event_id} to problem {pid}: {message}")
+    flash(message, 'success' if ok else 'danger')
+    return _back(event_id, 'selection')
 
 
 @hackathon_bp.route('/spoc/hackathon/<event_id>/update', methods=['POST'])

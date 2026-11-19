@@ -29,6 +29,10 @@
 .hk-field .form-text{font-size:12px;}
 .hk-err{color:#b91c1c;font-size:13px;font-weight:600;}
 .hk-closed{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:12px 14px;font-weight:600;}
+.hk-choose{background:#f8faff;border:1px solid #c7d2fe;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:14px;}
+.hk-choose--locked,.hk-choose--closed{background:#f8fafc;border-color:#cbd5e1;}
+.hk-choose__mine{margin-bottom:4px;}
+.hk-problem--mine{border-color:#16a34a;background:#f0fdf4;}
 .hk-open{background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:10px;padding:10px 14px;margin-bottom:14px;}
 </style>
 {% endblock %}
@@ -114,11 +118,38 @@
 
       <section class="hk-card" id="problems" aria-labelledby="problemsHead">
         <h2 id="problemsHead"><i class="fas fa-lightbulb" aria-hidden="true"></i> Problem statements</h2>
+        {% set sel = selection %}
+        {% if sel %}
+        {#- UPG-321: the team lead chooses one while choosing is open -#}
+        <div id="choose" class="hk-choose hk-choose--{{ sel.state }}" data-selection="{{ sel.state }}">
+          {% if sel.choice %}<div class="hk-choose__mine">Your team's problem statement: <strong data-chosen="{{ sel.choice.pid }}">{{ sel.choice.title }}</strong></div>{% endif %}
+          {% if sel.state == 'not_open' %}
+            Team leads choose one problem statement from <strong>{{ sel.opens }}</strong> to <strong>{{ sel.closes }}</strong>.
+          {% elif sel.state == 'open' %}
+            <i class="fas fa-clock" aria-hidden="true"></i> {% if sel.choice %}You can change it until{% else %}Choose one before{% endif %} <strong>{{ sel.closes }}</strong> · <span class="hk-countdown" data-countdown="{{ sel.closes_iso }}"></span>
+            {% if sel.cap %}<br><span class="small">Each problem statement takes at most {{ sel.cap }} team{{ '' if sel.cap == 1 else 's' }}; first come, first served.</span>{% endif %}
+          {% else %}
+            <strong>Locked.</strong> {% if sel.choice %}Your submission is for this problem statement.{% else %}Your team didn't choose; the organisers will assign one before you can submit.{% endif %}
+          {% endif %}
+        </div>
+        {% endif %}
         {% for p in problems %}
-        <article class="hk-problem">
-          <h3>{{ p.title }}{% if p.track %} <span class="se-badge se-badge--plain">{{ p.track }}</span>{% endif %}</h3>
+        <article class="hk-problem{% if sel and sel.choice.pid == p.id %} hk-problem--mine{% endif %}">
+          <h3>{{ p.title }}{% if p.track %} <span class="se-badge se-badge--plain">{{ p.track }}</span>{% endif %}{% if sel and sel.choice.pid == p.id %} <span class="se-badge se-badge--success">Your team's</span>{% endif %}</h3>
           <p>{{ p.description }}</p>
           {% if p.pdf_key %}<a href="/hackathon/{{ event.id }}/problem/{{ p.id }}/pdf" target="_blank" rel="noopener"><i class="fas fa-file-pdf" aria-hidden="true"></i> {{ p.pdf_name or 'Problem statement (PDF)' }}</a>{% endif %}
+          {% if sel and sel.state == 'open' and not reg.is_eliminated and sel.choice.pid != p.id %}
+          <form method="POST" action="/hackathon/{{ event.id }}/choose" class="mt-2">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="pid" value="{{ p.id }}">
+            {% if p.id in sel.full %}
+            <button class="btn btn-sm btn-outline-secondary" type="button" disabled data-full="{{ p.id }}">Full ({{ sel.cap }} teams)</button>
+            {% else %}
+            <button class="btn btn-sm btn-primary" type="submit" data-choose="{{ p.id }}">{% if sel.choice %}Change to this one{% else %}Choose this one{% endif %}</button>
+            {% endif %}
+            {% if sel.cap %}<span class="small text-muted ms-2">{{ sel.counts.get(p.id, 0) }} of {{ sel.cap }} taken</span>{% endif %}
+          </form>
+          {% endif %}
         </article>
         {% else %}
         <p class="text-muted mb-0">{% if next_release %}Problem statements will be released on <strong>{{ next_release }}</strong>.{% else %}Problem statements haven't been released yet. They will appear here.{% endif %}</p>
@@ -154,6 +185,10 @@
               {% elif f.kind == 'pdf' %}
                 <input class="form-control" type="file" accept="application/pdf,.pdf" id="f_{{ f.id }}" name="f_{{ f.id }}" {% if f.required and not answer %}required{% endif %}>
                 <div class="form-text">PDF, up to {{ f.max_mb or pdf_limit }} MB.{% if answer and answer.key %} Uploaded: <a href="/hackathon/{{ event.id }}/file/{{ reg_id }}/{{ f.id }}" target="_blank" rel="noopener">{{ answer.name }}</a>. Choose a file only to replace it.{% endif %}</div>
+              {% elif f.kind == 'problem' and selection %}
+                {#- UPG-321: the chosen problem statement, not editable here -#}
+                <div class="form-control-plaintext fw-semibold" id="f_{{ f.id }}" data-locked-problem>{{ selection.choice.title if selection.choice else 'Not chosen yet' }}</div>
+                <div class="form-text">{% if selection.choice %}Your team's problem statement{% if selection.state == 'open' %}; change it above until {{ selection.closes }}{% endif %}.{% else %}Choose one above{% if selection.state != 'open' %} (the organisers will assign one){% endif %} before you submit.{% endif %}</div>
               {% elif f.kind == 'problem' %}
                 <select class="form-select" id="f_{{ f.id }}" name="f_{{ f.id }}" {% if f.required %}required{% endif %}>
                   <option value="">Choose a problem statement…</option>

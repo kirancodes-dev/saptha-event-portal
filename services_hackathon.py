@@ -12,6 +12,9 @@ services_hackathon.py — a hackathon run through the portal, Hack2skill style.
   with deadline extensions.
 - UPG-196: what the student's hackathon page shows (stages, countdowns,
   updates).
+- UPG-321: a time when each team's lead chooses one problem statement (a cap
+  per problem statement, lock, reopen, extend, the SPOC assigns); the
+  submission is for the chosen one.
 
 Everything lives on the event document under `hackathon` (the events table
 keeps unknown fields in extra_json); submissions are `project_submissions`
@@ -316,6 +319,313 @@ def find_problem(event: dict, pid: str) -> dict | None:
     return next((p for p in problems(event) if p.get('id') == pid), None)
 
 
+# ── Choosing a problem statement (UPG-321) ──────────────────────────────────
+#
+# The SPOC sets a time when teams choose (opens_at, closes_at), optionally a
+# cap of teams per problem statement, and can lock it early, reopen it and
+# extend it. Each team's lead chooses one released problem statement on the
+# hackathon page while it is open and may change it until it closes; then it
+# is locked and the submission uses it, whatever the form sends. The SPOC
+# assigns one to a team that didn't choose (or changes one). A hackathon with
+# no selection time works as before: the team picks on the submission form.
+#
+# The cap is counted in ticket_type_sales under "<event_id>:problem:<pid>"
+# (the seat counter of UPG-155), taken with one conditional UPDATE, so two
+# teams can't both get the last place.
+
+def selection(event: dict) -> dict:
+    s = data(event).get('selection')
+    return dict(s) if isinstance(s, dict) else {}
+
+
+def _selection_times(event: dict) -> tuple:
+    """(opens, closes) as datetimes, or (None, None) when either isn't set."""
+    s = selection(event)
+    start, end = parse_iso(s.get('opens_at')), parse_iso(s.get('closes_at'))
+    return (start, end) if start and end else (None, None)
+
+
+def selection_on(event: dict) -> bool:
+    """The SPOC has set a time for teams to choose."""
+    return _selection_times(event)[0] is not None
+
+
+def selection_window(event: dict, now: datetime.datetime | None = None) -> str:
+    """not_set, not_open, open, locked (by the SPOC) or closed (time over)."""
+    start, end = _selection_times(event)
+    if start is None or end is None:
+        return 'not_set'
+    now = now or _now()
+    if selection(event).get('locked'):
+        return 'locked'
+    if now < start:
+        return 'not_open'
+    if now >= end:
+        return 'closed'
+    return 'open'
+
+
+def selection_cap(event: dict) -> int:
+    try:
+        return max(0, int(selection(event).get('cap') or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def choice_of(reg: dict | None) -> dict:
+    c = (reg or {}).get('problem_choice')
+    return dict(c) if isinstance(c, dict) and c.get('pid') else {}
+
+
+def _save_selection(db, event_id: str, event: dict, s: dict) -> None:
+    h = data(event)
+    h['selection'] = s
+    _save(db, event_id, h)
+    event['hackathon'] = h
+
+
+def save_selection(db, event_id: str, event: dict, form_data, by: str = '') -> tuple:
+    """(ok, message): when teams choose, and the most teams per problem statement."""
+    start = parse_local(form_data.get('sel_opens_at'), event)
+    end = parse_local(form_data.get('sel_closes_at'), event)
+    if not start or not end:
+        return False, "Set when teams start and stop choosing."
+    if end <= start:
+        return False, "Choosing must close after it opens."
+    try:
+        cap = int(str(form_data.get('cap') or '0').strip() or 0)
+    except ValueError:
+        return False, "The most teams per problem statement is a whole number (0 for no limit)."
+    if cap < 0 or cap > 10000:
+        return False, "The most teams per problem statement is between 0 (no limit) and 10000."
+    old = selection(event)
+    s = {'opens_at': _iso(start), 'closes_at': _iso(end), 'cap': cap, 'locked': bool(old.get('locked')),
+         'extensions': list(old.get('extensions') or []), 'updated_at': _iso(_now()), 'updated_by': by}
+    _save_selection(db, event_id, event, s)
+    cap_note = f" Each problem statement takes at most {cap} team{'s' if cap != 1 else ''}." if cap else ''
+    if not old.get('opens_at'):
+        post_update(db, event_id, event, "Choose your problem statement",
+                    f"Team leads choose one problem statement on this page between {show(s['opens_at'], event)} "
+                    f"and {show(s['closes_at'], event)}. Your submission will be for the one you choose."
+                    + cap_note, kind='problems', by=by)
+    elif (old.get('opens_at'), old.get('closes_at'), old.get('cap')) != (s['opens_at'], s['closes_at'], cap):
+        post_update(db, event_id, event, "Problem statement choice: times changed",
+                    f"Choosing is open {show(s['opens_at'], event)} to {show(s['closes_at'], event)}." + cap_note,
+                    kind='problems', by=by)
+    return True, "The time to choose a problem statement is saved."
+
+
+def extend_selection(db, event_id: str, event: dict, minutes, reason: str = '', by: str = '') -> tuple:
+    """Move the close later by `minutes` from the current close, even after it
+    passed; an extension also lifts the SPOC's lock (it gives teams more time)."""
+    try:
+        minutes = int(minutes)
+    except (TypeError, ValueError):
+        return False, "Choose how long to extend by."
+    if minutes <= 0 or minutes > MAX_EXTENSION_MINUTES:
+        return False, "An extension is between 1 minute and 7 days."
+    end = _selection_times(event)[1]
+    if end is None:
+        return False, "Set the time to choose a problem statement first."
+    s = selection(event)
+    new_end = end + datetime.timedelta(minutes=minutes)
+    if new_end <= _now():
+        return False, (f"Extending by {_duration(minutes)} still ends in the past "
+                       f"({show(_iso(new_end), event)}). Choose a longer extension.")
+    s['extensions'] = list(s.get('extensions') or []) + [{
+        'minutes': minutes, 'from': _iso(end), 'to': _iso(new_end), 'at': _iso(_now()), 'by': by,
+        'reason': str(reason or '').strip()[:300]}]
+    s['closes_at'], s['locked'] = _iso(new_end), False
+    _save_selection(db, event_id, event, s)
+    note = f" Reason: {s['extensions'][-1]['reason']}" if s['extensions'][-1]['reason'] else ''
+    post_update(db, event_id, event, f"Problem statement choice extended by {_duration(minutes)}",
+                f"Team leads can choose or change until {show(s['closes_at'], event)}.{note}",
+                kind='problems', by=by)
+    return True, f"Choosing extended by {_duration(minutes)} to {show(s['closes_at'], event)}."
+
+
+def lock_selection(db, event_id: str, event: dict, by: str = '') -> tuple:
+    if not selection_on(event):
+        return False, "Set the time to choose a problem statement first."
+    s = selection(event)
+    if s.get('locked'):
+        return False, "Choosing is already locked."
+    s.update(locked=True, locked_at=_iso(_now()), locked_by=by)
+    _save_selection(db, event_id, event, s)
+    post_update(db, event_id, event, "Problem statements are locked",
+                "Choosing is closed. Your team's problem statement is the one shown on this page; "
+                "your submission will be for it.", kind='problems', by=by)
+    return True, "Locked. Teams can no longer choose or change."
+
+
+def reopen_selection(db, event_id: str, event: dict, by: str = '') -> tuple:
+    if not selection_on(event):
+        return False, "Set the time to choose a problem statement first."
+    s, end = selection(event), _selection_times(event)[1]
+    if not s.get('locked'):
+        return False, "Choosing isn't locked."
+    if end is None or end <= _now():
+        return False, "The time to choose has passed. Extend it to reopen."
+    s.update(locked=False, locked_at='', locked_by='')
+    _save_selection(db, event_id, event, s)
+    post_update(db, event_id, event, "Problem statement choice reopened",
+                f"Team leads can choose or change until {show(s['closes_at'], event)}.", kind='problems', by=by)
+    return True, "Reopened."
+
+
+def _cap_key(pid: str) -> str:
+    return f"problem:{pid}"
+
+
+def taken(event_id: str, event: dict) -> dict:
+    """{problem id: teams that have it}, from the counter (one query)."""
+    from db_pg import get_session
+    from models_pg import TicketTypeSale
+    import services_ticket_types as tt
+    keys = {tt._key(str(event_id), _cap_key(p['id'])): p['id'] for p in problems(event)}
+    if not keys:
+        return {}
+    out = {pid: 0 for pid in keys.values()}
+    with get_session() as s:
+        for key, sold in s.query(TicketTypeSale.key, TicketTypeSale.sold).filter(TicketTypeSale.key.in_(list(keys))):
+            out[keys[key]] = int(sold or 0)
+    return out
+
+
+def _take(event_id: str, pid: str, cap: int) -> bool:
+    import services_ticket_types as tt
+    return tt.take_seat(str(event_id), {'id': _cap_key(pid), 'seats': cap})
+
+
+def _give_back(event_id: str, pid: str) -> None:
+    import services_ticket_types as tt
+    if pid:
+        tt.give_back_seat(str(event_id), _cap_key(pid))
+
+
+def _free_cancelled(db, event_id: str, pid: str) -> int:
+    """Give back the places of teams that chose `pid` and were cancelled (or
+    moved to the waitlist) since. Each team's place is given back once: a row
+    "<event_id>:problem-freed:<pid>:<reg_id>" is created first, and only the
+    request that creates it gives the place back, so two requests at once
+    can't free it twice. The team's choice is cleared. Returns how many."""
+    from sqlalchemy.exc import IntegrityError
+
+    from db_pg import get_session
+    from models_pg import TicketTypeSale
+    from services_event_types import id_variants
+    import services_ticket_types as tt
+    freed = 0
+    for eid in id_variants(event_id):
+        for doc in db.collection('registrations').where('event_id', '==', eid).stream():
+            reg = doc.to_dict() or {}
+            if choice_of(reg).get('pid') != pid or _status(reg) not in INACTIVE | {'refunded'}:
+                continue
+            try:
+                with get_session() as s:
+                    s.add(TicketTypeSale(key=tt._key(str(event_id), f"problem-freed:{pid}:{doc.id}"), sold=1))
+            except IntegrityError:
+                continue                       # freed already, by this or another request
+            _give_back(event_id, pid)
+            db.collection('registrations').document(doc.id).update({'problem_choice': None})
+            freed += 1
+    return freed
+
+
+def _set_choice(db, event: dict, reg_id: str, problem: dict, by: str, by_spoc: bool) -> None:
+    choice = {'pid': problem['id'], 'title': problem.get('title', ''), 'at': _iso(_now()), 'by': by,
+              'set_by_spoc': by_spoc}
+    db.collection('registrations').document(str(reg_id)).update({'problem_choice': choice})
+    # A submission made before the change follows it, so everything after
+    # (scoring, marks, results) reads the team's one problem statement
+    sub_id, sub = submission_for(db, reg_id)
+    if sub_id:
+        answers = dict(sub.get('answers') or {})
+        field = next((f for f in form(event).get('fields') or [] if f.get('kind') == 'problem'), None)
+        if field:
+            answers[field['id']] = problem['id']
+        db.collection('project_submissions').document(sub_id).set(
+            {'problem_id': problem['id'], 'problem_title': problem.get('title', ''), 'answers': answers}, merge=True)
+
+
+def choose(db, event_id: str, event: dict, reg_id: str, reg: dict, pid: str, by: str) -> tuple:
+    """(ok, message): the team lead chooses, or changes, the team's problem
+    statement while choosing is open. Checked here, by the server's clock."""
+    state = selection_window(event)
+    s = selection(event)
+    if state == 'not_set':
+        return False, "Choosing a problem statement isn't open."
+    if state == 'not_open':
+        return False, f"Choosing opens on {show(s['opens_at'], event)}."
+    if state in ('closed', 'locked'):
+        return False, "Choosing is closed; your team's problem statement is locked."
+    if str(reg.get('lead_email') or '').strip().lower() != str(by or '').strip().lower():
+        return False, "Only the team lead can choose."
+    if reg.get('is_eliminated'):
+        return False, "Your team is no longer in the hackathon."
+    problem = next((p for p in released_problems(event) if p['id'] == str(pid or '')), None)
+    if problem is None:
+        return False, "Choose one of the released problem statements."
+    old = choice_of(reg).get('pid', '')
+    if old == problem['id']:
+        return True, f"Your team already has “{problem['title']}”."
+    cap = selection_cap(event)
+    if not _take(event_id, problem['id'], cap):
+        if not _free_cancelled(db, event_id, problem['id']) or not _take(event_id, problem['id'], cap):
+            return False, f"“{problem['title']}” is full ({cap} teams). Choose another."
+    _set_choice(db, event, reg_id, problem, by, by_spoc=False)
+    _give_back(event_id, old)
+    reg['problem_choice'] = {'pid': problem['id'], 'title': problem.get('title', '')}
+    return True, (f"Your team's problem statement is “{problem['title']}”. You can change it until "
+                  f"{show(s['closes_at'], event)}.")
+
+
+def assign(db, event_id: str, event: dict, reg_id: str, pid: str, by: str) -> tuple:
+    """(ok, message): the SPOC sets a team's problem statement, at any time and
+    past the cap (the SPOC decides). The team is told on its page."""
+    if not selection_on(event):
+        return False, "Set the time to choose a problem statement first."
+    problem = next((p for p in released_problems(event) if p['id'] == str(pid or '')), None)
+    if problem is None:
+        return False, "Choose one of the released problem statements."
+    from services_event_types import id_variants
+    doc = db.collection('registrations').document(str(reg_id)).get()
+    reg = (doc.to_dict() or {}) if doc.exists else {}
+    if not doc.exists or str(reg.get('event_id') or '') not in set(id_variants(event_id)) | {str(event_id)} \
+            or _status(reg) in INACTIVE:
+        return False, "Team not found."
+    old = choice_of(reg).get('pid', '')
+    team = reg.get('team_name') or reg.get('lead_name') or 'The team'
+    if old == problem['id']:
+        return True, f"{team} already has “{problem['title']}”."
+    _take(event_id, problem['id'], 0)
+    _set_choice(db, event, reg_id, problem, by, by_spoc=True)
+    _give_back(event_id, old)
+    notify(db, {**event, 'id': event_id}, reg, "Your problem statement",
+           f"The organisers set your team's problem statement to “{problem['title']}”. "
+           "Your submission will be for it.", link=f"/hackathon/{event_id}", kind='announcement')
+    return True, f"{team} now has “{problem['title']}”."
+
+
+def selection_board(db, event_id: str, event: dict) -> dict:
+    """For the SPOC: each released problem statement with its teams, and the
+    teams that haven't chosen."""
+    import services_hackathon_eval as ev
+    released = released_problems(event)
+    by_pid = {p['id']: [] for p in released}
+    not_chosen = []
+    for reg_id, reg in ev._event_regs(db, event_id):
+        if reg.get('is_eliminated'):
+            continue
+        row = {'id': reg_id, 'team': reg.get('team_name') or reg.get('lead_name') or 'Team',
+               'lead': reg.get('lead_email') or '', 'choice': choice_of(reg)}
+        pid = row['choice'].get('pid')
+        (by_pid[pid] if pid in by_pid else not_chosen).append(row)
+    key = lambda r: str(r['team']).lower()
+    return {'problems': [{**p, 'teams': sorted(by_pid[p['id']], key=key)} for p in released],
+            'not_chosen': sorted(not_chosen, key=key), 'cap': selection_cap(event)}
+
+
 # ── The submission form (UPG-191) ───────────────────────────────────────────
 
 def form(event: dict) -> dict:
@@ -499,6 +809,12 @@ def submit(db, event_id: str, event: dict, reg_id: str, reg: dict, form_data, fi
         return False, "Only the team lead can submit.", {}
     if reg.get('is_eliminated'):
         return False, "Your team is no longer in the hackathon.", {}
+    # UPG-321: with a time to choose, the team's chosen problem statement is
+    # the one submitted, whatever the form sends
+    chosen = choice_of(reg) if selection_on(event) else {}
+    if selection_on(event) and not chosen:
+        return False, ("Your team hasn't chosen a problem statement, so it can't submit yet. "
+                       "Ask the organisers to assign one."), {}
 
     sub_id, existing = submission_for(db, reg_id)
     old_answers = dict(existing.get('answers') or {})
@@ -520,6 +836,9 @@ def submit(db, event_id: str, event: dict, reg_id: str, reg: dict, form_data, fi
                 answers[fid] = old_answers[fid]
             elif field.get('required'):
                 errors[fid] = f"Upload {label}."
+            continue
+        if kind == 'problem' and chosen:
+            answers[fid] = chosen['pid']
             continue
         value = str(form_data.get(f'f_{fid}') or '').strip()
         if not value:
@@ -548,6 +867,8 @@ def submit(db, event_id: str, event: dict, reg_id: str, reg: dict, form_data, fi
 
     problem_field = next((f for f in form(event)['fields'] if f['kind'] == 'problem'), None)
     problem_id = answers.get(problem_field['id'], '') if problem_field else ''
+    if chosen:
+        problem_id = chosen['pid']
     title_field = next((f for f in form(event)['fields'] if f['kind'] == 'text' and answers.get(f['id'])), None)
     team_name = reg.get('team_name') or reg.get('lead_name') or 'Team'
     now = _iso(_now())
@@ -555,7 +876,7 @@ def submit(db, event_id: str, event: dict, reg_id: str, reg: dict, form_data, fi
         'event_id': str(event_id), 'registration_id': str(reg_id), 'team_name': team_name,
         'project_title': (answers[title_field['id']] if title_field else '') or team_name,
         'answers': answers, 'problem_id': problem_id,
-        'problem_title': (released.get(problem_id) or {}).get('title', ''),
+        'problem_title': (released.get(problem_id) or find_problem(event, problem_id) or {}).get('title', ''),
         'updated_at': now, 'last_edited_by': by,
         'versions': int(existing.get('versions') or 0) + 1,
     }
@@ -629,6 +950,21 @@ def stages(event: dict, reg: dict | None = None, submission: dict | None = None,
     else:
         add('problems', 'Problem statements', 'upcoming', "Coming soon. Check back here.")
 
+    sel = selection_window(event, now)
+    if sel != 'not_set':                                  # UPG-321
+        mine = choice_of(reg).get('title', '')
+        s_open, s_close = _selection_times(event)
+        if sel == 'not_open':
+            add('selection', 'Choose a problem statement', 'upcoming',
+                f"Team leads choose from {show(_iso(s_open), event)}.", s_open)
+        elif sel == 'open':
+            add('selection', 'Choose a problem statement', 'current',
+                (f"Yours: {mine}. You can change it until {show(_iso(s_close), event)}." if mine else
+                 f"Not chosen yet. Choose before {show(_iso(s_close), event)}."), s_close)
+        else:
+            add('selection', 'Choose a problem statement', 'done',
+                f"Locked: {mine}." if mine else "Locked. Your team didn't choose; the organisers will assign one.")
+
     state = window(event, now)
     done_note = 'Submitted.' if submission else 'Not submitted.'
     if state == 'not_set':
@@ -682,5 +1018,7 @@ def page_version(event: dict, reg: dict | None, submission: dict | None,
         str((reg or {}).get('is_eliminated')), str((reg or {}).get('current_round')),
         str(event.get('active_round')), str(event.get('results_published')), group_link(event),
         str((submission or {}).get('updated_at')),
+        str(selection(event).get('opens_at')), str(selection(event).get('closes_at')),
+        str(selection(event).get('cap')), selection_window(event, now), choice_of(reg).get('pid', ''),
     ]
     return hashlib.sha256('|'.join(parts).encode()).hexdigest()[:16]

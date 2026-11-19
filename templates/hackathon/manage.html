@@ -23,6 +23,7 @@
 <nav class="hk-nav" aria-label="Sections">
   <a class="btn btn-sm btn-outline-secondary" href="#emails">Emails</a>
   <a class="btn btn-sm btn-outline-secondary" href="#problems">Problem statements</a>
+  <a class="btn btn-sm btn-outline-secondary" href="#selection">Problem selection</a>
   <a class="btn btn-sm btn-outline-secondary" href="#form">Submission form</a>
   <a class="btn btn-sm btn-outline-secondary" href="#deadline">Deadline</a>
   <a class="btn btn-sm btn-outline-secondary" href="#updates">Updates</a>
@@ -84,6 +85,83 @@
     <button class="btn btn-primary mt-3" type="submit"><i class="fas fa-plus" aria-hidden="true"></i> Add problem statement</button>
     <p class="hk-note mt-2 mb-0">Only registered teams see a problem statement, and only after its release time. A released one can't be removed.</p>
   </form>
+</section>
+
+<section class="hk-card" id="selection" aria-labelledby="selectionHead">
+  {#- UPG-321: when team leads choose a problem statement, a cap, lock, reopen, extend, assign -#}
+  <h2 id="selectionHead"><i class="fas fa-hand-pointer" aria-hidden="true"></i> Problem selection</h2>
+  {% if sel_board %}
+  <p data-sel-window="{{ sel_window }}">Choosing is <strong>{{ {'not_open': 'not open yet', 'open': 'open', 'closed': 'closed (time over)', 'locked': 'locked by you'}[sel_window] }}</strong>: {{ show(selection.opens_at) }} to {{ show(selection.closes_at) }}{% if sel_board.cap %} · at most {{ sel_board.cap }} team{{ '' if sel_board.cap == 1 else 's' }} per problem statement{% else %} · no limit per problem statement{% endif %}.</p>
+  <div class="d-flex flex-wrap gap-2 mb-3">
+    {% if sel_window == 'locked' %}
+    <form method="POST" action="/spoc/hackathon/{{ event.id }}/selection/reopen"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-primary" type="submit">Reopen</button></form>
+    {% else %}
+    <form method="POST" action="/spoc/hackathon/{{ event.id }}/selection/lock"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-danger" type="submit"><i class="fas fa-lock" aria-hidden="true"></i> Lock now</button></form>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <form method="POST" action="/spoc/hackathon/{{ event.id }}/selection" class="row g-2 align-items-end">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="col-md-4"><label class="form-label fw-semibold" for="selOpens">Teams choose from ({{ event.timezone or 'Asia/Kolkata' }})</label><input class="form-control" type="datetime-local" id="selOpens" name="sel_opens_at" value="{{ local(selection.opens_at) }}" required></div>
+    <div class="col-md-4"><label class="form-label fw-semibold" for="selCloses">Until (then locked)</label><input class="form-control" type="datetime-local" id="selCloses" name="sel_closes_at" value="{{ local(selection.closes_at) }}" required></div>
+    <div class="col-md-2"><label class="form-label fw-semibold" for="selCap">Most teams per problem</label><input class="form-control" type="number" min="0" max="10000" id="selCap" name="cap" value="{{ selection.cap or 0 }}"></div>
+    <div class="col-md-2"><button class="btn btn-primary w-100" type="submit">Save</button></div>
+  </form>
+  <p class="hk-note mt-2">Each team's lead chooses one released problem statement on the team's hackathon page in this time, and can change it until it closes. Then it is locked, and the team's submission is for that problem statement. 0 = no limit; with a limit, a full problem statement can't be chosen (first come, first served). Without a time here, teams pick on the submission form as before.</p>
+
+  {% if sel_board %}
+  <form method="POST" action="/spoc/hackathon/{{ event.id }}/selection/extend" class="row g-2 align-items-end mt-1">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="col-md-3"><label class="form-label fw-semibold" for="selExtBy">Extend by</label>
+      <select class="form-select" id="selExtBy" name="minutes">
+        {% for m in choices %}<option value="{{ m }}">{{ duration(m) }}</option>{% endfor %}
+        <option value="custom">Other…</option>
+      </select></div>
+    <div class="col-md-2"><label class="form-label" for="selExtH">Other: hours</label><input class="form-control" type="number" min="0" max="168" id="selExtH" name="custom_hours" value="0"></div>
+    <div class="col-md-2"><label class="form-label" for="selExtM">minutes</label><input class="form-control" type="number" min="0" max="59" id="selExtM" name="custom_minutes" value="0"></div>
+    <div class="col-md-3"><label class="form-label" for="selExtReason">Reason (shown to teams)</label><input class="form-control" id="selExtReason" name="reason" maxlength="300"></div>
+    <div class="col-md-2"><button class="btn btn-warning w-100" type="submit">Extend</button></div>
+  </form>
+  <p class="hk-note mt-2">Adds the time to the current close, even after it has passed, and lifts a lock. Every team sees the new time.</p>
+  {% if sel_extensions %}
+  <table class="hk-table mb-3"><thead><tr><th>When</th><th>By</th><th>New close</th><th>Reason</th></tr></thead><tbody>
+    {% for x in sel_extensions %}<tr><td>{{ show(x.at) }}</td><td>{{ duration(x.minutes) }}</td><td>{{ show(x.to) }}</td><td>{{ x.reason or '—' }}</td></tr>{% endfor %}
+  </tbody></table>
+  {% endif %}
+
+  <div class="table-responsive"><table class="hk-table" id="selBoard">
+    <thead><tr><th>Problem statement</th><th>Teams</th><th>Who</th></tr></thead>
+    <tbody>
+    {% for p in sel_board.problems %}
+      <tr data-problem="{{ p.id }}"><td><strong>{{ p.title }}</strong></td>
+        <td>{{ p.teams | length }}{% if sel_board.cap %} of {{ sel_board.cap }}{% endif %}</td>
+        <td>{% for t in p.teams %}{{ t.team }}{% if t.choice.set_by_spoc %} <span class="hk-note">(assigned)</span>{% endif %}{% if not loop.last %}, {% endif %}{% else %}—{% endfor %}</td></tr>
+    {% else %}<tr><td colspan="3" class="text-muted">No problem statement is released yet; teams can choose only released ones.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+
+  <h3 class="h6 mt-3">Not chosen ({{ sel_board.not_chosen | length }})</h3>
+  {% if sel_board.not_chosen %}<p class="hk-note mb-1" id="selNotChosen">{% for t in sel_board.not_chosen %}{{ t.team }}{% if not loop.last %}, {% endif %}{% endfor %}</p>{% else %}<p class="hk-note">Every team has one.</p>{% endif %}
+
+  {% if sel_board.problems %}
+  <form method="POST" action="/spoc/hackathon/{{ event.id }}/selection/assign" class="row g-2 align-items-end mt-1">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="col-md-5"><label class="form-label fw-semibold" for="selTeam">Team</label>
+      <select class="form-select" id="selTeam" name="reg_id" required>
+        <option value="">Choose a team…</option>
+        {% for t in sel_board.not_chosen %}<option value="{{ t.id }}">{{ t.team }} (not chosen)</option>{% endfor %}
+        {% for p in sel_board.problems %}{% for t in p.teams %}<option value="{{ t.id }}">{{ t.team }} (has {{ p.title }})</option>{% endfor %}{% endfor %}
+      </select></div>
+    <div class="col-md-5"><label class="form-label fw-semibold" for="selPid">Problem statement</label>
+      <select class="form-select" id="selPid" name="pid" required>
+        {% for p in sel_board.problems %}<option value="{{ p.id }}">{{ p.title }}</option>{% endfor %}
+      </select></div>
+    <div class="col-md-2"><button class="btn btn-outline-primary w-100" type="submit">Assign</button></div>
+  </form>
+  <p class="hk-note mt-2">You can assign or change a team's problem statement at any time, past the limit too. The team is told on its page, and a submission it already made follows the change.</p>
+  {% endif %}
+  {% endif %}
 </section>
 
 <section class="hk-card" id="form" aria-labelledby="formHead">

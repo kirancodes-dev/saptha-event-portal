@@ -83,6 +83,8 @@ def manage(event_id):
                            has_form=_has_form(event),
                            running=any(r['status'] in ('queued', 'running') for r in event_runs),
                            people=people, others=others, issued_count=len(issued),
+                           base_title=certs.attendance_type(event).capitalize(),
+                           base_owed=sum(1 for p in people if p['cert_type'] == certs.attendance_type(event)),
                            corrections=changes.for_event(db, event_id),
                            registered=certs.registered_people(db, event_id),
                            award_problem=runs.ready_to_issue(event, certs.AWARD_TYPES), **_design_context(event))
@@ -95,7 +97,8 @@ def _design_context(event):
     kind = certs.attendance_type(event)
     return {'design': design.get(event), 'design_type': certs.TYPES[kind]['title'], 'design_fields': design.FIELDS,
             'design_labels': design.LABELS, 'design_corners': design.CORNERS, 'design_best': design.BEST,
-            'design_max_mb': design.MAX_BYTES // (1024 * 1024), 'sample_values': _sample_values(event)}
+            'design_max_mb': design.MAX_BYTES // (1024 * 1024), 'sample_values': _sample_values(event),
+            'font_choices': design.font_choices(design.get(event), event['id']), 'max_fonts': design.MAX_FONTS}
 
 
 def _sample_values(event):
@@ -307,6 +310,50 @@ def remove_design(event_id):
     return redirect(f'/certificates/events/{event_id}#design')
 
 
+@certificates_bp.route('/events/<event_id>/design/fonts', methods=['POST'])
+@login_required
+def upload_font(event_id):
+    """The organiser's own font, to match their design's lettering (UPG-330)."""
+    import services_certificate_design as design
+    event = _event_or_abort(event_id, 'edit_event')
+    upload = request.files.get('font')
+    try:
+        entry = design.upload_font(db, event_id, event, upload.read() if upload else b'',
+                                   filename=getattr(upload, 'filename', '') or '', actor=session.get('user_id', ''))
+        flash(f"{entry['name']} is uploaded. Pick it in a box's Font list, then save the placement.", 'success')
+    except design.DesignError as exc:
+        flash(str(exc), 'danger')
+    return redirect(f'/certificates/events/{event_id}#design')
+
+
+@certificates_bp.route('/events/<event_id>/design/fonts/<font_id>/delete', methods=['POST'])
+@login_required
+def remove_font(event_id, font_id):
+    import services_certificate_design as design
+    event = _event_or_abort(event_id, 'edit_event')
+    entry = design.remove_font(db, event_id, event, font_id, actor=session.get('user_id', ''))
+    if entry:
+        flash(f"{entry['name']} is removed; boxes that used it print in Noto Sans. "
+              "Certificates already issued keep their font.", 'success')
+    return redirect(f'/certificates/events/{event_id}#design')
+
+
+@certificates_bp.route('/events/<event_id>/design/fonts/<font_id>.ttf')
+@login_required
+def font_file(event_id, font_id):
+    """An uploaded font, for the placement preview: the event's organisers only."""
+    import services_certificate_design as design
+    from utils_storage import StorageError
+    event = _event_or_abort(event_id, 'edit_event', 'issue_certificates')
+    try:
+        data = design.font_file(design.get(event) or {}, font_id)
+    except StorageError:
+        data = None
+    if not data:
+        abort(404)
+    return Response(data, mimetype='font/ttf', headers={'Cache-Control': 'private, no-store'})
+
+
 @certificates_bp.route('/events/<event_id>/design.jpg')
 @login_required
 def design_image(event_id):
@@ -329,13 +376,17 @@ def design_image(event_id):
 @certificates_bp.route('/events/<event_id>/issue', methods=['POST'])
 @login_required
 def issue(event_id):
-    """Issue everyone's certificates in the background, in chunks."""
+    """Issue the certificates in the background, in chunks: only the
+    participation (or completion) certificates, or every type the event owes (UPG-331)."""
     import services_certificate_runs as runs
     import services_certificates as certs
-    _event_or_abort(event_id, 'issue_certificates')
+    event = _event_or_abort(event_id, 'issue_certificates')
+    which = request.form.get('which', 'all')    # the page's list starts on participation
+    kinds = None if which == 'all' else [certs.attendance_type(event)]
     try:
-        run = runs.start(db, event_id, session.get('user_id', ''))
-        flash(f"Issuing {run['total']} certificates in the background. This page shows the progress.", 'success')
+        run = runs.start(db, event_id, session.get('user_id', ''), kinds=kinds)
+        what = 'certificates' if kinds is None else f"{kinds[0]} certificates"
+        flash(f"Issuing {run['total']} {what} in the background. This page shows the progress.", 'success')
     except certs.CertificateError as exc:
         flash(str(exc), 'danger')
     return _back(event_id)

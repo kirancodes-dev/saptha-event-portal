@@ -38,7 +38,12 @@
         box.style.top = (y / 100 * stage.clientHeight - height / 2) + 'px';
         var text = box.querySelector('[data-text]');
         text.style.fontSize = (size * scale) + 'px';
-        text.style.fontWeight = input(field, 'bold') && input(field, 'bold').checked ? '700' : '400';
+        // The font picked for the box (UPG-330); one with no bold file prints regular, so show it so
+        var font = input(field, 'font');
+        var option = font && font.selectedIndex >= 0 ? font.options[font.selectedIndex] : null;
+        var hasBold = !option || option.getAttribute('data-bold') !== '0';
+        text.style.fontFamily = option ? '"' + option.getAttribute('data-family') + '", "cert-noto", sans-serif' : '';
+        text.style.fontWeight = hasBold && input(field, 'bold') && input(field, 'bold').checked ? '700' : '400';
         text.style.color = input(field, 'color') ? input(field, 'color').value : '#1a1a1a';
         var align = input(field, 'align') ? input(field, 'align').value : 'center';
         text.style.textAlign = align === 'center' ? 'center' : align;
@@ -162,4 +167,20 @@
     form.addEventListener('change', all);
     window.addEventListener('resize', all);
     if (image.complete) { all(); } else { image.addEventListener('load', all); }
+    // The certificate fonts (UPG-330), for the preview only: declared here from the
+    // first Font list, each file fetched only when a box uses it. The site's own
+    // typography stays the three self-hosted families (UPG-24).
+    var fontList = form.querySelector('[data-font-select]');
+    if (fontList && window.FontFace && document.fonts) {
+        Array.prototype.forEach.call(fontList.options, function (o) {
+            var family = o.getAttribute('data-family');
+            [['400', o.getAttribute('data-url')], ['700', o.getAttribute('data-bold-url')]].forEach(function (w) {
+                if (family && w[1]) {
+                    document.fonts.add(new FontFace(family, 'url("' + w[1] + '")', { weight: w[0], display: 'swap' }));
+                }
+            });
+        });
+        document.fonts.ready.then(all);
+        if (document.fonts.addEventListener) { document.fonts.addEventListener('loadingdone', all); }
+    }
 }());

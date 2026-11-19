@@ -116,6 +116,7 @@ def test_the_organiser_signs_issues_and_lists_on_a_phone(organiser):
             assert 'added as a signatory' in page.content()
             _check(page, d, 'org-2-signed', problems)
 
+            page.select_option('#issue-which', 'all')      # the list starts on participation only (UPG-331)
             page.click('button:has-text("Issue certificates")')
             page.wait_for_load_state('load')
             assert 'Issuing 31 certificates' in page.content()

@@ -40,8 +40,15 @@
         <p class="text-muted small">{{ people|length }} certificate{{ '' if people|length == 1 else 's' }} owed, {{ issued_count }} issued.
             Issuing runs in the background and never gives anyone the same certificate twice.</p>
         {% if can_issue %}
-        <form method="POST" action="/certificates/events/{{ event.id }}/issue" class="d-inline">
+        <form method="POST" action="/certificates/events/{{ event.id }}/issue" class="d-flex gap-2 align-items-end flex-wrap">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div>
+                <label class="form-label small mb-0" for="issue-which">Which certificates</label>
+                <select class="form-select form-select-sm" id="issue-which" name="which">
+                    <option value="participation" selected>{{ base_title }} certificates only ({{ base_owed }})</option>
+                    <option value="all">Every certificate the event owes ({{ people|length }}): also winners, staff and speakers</option>
+                </select>
+            </div>
             <button type="submit" class="btn btn-primary" {% if issue_problem %}disabled aria-describedby="issue-problem"{% endif %}>
                 <i class="fas fa-award" aria-hidden="true"></i> Issue certificates</button>
         </form>
@@ -176,6 +183,17 @@
                             <input class="form-check-input" type="checkbox" id="{{ key }}_bold" name="{{ key }}_bold" value="1" {% if f.bold %}checked{% endif %}>
                             <label class="form-check-label small" for="{{ key }}_bold">Bold</label>
                         </div>
+                        <div class="mt-1">
+                            <label class="form-label small mb-0" for="{{ key }}_font">Font</label>
+                            <select class="form-select form-select-sm" id="{{ key }}_font" name="{{ key }}_font" data-font-select>
+                                <optgroup label="Ready fonts">
+                                {% for c in font_choices if not c.own %}<option value="{{ c.key }}" data-family="{{ c.family }}" data-bold="{{ 1 if c.bold_url else 0 }}" data-url="{{ c.url }}" data-bold-url="{{ c.bold_url }}" {% if f.font == c.key %}selected{% endif %}>{{ c.label }}</option>{% endfor %}
+                                </optgroup>
+                                {% if font_choices | selectattr('own') | list %}<optgroup label="Your fonts">
+                                {% for c in font_choices if c.own %}<option value="{{ c.key }}" data-family="{{ c.family }}" data-bold="0" data-url="{{ c.url }}" data-bold-url="" {% if f.font == c.key %}selected{% endif %}>{{ c.label }}</option>{% endfor %}
+                                </optgroup>{% endif %}
+                            </select>
+                        </div>
                     </fieldset>
                     {% endfor %}
                     <fieldset class="mb-2" data-qr-fieldset>
@@ -198,6 +216,36 @@
                     <button type="submit" class="btn btn-primary w-100">Save placement</button>
                 </form>
             </div>
+        </div>
+        <div class="mt-3" id="design-fonts">
+            <h3 class="h6">Your own fonts</h3>
+            <p class="small text-muted mb-2">To print names in the same lettering as your design, upload the font it uses
+                (a <strong>.ttf</strong> file from your designer or the font's website), pick it in a box's <em>Font</em> list,
+                then press <em>Save placement</em>. A letter the font doesn't have prints in Noto Sans; an uploaded font has no separate bold,
+                so upload its bold file too if you need one. Up to {{ max_fonts }} fonts.</p>
+            {% if design.fonts %}
+            <ul class="list-unstyled small mb-2">
+            {% for f in design.fonts %}
+                <li class="d-flex align-items-center gap-2 mb-1">
+                    <span style="font-family:'cert-{{ f.id }}',sans-serif;font-size:1.1rem">{{ f.name }}</span>
+                    <form method="POST" action="/certificates/events/{{ event.id }}/design/fonts/{{ f.id }}/delete" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm btn-link text-danger p-0">Remove</button>
+                    </form>
+                </li>
+            {% endfor %}
+            </ul>
+            {% endif %}
+            {% if design.fonts | length < max_fonts %}
+            <form method="POST" action="/certificates/events/{{ event.id }}/design/fonts" enctype="multipart/form-data" class="d-flex gap-2 flex-wrap align-items-end">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div>
+                    <label class="form-label small mb-0" for="font-file">Font file (.ttf, up to 5 MB)</label>
+                    <input class="form-control form-control-sm" type="file" id="font-file" name="font" accept=".ttf,.otf,font/ttf,font/otf" required>
+                </div>
+                <button type="submit" class="btn btn-sm btn-outline-primary">Upload font</button>
+            </form>
+            {% endif %}
         </div>
         {% endif %}
 

@@ -17,6 +17,12 @@ never under static/. Box positions are percentages of the page, so the same
 settings work at any image size. Each certificate keeps a snapshot of the
 design and its settings as issued, so a later change affects only
 certificates issued afterwards. Changes are audit-logged.
+
+Each box prints in a font the organiser picks (UPG-330): one of the free
+fonts that come with the app (certificate_pdf.FACES), or a TrueType font
+they upload to match their design's lettering, stored privately like the
+design. A letter the font lacks prints in Noto Sans. Removing an uploaded
+font keeps its file: certificates issued with it still use it.
 """
 import hashlib
 import io
@@ -51,10 +57,37 @@ DEFAULT_FIELDS = {
 # x and y: the QR's top-left corner, % of the page's width and height; size: its side, % of the page's width
 DEFAULT_QR = {'corner': 'br', 'x': 82.2, 'y': 44.8, 'size': 11.8}
 QR_MIN, QR_MAX = 5.0, 30.0
+FONT_MAX_BYTES = 5 * 1024 * 1024
+MAX_FONTS = 10
 
 
 class DesignError(ValueError):
     pass
+
+
+class FontError(DesignError):
+    pass
+
+
+def _default_face() -> str:
+    from certificate_pdf import DEFAULT_FACE
+    return DEFAULT_FACE
+
+
+def font_choices(design: Optional[dict], event_id: str = '') -> list:
+    """Each font a box can use (UPG-330): the ready ones, then the organiser's
+    own, with the CSS family and file URLs the placement preview loads."""
+    from certificate_pdf import FACES
+    base = '/static/fonts/certificate/'
+    out = [{'key': key, 'label': label, 'own': False, 'family': f'cert-{key}', 'url': base + regular,
+            'bold_url': base + bold if bold else ''} for key, (label, regular, bold) in FACES.items()]
+    return out + [{'key': f['id'], 'label': f['name'], 'own': True, 'family': f"cert-{f['id']}",
+                   'url': f"/certificates/events/{event_id}/design/fonts/{f['id']}.ttf", 'bold_url': ''}
+                  for f in (design or {}).get('fonts') or []]
+
+
+def _font_keys(design: Optional[dict]) -> set:
+    return {c['key'] for c in font_choices(design)}
 
 
 # ── The upload ──────────────────────────────────────────────────────────────
@@ -130,10 +163,14 @@ def get(event: dict) -> Optional[dict]:
         saved = (design.get('fields') or {}).get(key)
         fields[key] = dict(DEFAULT_FIELDS[key], **(saved if isinstance(saved, dict) else {}))
     fields['name']['on'] = True
+    fonts = [f for f in design.get('fonts') or [] if isinstance(f, dict) and f.get('id') and f.get('key')]
+    known = _font_keys({'fonts': fonts})
+    for box in fields.values():
+        box['font'] = box.get('font') if box.get('font') in known else _default_face()
     qr = dict(DEFAULT_QR, **(design.get('qr') if isinstance(design.get('qr'), dict) else {}))
     if qr['corner'] not in QR_CHOICES:
         qr['corner'] = DEFAULT_QR['corner']
-    return dict(design, fields=fields, qr=qr)
+    return dict(design, fields=fields, qr=qr, fonts=fonts)
 
 
 def page_ratio(design: dict) -> float:
@@ -169,13 +206,16 @@ def _number(value, default: float, low: float, high: float) -> float:
     return round(min(max(n, low), high), 2)
 
 
-def parse_fields(form, current: Optional[dict] = None) -> dict:
+def parse_fields(form, current: Optional[dict] = None, fonts: Optional[list] = None) -> dict:
     """Box settings from a submitted form (`<field>_x`, `_y`, `_w`, `_size`,
-    `_color`, `_align`, `_bold`, `_on`), each clamped to a sensible range."""
+    `_color`, `_align`, `_bold`, `_on`, `_font`), each clamped to a sensible
+    range; a font must be a ready one or one of `fonts` (UPG-330)."""
     current = current or {}
+    known = _font_keys({'fonts': fonts or []})
     out = {}
     for key in FIELDS:
         base = dict(DEFAULT_FIELDS[key], **(current.get(key) or {}))
+        font = str(form.get(f'{key}_font') or base.get('font') or _default_face())
         w = _number(form.get(f'{key}_w'), base['w'], 5, 100)
         x = _number(form.get(f'{key}_x'), base['x'], 0, 95)
         x = min(x, round(100 - w, 2))
@@ -186,7 +226,9 @@ def parse_fields(form, current: Optional[dict] = None) -> dict:
                     'size': _number(form.get(f'{key}_size'), base['size'], 6, 120),
                     'color': color if re.fullmatch(r'#[0-9a-fA-F]{6}', color) else base['color'],
                     'align': align if align in ALIGNS else base['align'],
-                    'bold': form.get(f'{key}_bold') in ('1', 'on', 'true')}
+                    'bold': form.get(f'{key}_bold') in ('1', 'on', 'true'),
+                    'font': font if font in known else (base.get('font') if base.get('font') in known
+                                                        else _default_face())}
     return out
 
 
@@ -208,7 +250,7 @@ def upload(db, event_id: str, data: bytes, filename: str = '', actor: str = '') 
               'low_res': processed['low_res'], 'filename': str(filename or '')[:200],
               'uploaded_by': actor, 'uploaded_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
               'fields': (old or {}).get('fields') or {k: dict(v) for k, v in DEFAULT_FIELDS.items()},
-              'qr': (old or {}).get('qr') or dict(DEFAULT_QR)}
+              'qr': (old or {}).get('qr') or dict(DEFAULT_QR), 'fonts': (old or {}).get('fonts') or []}
     db.collection('events').document(event_id).update({FIELD: design})
     _audit(db, actor, "CERT_DESIGN_UPLOADED",
            f"{design['width']}x{design['height']} {design['orientation']} design for event {event_id}"
@@ -220,14 +262,89 @@ def save_settings(db, event_id: str, event: dict, form, actor: str = '') -> dict
     design = get(event)
     if design is None:
         raise DesignError("Upload a design first.")
-    design = dict(design, fields=parse_fields(form, design['fields']),
+    design = dict(design, fields=parse_fields(form, design['fields'], design['fonts']),
                   qr=parse_qr(form, design['qr'], page_ratio(design)))
     db.collection('events').document(event_id).update({FIELD: design})
     name = design['fields']['name']
     _audit(db, actor, "CERT_DESIGN_CHANGED",
            f"event {event_id}: name at {name['y']}% from the top, {name['x']}% from the left, "
-           f"{name['w']}% wide, {name['size']} pt; QR {_qr_text(design['qr'])}")
+           f"{name['w']}% wide, {name['size']} pt, font {name['font']}; QR {_qr_text(design['qr'])}")
     return design
+
+
+# ── The organiser's own fonts (UPG-330) ─────────────────────────────────────
+
+def _decode(value) -> str:
+    if isinstance(value, bytes):
+        value = value.decode('utf-8', 'replace')
+    return re.sub(r'[\x00-\x1f]', '', str(value or '')).strip()
+
+
+def check_font(data: bytes) -> str:
+    """The font's name ("Family Style") if the PDF can embed it, else FontError saying why."""
+    import certificate_pdf
+    if not data:
+        raise FontError("Choose a font file (.ttf) to upload.")
+    if len(data) > FONT_MAX_BYTES:
+        raise FontError("The font file must be 5 MB or smaller.")
+    try:
+        font = certificate_pdf.load_font(data, f"CertCheck-{hashlib.sha256(data).hexdigest()[:16]}")
+    except Exception as exc:
+        if 'postscript' in str(exc).lower():
+            raise FontError("This font has PostScript outlines (an .otf the PDF can't embed). "
+                            "Upload the .ttf version of the same font.")
+        raise FontError("That isn't a font file the certificate can use. Upload a TrueType font (.ttf).")
+    family, style = _decode(font.face.familyName), _decode(font.face.styleName)
+    if not all(ord(ch) in font.face.charToGlyph for ch in 'AZaz'):
+        raise FontError("This font has no English letters, so it can't print names.")
+    name = f"{family} {style}".strip() if style and style.lower() not in ('regular', 'book') else family
+    return (name or 'Uploaded font')[:80]
+
+
+def upload_font(db, event_id: str, event: dict, data: bytes, filename: str = '', actor: str = '') -> dict:
+    """Add a font the boxes can use; the same file twice is refused."""
+    import datetime
+    from utils_storage import put_private
+    design = get(event)
+    if design is None:
+        raise FontError("Upload a design first.")
+    if len(design['fonts']) >= MAX_FONTS:
+        raise FontError(f"An event can have at most {MAX_FONTS} fonts. Remove one first.")
+    name = check_font(data)
+    digest = hashlib.sha256(data).hexdigest()
+    if any(f.get('sha256') == digest for f in design['fonts']):
+        raise FontError(f"{name} is already uploaded.")
+    token = uuid.uuid4().hex
+    key = put_private(data, f"cert_fonts/{event_id}/{token}.ttf", 'font/ttf')
+    entry = {'id': f'up-{token[:12]}', 'name': name, 'key': key, 'sha256': digest,
+             'filename': str(filename or '')[:200], 'uploaded_by': actor,
+             'uploaded_at': datetime.datetime.now(datetime.timezone.utc).isoformat()}
+    design = dict(design, fonts=design['fonts'] + [entry])
+    db.collection('events').document(event_id).update({FIELD: design})
+    _audit(db, actor, "CERT_FONT_UPLOADED", f"{name} for event {event_id}")
+    return entry
+
+
+def remove_font(db, event_id: str, event: dict, font_id: str, actor: str = '') -> Optional[dict]:
+    """Take a font off the list; boxes using it go back to the default. The
+    file stays stored: certificates issued with it still print in it."""
+    design = get(event)
+    if design is None:
+        return None
+    entry = next((f for f in design['fonts'] if f['id'] == font_id), None)
+    if entry is None:
+        return None
+    fields = {k: dict(v, font=_default_face()) if v.get('font') == font_id else v for k, v in design['fields'].items()}
+    design = dict(design, fields=fields, fonts=[f for f in design['fonts'] if f['id'] != font_id])
+    db.collection('events').document(event_id).update({FIELD: design})
+    _audit(db, actor, "CERT_FONT_REMOVED", f"{entry['name']} for event {event_id}")
+    return entry
+
+
+def font_file(design: dict, font_id: str) -> Optional[bytes]:
+    from utils_storage import get_private
+    entry = next((f for f in (design or {}).get('fonts') or [] if f.get('id') == font_id), None)
+    return get_private(entry['key']) if entry else None
 
 
 def _qr_text(qr: dict) -> str:
@@ -247,7 +364,7 @@ def snapshot(event: dict) -> Optional[dict]:
     design = get(event)
     if design is None:
         return None
-    return {k: design[k] for k in ('image_key', 'sha256', 'orientation', 'fields', 'qr')}
+    return {k: design[k] for k in ('image_key', 'sha256', 'orientation', 'fields', 'qr', 'fonts')}
 
 
 def image(design: dict) -> bytes:

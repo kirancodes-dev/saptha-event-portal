@@ -316,6 +316,7 @@
   <p class="mb-0" data-ai-off>{{ ai_off }}</p>
   {% else %}
   <p class="hk-note">After the deadline, AI reads each submission (text answers, the chosen problem statement and the first pages of each PDF; links aren't opened) and scores it against the criteria below. The score only helps you sort; it never eliminates anyone, and judges and teams don't see it.</p>
+  <p class="hk-note" data-ai-engine>Scored by <strong>{{ ai_engine }}</strong>, {{ ai_step }} team(s) at a time: press Start once and keep this page open until it finishes.</p>
   <form method="POST" action="/spoc/hackathon/{{ event.id }}/ai/criteria" class="mb-3">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     {#- Each criterion: its name, what it means for the AI, and its marks out of 100 (UPG-299) -#}

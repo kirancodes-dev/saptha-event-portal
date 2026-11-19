@@ -2,7 +2,8 @@
 services_hackathon_eval.py — a hackathon after its submission deadline
 (Phase 2 of the owner's hackathon request, 2026-11-05).
 
-- AI scoring (UPG-192). Gemini scores each submission against the SPOC's
+- AI scoring (UPG-192). Gemini (or Claude, when its key is set: UPG-326,
+  25 submissions per step called at the same time) scores each submission against the SPOC's
   criteria, from the text answers, the problem statement and the first pages
   of each PDF. Links are never opened. The submission is passed as data under
   fixed instructions, and only a bounded JSON reply becomes a score; anything
@@ -30,6 +31,12 @@ import services_hackathon as hk
 log = logging.getLogger(__name__)
 
 MODEL = 'gemini-2.5-flash'
+# Claude scores instead of Gemini when ANTHROPIC_API_KEY is set (UPG-326):
+# 25 submissions per step, their calls made at the same time.
+CLAUDE_MODEL = 'claude-opus-5-5'
+CLAUDE_BATCH = 25
+CLAUDE_TIMEOUT_S = 40
+CLAUDE_MAX_TOKENS = 4096      # thinking stays on (effort low) plus the short JSON reply
 DEFAULT_CRITERIA = (
     ('relevance', 'Relevance to the problem statement'),
     ('innovation', 'Innovation'),
@@ -46,7 +53,8 @@ PDF_PAGES, PDF_CHARS = 5, 12_000
 ANSWER_CHARS, PROBLEM_CHARS = 5_000, 4_000
 REPLY_CHARS, REASON_CHARS = 6_000, 500
 JUDGED = ("Judges score this round, not AI. Switch the round to AI evaluation to use AI scoring.")
-OFF = "AI scoring is off: no Gemini key is set (GEMINI_API_KEY). Rank the submissions with your own scores."
+OFF = ("AI scoring is off: no AI key is set (ANTHROPIC_API_KEY for Claude, or GEMINI_API_KEY for Gemini). "
+       "Rank the submissions with your own scores.")
 
 
 def _now_iso() -> str:
@@ -61,18 +69,45 @@ class ReplyError(ValueError):
     """The model's reply isn't the bounded JSON asked for."""
 
 
-def api_key() -> str:
-    key = ''
+def _setting(name: str) -> str:
+    value = ''
     try:
         from flask import current_app
-        key = current_app.config.get('GEMINI_API_KEY', '') or ''
+        value = current_app.config.get(name, '') or ''
     except RuntimeError:          # outside the app
         pass
-    return str(key or os.environ.get('GEMINI_API_KEY') or '').strip()
+    return str(value or os.environ.get(name) or '').strip()
+
+
+def provider() -> str:
+    """'claude' when a Claude key is set (UPG-326), else 'gemini' when a
+    Gemini key is set, else ''."""
+    if _setting('ANTHROPIC_API_KEY'):
+        return 'claude'
+    return 'gemini' if _setting('GEMINI_API_KEY') else ''
+
+
+def api_key() -> str:
+    """The key of the AI that scores (see provider())."""
+    return _setting('ANTHROPIC_API_KEY') or _setting('GEMINI_API_KEY')
+
+
+def model_name() -> str:
+    return CLAUDE_MODEL if provider() == 'claude' else MODEL
+
+
+def batch_size() -> int:
+    """Submissions per step: 25 at a time with Claude, as before with Gemini."""
+    return CLAUDE_BATCH if provider() == 'claude' else BATCH
 
 
 def ai_enabled() -> bool:
     return bool(api_key())
+
+
+def engine() -> str:
+    """Which AI scores, for the SPOC's page."""
+    return {'claude': f'Claude ({CLAUDE_MODEL})', 'gemini': f'Gemini ({MODEL})'}.get(provider(), '')
 
 
 def criteria(event: dict) -> list:
@@ -306,8 +341,9 @@ def start(db, event_id: str, event: dict, by: str = '') -> tuple:
     return True, f"AI scoring started for {len(subs)} submission(s)."
 
 
-def run_batch(db, event_id: str, event: dict, limit: int = BATCH) -> dict:
-    """Score up to `limit` pending submissions; the page calls again until finished."""
+def run_batch(db, event_id: str, event: dict, limit=None) -> dict:
+    """Score up to `limit` pending submissions (batch_size() when not given);
+    the page calls again until finished."""
     ai = state(event)
     subs = hk.submissions(db, event_id)
     if ai['status'] != 'running':
@@ -317,10 +353,14 @@ def run_batch(db, event_id: str, event: dict, limit: int = BATCH) -> dict:
         _save_state(db, event_id, event, ai)
         return {**progress(db, event_id, event, subs), 'message': OFF}
     todo = [s for s in subs if _pending(s, ai)]
-    for sub in todo[:max(1, int(limit))]:
-        if ai['calls'] >= MAX_CALLS_PER_EVENT:
-            break
-        evaluate(db, event_id, event, sub, ai)
+    todo = todo[:max(1, int(limit or batch_size()))]
+    if provider() == 'claude':
+        _evaluate_together(db, event_id, event, todo, ai)
+    else:
+        for sub in todo:
+            if ai['calls'] >= MAX_CALLS_PER_EVENT:
+                break
+            evaluate(db, event_id, event, sub, ai)
     left = [s for s in subs if _pending(s, ai)]
     message = ''
     if not left:
@@ -358,24 +398,132 @@ def evaluate(db, event_id: str, event: dict, sub: dict, ai: dict) -> dict:
     crits = criteria(event)
     ai['calls'] = int(ai.get('calls') or 0) + 1
     _save_state(db, event_id, event, ai)          # counted before the call, so a crash still counts
-    result: dict = {'model': MODEL, 'at': _now_iso(), 'criteria': crits}
     try:
         raw = _call_model(instructions(crits), payload(event, sub))
+    except Exception as exc:     # the service failed: keep going with the next submission
+        raw = exc
+    return _store(db, sub, crits, raw)
+
+
+def _store(db, sub: dict, crits: list, raw) -> dict:
+    """Turn a reply (or the call's exception) into the stored result."""
+    result: dict = {'model': model_name(), 'at': _now_iso(), 'criteria': crits}
+    try:
+        if isinstance(raw, Exception):
+            raise raw
         scores, reason = parse_reply(raw, crits)
         result.update({'status': 'scored', 'scores': scores, 'total': total(scores, crits),
                        'reason': reason})
     except ReplyError as exc:
         result.update({'status': 'not_scored', 'error': str(exc)[:200]})
-    except Exception as exc:     # the service failed: keep going with the next submission
+    except Exception as exc:
         log.warning("AI scoring of %s failed: %s", sub.get('id'), type(exc).__name__)
-        result.update({'status': 'not_scored', 'error': "The AI service didn't answer."})
+        result.update({'status': 'not_scored', 'error': _service_error(exc)})
     db.collection('project_submissions').document(sub['id']).set({'ai_eval': result}, merge=True)
     sub['ai_eval'] = result
     return result
 
 
+def _service_error(exc) -> str:
+    """A fixed message for a failed call: never the exception's own text,
+    which can carry a key or a request id."""
+    name = type(exc).__name__
+    if name == 'AuthenticationError':
+        return "The AI key was refused. Check the key set for the portal."
+    if name == 'PermissionDeniedError':
+        return "The AI key isn't allowed to use this model."
+    if name == 'RateLimitError':
+        return "The AI service was busy. Wait a minute, then score the rest again."
+    if name in ('APITimeoutError', 'DeadlineExceededError'):
+        return "The AI service took too long. Score the rest again."
+    if name == 'BadRequestError' and 'credit' in str(exc).lower():
+        return "The Claude account has no credits left. Add credits, then score the rest again."
+    return "The AI service didn't answer."
+
+
+def _evaluate_together(db, event_id: str, event: dict, subs: list, ai: dict) -> None:
+    """Claude (UPG-326): the calls for these submissions run at the same time;
+    reading the PDFs and saving the results stay on this request's thread."""
+    from concurrent.futures import ThreadPoolExecutor
+    from flask import current_app
+    subs = subs[:max(0, MAX_CALLS_PER_EVENT - ai['calls'])]
+    if not subs:
+        return
+    crits = criteria(event)
+    system = instructions(crits)
+    ai['calls'] += len(subs)
+    _save_state(db, event_id, event, ai)          # counted before the calls, so a crash still counts
+    jobs: list = []
+    for sub in subs:
+        try:
+            jobs.append(payload(event, sub))
+        except Exception as exc:
+            jobs.append(exc)
+    app = current_app._get_current_object()  # type: ignore[attr-defined]
+
+    def call(data):
+        if isinstance(data, Exception):
+            return data
+        try:
+            with app.app_context():
+                return _call_model(system, data)
+        except Exception as exc:
+            return exc
+    with ThreadPoolExecutor(max_workers=len(subs)) as pool:
+        replies = list(pool.map(call, jobs))
+    for sub, raw in zip(subs, replies):
+        _store(db, sub, crits, raw)
+
+
 def _call_model(system: str, data: str) -> str:
-    """The Gemini call (tests replace this)."""
+    """The model call (tests replace this): Claude when its key is set, else Gemini."""
+    if provider() == 'claude':
+        return _call_claude(system, data)
+    return _call_gemini(system, data)
+
+
+def reply_schema(crits: list) -> dict:
+    """The JSON shape Claude must answer in (structured output)."""
+    return {
+        'type': 'object',
+        'properties': {
+            'scores': {'type': 'object',
+                       'properties': {c['id']: {'type': 'integer'} for c in crits},
+                       'required': [c['id'] for c in crits],
+                       'additionalProperties': False},
+            'reason': {'type': 'string'},
+        },
+        'required': ['scores', 'reason'],
+        'additionalProperties': False,
+    }
+
+
+def _call_claude(system: str, data: str) -> str:
+    """One Claude call. The reply is held to reply_schema; parse_reply still
+    checks every number. A refusal or a cut-off reply is not scored."""
+    import anthropic
+    crits = criteria_from_system(system)
+    client = anthropic.Anthropic(api_key=_setting('ANTHROPIC_API_KEY'), timeout=CLAUDE_TIMEOUT_S, max_retries=1)
+    reply = client.beta.messages.create(
+        model=CLAUDE_MODEL, max_tokens=CLAUDE_MAX_TOKENS, system=system,
+        messages=[{'role': 'user', 'content': data}],
+        output_config={'effort': 'low',
+                       'format': {'type': 'json_schema', 'schema': reply_schema(crits)}},
+        betas=['server-side-fallback-2026-07-01'], fallbacks='default')
+    if reply.stop_reason == 'refusal':
+        raise ReplyError("The AI declined to score this submission.")
+    if reply.stop_reason == 'max_tokens':
+        raise ReplyError("The reply was cut off.")
+    return ''.join(b.text for b in reply.content if b.type == 'text')
+
+
+def criteria_from_system(system: str) -> list:
+    """The criterion ids named in instructions() (each line '- "id": label')."""
+    return [{'id': cid} for cid in re.findall(r'^- "([^"]+)":', system, re.M)]
+
+
+def _call_gemini(system: str, data: str) -> str:
+    """The Gemini call."""
     from google import genai
     from google.genai import types
     client = genai.Client(api_key=api_key(), http_options=types.HttpOptions(timeout=CALL_TIMEOUT_MS))

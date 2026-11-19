@@ -43,6 +43,7 @@ pywebpush==2.5.0
 
 # AI
 google-genai==2.25.0
+anthropic==2.10.0
 
 # Payments
 razorpay==2.0.1

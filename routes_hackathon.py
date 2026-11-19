@@ -418,7 +418,7 @@ def manage(event_id):
         problem_titles={p['id']: p['title'] for p in h.problems(event)},
         email_mode=h.email_mode(event), is_hackathon=h.is_hackathon(event), group_link=h.group_link(event),
         max_pdf=h.MAX_PDF_MB, default_pdf=h.DEFAULT_PDF_MB,
-        ai_on=ev.ai_enabled(), ai_off=ev.OFF, ai=ev.progress(db, event_id, event, subs),
+        ai_on=ev.ai_enabled(), ai_off=ev.OFF, ai_engine=ev.engine(), ai_step=ev.batch_size(), ai=ev.progress(db, event_id, event, subs),
         criteria=ev.criteria(event), max_criteria=ev.MAX_CRITERIA, max_description=ev.DESCRIPTION_CHARS, ranking=ev.ranking(db, event_id, event, sort),
         sort=sort, shortlist=ev.shortlist(event), undo_ok=undo_ok, undo_why=undo_why,
         round=round_info(event)['current'], unsent_results=_unsent_results(event_id, event),

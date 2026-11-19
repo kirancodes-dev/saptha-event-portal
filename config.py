@@ -238,6 +238,8 @@ class Config:
     # 6. GEMINI AI
     # =========================================================
     GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+    # Claude scores hackathon submissions instead of Gemini when set (UPG-326)
+    ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
 
     # Referral rewards on the student dashboard: off until a payout process
     # exists (UPG-105). The referral routes stay; only the section is hidden.

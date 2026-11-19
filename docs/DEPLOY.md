@@ -761,6 +761,45 @@ gcloud run services update-traffic saptha --region "$REGION" --to-revisions="$OL
 `docs/FEATURE_REVIEW.md` (UPG-199). Keep the step 2 backup until the first real
 hackathon is over.
 
+### Claude as the AI scorer (UPG-326)
+
+With `ANTHROPIC_API_KEY` set, Claude (`claude-opus-5-5`, low effort) scores the
+submissions instead of Gemini: same criteria, same 0-10 per criterion, total out of
+100, but **25 teams per step**, their calls made at the same time. Gemini stays as it
+was when only `GEMINI_API_KEY` is set. The key must come from **platform.claude.com**
+(Settings → API keys) and use that account's API credits; a Claude.ai Pro/Max plan
+can't be used by an app. Rough cost: 2-3 US cents a team.
+
+1. **Make the key** at platform.claude.com → Settings → API keys → Create key. Check
+   Billing shows credits.
+2. **Store it, in the browser** (never in a terminal or chat): Google Cloud console →
+   Secret Manager → Create secret → name `ANTHROPIC_API_KEY`, paste the key as the
+   value → Create.
+3. **Let the service read it** (Cloud Shell; no key in this command):
+
+   ```bash
+   gcloud secrets add-iam-policy-binding ANTHROPIC_API_KEY \
+     --member="serviceAccount:967997581752-compute@developer.gserviceaccount.com" \
+     --role="roles/secretmanager.secretAccessor"
+   ```
+
+4. **Deploy with it**, adding to the usual deploy command (keep the database-size
+   flags from "Traffic and database connections"):
+
+   ```bash
+   --update-secrets=ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest
+   ```
+
+5. **Check:** on a hackathon whose round is set to "AI evaluation", the SPOC's page
+   says "Scored by Claude (claude-opus-5-5), 25 team(s) at a time". After the
+   deadline, press "Start AI scoring" once and keep the page open: 25 teams are scored
+   per step until all are done. A team marked "Not scored" says why (busy, out of
+   credits, key refused); "Score the rest again" retries only those, and "Re-run"
+   scores one team again.
+
+To go back to Gemini, remove the secret from the service:
+`gcloud run services update saptha --region "$REGION" --remove-secrets=ANTHROPIC_API_KEY`.
+
 ## Go-live checklist (what only the owner can do)
 
 Tick each before opening the portal to students.

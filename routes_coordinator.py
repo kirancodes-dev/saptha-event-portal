@@ -1813,20 +1813,33 @@ def mark_attendance_granular():
         reg_ref  = db.collection('registrations').document(reg_id)
         if reg_data.get('payment_status') == 'Pending':
             return jsonify({'status': 'error', 'message': 'PAYMENT PENDING!'})
+        members = [dict(m) if isinstance(m, dict) else m for m in reg_data.get('members') or []]
+        present = data.get('present')
+        if isinstance(present, list):
+            # The scanner sends each person's place in the team (UPG-318), so
+            # someone with no USN, the lead often, is saved as ticked
+            from routes_ticket import LEAD_KEY
+            keys = {str(k) for k in present}
+            places = {str(i) for i, m in enumerate(members) if isinstance(m, dict)}
+            here = {i for i in places if i in keys}
+            count = len(keys & (places | {LEAD_KEY}))
+        else:
+            here = {str(i) for i, m in enumerate(members) if isinstance(m, dict) and m.get('usn') in present_usns}
+            count = len(present_usns)
         import services_entry   # the SPOC's entry list (UPG-214)
-        if present_usns and not services_entry.may_enter(event, reg_data):
+        if count and not services_entry.may_enter(event, reg_data):
             return jsonify({'status': 'not_selected', 'message': services_entry.REFUSED}), 409
-        members = reg_data.get('members', [])
-        for m in members:
-            m['attendance'] = 'Present' if m.get('usn') in present_usns else 'Absent'
+        for i, m in enumerate(members):
+            if isinstance(m, dict):
+                m['attendance'] = 'Present' if str(i) in here else 'Absent'
         # Keep the first check-in time: the scan already recorded it (UPG-02)
         reg_ref.update({'members': members,
-                        'attendance': 'Present' if present_usns else 'Absent',
+                        'attendance': 'Present' if count else 'Absent',
                         'checkin_time': reg_data.get('checkin_time') or datetime.datetime.now().strftime("%H:%M:%S")})
         log_action(db, "ATTENDANCE_MARKED",
-                   f"Reg {reg_id}: {len(present_usns)} members marked present")
+                   f"Reg {reg_id}: {count} members marked present")
         return jsonify({'status': 'success',
-                        'message': f"{len(present_usns)} members marked present."})
+                        'message': f"{count} {'member' if count == 1 else 'members'} marked present."})
     except Exception as exc:
         return jsonify({'status': 'error', 'message': str(exc)})
 

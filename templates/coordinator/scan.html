@@ -314,23 +314,32 @@
                 // Team members: untick anyone who isn't here, then save
                 const list = document.getElementById('members-list');
                 list.replaceChildren();
-                const members = (data.members || []).filter(m => m.usn);
+                // Everyone on the team, the lead first, with or without a USN (UPG-318)
+                const members = data.members || [];
                 members.forEach(m => {
                     const label = document.createElement('label');
                     label.className = 'member-row shadow-sm';
+                    label.dataset.memberKey = m.key;
                     const info = document.createElement('div');
                     const strong = document.createElement('strong');
                     strong.className = 'd-block';
-                    strong.textContent = m.name;
+                    strong.textContent = m.name || 'No name given';
+                    if (m.lead) {
+                        const tag = document.createElement('span');
+                        tag.className = 'badge text-bg-primary ms-2';
+                        tag.textContent = 'Lead';
+                        strong.append(tag);
+                    }
                     const small = document.createElement('small');
                     small.className = 'text-muted';
-                    small.textContent = m.usn;
+                    small.textContent = m.usn || 'No USN';
                     info.append(strong, small);
                     const box = document.createElement('input');
                     box.type = 'checkbox';
                     box.className = 'form-check-input';
-                    box.name = 'present_usn';
-                    box.value = m.usn;
+                    box.name = 'present_member';
+                    box.value = m.key;
+                    box.setAttribute('aria-label', (m.name || 'Member') + ' is here');
                     box.checked = m.attendance !== 'Absent';
                     label.append(info, box);
                     list.appendChild(label);
@@ -344,14 +353,14 @@
         }
 
         async function submitGranularAttendance() {
-            const checkboxes = document.querySelectorAll('input[name="present_usn"]:checked');
-            const present_usns = Array.from(checkboxes).map(cb => cb.value);
+            const checkboxes = document.querySelectorAll('input[name="present_member"]:checked');
+            const present = Array.from(checkboxes).map(cb => cb.value);   // each person's place (UPG-318)
             const reg_id = document.getElementById('submit_reg_id').value;
 
             const response = await fetch('/coordinator/mark_attendance_granular', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ reg_id: reg_id, present_usns: present_usns })
+                body: JSON.stringify({ reg_id: reg_id, present: present })
             });
             const data = await response.json();
             

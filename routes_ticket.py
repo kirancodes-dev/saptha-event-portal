@@ -169,6 +169,25 @@ def scan_time(value) -> Optional[datetime.datetime]:
     return at
 
 
+LEAD_KEY = 'lead'   # a lead missing from `members` (older registrations), on the scanner's list
+
+
+def scan_people(reg: dict) -> list:
+    """Everyone on the team for the scanner's attendance list, the lead first
+    (UPG-318). Each has a `key`: its place in `members`, which the save uses,
+    so a person with no USN is listed and saved too. A registration whose
+    `members` lacks the lead gets the lead from `lead_name` with key 'lead'.
+    A registration with no members lists nobody (an individual)."""
+    import services_team_confirm as confirm
+    people = [{'key': str(i), 'name': m.get('name') or m.get('email') or '', 'usn': m.get('usn') or '',
+               'attendance': m.get('attendance') or '', 'lead': confirm.is_lead(reg, m)}
+              for i, m in enumerate(reg.get('members') or []) if isinstance(m, dict)]
+    if people and not any(p['lead'] for p in people):
+        people.insert(0, {'key': LEAD_KEY, 'name': reg.get('lead_name') or reg.get('lead_email') or '',
+                          'usn': reg.get('lead_usn') or '', 'attendance': '', 'lead': True})
+    return sorted(people, key=lambda p: not p['lead'])
+
+
 def check_in(reg_id: str, actor, expected_event_id: Optional[str] = None,
              source: str = 'scan', token_extra: Optional[dict] = None,
              scanned_at: Optional[datetime.datetime] = None) -> Tuple[Dict[str, Any], int]:
@@ -217,8 +236,7 @@ def check_in(reg_id: str, actor, expected_event_id: Optional[str] = None,
         'team':        reg.get('team_name', ''),
         'event_title': event.get('title', 'Event'),
         'room':        reg.get('assigned_room') or reg.get('allocated_room') or '',
-        'members':     [{'name': m.get('name', ''), 'usn': m.get('usn', ''), 'attendance': m.get('attendance', '')}
-                        for m in (reg.get('members') or [])],
+        'members':     scan_people(reg),   # everyone on the team, the lead first (UPG-318)
         'badge_url':   f"/ticket/{reg_id}/badge.pdf",   # print at the door (UPG-158)
     }
     details.update(lead_name=details['name'], team_name=details['team'])

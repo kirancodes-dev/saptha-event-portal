@@ -16,8 +16,8 @@
             <button type="submit" class="btn btn-primary">Search</button>
         </form>
         <div class="d-flex gap-2 flex-wrap mb-2">
-            <a class="btn btn-sm btn-outline-secondary" href="/certificates/events/{{ event.id }}/export.csv{% if page.q %}?q={{ page.q|urlencode }}{% endif %}"><i class="fas fa-file-csv" aria-hidden="true"></i> CSV</a>
-            <a class="btn btn-sm btn-outline-secondary" href="/certificates/events/{{ event.id }}/export.xlsx{% if page.q %}?q={{ page.q|urlencode }}{% endif %}"><i class="fas fa-file-excel" aria-hidden="true"></i> Excel</a>
+            <a data-pick-columns class="btn btn-sm btn-outline-secondary" href="/certificates/events/{{ event.id }}/export.csv{% if page.q %}?q={{ page.q|urlencode }}{% endif %}"><i class="fas fa-file-csv" aria-hidden="true"></i> CSV</a>
+            <a data-pick-columns class="btn btn-sm btn-outline-secondary" href="/certificates/events/{{ event.id }}/export.xlsx{% if page.q %}?q={{ page.q|urlencode }}{% endif %}"><i class="fas fa-file-excel" aria-hidden="true"></i> Excel</a>
         </div>
         {% if page.items %}
         <div class="table-responsive">

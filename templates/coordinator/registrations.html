@@ -23,7 +23,7 @@
     <div class="d-flex flex-wrap align-items-center gap-2">
       {% if may_accept %}<a href="/forms/register/{{ event.id }}?add=team" class="btn btn-sm btn-primary" data-add-team><i class="fas fa-user-plus me-1" aria-hidden="true"></i>Add a team</a>{% endif %}
       <a href="#waitlist" class="badge {{ 'bg-warning text-dark' if waitlist else 'text-bg-light border' }} fs-6 text-decoration-none" data-waitlist-count>{{ waitlist|length }} on the waitlist</a>
-      <a href="/coordinator/export_registrations/{{ event.id }}" class="btn btn-sm btn-outline-primary"><i class="fas fa-file-csv me-1" aria-hidden="true"></i>Export CSV</a>
+      <a data-pick-columns href="/coordinator/export_registrations/{{ event.id }}" class="btn btn-sm btn-outline-primary"><i class="fas fa-file-csv me-1" aria-hidden="true"></i>Export CSV</a>
     </div>
   </div>
 
@@ -388,7 +388,7 @@
     {#- UPG-265: this list as a file, and as a message for WhatsApp, with what to fix -#}
     {% if page.total %}
     <div class="d-flex flex-wrap gap-2 align-items-center mb-2" data-share-list>
-      <a href="/coordinator/registrations/{{ event.id }}/export_filtered{% if filtered_export %}?{{ filtered_export }}{% endif %}" class="btn btn-sm btn-outline-primary" data-export-filtered><i class="fas fa-download me-1" aria-hidden="true"></i>Download {{ 'this list' if picked or page.q else 'all' }} with full details (CSV)</a>
+      <a data-pick-columns href="/coordinator/registrations/{{ event.id }}/export_filtered{% if filtered_export %}?{{ filtered_export }}{% endif %}" class="btn btn-sm btn-outline-primary" data-export-filtered><i class="fas fa-download me-1" aria-hidden="true"></i>Download {{ 'this list' if picked or page.q else 'all' }} with full details (CSV)</a>
       <a href="https://wa.me/?text={{ share_text|urlencode }}" target="_blank" rel="noopener" class="btn btn-sm btn-success" data-whatsapp><i class="fab fa-whatsapp me-1" aria-hidden="true"></i>Send on WhatsApp</a>
       <button type="button" class="btn btn-sm btn-outline-secondary" data-copy-share><i class="fas fa-copy me-1" aria-hidden="true"></i><span data-label>Copy the message</span></button>
     </div>

@@ -1493,6 +1493,14 @@ def rate_limited(e):
     logger.warning(f"429 Rate Limit: {request.remote_addr} on {redact(request.path)}")
     return render_template('429.html'), 429
 
+import services_export as _services_export
+
+
+@app.errorhandler(_services_export.ColumnList)
+def download_columns(e):
+    """A download's column list, for the "choose columns" box (UPG-325)."""
+    return jsonify({'columns': e.columns, 'required': e.required})
+
 @app.errorhandler(500)
 def server_error(e):
     logger.error(f"500 Server Error: {e}", exc_info=True)

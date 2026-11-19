@@ -155,6 +155,14 @@ def analytics():
 # =========================================================
 # 2b. CSV EXPORT — analytics / registrations
 # =========================================================
+def _write_picked(writer, header, rows):
+    """Write the columns the person ticked (UPG-325), every column otherwise."""
+    import services_export
+    header, rows = services_export.pick_columns(header, rows)
+    writer.writerow(header)
+    writer.writerows(rows)
+
+
 @admin_bp.route('/analytics/export/<kind>')
 @login_required
 def analytics_export(kind):
@@ -184,24 +192,21 @@ def analytics_export(kind):
         filename = 'registrations.csv'
 
     elif kind == 'events':
-        writer.writerow(['event_id', 'title', 'category', 'date', 'venue',
-                         'status', 'entry_fee', 'registration_count'])
-        for eid, e in events_map.items():
-            writer.writerow([
-                eid, e.get('title', ''), e.get('category', ''),
-                e.get('date', ''), e.get('venue', ''), e.get('status', ''),
-                e.get('entry_fee', 0), e.get('registration_count', 0),
-            ])
+        _write_picked(writer, ['event_id', 'title', 'category', 'date', 'venue',
+                               'status', 'entry_fee', 'registration_count'],
+                      [[eid, e.get('title', ''), e.get('category', ''),
+                        e.get('date', ''), e.get('venue', ''), e.get('status', ''),
+                        e.get('entry_fee', 0), e.get('registration_count', 0)]
+                       for eid, e in events_map.items()])
         filename = 'events.csv'
 
     elif kind == 'payments':  # one row per Razorpay order, for the finance office (UPG-30)
         from services_payments import all_orders
-        writer.writerow(['order_id', 'payment_id', 'event_id', 'event_title', 'email', 'amount_inr', 'status',
-                         'reg_id', 'paid_at', 'refund_id', 'refunded_at', 'note'])
-        for o in all_orders():
-            writer.writerow([o['id'], o['payment_id'], o['event_id'], events_map.get(o['event_id'], {}).get('title', ''),
-                             o['email'], o['amount_paise'] / 100, o['status'], o['reg_id'], o['paid_at'] or '',
-                             o['refund_id'], o['refunded_at'] or '', o['failure_reason']])
+        _write_picked(writer, ['order_id', 'payment_id', 'event_id', 'event_title', 'email', 'amount_inr', 'status',
+                               'reg_id', 'paid_at', 'refund_id', 'refunded_at', 'note'],
+                      [[o['id'], o['payment_id'], o['event_id'], events_map.get(o['event_id'], {}).get('title', ''),
+                        o['email'], o['amount_paise'] / 100, o['status'], o['reg_id'], o['paid_at'] or '',
+                        o['refund_id'], o['refunded_at'] or '', o['failure_reason']] for o in all_orders()])
         filename = 'payments.csv'
 
     elif kind in ('activity', 'activity_points', 'department_activity'):
@@ -220,17 +225,14 @@ def analytics_export(kind):
             eid = d.get('event_id', '')
             by_event[eid]['count']   += 1
             by_event[eid]['revenue'] += amt
-        writer.writerow(['event_id', 'title', 'paid_registrations', 'revenue_inr'])
-        for eid, row in sorted(by_event.items(), key=lambda x: x[1]['revenue'], reverse=True):
-            writer.writerow([
-                eid,
-                events_map.get(eid, {}).get('title', eid),
-                row['count'],
-                row['revenue'],
-            ])
+        _write_picked(writer, ['event_id', 'title', 'paid_registrations', 'revenue_inr'],
+                      [[eid, events_map.get(eid, {}).get('title', eid), row['count'], row['revenue']]
+                       for eid, row in sorted(by_event.items(), key=lambda x: x[1]['revenue'], reverse=True)])
         filename = 'revenue.csv'
 
-    log_action(session.get('user_id'), 'analytics_export', kind)
+    import services_export
+    if not services_export.probing():
+        log_action(session.get('user_id'), 'analytics_export', kind)
     return Response(
         buf.getvalue(),
         mimetype='text/csv',

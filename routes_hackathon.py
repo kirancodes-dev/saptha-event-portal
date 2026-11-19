@@ -402,6 +402,7 @@ def manage(event_id):
     """Problem statements, the submission form, the deadline, updates and
     the email setting, on one page (UPG-190, UPG-191, UPG-195)."""
     event = _managed(event_id)
+    import services_hackathon_marks as marks
     h, ev = services_hackathon, services_hackathon_eval
     subs = h.submissions(db, event_id)
     form = h.form(event)
@@ -422,6 +423,7 @@ def manage(event_id):
         sort=sort, shortlist=ev.shortlist(event), undo_ok=undo_ok, undo_why=undo_why,
         round=round_info(event)['current'], unsent_results=_unsent_results(event_id, event),
         eval_mode=ev.mode(event), eval_modes=ev.MODES, judging=_judging_summary(event_id, event),
+        marks_wait=marks.upload_wait(event),
         selection=h.selection(event), sel_window=h.selection_window(event),
         sel_board=h.selection_board(db, event_id, event) if h.selection_on(event) else None,
         sel_extensions=list(reversed(h.selection(event).get('extensions') or [])))
@@ -616,6 +618,21 @@ def post_update(event_id):
     return _back(event_id, 'updates')
 
 
+@hackathon_bp.route('/spoc/hackathon/<event_id>/update/delete', methods=['POST'])
+@login_required
+def delete_update(event_id):
+    """Take one update off the teams' feed (UPG-323)."""
+    event = _managed(event_id)
+    gone = services_hackathon.remove_update(db, event_id, event, request.form.get('key', '').strip())
+    if gone is None:
+        flash("That update is already gone.", 'warning')
+        return _back(event_id, 'updates')
+    _audit('HACKATHON_UPDATE_DELETED', f"{_me()} deleted update '{gone.get('title', '')}' "
+                                       f"({gone.get('at', '')}) of {event_id}")
+    flash("Update deleted. Teams no longer see it.", 'success')
+    return _back(event_id, 'updates')
+
+
 @hackathon_bp.route('/spoc/hackathon/<event_id>/emails', methods=['POST'])
 @login_required
 def email_setting(event_id):
@@ -789,11 +806,13 @@ def evaluators_file(event_id, kind):
         abort(404)
     columns, rows = marks.evaluator_table(db, event_id, event)
     name = (re.sub(r'[^A-Za-z0-9_-]+', '_', str(event.get('title') or 'Hackathon')).strip('_') or 'Hackathon')
-    _audit('HACKATHON_EVALUATORS_FILE', f"{_me()} downloaded the evaluators' file of {event_id} ({len(rows)} teams)")
+    if not services_export.probing():
+        _audit('HACKATHON_EVALUATORS_FILE', f"{_me()} downloaded the evaluators' file of {event_id} ({len(rows)} teams)")
+    keep = marks.EVALUATOR_KEEP   # the marks come back on these (UPG-325)
     if kind == 'xlsx':
-        return Response(services_export.to_xlsx([('Submissions', columns, rows)]), mimetype=XLSX_MIMETYPE,
+        return Response(services_export.to_xlsx([('Submissions', columns, rows)], keep=keep), mimetype=XLSX_MIMETYPE,
                         headers={'Content-Disposition': f'attachment; filename={name}_for_evaluators.xlsx'})
-    return Response(services_export.to_csv(rows, columns), mimetype='text/csv',
+    return Response(services_export.to_csv(rows, columns, keep=keep), mimetype='text/csv',
                     headers={'Content-Disposition': f'attachment; filename={name}_for_evaluators.csv'})
 
 

@@ -500,7 +500,7 @@
                   <button class="action-btn" title="Next Round" style="color:#f59e0b;border-color:#fde68a;" data-bs-toggle="modal" data-bs-target="#eliminateModal{{ event.id }}"><i class="fas fa-filter"></i></button>
                   <button class="action-btn" title="Publish Results" style="color:#dc2626;border-color:#fecaca;" data-bs-toggle="modal" data-bs-target="#publishModal{{ event.id }}"><i class="fas fa-trophy"></i></button>
                   {% endif %}
-                  <a href="/coordinator/export_registrations/{{ event.id }}" class="action-btn green" title="Export Excel"><i class="fas fa-file-excel"></i></a>
+                  <a data-pick-columns href="/coordinator/export_registrations/{{ event.id }}" class="action-btn green" title="Export Excel"><i class="fas fa-file-excel"></i></a>
                   <form method="POST" action="/coordinator/delete_event/{{ event.id }}" class="d-inline m-0"
                         data-h-submit="admin/dashboard:3" data-h-a0="{{ event.title }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

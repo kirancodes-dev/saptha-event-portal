@@ -207,6 +207,25 @@ def updates(event: dict) -> list:
     return sorted(data(event).get('updates') or [], key=lambda u: u.get('at') or '', reverse=True)
 
 
+def update_key(item: dict) -> str:
+    """How one update is named for deleting: its id (older ones: its time)."""
+    return str(item.get('id') or item.get('at') or '')
+
+
+def remove_update(db, event_id: str, event: dict, key: str):
+    """Take one update off the feed (UPG-323). Returns the removed update,
+    or None when there is no such update."""
+    h = data(event)
+    items = list(h.get('updates') or [])
+    gone = next((u for u in items if key and update_key(u) == key), None)
+    if gone is None:
+        return None
+    h['updates'] = [u for u in items if u is not gone]
+    _save(db, event_id, h)
+    event['hackathon'] = h
+    return gone
+
+
 def set_email_mode(db, event_id: str, mode: str) -> bool:
     if mode not in EMAIL_MODES:
         return False

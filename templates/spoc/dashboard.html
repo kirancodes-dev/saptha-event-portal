@@ -1609,10 +1609,10 @@ h1, h2, h3, h4, h5, h6 {
                     <a href="/coordinator/registrations/{{ event.id }}" class="action-btn btn-outline justify-content-start" data-registrations-link>
                       <i class="fas fa-users"></i> Registrations, Waitlist &amp; Teams (details, accept, cancel)
                     </a>
-                    <a href="/spoc/export_excel/{{ event.id }}" class="action-btn btn-outline justify-content-start">
+                    <a data-pick-columns href="/spoc/export_excel/{{ event.id }}" class="action-btn btn-outline justify-content-start">
                       <i class="fas fa-table"></i> Export Registrations (Excel)
                     </a>
-                    <a href="/spoc/export_csv/{{ event.id }}" class="action-btn btn-outline justify-content-start">
+                    <a data-pick-columns href="/spoc/export_csv/{{ event.id }}" class="action-btn btn-outline justify-content-start">
                       <i class="fas fa-file-csv"></i> Export Registrations (CSV)
                     </a>
                     <a href="/ticket/badges/{{ event.id }}.pdf" target="_blank" rel="noopener" class="action-btn btn-outline justify-content-start">

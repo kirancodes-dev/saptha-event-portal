@@ -6,8 +6,8 @@
 {% block page_title %}Event summary report{% endblock %}
 {% block page_sub %}{{ 'Every event' if everything else 'The events you can see the figures of' }} · {{ report.described }}{% endblock %}
 {% block page_actions %}
-  <a href="/reports/events.csv{% if query %}?{{ query }}{% endif %}" class="btn btn-secondary" data-export="csv"><i class="fas fa-file-csv" aria-hidden="true"></i> CSV</a>
-  <a href="/reports/events.xlsx{% if query %}?{{ query }}{% endif %}" class="btn btn-secondary" data-export="xlsx"><i class="fas fa-file-excel" aria-hidden="true"></i> Excel, with definitions</a>
+  <a data-pick-columns href="/reports/events.csv{% if query %}?{{ query }}{% endif %}" class="btn btn-secondary" data-export="csv"><i class="fas fa-file-csv" aria-hidden="true"></i> CSV</a>
+  <a data-pick-columns href="/reports/events.xlsx{% if query %}?{{ query }}{% endif %}" class="btn btn-secondary" data-export="xlsx"><i class="fas fa-file-excel" aria-hidden="true"></i> Excel, with definitions</a>
 {% endblock %}
 {% block extra_css %}
 <style>

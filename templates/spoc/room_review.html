@@ -40,7 +40,7 @@
 {% endif %}
 
 <div class="d-flex flex-wrap gap-2 mb-3 no-print">
-  <a href="/spoc/room_allocation/{{ event.id }}/export.csv" class="btn-action btn-outline"><i class="fas fa-file-csv"></i> Download CSV</a>
+  <a data-pick-columns href="/spoc/room_allocation/{{ event.id }}/export.csv" class="btn-action btn-outline"><i class="fas fa-file-csv"></i> Download CSV</a>
   <button type="button" class="btn-action btn-outline" data-h-click="spoc/room_review:1"><i class="fas fa-print"></i> Print</button>
 </div>
 

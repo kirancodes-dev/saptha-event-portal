@@ -29,6 +29,7 @@
   <a class="btn btn-sm btn-outline-secondary" href="#updates">Updates</a>
   <a class="btn btn-sm btn-outline-secondary" href="#submissions">Submissions</a>
   <a class="btn btn-sm btn-outline-secondary" href="#evaluation">Who scores</a>
+  {% if eval_mode == 'file' and not shortlist %}<a class="btn btn-sm btn-outline-primary" href="#marks-upload" data-marks-nav>Upload marks</a>{% endif %}
   <a class="btn btn-sm btn-outline-secondary" href="#ranking">Ranking &amp; shortlist</a>
 </nav>
 
@@ -228,7 +229,7 @@
     <span class="hk-note ms-2">Shown on every registered team's hackathon page; no email is sent.</span>
   </form>
   {% for u in updates[:30] %}
-  <div class="border-start border-3 ps-2 mb-2"><span class="hk-note">{{ show(u.at) }}</span><br><strong>{{ u.title }}</strong>{% if u.message %}<div class="small" style="white-space:pre-line">{{ u.message }}</div>{% endif %}</div>
+  <div class="border-start border-3 ps-2 mb-2" data-update><form method="POST" action="/spoc/hackathon/{{ event.id }}/update/delete" class="float-end ms-2"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="key" value="{{ u.id or u.at }}"><button class="btn btn-sm btn-outline-danger" type="submit" data-delete-update data-confirm="Delete this update? Teams will no longer see it.">Delete</button></form><span class="hk-note">{{ show(u.at) }}</span><br><strong>{{ u.title }}</strong>{% if u.message %}<div class="small" style="white-space:pre-line">{{ u.message }}</div>{% endif %}</div>
   {% else %}<p class="text-muted mb-0">No updates yet.</p>{% endfor %}
 </section>
 
@@ -276,24 +277,31 @@
   <div data-file-round>
     <p class="mb-2"><strong>1.</strong> Download the submissions for the evaluators. Each row starts with the team's <strong>team code</strong> and an empty <strong>Score</strong> column.</p>
     <div class="d-flex flex-wrap gap-2 mb-3">
-      <a class="btn btn-sm btn-outline-primary" href="/spoc/hackathon/{{ event.id }}/evaluators.xlsx" data-evaluators-file><i class="fas fa-file-excel" aria-hidden="true"></i> File for the evaluators (Excel)</a>
-      <a class="btn btn-sm btn-outline-secondary" href="/spoc/hackathon/{{ event.id }}/evaluators.csv"><i class="fas fa-file-csv" aria-hidden="true"></i> CSV</a>
+      <a data-pick-columns class="btn btn-sm btn-outline-primary" href="/spoc/hackathon/{{ event.id }}/evaluators.xlsx" data-evaluators-file><i class="fas fa-file-excel" aria-hidden="true"></i> File for the evaluators (Excel)</a>
+      <a data-pick-columns class="btn btn-sm btn-outline-secondary" href="/spoc/hackathon/{{ event.id }}/evaluators.csv"><i class="fas fa-file-csv" aria-hidden="true"></i> CSV</a>
     </div>
     <p class="mb-2"><strong>2.</strong> The evaluators send back the team code and the score out of 100: two columns, or the same file with Score filled in.</p>
     {% if shortlist %}
     <p class="hk-note mb-0">The marks are submitted and round {{ round }} has started.</p>
-    {% elif window != 'closed' %}
-    <p class="text-muted mb-0">Upload the marks after the submission deadline.</p>
     {% else %}
+    {#- Step 3 is always shown, so the SPOC knows where and when (UPG-324) -#}
+    <div id="marks-upload" class="border rounded p-2 {% if marks_wait %}bg-light{% else %}border-primary{% endif %}" data-marks-step>
+    <p class="mb-2"><strong>3. Upload the evaluators' file here</strong> (CSV or Excel).</p>
+    {% if marks_wait %}
+    <p class="mb-2 text-warning-emphasis" data-marks-wait><i class="fas fa-lock" aria-hidden="true"></i>
+      {% if form.closes_at %}Opens when submissions close: <strong>{{ show(form.closes_at) }}</strong>.{% else %}Opens when submissions close.{% endif %}
+      {{ marks_wait }} If you need it earlier, change the deadline in <a href="#deadline">Deadline</a>.</p>
+    {% endif %}
     <form method="POST" action="/spoc/hackathon/{{ event.id }}/marks/preview" enctype="multipart/form-data" class="d-flex flex-wrap gap-2 align-items-end" data-marks-upload>
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <div><label class="form-label fw-semibold" for="mkFile"><strong>3.</strong> Their file (CSV or Excel)</label>
-        <input class="form-control" type="file" id="mkFile" name="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required></div>
+      <div><label class="form-label fw-semibold" for="mkFile">Their file (CSV or Excel)</label>
+        <input class="form-control" type="file" id="mkFile" name="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required {% if marks_wait %}disabled{% endif %}></div>
       <div><label class="form-label fw-semibold" for="mkTop">Teams to the next round</label>
-        <input class="form-control" type="number" min="1" id="mkTop" name="n" value="10" style="width:100px"></div>
-      <button class="btn btn-primary" type="submit">Upload and check</button>
+        <input class="form-control" type="number" min="1" id="mkTop" name="n" value="10" style="width:100px" {% if marks_wait %}disabled{% endif %}></div>
+      <button class="btn btn-primary" type="submit" {% if marks_wait %}disabled{% endif %}>Upload and check</button>
     </form>
     <p class="hk-note mt-2 mb-0">You see every team's score, the top teams and anything to fix before you submit. Submit saves the marks and starts the next round with the top teams in one step.</p>
+    </div>
     {% endif %}
   </div>
   {% elif eval_mode == 'judges' %}

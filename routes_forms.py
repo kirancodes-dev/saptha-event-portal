@@ -1329,8 +1329,8 @@ def export_responses(event_id):
     header += [f.get('label', f['id']) for f in fields
                if f['id'] not in ('full_name', 'name', 'email')
                and f.get('type') not in ('heading', 'paragraph', 'divider')]
-    writer.writerow(header)
 
+    rows = []
     for s in submissions:
         answers = s.get('answers', {})
         row     = [s.get('submitted_at', ''), s.get('name', ''), s.get('email', '')]
@@ -1340,7 +1340,12 @@ def export_responses(event_id):
                 continue
             val = answers.get(f['id'], '')
             row.append(', '.join(val) if isinstance(val, list) else val)
-        writer.writerow(row)
+        rows.append(row)
+
+    import services_export
+    header, rows = services_export.pick_columns(header, rows)   # the columns ticked (UPG-325)
+    writer.writerow(header)
+    writer.writerows(rows)
 
     title = event.get('title', 'Event').replace(' ', '_')
     return Response(

@@ -328,7 +328,48 @@ def registration_table(db, event_id, sessions=True, only=None):
     return columns, rows
 
 
-def to_csv(rows, columns=COLUMNS):
+# ── Choosing the columns of a download (UPG-325) ─────────────────────────
+# A download link marked data-pick-columns opens a list of the file's columns
+# (all ticked). The page asks for that list with ?list_columns=1, then
+# downloads with one ?col=<name> per column kept. No col means every column.
+
+class ColumnList(Exception):
+    """Raised by to_csv/to_xlsx for ?list_columns=1; app.py answers it as JSON."""
+
+    def __init__(self, columns, required=()):
+        super().__init__('column list')
+        self.columns = [str(c) for c in columns]
+        self.required = [c for c in (str(r) for r in required) if c in self.columns]
+
+
+def probing() -> bool:
+    """True while the page is only asking for the list of columns, so a route
+    can leave out its "downloaded" audit line."""
+    from flask import has_request_context, request
+    return has_request_context() and request.args.get('list_columns') == '1'
+
+
+def pick_columns(columns, rows, keep=()):
+    """The columns the person ticked, in the file's own order; ``keep`` always
+    stays. Outside a request, or with nothing ticked, everything stays."""
+    from flask import has_request_context, request
+    if not has_request_context():
+        return columns, rows
+    if probing():
+        raise ColumnList(columns, keep)
+    wanted = set(request.args.getlist('col'))
+    if not wanted:
+        return columns, rows
+    wanted |= {str(k) for k in keep}
+    index = [i for i, c in enumerate(columns) if str(c) in wanted]
+    if not index:
+        return columns, rows
+    return ([columns[i] for i in index],
+            [[row[i] if i < len(row) else '' for i in index] for row in rows])
+
+
+def to_csv(rows, columns=COLUMNS, keep=()):
+    columns, rows = pick_columns(list(columns), rows, keep)
     out = io.StringIO()
     writer = csv.writer(out)
     writer.writerow(columns)
@@ -346,11 +387,16 @@ def _cell(value):
     return value
 
 
-def to_xlsx(sheets):
-    """sheets: [(title, columns, rows)] → .xlsx bytes."""
+def to_xlsx(sheets, keep=()):
+    """sheets: [(title, columns, rows)] → .xlsx bytes. The column choice
+    (UPG-325) applies to the first sheet, the data; the others are notes."""
     import openpyxl
     from openpyxl.styles import Font, PatternFill
     from openpyxl.utils import get_column_letter
+    sheets = list(sheets)
+    if sheets:
+        title, columns, rows = sheets[0]
+        sheets[0] = (title, *pick_columns(list(columns), rows, keep))
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
     for title, columns, rows in sheets:

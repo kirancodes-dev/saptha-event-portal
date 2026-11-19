@@ -278,6 +278,109 @@
     if (!confirm(msg)) e.preventDefault();
   });
 
+  /* ── 10b. CHOOSE THE COLUMNS OF A DOWNLOAD (UPG-325) ───────────────────
+     A link marked data-pick-columns asks the server for its file's columns
+     (?list_columns=1), shows them all ticked, and downloads with one col=
+     per column kept. All ticked downloads the whole file as before. */
+  function pickColumnsBox(link, info) {
+    var old = document.getElementById('pickColumnsBox');
+    if (old) old.remove();
+    var required = info.required || [];
+    var back = document.createElement('div');
+    back.id = 'pickColumnsBox';
+    back.setAttribute('role', 'dialog');
+    back.setAttribute('aria-modal', 'true');
+    back.setAttribute('aria-labelledby', 'pickColumnsHead');
+    back.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px;';
+    var box = document.createElement('div');
+    box.style.cssText = 'background:#fff;border-radius:12px;max-width:520px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,.25);';
+    var head = document.createElement('div');
+    head.style.cssText = 'padding:14px 16px;border-bottom:1px solid #e2e8f0;';
+    var h = document.createElement('h2');
+    h.id = 'pickColumnsHead';
+    h.className = 'h6 mb-1';
+    h.textContent = 'Choose the columns to download';
+    var note = document.createElement('div');
+    note.className = 'small text-muted';
+    note.textContent = 'Untick what you don\'t need. All ticked downloads everything.' +
+      (required.length ? ' Always included: ' + required.join(', ') + '.' : '');
+    head.appendChild(h);
+    head.appendChild(note);
+    var tools = document.createElement('div');
+    tools.className = 'd-flex gap-2 mt-2';
+    var all = document.createElement('button');
+    all.type = 'button'; all.className = 'btn btn-sm btn-outline-secondary'; all.textContent = 'Select all';
+    all.setAttribute('data-pick-all', '');
+    var none = document.createElement('button');
+    none.type = 'button'; none.className = 'btn btn-sm btn-outline-secondary'; none.textContent = 'Select none';
+    none.setAttribute('data-pick-none', '');
+    tools.appendChild(all);
+    tools.appendChild(none);
+    head.appendChild(tools);
+    var list = document.createElement('div');
+    list.style.cssText = 'padding:10px 16px;overflow:auto;';
+    info.columns.forEach(function (name, i) {
+      var row = document.createElement('label');
+      row.className = 'form-check d-block mb-1';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.className = 'form-check-input'; cb.checked = true;
+      cb.value = name; cb.id = 'pickCol' + i;
+      if (required.indexOf(name) !== -1) cb.disabled = true;
+      row.appendChild(cb);
+      row.appendChild(document.createTextNode(' ' + name));
+      list.appendChild(row);
+    });
+    var foot = document.createElement('div');
+    foot.style.cssText = 'padding:12px 16px;border-top:1px solid #e2e8f0;display:flex;gap:8px;justify-content:flex-end;';
+    var cancel = document.createElement('button');
+    cancel.type = 'button'; cancel.className = 'btn btn-sm btn-outline-secondary'; cancel.textContent = 'Cancel';
+    var go = document.createElement('button');
+    go.type = 'button'; go.className = 'btn btn-sm btn-primary'; go.textContent = 'Download';
+    foot.appendChild(cancel);
+    foot.appendChild(go);
+    box.appendChild(head); box.appendChild(list); box.appendChild(foot);
+    back.appendChild(box);
+    document.body.appendChild(back);
+    function boxes() { return Array.prototype.slice.call(list.querySelectorAll('input[type=checkbox]')); }
+    function close() { back.remove(); link.focus(); }
+    all.addEventListener('click', function () { boxes().forEach(function (c) { c.checked = true; }); });
+    none.addEventListener('click', function () { boxes().forEach(function (c) { if (!c.disabled) c.checked = false; }); });
+    cancel.addEventListener('click', close);
+    back.addEventListener('click', function (ev) { if (ev.target === back) close(); });
+    back.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') close(); });
+    go.addEventListener('click', function () {
+      var ticked = boxes().filter(function (c) { return c.checked; });
+      if (!ticked.length) { note.textContent = 'Tick at least one column.'; note.className = 'small text-danger'; return; }
+      var url = new URL(link.href, window.location.href);
+      url.searchParams.delete('col');
+      if (ticked.length < boxes().length) {
+        ticked.forEach(function (c) { url.searchParams.append('col', c.value); });
+      }
+      back.remove();
+      window.location.href = url.toString();
+    });
+    go.focus();
+  }
+
+  document.addEventListener('click', function (e) {
+    var link = e.target.closest('a[data-pick-columns]');
+    if (!link || e.defaultPrevented || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    e.preventDefault();
+    var url = new URL(link.href, window.location.href);
+    url.searchParams.set('list_columns', '1');
+    fetch(url.toString(), { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(function (r) {
+        var type = r.headers.get('Content-Type') || '';
+        if (!r.ok || type.indexOf('application/json') === -1) throw new Error('no list');
+        return r.json();
+      })
+      .then(function (info) {
+        if (!info || !info.columns || !info.columns.length) throw new Error('no list');
+        pickColumnsBox(link, info);
+      })
+      .catch(function () { window.location.href = link.href; });   // the whole file, as before
+  });
+
   /* ── 11. MOBILE NAV — close on outside click ──────────────────────────── */
   document.addEventListener('click', function (e) {
     const toggler = document.querySelector('.navbar-toggler');

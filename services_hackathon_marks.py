@@ -226,6 +226,14 @@ def _refusal(event: dict) -> str:
     return ''
 
 
+def upload_wait(event: dict) -> str:
+    """Why step 3 (the upload) can't be used yet, for the page (UPG-324); ''
+    when it can. The page shows the step either way, so the SPOC knows where."""
+    if hk.has_form(event) and hk.window(event) != 'closed':
+        return "Teams can still submit until then."
+    return _refusal(event)
+
+
 def keep(db, event_id: str, event: dict, lines: list, filename: str, by: str) -> dict:
     """Keep the parsed file on the event (not the file itself) for the preview and Submit."""
     why = _refusal(event)
@@ -284,6 +292,10 @@ def submit(db, event_id: str, event: dict, upload_id: str, n, expected_round, by
 
 
 # ── The file for the evaluators ─────────────────────────────────────────────
+
+# Always in the file, whatever columns the SPOC picks (UPG-325): the marks
+# come back on them.
+EVALUATOR_KEEP = ('Team code', 'Score (out of 100)')
 
 def evaluator_table(db, event_id: str, event: dict) -> tuple:
     """(columns, rows): one row per team that submitted in this round, team

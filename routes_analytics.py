@@ -65,8 +65,9 @@ def event_summary_file(kind):
     report = _summary()
     f = report['filters']
     name = 'event-summary' + (f"-from-{f['from']}" if f['from'] else '') + (f"-to-{f['to']}" if f['to'] else '')
-    log_action(db, 'REPORT_EXPORTED', f"{session.get('user_id', '')}: event summary ({kind}), {report['described']} "
-                                      f"{report['totals']['events']} events")
+    if not services_export.probing():
+        log_action(db, 'REPORT_EXPORTED', f"{session.get('user_id', '')}: event summary ({kind}), {report['described']} "
+                                          f"{report['totals']['events']} events")
     if kind == 'csv':
         return Response(services_export.to_csv(services_summary.table(report), services_summary.COLUMNS),
                         mimetype='text/csv', headers={'Content-Disposition': f'attachment; filename={name}.csv'})

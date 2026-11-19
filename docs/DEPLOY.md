@@ -800,6 +800,22 @@ can't be used by an app. Rough cost: 2-3 US cents a team.
 To go back to Gemini, remove the secret from the service:
 `gcloud run services update saptha --region "$REGION" --remove-secrets=ANTHROPIC_API_KEY`.
 
+### Gemini's model (UPG-328)
+
+Gemini scores with **`gemini-3.8-flash`**: keys made since late 2026 can't use
+`gemini-2.5-flash` (Google answers 404 "no longer available to new users"). To use
+another model, add `--update-env-vars=GEMINI_MODEL=<model>` to the deploy command;
+leave it out to keep the default. When Gemini answers busy (429 or 503), the call is
+tried again after 1 s, then 2 s; a team still not scored says "The AI service was busy", and
+"Score the rest again" retries it a few minutes later. A model the key can't use says
+"This AI model isn't available to the key set for the portal."
+
+A **new version** of the `GEMINI_API_KEY` secret (Secret Manager → the secret → New
+version, in the browser) reaches the site only with a new revision, so deploy (or run
+`gcloud run services update saptha --region "$REGION" --update-secrets=GEMINI_API_KEY=GEMINI_API_KEY:latest`)
+after adding it. The SPOC's page then says "Scored by Gemini (gemini-3.8-flash), 2
+team(s) at a time".
+
 ## Go-live checklist (what only the owner can do)
 
 Tick each before opening the portal to students.

@@ -40,7 +40,7 @@ def test_the_claude_key_makes_claude_the_scorer_and_the_page_says_so(claude, mon
     monkeypatch.setitem(h['app'].config, 'ANTHROPIC_API_KEY', '')
     with h['app'].app_context():
         assert ev.provider() == 'gemini' and ev.batch_size() == ev.BATCH
-    assert 'Scored by <strong>Gemini (gemini-2.5-flash)</strong>' in _page(h['owner'], f'/spoc/hackathon/{eid}')
+    assert f'Scored by <strong>Gemini ({ev.MODEL})</strong>' in _page(h['owner'], f'/spoc/hackathon/{eid}')
 
 
 # 2. 25 submissions per step, called at the same time, each scored once

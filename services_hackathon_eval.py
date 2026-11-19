@@ -25,12 +25,17 @@ import json
 import logging
 import os
 import re
+import time
 
 import services_hackathon as hk
 
 log = logging.getLogger(__name__)
 
-MODEL = 'gemini-2.5-flash'
+# Gemini's model (UPG-328): gemini-2.5-flash is closed to keys made since late
+# 2026, so the default is gemini-3.8-flash; GEMINI_MODEL sets another.
+MODEL = (os.environ.get('GEMINI_MODEL') or '').strip() or 'gemini-3.8-flash'
+GEMINI_RETRIES = 3            # tries per call when Gemini answers busy (429/503)
+GEMINI_RETRY_WITHIN_S = 6     # ...only while the call is this young: busy answers come at once
 # Claude scores instead of Gemini when ANTHROPIC_API_KEY is set (UPG-326):
 # 25 submissions per step, their calls made at the same time.
 CLAUDE_MODEL = 'claude-opus-5-5'
@@ -432,8 +437,11 @@ def _service_error(exc) -> str:
         return "The AI key was refused. Check the key set for the portal."
     if name == 'PermissionDeniedError':
         return "The AI key isn't allowed to use this model."
-    if name == 'RateLimitError':
+    code = getattr(exc, 'code', None)
+    if name == 'RateLimitError' or (name in ('ClientError', 'ServerError') and code in (429, 503)):
         return "The AI service was busy. Wait a minute, then score the rest again."
+    if name == 'ClientError' and code in (403, 404):
+        return "This AI model isn't available to the key set for the portal."
     if name in ('APITimeoutError', 'DeadlineExceededError'):
         return "The AI service took too long. Score the rest again."
     if name == 'BadRequestError' and 'credit' in str(exc).lower():
@@ -526,13 +534,40 @@ def _call_gemini(system: str, data: str) -> str:
     """The Gemini call."""
     from google import genai
     from google.genai import types
+    from google.genai import errors
     client = genai.Client(api_key=api_key(), http_options=types.HttpOptions(timeout=CALL_TIMEOUT_MS))
-    reply = client.models.generate_content(
-        model=MODEL, contents=data,
-        config=types.GenerateContentConfig(
+    started = time.monotonic()
+    for attempt in range(GEMINI_RETRIES):
+        try:
+            reply = client.models.generate_content(model=MODEL, contents=data, config=gemini_config(system))
+            return reply.text or ''
+        except errors.APIError as exc:
+            # A busy answer (429/503) is tried again after 1 s, then 2 s; not a
+            # slow one, so a step stays within gunicorn's 60 s (UPG-328).
+            wait = 2 ** attempt
+            if (exc.code not in (429, 503) or attempt == GEMINI_RETRIES - 1
+                    or time.monotonic() - started + wait > GEMINI_RETRY_WITHIN_S):
+                raise
+            _pause(wait)
+    return ''
+
+
+def _pause(seconds: float) -> None:
+    time.sleep(seconds)
+
+
+def gemini_config(system: str):
+    """The request's settings. Gemini 2.5 runs with thinking off at a low
+    temperature, as before; later models think a little (thinking_level low,
+    counted in the output limit) at their default temperature (UPG-328)."""
+    from google.genai import types
+    if MODEL.startswith('gemini-2.5'):
+        return types.GenerateContentConfig(
             system_instruction=system, response_mime_type='application/json', temperature=0.2,
-            max_output_tokens=1024, thinking_config=types.ThinkingConfig(thinking_budget=0)))
-    return reply.text or ''
+            max_output_tokens=1024, thinking_config=types.ThinkingConfig(thinking_budget=0))
+    return types.GenerateContentConfig(
+        system_instruction=system, response_mime_type='application/json', max_output_tokens=4096,
+        thinking_config=types.ThinkingConfig(thinking_level=types.ThinkingLevel.LOW))
 
 
 def instructions(crits: list) -> str:

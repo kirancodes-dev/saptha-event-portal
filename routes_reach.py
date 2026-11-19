@@ -70,4 +70,5 @@ def settings():
         reach.set_powered_by(db, request.form.get('powered_by') == 'on', session.get('user_id', ''))
         flash("Saved.", 'success')
         return redirect('/reach/settings')
-    return render_template('reach/settings.html', powered_by=reach.powered_by(db))
+    # Not `powered_by`: that name is the footer's own function on every page (UPG-320)
+    return render_template('reach/settings.html', line_shown=reach.powered_by(db))

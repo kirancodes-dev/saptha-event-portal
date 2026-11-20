@@ -131,3 +131,22 @@ def test_the_whatsapp_result_has_no_score_when_none_is_given():
         utils_whatsapp._send = orig
     assert 'Score' not in sent[0] and 'Your Rank:* 1' in sent[0]
     assert 'Score:*     81.5' in sent[1]                           # other events as before
+
+
+# UPG-337: the same marks, changed from the SPOC's Round panel (where they watch round 2)
+def test_the_spoc_changes_a_judges_mark_on_the_round_panel(fin):  # noqa: F811
+    eid, teams, judges, emails = fin['finale']()
+    fin['score'](judges[0], teams['Alpha'], (30, 20, 20))        # 70
+    page = fin['owner'].get(f'/spoc/round_panel/{eid}')
+    assert page.status_code == 200
+    html = page.get_data(as_text=True)
+    form = re.search(r'<form[^>]*/judge_mark/%s"[^>]*data-judge-mark="%s".*?</form>'
+                     % (re.escape(teams['Alpha']['id']), re.escape(emails[0])), html, re.S)
+    assert form and 'name="back" value="round"' in form.group(0) and 'value="70"' in form.group(0)
+    resp = fin['owner'].post(f"/spoc/hackathon/{eid}/judge_mark/{teams['Alpha']['id']}",
+                             data={'judge': emails[0], 'score': '88', 'back': 'round'})
+    assert resp.status_code == 302 and resp.headers['Location'].endswith(f'/spoc/round_panel/{eid}')
+    assert fin['reg'](teams['Alpha'])['scores'][emails[0]]['raw_total'] == 88
+    html = fin['owner'].get(f'/spoc/round_panel/{eid}').get_data(as_text=True)
+    assert '>88.0<' in html or '>88<' in html or '88.0' in html
+    assert 'edited (was 70)' in html

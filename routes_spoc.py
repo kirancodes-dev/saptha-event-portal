@@ -2000,6 +2000,7 @@ def round_panel(event_id):
         return redirect('/spoc/dashboard')
 
     import services_rounds   # the round, its teams and earlier rounds (UPG-149)
+    import services_hackathon_eval
     info           = services_rounds.round_info(event)
     cur_round      = info['current']
     scoring_locked = event.get('scoring_locked', False)
@@ -2016,6 +2017,7 @@ def round_panel(event_id):
             'score':         t['score'],
             'attendance':    d.get('attendance', 'Pending'),
             'judge_count':   t['judges'],
+            'marks':         services_hackathon_eval.judge_marks(d),   # the SPOC changes them here too (UPG-337)
         })
 
     leaderboard.sort(key=lambda x: (-(x['score'] or -9999), x['team_name']))

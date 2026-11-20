@@ -150,6 +150,19 @@ h1,h2,h3,h4,h5,h6{font-family: var(--font-heading);}
             {% else %}
             <span class="no-score">Not scored</span>
             {% endif %}
+            {#- Each judge's mark; the SPOC changes it until the results are out (UPG-336, UPG-337) #}
+            {% for m in row.marks %}
+            <form method="POST" action="/spoc/hackathon/{{ event.id }}/judge_mark/{{ row.id }}" class="d-flex flex-wrap gap-1 align-items-center mt-1" data-judge-mark="{{ m.judge }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="judge" value="{{ m.judge }}">
+              <input type="hidden" name="back" value="round">
+              <span style="font-size:11.5px;color:#64748b;">{{ m.name }}</span>
+              {% if event.results_published %}<strong style="font-size:12px;">{{ m.score }}</strong>
+              {% else %}<input class="form-control form-control-sm" style="width:70px" type="number" min="0" step="0.1" name="score" value="{{ m.score }}" aria-label="{{ m.name }}'s mark for {{ row.team_name }}">
+              <button class="btn btn-sm btn-outline-primary" type="submit">Save</button>{% endif %}
+              {% if m.edited %}<span class="se-badge se-badge--warning">edited (was {{ m.was }})</span>{% endif %}
+            </form>
+            {% endfor %}
           </td>
           <td style="color:#64748b;font-size:12.5px;">{{ row.judge_count }} judge{{ 's' if row.judge_count != 1 }}</td>
           <td>

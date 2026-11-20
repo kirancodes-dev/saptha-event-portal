@@ -757,6 +757,8 @@ def judge_mark(event_id, reg_id):
     if ok:
         _audit('HACKATHON_JUDGE_MARK_EDITED', f"{event_id}: {reg_id} judge {judge} by {_me()}: {message}")
     flash(message, 'success' if ok else 'danger')
+    if request.form.get('back') == 'round':   # from the round panel (UPG-337)
+        return redirect(f'/spoc/round_panel/{event_id}')
     return _back(event_id, 'ranking')
 
 

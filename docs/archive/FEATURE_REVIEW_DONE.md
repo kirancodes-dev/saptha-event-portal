@@ -6112,3 +6112,14 @@ The owner's request, 2026-11-16: feedback about the website from each registered
   4. ✅ Test: after the results, the dashboard, the hackathon page and the result email show the place and no score; the marks can't change.
   5. ✅ Test: the WhatsApp result has no score line when none is given; other events keep it.
 - **Evidence:** `routes_participant.py:169-171`; `templates/participant/dashboard.html:259-270`; `services_hackathon_eval.py:721`, `:754-805`, `:1056`, `:1075`; `routes_hackathon.py:749-761`; `templates/hackathon/manage.html:403`, `:425-437`; `routes_coordinator.py:1382`; `utils_whatsapp.py:270-281`; tests `tests/test_hackathon_score_privacy.py` (5); `tests/test_ux_first_pages.py:169-173` now ends its order check on the Event attendance box and checks the score window is gone.
+
+#### UPG-337 — The SPOC changes a judge's mark on the Round panel too
+- **Status:** DONE
+- **Last verified:** 2026-11-20, on `451fef8` [T]
+- **Problem:** The owner runs round 2 from the Round panel (`/spoc/round_panel/<id>`, "Round 2 of 2 · Final", standings by average judge score) and looked there for UPG-336's edit, which is only on the hackathon page's ranking.
+- **What was built:** each standings row lists the judges' marks (`services_hackathon_eval.judge_marks`) under the Avg Score with a number box and Save, posting to UPG-336's `/spoc/hackathon/<id>/judge_mark/<reg_id>` with `back=round`, which returns to the Round panel; read-only after results; "edited (was N)".
+- **Depends on:** UPG-336 (DONE).
+- **Acceptance criteria:**
+  1. ✅ Test: the Round panel shows each judge's mark with a form; saving changes the mark, returns to the panel, and the panel shows the new score and "edited (was 70)".
+  2. ✅ Only the SPOC: the panel is the event SPOC's only (existing check, `routes_spoc.py` `round_panel`); the save route needs edit permission (UPG-336's test 3).
+- **Evidence:** `routes_spoc.py:2020`; `templates/spoc/round_panel.html:153-166`; `routes_hackathon.py:760-761`; test `tests/test_hackathon_score_privacy.py::test_the_spoc_changes_a_judges_mark_on_the_round_panel`.

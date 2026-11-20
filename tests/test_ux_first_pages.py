@@ -168,8 +168,9 @@ def test_the_student_dashboard_starts_with_updates_and_tickets(d):
     page = _text(_login(d['app'], student, 'Student').get('/participant/dashboard'))
     order = [page.index(mark) for mark in (
         'id="page-title"', 'aria-label="Filter tickets"', 'id="tickets-section"',
-        'class="profile-hero"', 'aria-label="Your activity"', 'id="scoreModal"')]
+        'class="profile-hero"', 'aria-label="Your activity"', '<span>Event attendance</span>')]
     assert order == sorted(order), order
+    assert 'id="scoreModal"' not in page      # teams see no score breakdown (UPG-336)
     # nothing was dropped on the way
     # the campus photo is now below the first screen, so it loads when it is reached
     assert re.search(r'<img src="/static/campus.jpg"[^>]*loading="lazy"', page)

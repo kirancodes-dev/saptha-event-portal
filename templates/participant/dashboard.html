@@ -213,7 +213,9 @@
           {% endif %}
           {% endif %}
           <div class="d-flex flex-wrap gap-2 mb-3">
-            {% if reg.days_until is not none %}
+            {% if reg.happening_now %}
+                <span class="ticket-chip ticket-chip-today" data-happening-now><i class="fas fa-bolt"></i>Happening now</span>
+            {% elif reg.days_until is not none %}
               {% if reg.days_until == 0 %}
                 <span class="ticket-chip ticket-chip-today"><i class="fas fa-star"></i>Today!</span>
               {% elif reg.days_until < 0 %}
@@ -357,6 +359,9 @@
               </div>
             </div>
             <div class="d-flex gap-2">
+              {% if reg.hackathon_page %}
+              <a href="/hackathon/{{ reg.event_id }}" class="btn btn-sm btn-gold" data-hackathon-page title="Hackathon page" aria-label="Hackathon page for {{ reg.event_title }}"><i class="fas fa-code" aria-hidden="true"></i></a>
+              {% endif %}
               {% if reg.cert_eligible %}
               <a href="/participant/certificate/{{ reg.id }}" class="btn btn-sm btn-gold" title="Download certificate" aria-label="Download certificate for {{ reg.event_title }}"><i class="fas fa-certificate" aria-hidden="true"></i></a>
               {% endif %}

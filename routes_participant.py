@@ -54,14 +54,27 @@ def _category_key(category) -> str:
     return f"cat-{slug or 'general'}"
 
 
+def _ist_today() -> datetime.date:
+    """Today in India: the server's clock is UTC, a day behind until 05:30 IST (UPG-335)."""
+    return datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=5, minutes=30))).date()
+
+
 def _days_until(date_str: str) -> "int | None":
     """Returns days until event date, or None if unparseable."""
     try:
         event_date = datetime.datetime.strptime(date_str[:10], '%Y-%m-%d').date()
-        delta      = (event_date - datetime.date.today()).days
+        delta      = (event_date - _ist_today()).days
         return delta
     except Exception:
         return None
+
+
+def _days_left(evt: dict) -> "int | None":
+    """Days until the event's last day (its end date, else its date), or None
+    if it has no date: a two-day hackathon is still on on its second day (UPG-335)."""
+    days = [d for d in (_days_until(str(evt.get(k) or '')) for k in ('date', 'end_date', 'end_datetime'))
+            if d is not None]
+    return max(days) if days else None
 
 
 # =========================================================
@@ -198,7 +211,11 @@ def dashboard():
         r['confirm_on'] = services_team_confirm.enabled(evt)
         r['cat_key'] = _category_key(r['event_cat'])
         live = evt.get('status') in ('active', 'published', 'registration_open', 'registration_closed', 'in_progress')
-        not_past = r['days_until'] is None or r['days_until'] >= 0
+        # Active until the event's last day has passed, or while it's in progress (UPG-335)
+        days_left = _days_left(evt)
+        not_past = days_left is None or days_left >= 0 or evt.get('status') == 'in_progress'
+        r['happening_now'] = live and not_past and r['days_until'] is not None and r['days_until'] <= 0 \
+            and (r['days_until'] < 0 or evt.get('status') == 'in_progress')
         if live and not_past and not r['is_cancelled']:
             active_tickets.append(r)
         else:

@@ -6081,3 +6081,19 @@ The owner's request, 2026-11-16: feedback about the website from each registered
   1. ✅ Test: no link in the phone bar answers 404 with demo pages off.
   2. ✅ Test: the tab opens the chosen page and is marked current there.
 - **Evidence:** `templates/components/mobile_nav.html:43-47`; tests `tests/test_mobile_nav_links.py` (2); `tests/test_mobile_and_offline.py:39` now checks the tab's new name.
+
+#### UPG-335 — A running two-day event showed under "Past events" on the student dashboard
+- **Status:** DONE
+- **Last verified:** 2026-11-20, on `a7552c9` [T]
+- **Problem:** The owner reported (2026-11-20, screenshot) that SAPTHAHACKS'26 (19 → 20 Nov, a 24-hour hackathon) was under "Past events" with "My active tickets 0" while it was still running, and that students saw different things. The dashboard (`routes_participant.py` `dashboard`) counted an event active only while its start `date` was today or later, and used `datetime.date.today()`, the server's UTC date (a day behind India until 05:30 IST): on its second day the event was past, and before 05:30 IST it was still active.
+- **Who benefits:** every participant of a multi-day event (hackathons especially).
+- **What was built:** `_ist_today()` (India's date) is used for the dashboard's day counts; `_days_left()` takes the event's last day (`date`, `end_date`, `end_datetime`, the latest); an event stays active until that day has passed or while its status is `in_progress`, marked "Happening now" once it has started; a past hackathon card shows the lead the Hackathon page button (members don't open that page, UPG-196).
+- **Depends on:** none.
+- **Acceptance criteria:**
+  1. ✅ Test: a two-day event on its second day is in My active tickets, "Happening now".
+  2. ✅ Test: an event in progress stays active after its dates.
+  3. ✅ Test: an event whose last day has passed is under Past events.
+  4. ✅ Test: a one-day event today reads "Today!", not "Happening now".
+  5. ✅ Test: the day is India's, not the server's UTC date (02:00 IST on 21 Nov).
+  6. ✅ Test: the lead's past hackathon card has the Hackathon page button; a member's doesn't.
+- **Evidence:** `routes_participant.py:57-77`, `:214-218`; `templates/participant/dashboard.html:216-218`, `:362-364`; tests `tests/test_participant_dashboard_running.py` (6).

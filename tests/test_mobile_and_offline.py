@@ -36,7 +36,7 @@ class TestMobileBottomNavigation:
         assert "mobile-nav-bar" in html
         assert "Explore" in html
         assert "Tickets" in html
-        assert "Results" in html
+        assert "Certificates" in html      # the old "Results" tab opened a 404 (UPG-334)
         assert "Home" in html
 
 

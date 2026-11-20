@@ -6069,3 +6069,15 @@ The owner's request, 2026-11-16: feedback about the website from each registered
   2. ✅ Test: the list starts on participation only, with both counts.
   3. ✅ Test: a workshop issues completion certificates only.
 - **Evidence:** `routes_certificates.py:378-394`, `:86-87`; `templates/certificates/manage.html:45-54`; tests `tests/test_certificate_issue_which.py` (3); `tests/test_certificate_phone.py:119` picks "Every certificate" before Issue and still checks all 31.
+
+#### UPG-334 — The phone's "Results" tab opened a page that doesn't exist (404)
+- **Status:** DONE
+- **Last verified:** 2026-11-20, on `745c447` [T]
+- **Problem:** The owner reported a 404 (2026-11-20). The live request log for the last 12 hours has about 30 404s, all `GET /live/streams` (one was a deploy check), none for a submission. On phones the bottom bar's "Results" tab (trophy) links to `/live/streams` (`templates/components/mobile_nav.html:43`), the simulated live-streams page that answers 404 unless `DEMO_PAGES_ENABLED` (`routes_live.py:294-298`, UPG-65, D-8), which is off in production, so the tab always fails.
+- **Who benefits:** every phone user (participants mostly) who taps Results.
+- **What was built:** the owner chose "My certificates": the tab is now "Certificates" (award icon) linking to `/certificates/mine`, marked current there; `/live/streams` stays off. Visitors who tap it sign in first.
+- **Depends on:** none.
+- **Acceptance criteria:**
+  1. ✅ Test: no link in the phone bar answers 404 with demo pages off.
+  2. ✅ Test: the tab opens the chosen page and is marked current there.
+- **Evidence:** `templates/components/mobile_nav.html:43-47`; tests `tests/test_mobile_nav_links.py` (2); `tests/test_mobile_and_offline.py:39` now checks the tab's new name.

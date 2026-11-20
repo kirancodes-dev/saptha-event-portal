@@ -6147,3 +6147,15 @@ The owner's request, 2026-11-16: feedback about the website from each registered
   2. ✅ Test: after issuing, the page shows their issued certificate's image and PDF links, no built-in wording, and the image is a PNG.
   3. ✅ Test: an event without its own design still shows the built-in page.
 - **Evidence:** `routes_participant.py:398-409`; `templates/participant/certificate.html:167-215`; tests `tests/test_certificate_own_design_view.py` (2). Found and logged: UPG-340.
+
+#### UPG-341 — The SPOC gives one person the participation certificate by hand (a winner who wasn't checked in)
+- **Status:** DONE
+- **Last verified:** 2026-11-20, on `51ea502` [T]
+- **Problem:** The owner's screenshot (2026-11-20, SAPTHAHACKS'26: "597 owed, 560 issued", participation 560 of 560 done, position certificates off): the winning teams also need the participation certificate, without sending it again to everyone; "add a drop down to send the participation to them separately". Teams judged without a check-in (UPG-298) aren't owed it under "Checked in", and the Award row offered only merit and special mention, whose button was disabled for want of a signatory.
+- **What was built:** `award` accepts the event's own attendance type (participation, completion or extension, `attendance_type`) besides merit and special mention; it is issued once on the SPOC's design with the event's hours and points, audit-logged as `CERT_AWARDED`; anyone who has it already gets "already has this certificate". The Award row lists it as "Participation (your design)"; the button is enabled when any of its types can be issued (the design needs no signatory); merit still needs one.
+- **Depends on:** UPG-142 (DONE), UPG-206 (DONE).
+- **Acceptance criteria:**
+  1. ✅ Test: with an own design and no signatory, the page lists "Participation (your design)" and the Award button is enabled; awarding it to a registered person never checked in issues one on the design, audit-logged.
+  2. ✅ Test: a second award to them, or to someone already issued, says "already has this certificate"; no one has two.
+  3. ✅ Test: merit without a signatory and a winner type are refused; the existing award test still passes unchanged.
+- **Evidence:** `services_certificates.py:242-272`; `routes_certificates.py:90-91`; `templates/certificates/manage.html:96`; tests `tests/test_certificate_award_participation.py` (2).

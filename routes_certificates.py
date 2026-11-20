@@ -87,7 +87,9 @@ def manage(event_id):
                            base_owed=sum(1 for p in people if p['cert_type'] == certs.attendance_type(event)),
                            corrections=changes.for_event(db, event_id),
                            registered=certs.registered_people(db, event_id),
-                           award_problem=runs.ready_to_issue(event, certs.AWARD_TYPES), **_design_context(event))
+                           base_kind=certs.attendance_type(event),
+                           award_problem=runs.ready_to_issue(event, certs.AWARD_TYPES + (certs.attendance_type(event),)),
+                           **_design_context(event))
 
 
 def _design_context(event):

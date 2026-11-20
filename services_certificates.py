@@ -241,21 +241,30 @@ def registered_people(db, event_id: str) -> List[dict]:
 
 def award(db, event_id: str, person: str, kind: str, note: str = '', actor: str = '') -> Optional[dict]:
     """Award a merit or special-mention certificate to a registered person:
-    issued once, emailed and audit-logged like any other. None if they have it."""
+    issued once, emailed and audit-logged like any other. None if they have it.
+    The event's participation certificate can be given the same way, to
+    someone the attendance rule left out, a winner say (UPG-341)."""
     from services_certificate_runs import ready_to_issue
-    if kind not in AWARD_TYPES:
-        raise CertificateError("Choose merit or special mention.")
     doc = db.collection('events').document(event_id).get()
     if not doc.exists:
         raise CertificateError('Event not found.')
     event = doc.to_dict() or {}
+    base = attendance_type(event)
+    if kind not in AWARD_TYPES + (base,):
+        raise CertificateError(f"Choose merit or special mention, or the {TYPES[base]['title']}.")
+    extras = {}
+    if kind == base:
+        note = ''                                      # the participation wording is the event's own
+        extras = {'hours': float(event.get('activity_hours') or 0) or None,
+                  'points': float(event.get('activity_points') or 0) or None}
     problem = ready_to_issue(event, [kind])
     if problem:
         raise CertificateError(problem)
     who = next((p for p in registered_people(db, event_id) if p['person_key'] == person), None)
     if who is None:
         raise CertificateError("Choose someone registered for this event.")
-    cert = issue_one(event_id, event, dict(who, cert_type=kind, note=' '.join(str(note or '').split())), actor)
+    cert = issue_one(event_id, event, dict(who, cert_type=kind, note=' '.join(str(note or '').split()), **extras),
+                     actor)
     if cert:
         from utils import log_action
         log_action(db, "CERT_AWARDED", f"{actor}: {TYPES[kind]['title']} {cert['number']} to {who['name']} "

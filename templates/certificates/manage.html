@@ -93,6 +93,7 @@
                 <label class="form-label small" for="award-kind">Certificate</label>
                 <select class="form-select form-select-sm" id="award-kind" name="kind">
                     <option value="merit">Merit</option><option value="special_mention">Special mention</option>
+                    <option value="{{ base_kind }}" data-award-base>{{ base_title }}{% if design %} (your design){% endif %}</option>
                 </select>
             </div>
             <div class="col-md-3">

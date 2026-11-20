@@ -113,6 +113,11 @@ def attended_enough(reg: dict, event: dict, member: Optional[dict] = None) -> bo
     days = event_days(event)
     if days <= 1:
         return True
+    # A hackathon runs straight through its days, so one check-in is the whole
+    # event; a second scan on day two never happens (UPG-338)
+    from services_hackathon import is_hackathon
+    if is_hackathon(event):
+        return True
     attended = len(set(reg.get('attendance_days') or [])) or 1
     return attended * 100 >= min_attendance(event) * days
 

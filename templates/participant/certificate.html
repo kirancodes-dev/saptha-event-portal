@@ -164,6 +164,18 @@
 {% block body %}
 {% include "includes/back_link.html" %}
 
+    {% if issued_image and certificate_number %}
+    {#- The certificate as issued, in the SPOC's own design (UPG-339) -#}
+    <div class="issued-cert no-print" data-issued-certificate style="max-width:1000px;margin:20px auto 0;padding:0 12px;">
+        <img src="/certificates/c/{{ certificate_number }}/png" alt="Your certificate for {{ event.title }}"
+             style="display:block;width:100%;height:auto;border-radius:6px;box-shadow:0 10px 30px rgba(0,0,0,.12);">
+    </div>
+    <p class="no-print" style="text-align:center;margin-top:16px;font-family:'Inter',sans-serif;font-size:15px;">
+      <a class="btn btn-primary" href="/certificates/c/{{ certificate_number }}/pdf">Download the certificate (PDF)</a>
+      <a class="btn btn-outline-primary" href="/certificates/c/{{ certificate_number }}/png">Download as image</a>
+      <br><a href="/verify/{{ certificate_number }}" style="display:inline-block;margin-top:8px;">Verification page</a>
+    </p>
+    {% else %}
     <div class="cert-container">
         
         <div class="univ-name">SAPTHAGIRI NPS UNIVERSITY</div>
@@ -199,6 +211,7 @@
       <a href="/verify/{{ certificate_id }}/download">Download the official certificate (PDF)</a>
       · <a href="/verify/{{ certificate_id }}">Verification page</a>
     </p>
+    {% endif %}
     {% endif %}
 
     <div style="max-width:680px;margin:16px auto;padding:0 20px;" class="no-print">

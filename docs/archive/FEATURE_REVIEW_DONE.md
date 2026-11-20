@@ -6123,3 +6123,27 @@ The owner's request, 2026-11-16: feedback about the website from each registered
   1. ✅ Test: the Round panel shows each judge's mark with a form; saving changes the mark, returns to the panel, and the panel shows the new score and "edited (was 70)".
   2. ✅ Only the SPOC: the panel is the event SPOC's only (existing check, `routes_spoc.py` `round_panel`); the save route needs edit permission (UPG-336's test 3).
 - **Evidence:** `routes_spoc.py:2020`; `templates/spoc/round_panel.html:153-166`; `routes_hackathon.py:760-761`; test `tests/test_hackathon_score_privacy.py::test_the_spoc_changes_a_judges_mark_on_the_round_panel`.
+
+#### UPG-338 — A two-day hackathon owed no participation certificates to people checked in once
+- **Status:** DONE
+- **Last verified:** 2026-11-20, on `f36219a` [T]
+- **Problem:** The owner's certificates page for SAPTHAHACKS'26 (19–20 Nov) read "37 certificates owed, 0 issued" and "Participation certificates only (0)" with "goes to: Checked in". `attended_enough` asks a multi-day event for 80% of its days (`DEFAULT_MIN_ATTENDANCE`), so both days on a two-day event; a hackathon runs straight through and teams are scanned once, so no one qualified.
+- **What was built:** on a hackathon (`services_hackathon.is_hackathon`), someone checked in is owed the participation certificate whatever days they were scanned on. A team member marked absent at the scanner still gets none; "Every member of a team that submitted" and "Everyone registered" are unchanged; other multi-day events keep the 80% rule.
+- **Depends on:** none.
+- **Acceptance criteria:**
+  1. ✅ Test: on a two-day hackathon, the people scanned on one day, on both days, and a ticked member are owed it; someone never checked in and a member marked absent are not; the page reads "Participation certificates only (4)".
+  2. ✅ Test: a two-day seminar still owes it only to the person there on both days.
+  3. ✅ Test: issuing participation certificates on the hackathon gives each of the four theirs.
+- **Evidence:** `services_certificates.py:116-120`; tests `tests/test_certificate_hackathon_attendance.py` (3).
+
+#### UPG-339 — The student's Certificate button showed the built-in certificate, not the SPOC's own design
+- **Status:** DONE
+- **Last verified:** 2026-11-20, on `f36219a` [T]
+- **Problem:** The owner's phone screenshot (2026-11-20, SAPTHAHACKS'26, Keerthana GP): the Certificate button opened `/participant/certificate/<reg_id>`, a fixed HTML page ("Certificate of Participation … This is proudly presented to … Event Coordinator / Division SPOC") drawn from the registration, not the SPOC's uploaded design; it shows even before anything is issued. Owner: "the participation template added by the SPOC needs to go to all, not this".
+- **What was built:** when the event has its own design (`services_certificate_design.get`), the page shows the person's issued certificate as an image (`/certificates/c/<number>/png`) with PDF and image downloads and the verification link; if nothing is issued to them yet, they go back to the dashboard with "Your certificate hasn't been issued yet. It will be under My certificates once the organiser issues it." Events without their own design keep the built-in page as before (the existing tests on it are unchanged).
+- **Depends on:** UPG-206 (DONE).
+- **Acceptance criteria:**
+  1. ✅ Test: before issuing, the page sends the student to the dashboard with that message and no built-in certificate.
+  2. ✅ Test: after issuing, the page shows their issued certificate's image and PDF links, no built-in wording, and the image is a PNG.
+  3. ✅ Test: an event without its own design still shows the built-in page.
+- **Evidence:** `routes_participant.py:398-409`; `templates/participant/certificate.html:167-215`; tests `tests/test_certificate_own_design_view.py` (2). Found and logged: UPG-340.

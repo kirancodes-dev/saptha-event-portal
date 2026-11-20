@@ -395,9 +395,18 @@ def view_certificate(reg_id):
     own = [c for c in services_certificates.for_person([user_email or ''])
            if str(c['event_id']) == str(reg_data.get('event_id')) and c['status'] == 'valid']
     own.sort(key=lambda c: c['cert_type'] not in services_certificates.ATTENDED_TYPES)
+    # An event with the SPOC's own design shows the certificate actually issued,
+    # never the built-in page; before it's issued there is nothing to show (UPG-339)
+    import services_certificate_design
+    own_design = services_certificate_design.get(event_data) is not None
+    if own_design and not own:
+        flash("Your certificate hasn't been issued yet. It will be under My certificates "
+              "once the organiser issues it.", "info")
+        return redirect('/participant/dashboard')
     return render_template('participant/certificate.html',
                             student_name=reg_data.get('lead_name'),
                             event=event_data,
+                            issued_image=own_design,
                             certificate_number=own[0]['number'] if own else '',
                             certificate_id=reg_data.get('certificate_id'))
 

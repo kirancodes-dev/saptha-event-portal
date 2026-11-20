@@ -4,10 +4,14 @@
 {#- On the app layout and portal design system (UPG-63). -#}
 {% block page_title %}Sports tournament{% endblock %}
 
-{% block page_sub %}{{ event.title }} · Format: <strong>{{ (t.format or 'Not generated')|title }}</strong> · Confirmed teams: <strong>{{ teams|length }}</strong>{% if champion %} · <span class="se-badge se-badge--gold"><i class="fas fa-trophy" aria-hidden="true"></i> Champion: {{ names.get(champion, champion) }}</span>{% endif %}{% endblock %}
+{% block page_sub %}{{ event.title }} · {% if defaults.sport %}Sport: <strong>{{ defaults.sport }}</strong> · {% endif %}Format: <strong>{{ sports.FORMAT_NAMES.get(t.format, 'Not generated') }}</strong> · Confirmed teams: <strong>{{ teams|length }}</strong>{% if champion %} · <span class="se-badge se-badge--gold"><i class="fas fa-trophy" aria-hidden="true"></i> Champion: {{ names.get(champion, champion) }}</span>{% endif %}{% endblock %}
 {% block page_actions %}
 <a href="/spoc/dashboard" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Console</a>
 <a href="/tournament/fixtures/{{ event.id }}" class="btn btn-outline-primary" target="_blank" rel="noopener"><i class="fas fa-external-link-alt" aria-hidden="true"></i> Public fixtures page</a>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/live_match.css">
 {% endblock %}
 
 {% block content %}
@@ -23,21 +27,38 @@
                 <div class="col-md-3">
                     <label for="format" class="form-label mb-1">Format</label>
                     <select id="format" name="format" class="form-select">
-                        <option value="knockout" {% if t.format == 'knockout' %}selected{% endif %}>Knockout (Single Elimination)</option>
-                        <option value="league" {% if t.format == 'league' %}selected{% endif %}>League (Round Robin)</option>
+                        <option value="knockout" {% if defaults.format == 'knockout' %}selected{% endif %}>Knockout (single elimination)</option>
+                        <option value="league" {% if defaults.format == 'league' %}selected{% endif %}>League (round robin)</option>
+                        <option value="league_knockout" {% if defaults.format == 'league_knockout' %}selected{% endif %}>League then knockout (playoffs)</option>
                     </select>
                 </div>
-                <div class="col-md-2">
+                {#- League points; a kabaddi event starts at 5 / 3 / 0, and 1 for losing by 7 or fewer (UPG-350) #}
+                <div class="col-6 col-md-2">
                     <label for="points_win" class="form-label mb-1">Win points</label>
-                    <input type="number" id="points_win" name="points_win" class="form-control" value="{{ t.points.win if t.points else 3 }}">
+                    <input type="number" min="0" id="points_win" name="points_win" class="form-control" value="{{ defaults.points.win }}">
                 </div>
-                <div class="col-md-2">
-                    <label for="points_draw" class="form-label mb-1">Draw points</label>
-                    <input type="number" id="points_draw" name="points_draw" class="form-control" value="{{ t.points.draw if t.points else 1 }}">
+                <div class="col-6 col-md-2">
+                    <label for="points_draw" class="form-label mb-1">Tie / draw points</label>
+                    <input type="number" min="0" id="points_draw" name="points_draw" class="form-control" value="{{ defaults.points.draw }}">
                 </div>
-                <div class="col-md-2">
+                <div class="col-6 col-md-2">
                     <label for="points_loss" class="form-label mb-1">Loss points</label>
-                    <input type="number" id="points_loss" name="points_loss" class="form-control" value="{{ t.points.loss if t.points else 0 }}">
+                    <input type="number" min="0" id="points_loss" name="points_loss" class="form-control" value="{{ defaults.points.loss }}">
+                </div>
+                <div class="col-6 col-md-3">
+                    <label for="points_close_loss" class="form-label mb-1">Close-loss points</label>
+                    <input type="number" min="0" id="points_close_loss" name="points_close_loss" class="form-control" value="{{ defaults.points.close_loss }}">
+                </div>
+                <div class="col-6 col-md-3">
+                    <label for="points_close_margin" class="form-label mb-1">Close loss = lost by at most</label>
+                    <input type="number" min="0" id="points_close_margin" name="points_close_margin" class="form-control" value="{{ defaults.points.close_margin }}">
+                    <div class="form-text">0 turns the close-loss point off.</div>
+                </div>
+                <div class="col-md-12">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="third_place" value="yes" id="third_place" {% if t.third_place or sports.has_playoffs(t) and t.matches|selectattr('stage', 'equalto', 'third')|list %}checked{% endif %}>
+                        <label class="form-check-label" for="third_place">The semi-finals' losers play for third place (knockout or playoffs)</label>
+                    </div>
                 </div>
                 {% if t %}
                 <div class="col-md-12">
@@ -60,10 +81,74 @@
 </div>
 {% endif %}
 
-{% if t and t.format == 'league' and table %}
+{% if t and t.format == 'league_knockout' and not sports.has_playoffs(t) %}
+{#- After the league, its top 4 (or 2) play off (UPG-350) #}
+<div class="card mb-3" data-playoffs>
+    <div class="card-body">
+        <h2 class="h5">Playoffs</h2>
+        {% if not sports.league_done(t) %}
+            <p class="text-muted mb-0">Once every league match has a result, the top teams of the table play off here.</p>
+        {% elif can_generate %}
+            <form method="POST" action="/tournament/{{ event.id }}/playoffs" class="row g-3 align-items-end">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="col-md-4">
+                    <label for="size" class="form-label mb-1">Who plays off</label>
+                    <select id="size" name="size" class="form-select">
+                        {% if table|length >= 4 %}<option value="4">Top 4: semi-finals 1 v 4 and 2 v 3, then the final</option>{% endif %}
+                        <option value="2">Top 2: the final</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="third_place" value="yes" id="playoff_third" {% if t.third_place %}checked{% endif %}>
+                        <label class="form-check-label" for="playoff_third">A third-place match (top 4)</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary w-100"><i class="fas fa-sitemap" aria-hidden="true"></i> Make the playoffs</button>
+                </div>
+                <p class="small text-muted mb-0">The league results can't be changed once the playoffs are made.</p>
+            </form>
+        {% else %}
+            <p class="text-muted mb-0">The league is played. The organiser makes the playoffs.</p>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% if t and t.matches %}
+{#- The places become the event's result (UPG-342) #}
+<div class="card mb-3" data-tournament-result>
+    <div class="card-body">
+        <h2 class="h5">Result</h2>
+        {% if placings %}
+            <ol class="mb-3">
+                {% for team, place in placings|dictsort(by='value') %}
+                <li value="{{ place }}"><strong>{{ names.get(team, team) }}</strong></li>
+                {% endfor %}
+            </ol>
+            {% if event.results_published %}
+                <p class="text-success mb-0"><i class="fas fa-check-circle" aria-hidden="true"></i> Published. Each team sees its place on its dashboard.</p>
+            {% elif can_publish %}
+                <form method="POST" action="/tournament/{{ event.id }}/publish">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <p class="small text-muted">Publishing ends the event, shows each placed team its place, tells them by email and WhatsApp (place only), and issues the winner, runner-up and third-place certificates if they're on.</p>
+                    <button type="submit" class="btn btn-success"><i class="fas fa-trophy" aria-hidden="true"></i> Publish results</button>
+                </form>
+            {% endif %}
+        {% else %}
+            <p class="text-muted mb-0">The places appear here once {% if t.format == 'league' %}every league match is played{% else %}{% if t.format == 'league_knockout' and not sports.has_playoffs(t) %}the league and its playoffs are{% else %}the final (and any third-place match) is{% endif %} played{% endif %}.</p>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% set kabaddi = sports.is_kabaddi(t) if t else false %}
+{% if t and t.format in ('league', 'league_knockout') and table %}
 <div class="card mb-3">
     <div class="card-body">
         <h2 class="h5 mb-3">League standings</h2>
+        {% if t.points %}<p class="small text-muted">Win {{ t.points.win }} · {{ 'Tie' if kabaddi else 'Draw' }} {{ t.points.draw }} · Loss {{ t.points.loss }}{% if t.points.close_margin %} ({{ t.points.close_loss }} if lost by {{ t.points.close_margin }} or fewer){% endif %} · ties on points go to the {{ 'score' if kabaddi else 'goal' }} difference, then {{ 'points' if kabaddi else 'goals' }} scored</p>{% endif %}
         <div class="table-responsive">
             <table class="table table-bordered table-hover align-middle mb-0">
                 <thead class="table-light">
@@ -72,11 +157,11 @@
                         <th>Team</th>
                         <th style="width:60px;"><abbr title="Played">P</abbr></th>
                         <th style="width:60px;"><abbr title="Won">W</abbr></th>
-                        <th style="width:60px;"><abbr title="Drawn">D</abbr></th>
+                        <th style="width:60px;"><abbr title="{{ 'Tied' if kabaddi else 'Drawn' }}">{{ 'T' if kabaddi else 'D' }}</abbr></th>
                         <th style="width:60px;"><abbr title="Lost">L</abbr></th>
-                        <th style="width:60px;"><abbr title="Goals for">GF</abbr></th>
-                        <th style="width:60px;"><abbr title="Goals against">GA</abbr></th>
-                        <th style="width:60px;"><abbr title="Goal difference">GD</abbr></th>
+                        <th style="width:60px;"><abbr title="{{ 'Points scored' if kabaddi else 'Goals for' }}">{{ 'PF' if kabaddi else 'GF' }}</abbr></th>
+                        <th style="width:60px;"><abbr title="{{ 'Points conceded' if kabaddi else 'Goals against' }}">{{ 'PA' if kabaddi else 'GA' }}</abbr></th>
+                        <th style="width:60px;"><abbr title="{{ 'Score difference' if kabaddi else 'Goal difference' }}">{{ 'SD' if kabaddi else 'GD' }}</abbr></th>
                         <th style="width:70px;"><abbr title="Points"><strong>Pts</strong></abbr></th>
                     </tr>
                 </thead>
@@ -111,7 +196,7 @@
             <div class="col-lg-6 col-12" id="{{ m.id }}">
                 <div class="p-3 border rounded {% if m.winner %}bg-light{% endif %}">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="badge bg-secondary">Match {{ m.id|upper }} · Round {{ m.round }}</span>
+                        <span class="badge bg-secondary">Match {{ m.id|upper }} · {{ sports.stage_name(m) }}</span>
                         <span class="badge {% if m.status == 'played' %}bg-success{% elif m.status == 'bye' %}bg-info text-dark{% else %}bg-warning text-dark{% endif %}">
                             {{ m.status|title }}
                         </span>
@@ -136,6 +221,13 @@
                     </div>
 
                     {% if m.status != 'bye' %}
+                    {#- Score it point by point from a phone (UPG-351) #}
+                    {% if m.home and m.away and (m.status != 'played' or live.get(m.id)) %}
+                    <div class="mb-2 d-flex gap-2 flex-wrap">
+                        <a href="/tournament/{{ event.id }}/match/{{ m.id }}/score" class="btn btn-sm btn-primary" data-score-live><i class="fas fa-stopwatch" aria-hidden="true"></i> {% if live.get(m.id) %}Continue live scoring{% else %}Score live{% endif %}</a>
+                        {% if live.get(m.id) %}<span class="live-dot">LIVE</span>{% endif %}
+                    </div>
+                    {% endif %}
                     <details class="mb-2">
                         <summary class="small text-primary cursor-pointer">Enter / Update Result</summary>
                         <form method="POST" action="/tournament/{{ event.id }}/match/{{ m.id }}/result" class="mt-2 p-2 border-top">
@@ -149,7 +241,7 @@
                                     <label class="form-label small mb-1">Away Score</label>
                                     <input type="number" min="0" name="away_score" class="form-control form-control-sm" value="{{ m.away_score if m.away_score is not none else 0 }}" required>
                                 </div>
-                                {% if t.format == 'knockout' %}
+                                {% if sports.knockout_match(t, m) %}
                                 <div class="col-4">
                                     <label class="form-label small mb-1">If Tie, Winner</label>
                                     <select name="winner" class="form-select form-select-sm">

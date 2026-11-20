@@ -215,6 +215,9 @@ def _ranks(db, event_id: str, event: dict) -> Dict[str, int]:
     """Registration id → place, for the podium of the event's published results."""
     if not event.get('results_published'):
         return {}
+    import services_sports
+    if services_sports.has_tournament(event):          # a tournament's places, not scores (UPG-342)
+        return {str(k): int(v) for k, v in services_sports.placings(event['tournament']).items()}
     from services_leaderboard import for_event, podium
     return {str(r['id']): int(r['rank']) for r in podium(for_event(db, event_id))}
 

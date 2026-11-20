@@ -1348,6 +1348,14 @@ def broadcast_message(event_id):
 @role_required(COORD_ROLES)
 def publish_results(event_id):
     _event_or_abort(event_id, 'publish_results')
+    import services_sports
+    if services_sports.has_tournament(db.collection('events').document(event_id).get().to_dict() or {}):
+        try:                                     # a tournament publishes its places (UPG-342)
+            for note in services_sports.publish(db, event_id, session.get('user_id', '')):
+                flash(note, 'success')
+        except services_sports.TournamentError as exc:
+            flash(str(exc), 'warning')
+        return redirect('/coordinator/dashboard')
     try:
         event_ref   = db.collection('events').document(event_id)
         event_data  = event_ref.get().to_dict() or {}

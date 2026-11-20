@@ -18,6 +18,9 @@
   {% endif %}
   <a href="/event/{{ event.id }}" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Event details</a>
 {% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/live_match.css">
+{% endblock %}
 {% block content %}
 <div class="panel">
   {% if not t or not t.matches %}
@@ -30,4 +33,26 @@
     {% include "includes/tournament.html" %}
   {% endif %}
 </div>
+{#- The leaders, from the matches scored live (UPG-352) #}
+{% if raiders or defenders %}
+<div class="row g-3 mt-1" data-player-stats>
+  {% for title, rows, key, badge, badge_key in (('Top raiders', raiders, 'raid', 'Super 10s', 'super_10'), ('Top defenders', defenders, 'tackle', 'High 5s', 'high_5')) %}
+  {% if rows %}
+  <div class="col-md-6">
+    <div class="panel">
+      <h2 class="h5">{{ title }}</h2>
+      <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+        <thead><tr><th>#</th><th>Player</th><th>{{ 'Raid' if key == 'raid' else 'Tackle' }} pts</th><th>Matches</th><th>{{ badge }}</th></tr></thead>
+        <tbody>
+          {% for r in rows %}
+          <tr><td>{{ loop.index }}</td><td><strong>{{ r.player }}</strong><div class="small text-muted">{{ r.team }}</div></td><td><strong>{{ r[key] }}</strong></td><td>{{ r.matches }}</td><td>{{ r[badge_key] }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+  {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
 {% endblock %}

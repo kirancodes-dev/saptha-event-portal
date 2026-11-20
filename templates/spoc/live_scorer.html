@@ -1,0 +1,100 @@
+{% extends "base_classic.html" %}
+{#- The scorer's page for one match, made for a phone at the court (UPG-351) -#}
+{% block title %}Score {{ names.get(match.home) }} v {{ names.get(match.away) }} — {{ event.title }}{% endblock %}
+{% block page_title %}Live scoring{% endblock %}
+{% block page_sub %}{{ event.title }} · {{ stage }}{% if match.venue %} · {{ match.venue }}{% endif %}{% endblock %}
+{% block page_actions %}
+<a href="/tournament/{{ event.id }}#{{ match.id }}" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Tournament</a>
+<a href="/tournament/live/{{ event.id }}/{{ match.id }}" class="btn btn-outline-primary" target="_blank" rel="noopener"><i class="fas fa-tv" aria-hidden="true"></i> Public scoreboard</a>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/live_match.css">
+{% endblock %}
+
+{% block content %}
+<div class="live-scorer" data-live-scorer
+     data-url="/tournament/{{ event.id }}/match/{{ match.id }}/score"
+     data-home-id="{{ doc.home }}" data-away-id="{{ doc.away }}"
+     data-clock="{{ state.clock }}" data-running="{{ 'true' if state.running else 'false' }}"
+     data-phase="{{ state.phase }}">
+
+  <section class="live-board" aria-live="polite">
+    <div class="live-board__team">
+      <div class="live-board__name">{{ state.home.name }}</div>
+      <div class="live-board__score" data-score="home">{{ state.home.total }}</div>
+      <div class="live-board__halves" data-halves="home">{{ state.home.halves[0] }} · {{ state.home.halves[1] }}</div>
+    </div>
+    <div class="live-board__middle">
+      <div class="live-board__phase" data-phase-name>{{ state.phase_name }}</div>
+      <div class="live-board__clock" data-clock-text>{{ '%02d:%02d' % (state.clock // 60, state.clock % 60) }}</div>
+    </div>
+    <div class="live-board__team">
+      <div class="live-board__name">{{ state.away.name }}</div>
+      <div class="live-board__score" data-score="away">{{ state.away.total }}</div>
+      <div class="live-board__halves" data-halves="away">{{ state.away.halves[0] }} · {{ state.away.halves[1] }}</div>
+    </div>
+  </section>
+
+  <p class="live-message" data-message role="status"></p>
+
+  <section class="live-phase" aria-label="Match phase">
+    <button type="button" class="btn btn-success" data-phase-action="start">Start 1st half</button>
+    <button type="button" class="btn btn-outline-secondary" data-phase-action="pause">Pause clock</button>
+    <button type="button" class="btn btn-outline-secondary" data-phase-action="resume">Resume clock</button>
+    <button type="button" class="btn btn-warning" data-phase-action="half_time">Half time</button>
+    <button type="button" class="btn btn-success" data-phase-action="second_half">Start 2nd half</button>
+    {% if knockout %}
+    <label class="live-phase__winner">If it's a tie, who goes through
+      <select class="form-select form-select-sm" data-winner>
+        <option value="">Choose at a tie</option>
+        <option value="{{ doc.home }}">{{ state.home.name }}</option>
+        <option value="{{ doc.away }}">{{ state.away.name }}</option>
+      </select>
+    </label>
+    {% endif %}
+    <button type="button" class="btn btn-danger" data-phase-action="full_time">Full time: save the result</button>
+  </section>
+
+  <div class="live-sides">
+    {% for side in ('home', 'away') %}
+    <section class="live-side live-side--{{ side }}" aria-label="{{ state[side].name }}">
+      <h2 class="live-side__title">{{ state[side].name }}</h2>
+      {% if squads[side] %}
+      <label class="live-side__player">Who scored (optional)
+        <select class="form-select" data-player="{{ side }}">
+          <option value="">Not recorded</option>
+          {% for p in squads[side] %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
+        </select>
+      </label>
+      {% endif %}
+      <div class="live-side__buttons">
+        {% for kind, spec in actions.items() %}
+          {% if spec[1] is none %}
+            {% for n in range(1, (5 if kind == 'raid' else 4)) %}
+            <button type="button" class="btn live-btn live-btn--{{ spec[2] }}" data-point data-team="{{ side }}" data-kind="{{ kind }}" data-points="{{ n }}">{{ spec[0] }} +{{ n }}</button>
+            {% endfor %}
+          {% else %}
+            <button type="button" class="btn live-btn live-btn--{{ spec[2] }}" data-point data-team="{{ side }}" data-kind="{{ kind }}">{{ spec[0] }} +{{ spec[1] }}</button>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+  </div>
+
+  <section class="live-log">
+    <div class="d-flex justify-content-between align-items-center">
+      <h2 class="h6 mb-0">Last points</h2>
+      <button type="button" class="btn btn-outline-danger btn-sm" data-undo><i class="fas fa-undo" aria-hidden="true"></i> Undo last</button>
+    </div>
+    <ol class="live-log__list" data-recent>
+      {% for line in state.recent %}<li>{{ line }}</li>{% endfor %}
+    </ol>
+  </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/live_match.js"></script>
+{% endblock %}

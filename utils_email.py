@@ -1055,13 +1055,15 @@ def send_result_email(to_email: str, name: str, event_title: str,
                       rank: int, score: float) -> bool:
     rank_labels = {1: '🥇 1st Place', 2: '🥈 2nd Place', 3: '🥉 3rd Place'}
     rank_text   = rank_labels.get(rank, f'Rank {rank}')
+    # A tournament's result is a place, without a score (UPG-342)
+    score_line = ('' if score is None else '<p style="color:#1a2557;font-weight:700;font-size:16px;margin:0;">'
+                  f'Final Score: {_e(score)}</p>')
     html = _html_wrapper(f"""
         <p style="color:#475569;">Dear <strong>{_e(name)}</strong>,</p>
         <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;
                     padding:24px;text-align:center;margin:16px 0;">
           <p style="font-size:32px;margin:0 0 6px;">{rank_text}</p>
-          <p style="color:#1a2557;font-weight:700;font-size:16px;margin:0;">
-            Final Score: {_e(score)}</p>
+          {score_line}
         </div>
         <p style="color:#475569;">Congratulations in
            <strong>{_e(event_title)}</strong>!

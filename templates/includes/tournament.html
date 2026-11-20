@@ -1,14 +1,18 @@
 {% set t = event.get('tournament') if event else t %}
+{#- Kabaddi words: a tie, score difference, points scored (UPG-350) #}
+{% set kabaddi = (t.sport or '')|lower == 'kabaddi' if t else false %}
+{% set stage_names = {'final': 'Final', 'semi': 'Semi-final', 'third': 'Third place'} %}
+{% set format_names = {'knockout': 'Knockout', 'league': 'League', 'league_knockout': 'League then knockout'} %}
 {% if t %}
 <div class="tournament-section">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-        <h2 class="h5 mb-0"><i class="fas fa-trophy me-2 text-gold" aria-hidden="true"></i>Tournament: {{ t.format|title }}</h2>
+        <h2 class="h5 mb-0"><i class="fas fa-trophy me-2 text-gold" aria-hidden="true"></i>{% if t.sport %}{{ t.sport }} · {% endif %}{{ format_names.get(t.format, t.format|title) }}</h2>
         {% if champion %}
         <span class="se-badge se-badge--gold se-badge--plain"><i class="fas fa-trophy" aria-hidden="true"></i> Champion: {{ names.get(champion, champion) if names else champion }}</span>
         {% endif %}
     </div>
 
-    {% if t.format == 'league' and table %}
+    {% if t.format in ('league', 'league_knockout') and table %}
     <div class="mb-4">
         <h3 class="eyebrow mb-2">Points table</h3>
         <div class="table-responsive">
@@ -19,9 +23,9 @@
                         <th>Team</th>
                         <th style="width:45px;">P</th>
                         <th style="width:45px;">W</th>
-                        <th style="width:45px;">D</th>
+                        <th style="width:45px;"><abbr title="{{ 'Tied' if kabaddi else 'Drawn' }}">{{ 'T' if kabaddi else 'D' }}</abbr></th>
                         <th style="width:45px;">L</th>
-                        <th style="width:50px;">GD</th>
+                        <th style="width:50px;"><abbr title="{{ 'Score difference' if kabaddi else 'Goal difference' }}">{{ 'SD' if kabaddi else 'GD' }}</abbr></th>
                         <th style="width:55px;">Pts</th>
                     </tr>
                 </thead>
@@ -51,8 +55,12 @@
             {% for m in t.matches %}
             <div class="col-md-6 col-12">
                 <div class="match-card{% if m.winner %} match-card--done{% endif %}">
+                    {#- A match being played links its live scoreboard (UPG-351) #}
+                    {% if live is defined and live.get(m.id) %}
+                    <a href="/tournament/live/{{ event.id }}/{{ m.id }}" class="d-inline-block mb-1 text-decoration-none" data-live-link><span class="live-dot">LIVE</span> Watch the score</a>
+                    {% endif %}
                     <div class="d-flex justify-content-between text-muted mb-1" style="font-size:11px;">
-                        <span>Match {{ m.id|upper }} · Round {{ m.round }}</span>
+                        <span>Match {{ m.id|upper }} · {{ stage_names.get(m.stage) or ('League round ' if m.stage == 'league' else 'Round ') ~ m.round }}</span>
                         {% if m.venue or m.date or m.time %}
                         <span>{{ m.venue }} {% if m.date %}· {{ m.date }}{% endif %}</span>
                         {% endif %}

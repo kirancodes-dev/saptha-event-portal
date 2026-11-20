@@ -1,0 +1,81 @@
+{% extends "base_classic.html" %}
+{#- A match's live scoreboard, for anyone: it refreshes by itself (UPG-351) -#}
+{% set app_active = 'events' %}
+{% block title %}{{ names.get(match.home, 'TBD') }} v {{ names.get(match.away, 'TBD') }} — {{ event.title }}{% endblock %}
+{% block breadcrumbs %}
+<ol class="crumbs" aria-label="Breadcrumb">
+  <li><a href="/events">Events</a></li>
+  <li><a href="/event/{{ event.id }}">{{ event.title }}</a></li>
+  <li><a href="/tournament/fixtures/{{ event.id }}">Fixtures</a></li>
+  <li><span aria-current="page">{{ stage }}</span></li>
+</ol>
+{% endblock %}
+{% block page_title %}{{ event.title }}{% endblock %}
+{% block page_sub %}{{ stage }}{% if match.venue %} · {{ match.venue }}{% endif %}{% if match.date %} · {{ match.date }} {{ match.time }}{% endif %}{% endblock %}
+{% block page_actions %}
+<a href="/tournament/fixtures/{{ event.id }}" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> All fixtures</a>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/live_match.css">
+{% endblock %}
+
+{% block content %}
+<div class="live-watch" data-live-board data-url="/tournament/live/{{ event.id }}/{{ match.id }}/state"
+     data-clock="{{ state.clock if state else 0 }}" data-running="{{ 'true' if state and state.running else 'false' }}"
+     data-phase="{{ state.phase if state else 'not_started' }}">
+  <section class="live-board live-board--big" aria-live="polite">
+    <div class="live-board__team">
+      <div class="live-board__name">{{ names.get(match.home, 'TBD') }}</div>
+      <div class="live-board__score" data-score="home">{{ state.home.total if state else (match.home_score if match.home_score is not none else 0) }}</div>
+      <div class="live-board__halves" data-halves="home">{% if state %}{{ state.home.halves[0] }} · {{ state.home.halves[1] }}{% endif %}</div>
+    </div>
+    <div class="live-board__middle">
+      <span class="live-dot" data-live-dot {% if not (state and state.phase in ('first_half', 'half_time', 'second_half')) %}hidden{% endif %}>LIVE</span>
+      <div class="live-board__phase" data-phase-name>{{ state.phase_name if state else ('Full time' if match.status == 'played' else 'Not started') }}</div>
+      <div class="live-board__clock" data-clock-text>{% if state %}{{ '%02d:%02d' % (state.clock // 60, state.clock % 60) }}{% endif %}</div>
+    </div>
+    <div class="live-board__team">
+      <div class="live-board__name">{{ names.get(match.away, 'TBD') }}</div>
+      <div class="live-board__score" data-score="away">{{ state.away.total if state else (match.away_score if match.away_score is not none else 0) }}</div>
+      <div class="live-board__halves" data-halves="away">{% if state %}{{ state.away.halves[0] }} · {{ state.away.halves[1] }}{% endif %}</div>
+    </div>
+  </section>
+
+  {% if (event.tournament.sport or '')|lower == 'kabaddi' %}
+  {#- Shown from the start, filled in as the points come (the page may open before kick-off) #}
+  <div class="table-responsive"><table class="table table-sm live-split" data-split>
+    <thead><tr><th></th><th>{{ names.get(match.home, 'TBD') }}</th><th>{{ names.get(match.away, 'TBD') }}</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">Raid points</th><td data-split="home-raid">{{ state.home.raid if state else 0 }}</td><td data-split="away-raid">{{ state.away.raid if state else 0 }}</td></tr>
+      <tr><th scope="row">Tackle points</th><td data-split="home-tackle">{{ state.home.tackle if state else 0 }}</td><td data-split="away-tackle">{{ state.away.tackle if state else 0 }}</td></tr>
+      <tr><th scope="row">All outs and extras</th><td data-split="home-extra">{{ state.home.extra if state else 0 }}</td><td data-split="away-extra">{{ state.away.extra if state else 0 }}</td></tr>
+    </tbody>
+  </table></div>
+  {% endif %}
+
+  {% if players %}
+  {#- Who scored in this match (UPG-352) #}
+  <div class="table-responsive"><table class="table table-sm live-split" data-match-players>
+    <thead><tr><th>Player</th><th>Team</th><th>Raid</th><th>Tackle</th><th>Total</th></tr></thead>
+    <tbody>
+      {% for p in players %}
+      <tr><td>{{ p.player }}{% if p.super_10 %} <span class="badge bg-primary">Super 10</span>{% endif %}{% if p.high_5 %} <span class="badge bg-success">High 5</span>{% endif %}</td><td>{{ p.team }}</td><td>{{ p.raid }}</td><td>{{ p.tackle }}</td><td><strong>{{ p.total }}</strong></td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% endif %}
+
+  <section class="live-log">
+    <h2 class="h6">Latest</h2>
+    <ol class="live-log__list" data-recent>
+      {% if state %}{% for line in state.recent %}<li>{{ line }}</li>{% endfor %}{% endif %}
+    </ol>
+    {% if not state %}<p class="text-muted" data-waiting>The score appears here when the match starts.</p>{% endif %}
+  </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/live_match.js"></script>
+{% endblock %}

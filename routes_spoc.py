@@ -1160,6 +1160,15 @@ def leaderboard_visibility(event_id):
 @role_required('ClubSPOC')
 def publish_results(event_id):
     _event_or_abort(event_id, 'publish_results')  # BLK-17
+    import services_sports
+    event = db.collection('events').document(event_id).get().to_dict() or {}
+    if services_sports.has_tournament(event):   # a tournament publishes its places (UPG-342)
+        try:
+            for note in services_sports.publish(db, event_id, session.get('user_id', '')):
+                flash(note, 'success')
+        except services_sports.TournamentError as exc:
+            flash(str(exc), 'warning')
+        return redirect(f'/spoc/results/{event_id}')
     try:
         # Mark event as "Ended" and "Results Published"
         db.collection('events').document(event_id).update({

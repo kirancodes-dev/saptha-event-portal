@@ -256,16 +256,10 @@
             </div>
             {% endif %}
 
-            {% if reg.my_avg_score is not none %}
-            <div class="score-box-lms"
-                 data-scores='{{ reg.get("scores", {})|tojson }}'
-                 data-event='{{ reg.event_title|e }}'
-                 data-h-click="participant/dashboard:9">
-              <div>
-                <div class="score-box-lms__label">Your score <i class="fas fa-expand-alt ms-1" aria-hidden="true"></i></div>
-                <div class="score-box-lms__value">{{ reg.my_avg_score }}<small>/100</small></div>
-              </div>
-              {% if reg.final_rank %}
+            {#- The place only, once results are out; never a score (UPG-336) #}
+            {% if reg.final_rank %}
+            <div class="score-box-lms" data-place>
+              <div class="score-box-lms__label">Your place</div>
               <div class="score-box-lms__rank">
                 <i class="fas fa-medal" aria-hidden="true"></i>
                 {% if reg.final_rank == 1 %}1st
@@ -273,7 +267,6 @@
                 {% elif reg.final_rank == 3 %}3rd
                 {% else %}#{{ reg.final_rank }}{% endif %}
               </div>
-              {% endif %}
             </div>
             {% endif %}
           </div>
@@ -495,22 +488,6 @@
 </section>
 {% endif %}
 
-<!-- ═══ SCORE MODAL ═══ -->
-<div class="modal fade" id="scoreModal" tabindex="-1" aria-labelledby="scoreModalTitle" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <div>
-          <h2 class="modal-title" id="scoreModalTitle"><i class="fas fa-chart-bar text-gold me-2" aria-hidden="true"></i>Score breakdown</h2>
-          <div id="scoreModalEvent" class="small text-subtle mt-1"></div>
-        </div>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body" id="scoreModalBody" style="max-height:70vh;overflow-y:auto;"></div>
-    </div>
-  </div>
-</div>
-
 {% endblock %}
 {% block extra_js %}
 {% include "layouts/_bootstrap_js.html" %}
@@ -519,41 +496,6 @@
 window.SE_PALETTE_EXTRA = {{ active_tickets | map(attribute='event_title') | list | tojson }}.map(function (title, i) {
   return { name: title, url: '/event/' + {{ active_tickets | map(attribute='event_id') | list | tojson }}[i] };
 });
-
-function openScoreModal(el) {
-  var scores = JSON.parse(el.dataset.scores || '{}');
-  var eventTitle = el.dataset.event || '';
-  var body = document.getElementById('scoreModalBody');
-  document.getElementById('scoreModalEvent').textContent = eventTitle;
-
-  var entries = Object.entries(scores);
-  if (!entries.length) {
-    body.innerHTML = '<p class="text-center text-muted my-3">No score breakdown available.</p>';
-  } else {
-    var html = '';
-    entries.forEach(function(entry, i) {
-      var data = entry[1];
-      var total = data.total || 0;
-      html += '<div class="judge-score">' +
-        '<div class="d-flex justify-content-between align-items-center mb-2">' +
-        '<span class="judge-score__who">Judge ' + escapeHtml(i + 1) + '</span>' +
-        '<span class="judge-score__total">' + escapeHtml(total) + '<small>/100</small></span>' +
-        '</div>';
-      var criteria = data.criteria || {};
-      Object.entries(criteria).forEach(function(c) {
-        var pct = Math.min(100, Number(c[1]) || 0);
-        html += '<div class="mb-2">' +
-          '<div class="d-flex justify-content-between" style="font-size:12px;margin-bottom:2px;">' +
-          '<span>' + escapeHtml(c[0]) + '</span><strong>' + escapeHtml(c[1]) + '</strong></div>' +
-          '<div class="progress" style="height:4px;">' +
-          '<div class="progress-bar" style="width:' + escapeHtml(pct) + '%;"></div></div></div>';
-      });
-      html += '</div>';
-    });
-    body.innerHTML = html;
-  }
-  new bootstrap.Modal(document.getElementById('scoreModal')).show();
-}
 
 {% if config.get('REFERRALS_ENABLED') %}
 /* Referral (UPG-105: only when REFERRALS_ENABLED) */

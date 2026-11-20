@@ -746,6 +746,20 @@ def review(event_id, reg_id):
     return _back(event_id, 'ranking')
 
 
+@hackathon_bp.route('/spoc/hackathon/<event_id>/judge_mark/<reg_id>', methods=['POST'])
+@login_required
+def judge_mark(event_id, reg_id):
+    """The SPOC changes one judge's mark for a team, until the results are out (UPG-336)."""
+    event = _managed(event_id)
+    judge = request.form.get('judge', '')
+    ok, message = services_hackathon_eval.set_judge_mark(db, event_id, event, reg_id, judge,
+                                                         request.form.get('score', ''), _me())
+    if ok:
+        _audit('HACKATHON_JUDGE_MARK_EDITED', f"{event_id}: {reg_id} judge {judge} by {_me()}: {message}")
+    flash(message, 'success' if ok else 'danger')
+    return _back(event_id, 'ranking')
+
+
 @hackathon_bp.route('/spoc/hackathon/<event_id>/shortlist/preview', methods=['POST'])
 @login_required
 def shortlist_preview(event_id):

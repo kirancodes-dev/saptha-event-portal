@@ -6097,3 +6097,18 @@ The owner's request, 2026-11-16: feedback about the website from each registered
   5. ✅ Test: the day is India's, not the server's UTC date (02:00 IST on 21 Nov).
   6. ✅ Test: the lead's past hackathon card has the Hackathon page button; a member's doesn't.
 - **Evidence:** `routes_participant.py:57-77`, `:214-218`; `templates/participant/dashboard.html:216-218`, `:362-364`; tests `tests/test_participant_dashboard_running.py` (6).
+
+#### UPG-336 — Teams never see scores, only their place; the SPOC changes a judge's mark
+- **Status:** DONE
+- **Last verified:** 2026-11-20, on `fd64791` [T]
+- **Problem:** The owner (2026-11-20): judges have scored every team in the finale (round 2); the SPOC must be able to change the scores, nobody should see them until round 2 is complete, and teams should get only their place, never a score. The student dashboard (`routes_participant.py` `dashboard`) showed "Your score /100" and a breakdown of every judge's marks as soon as a judge scored; the result email (`utils_email.send_hackathon_result_email`) and the winners' WhatsApp (`utils_whatsapp.send_result_whatsapp`) gave the score; in the finale the SPOC had no way to change a mark (their own score is switched off after the shortlist, UPG-309).
+- **Who benefits:** the SPOC (corrects a judge's mark before results), every team (no scores leak).
+- **What was built:** the dashboard keeps no score or judges' marks (the score box, its breakdown window, the script and its handler are gone) and shows the place once results are published; `results_for` and the result email carry the place only; the coordinators' publish sends a hackathon's winners WhatsApp without the score (other events unchanged). `services_hackathon_eval.judge_marks` lists each judge's mark; `set_judge_mark` changes one (0 to the criteria total, only a judge who scored, refused once results are out), keeping the judge's criteria marks and recording `spoc_edit` {from, to, by, at}; route `POST /spoc/hackathon/<id>/judge_mark/<reg_id>` (edit permission, audit line); the ranking's judges' column has a box per judge, read-only after results.
+- **Depends on:** none.
+- **Acceptance criteria:**
+  1. ✅ Test: while judges score, a team's dashboard shows no score, marks or place.
+  2. ✅ Test: the SPOC changes a judge's mark; the team's score and rank follow; "edited (was N)" keeps the judge's own mark; the other judges' marks are untouched.
+  3. ✅ Test: a mark outside 0 to the criteria total, or for a judge who didn't score, is refused; a stranger, a judge and the team lead get 403.
+  4. ✅ Test: after the results, the dashboard, the hackathon page and the result email show the place and no score; the marks can't change.
+  5. ✅ Test: the WhatsApp result has no score line when none is given; other events keep it.
+- **Evidence:** `routes_participant.py:169-171`; `templates/participant/dashboard.html:259-270`; `services_hackathon_eval.py:721`, `:754-805`, `:1056`, `:1075`; `routes_hackathon.py:749-761`; `templates/hackathon/manage.html:403`, `:425-437`; `routes_coordinator.py:1382`; `utils_whatsapp.py:270-281`; tests `tests/test_hackathon_score_privacy.py` (5).

@@ -26,9 +26,6 @@ Object.assign(window.SE_H = window.SE_H || {}, {
   "participant/dashboard:8": function (event) { with (document) { with (this.form || {}) { with (this) {
     this.style.display='none'
   } } } },
-  "participant/dashboard:9": function (event) { with (document) { with (this.form || {}) { with (this) {
-    openScoreModal(this)
-  } } } },
   "participant/dashboard:10": function (event) { with (document) { with (this.form || {}) { with (this) {
     if(event.target===this)closeCmdPalette()
   } } } },

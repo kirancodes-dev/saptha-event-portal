@@ -400,7 +400,7 @@
   {% if ranking %}
   {% set by = "judges'" if rank_by == 'judges' else "the evaluators'" if rank_by == 'file' else "AI" %}
 {% if shortlist %}
-  <p class="hk-note mb-2">Ranked by the judges' average (out of 100). The results use this ranking.</p>
+  <p class="hk-note mb-2">Ranked by the judges' average (out of 100). The results use this ranking. You can change any judge's mark (out of {{ judging.criteria_total if judging else 100 }}) until you publish the results. Teams never see scores: once the results are out they see only their place.</p>
   {% elif rank_by == 'file' %}
   <p class="hk-note mb-2">Ranked by the evaluators' marks from the uploaded file.</p>
   {% else %}
@@ -422,7 +422,19 @@
         <td><code>{{ r.reg.team_code or '—' }}</code></td>
         <td data-file-score>{% if r.file_score is not none %}{{ r.file_score }}{% elif r.submitted %}<span class="hk-note">No marks yet</span>{% else %}—{% endif %}</td>
         {% elif rank_by == 'judges' %}
-        <td data-judges-score>{% if r.judges is not none %}{{ r.judges }}<br><span class="hk-note">{{ r.judges_n }} judge(s)</span>{% elif r.submitted %}<span class="hk-note">Not scored yet</span>{% else %}—{% endif %}</td>
+        <td data-judges-score>{% if r.judges is not none %}{{ r.judges }}<br><span class="hk-note">{{ r.judges_n }} judge(s)</span>{% elif r.submitted %}<span class="hk-note">Not scored yet</span>{% else %}—{% endif %}
+          {#- Each judge's mark; the SPOC changes it until the results are out (UPG-336) #}
+          {% for m in r.marks %}
+          <form method="POST" action="/spoc/hackathon/{{ event.id }}/judge_mark/{{ r.reg_id }}" class="d-flex flex-wrap gap-1 align-items-center mt-1" data-judge-mark="{{ m.judge }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="judge" value="{{ m.judge }}">
+            <span class="small">{{ m.name }}</span>
+            {% if event.results_published %}<strong class="small">{{ m.score }}</strong>
+            {% else %}<input class="form-control form-control-sm" style="width:72px" type="number" min="0" max="{{ judging.criteria_total if judging else 100 }}" step="0.1" name="score" value="{{ m.score }}" aria-label="{{ m.name }}'s mark for {{ r.team }}">
+            <button class="btn btn-sm btn-outline-primary" type="submit">Save</button>{% endif %}
+            {% if m.edited %}<span class="se-badge se-badge--warning" title="Changed by the SPOC from {{ m.was }}">edited (was {{ m.was }})</span>{% endif %}
+          </form>
+          {% endfor %}</td>
         {% else %}
         <td data-ai-total>{% if r.ai_total is not none %}{{ r.ai_total }}{% elif r.ai.status == 'not_scored' %}<span class="text-danger">Not scored</span><br><span class="hk-note">{{ r.ai.error }}</span>{% else %}—{% endif %}
           {% if ai_on and r.submitted and window == 'closed' and r.ai %}<form method="POST" action="/spoc/hackathon/{{ event.id }}/ai/{{ r.sub_id }}/rerun"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-link btn-sm p-0" type="submit">Re-run</button></form>{% endif %}</td>

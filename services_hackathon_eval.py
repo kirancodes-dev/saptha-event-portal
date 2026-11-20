@@ -718,6 +718,7 @@ def ranking(db, event_id: str, event: dict, sort: str = 'rank') -> list:
                      'lead': t['reg'].get('lead_name') or '', 'sub': sub, 'sub_id': (sub or {}).get('id', ''),
                      'submitted': bool(sub), 'ai': ev, 'ai_total': ai_total, 'review': review,
                      'judged': judged, 'judges': judges, 'judges_n': judges_n, 'round_score': own,
+                     'marks': judge_marks(t['reg']) if judged else [],   # the SPOC edits them (UPG-336)
                      'filed': filed, 'file_score': file_total, 'spoc_score': mine, 'key': (mine if mine is not None else own) if sub else None,
                      'rank': None, 'tied': False})
     keyed = sorted((r for r in rows if r['key'] is not None), key=lambda r: -r['key'])
@@ -748,6 +749,58 @@ def set_review(db, event_id: str, event: dict, reg_id: str, score, note: str, by
     review = {'score': value, 'note': ' '.join(str(note or '').split())[:500], 'by': by, 'at': _now_iso()}
     db.collection('project_submissions').document(row['sub_id']).set({'spoc_review': review}, merge=True)
     return True, f"Saved for {row['team']}."
+
+
+def judge_marks(reg: dict) -> list:
+    """Each judge's mark for a team (the criteria added up), for the SPOC to
+    read and change (UPG-336): [{'judge', 'name', 'score', 'edited'}]."""
+    out = []
+    for judge, entry in sorted((reg.get('scores') or {}).items()):
+        if not isinstance(entry, dict):
+            continue
+        raw = entry.get('raw_total')
+        if raw is None and isinstance(entry.get('details'), dict):
+            numbers = [v for v in entry['details'].values() if isinstance(v, (int, float)) and not isinstance(v, bool)]
+            raw = sum(numbers) if numbers else None
+        if raw is None:
+            continue
+        edit = entry.get('spoc_edit') if isinstance(entry.get('spoc_edit'), dict) else {}
+        out.append({'judge': judge, 'name': entry.get('judge_name') or judge, 'score': raw,
+                    'edited': bool(edit) and edit.get('to') == raw, 'was': edit.get('from')})
+    return out
+
+
+def set_judge_mark(db, event_id: str, event: dict, reg_id: str, judge: str, score, by: str) -> tuple:
+    """(ok, message): the SPOC changes one judge's mark for a team, until the
+    results are out (UPG-336). The team's score, rank and results follow."""
+    from routes_judge import normalize_criteria
+    if event.get('results_published'):
+        return False, "The results are out, so the judges' marks can't change now."
+    doc = db.collection('registrations').document(str(reg_id)).get()
+    reg = (doc.to_dict() or {}) if doc.exists else {}
+    from services_event_types import id_variants
+    if not reg or str(reg.get('event_id') or '') not in id_variants(event_id):
+        return False, "That team isn't in this event."
+    team = _team_name(reg)
+    mark = next((m for m in judge_marks(reg) if m['judge'] == judge), None)
+    if mark is None:
+        return False, f"That judge hasn't scored {team}."
+    out_of = _judges_max(event)
+    try:
+        value = round(float(str(score).strip()), 1)
+    except (TypeError, ValueError):
+        return False, f"A mark is a number from 0 to {out_of:g}."
+    if not 0 <= value <= out_of:
+        return False, f"A mark is a number from 0 to {out_of:g}."
+    value = int(value) if value == int(value) else value
+    n = len(normalize_criteria(event.get('judging_criteria'))) or 1
+    average = round(value / n, 1)
+    previous = (reg.get('scores') or {}).get(judge) or {}
+    first = (previous.get('spoc_edit') or {}).get('from', mark['score']) if mark['edited'] else mark['score']
+    entry = {**previous, 'raw_total': value, 'total': int(average) if average == int(average) else average,
+             'spoc_edit': {'from': first, 'to': value, 'by': by, 'at': _now_iso()}}   # the judge's own marks kept
+    db.collection('registrations').document(str(reg_id)).set({'scores': {judge: entry}}, merge=True)
+    return True, f"{mark['name']}'s mark for {team} is now {value:g} / {out_of:g}."
 
 
 def finale_open(event: dict) -> bool:
@@ -1000,7 +1053,7 @@ def send_result_emails(db, event_id: str, event: dict, regs=None, ranked=None) -
         try:
             ok = send_hackathon_result_email(
                 lead, reg.get('lead_name') or '', event.get('title', 'Hackathon'), _team_name(reg),
-                reg.get('result_outcome') or outcome(reg, row.get('rank')), row.get('rank'), row.get('score'),
+                reg.get('result_outcome') or outcome(reg, row.get('rank')), row.get('rank'), None,   # the place, no score (UPG-336)
                 hk.portal_url(event_id))
         except Exception:
             log.warning("Result email to the lead of %s failed", reg_id, exc_info=True)
@@ -1019,7 +1072,7 @@ def results_for(db, event_id: str, event: dict, reg: dict) -> dict:
     from services_leaderboard import for_event, podium
     rows = for_event(db, event_id)
     return {'outcome': reg.get('result_outcome') or outcome(reg, reg.get('final_rank')),
-            'rank': reg.get('final_rank'), 'score': reg.get('final_score'),
+            'rank': reg.get('final_rank'),   # the place only, no score (UPG-336)
             'podium': [{'label': OUTCOMES.get(r['rank'], f"Rank {r['rank']}"), 'team': r['team_name']}
                        for r in podium(rows)]}
 

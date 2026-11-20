@@ -1379,7 +1379,7 @@ def publish_results(event_id):
                 send_result_email(str(winner['email']), str(winner['lead_name']), event_title, winner['rank'], winner['score'])
             if winner.get('phone'):
                 _wa(send_result_whatsapp, winner['phone'], winner['lead_name'],
-                    event_title, winner['rank'], winner['score'])
+                    event_title, winner['rank'], None if portal else winner['score'])   # a hackathon team gets its place only (UPG-336)
 
         event_ref.update({'status': 'completed', 'winners': winners, 'results_published': True,   # as the SPOC's (UPG-139)
                           'completed_at': datetime.datetime.now(datetime.timezone.utc)})

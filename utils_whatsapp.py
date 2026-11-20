@@ -267,7 +267,7 @@ def send_elimination_whatsapp(phone: str, lead_name: str,
 
 
 def send_result_whatsapp(phone: str, lead_name: str, event_title: str,
-                          rank: int, score: float) -> bool:
+                          rank: int, score: "float | None") -> bool:
     """
     Sent to top-3 winners when SPOC publishes final results.
     """
@@ -278,7 +278,7 @@ def send_result_whatsapp(phone: str, lead_name: str, event_title: str,
         f"{emoji} *Congratulations, {lead_name}!*\n\n"
         f"Results are out for *{event_title}*.\n\n"
         f"🏆 *Your Rank:* {rank}\n"
-        f"📊 *Score:*     {score}\n\n"
+        + (f"📊 *Score:*     {score}\n" if score is not None else '') + "\n"
         f"Your certificate has been emailed to you.\n"
         f"👉 View at: {base}/participant/dashboard"
     )

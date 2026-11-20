@@ -166,18 +166,10 @@ def dashboard():
         r['event_cat']    = evt.get('category', 'General')
         r['days_until']   = _days_until(evt.get('date', ''))
 
-        # Score & rank (from published results)
-        scores = r.get('scores', {})
-        if scores:
-            all_avgs = []
-            for s in scores.values():
-                all_avgs.append(safe_int(s.get('total', 0)))
-            r['my_avg_score'] = round(sum(all_avgs) / len(all_avgs), 1) if all_avgs else None
-        else:
-            r['my_avg_score'] = None
-
-        r['final_rank']   = r.get('final_rank')
-        r['final_score']  = r.get('final_score')
+        # A team sees its place once the results are out, never a score or the judges' marks (UPG-336)
+        r.pop('scores', None)
+        r.pop('final_score', None)
+        r['final_rank']   = r.get('final_rank') if evt.get('results_published') else None
         r['ai_summary']   = r.get('ai_summary')   # Gemini performance summary
         from services_rounds import status_for   # "Round 2 of 3" (UPG-149)
         r['round_status'] = status_for(evt, r)

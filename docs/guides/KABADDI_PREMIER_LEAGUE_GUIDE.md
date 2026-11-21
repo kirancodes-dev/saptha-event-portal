@@ -63,9 +63,8 @@ In **Generate fixtures**:
 | Field | Choose |
 |---|---|
 | Format | League then knockout (playoffs) |
-| Win / Tie / Loss points | 5 / 3 / 0 |
-| Close-loss points | 1 |
-| Close loss = lost by at most | 7 |
+| Points rule | **PKL Season 12: win 2, loss 0, a tie goes to the tie-breaker** |
+| PKL mode | **Ticked**: matches are scored raid by raid (part 6) |
 | Each pair plays (league) | **Twice: home and away** |
 | Pools | **Two pools, A and B** |
 
@@ -80,6 +79,15 @@ and seed number, as on the sheet:
 | Vajra | 4 | Gandaberunda Warriors | 4 |
 
 Tick **An inter-pool round: A1 v B1, A2 v B2, …**, then press **Generate fixtures**.
+
+**The points rule.** PKL Season 12 has no ties in the table: a win is 2
+points, a loss 0. A match level at full time goes to the **tie-breaker**:
+5 raids each (7 defenders every raid, the baulk line counts as the bonus
+line), then a **golden raid** if it is still level (the referee's coin toss
+if that is level too). The tie-breaker's winner takes the 2 points. The older
+rule (5 a win, 3 a tie, 1 for losing by 7 or fewer) is still in the list;
+pick it to type your own numbers. **Change the points rule** under the
+tables switches either way later, without new fixtures.
 
 You get 28 league matches, in the same order as the printed sheet:
 
@@ -137,7 +145,45 @@ now** undoes it; starting it for live scoring or saving its result does too.
 uses the tournament page. Find the match (M-01 …) and press **Score live**.
 A phone works best.
 
-**During the match:**
+**PKL mode or point by point.** With **PKL mode** on (part 4, or the switch
+under **Big screen and the road to the final** on the tournament page), you
+tap how each raid ended and the portal works out the points. With it off, you
+tap the points (the buttons below). The switch counts for matches opened for
+scoring after the change; a match already being scored keeps its way. If PKL
+mode feels slow for your scorers, turn it off: point by point always works.
+
+**PKL mode, raid by raid:**
+
+1. Choose **Who raids first (won the toss)**, then **Start 1st half**.
+2. The panel shows both teams' players on the mat (green dots), whose raid it
+   is (**Raid 7: Vajra**), and **DO-OR-DIE**, **Bonus line live** and
+   **Super tackle on** when they apply.
+3. When the raid ends, tap one button:
+
+   | Button | When | What the portal does |
+   |---|---|---|
+   | **1 touch … 7 touches** | The raider touched that many and got back | Raid points; those defenders out; as many of the raider's team revived; the last defender out is an **all out** (+2, the team back to 7) |
+   | **+ Bonus** (tick first) | The raider also crossed the bonus line | +1 more; only with 6 or more defenders |
+   | **Bonus only +1** | Bonus line, no touch | +1 |
+   | **Empty raid** | Nothing happened | Counted; a team's third raid after two empty ones is **do-or-die**: empty then means the raider is out and +1 to the defence |
+   | **Tackled +1 / Super tackle +2** | The defenders caught the raider | +1, or +2 with 3 or fewer defenders; the raider out |
+   | **Raider out of court** | The raider stepped out | Raider out, +1 to the defence |
+
+   Pick the raider (and the tackler) in the lists first if you want player
+   stats. The turn passes to the other team by itself; in the 2nd half the
+   other team raids first.
+4. **Calls** (open the line under the buttons), for each team: **Technical
+   point +1**, **Their player out of bounds** (the other team +1, the player
+   out), **Time-out** (2 a team in each half; the clock stops, press
+   **Resume clock**), **Review upheld / not upheld** (logged; if it changes a
+   call, Remove that raid and enter it again), **+1 / −1 on the mat** (put the
+   count right), and **Other team raids** if the referee gives the raid to the
+   other side.
+5. A wrong tap: **Undo last**, or **Remove** next to any raid in **All
+   points**. The match is worked out again from the raids, so the mat, the
+   do-or-die count and the score stay right.
+
+**Point by point (PKL mode off):**
 
 1. Press **Start 1st half**. The clock starts at 20 minutes a half.
 2. For each point, press the button on the side of the team that **got** the
@@ -165,17 +211,28 @@ A phone works best.
 5. **Pause clock** and **Resume clock** for time-outs and reviews. Press **Half time**,
    then **Start 2nd half**.
 6. At the end press **Full time: save the result**. The score goes into the
-   table at once: 5 points for a win, 3 each for a tie, and 1 for losing by
-   7 or fewer.
+   table at once (Season 12: 2 for a win, 0 for a loss).
 
-In a **semi-final or the final**, a tie must have a winner. Choose it in
-**If it's a tie, who goes through** before Full time.
+**A tie (Season 12).** At a level score, **Full time** starts the
+**tie-breaker** on the scoring screen, in either mode: choose the raiding
+team for the first raid, then tap each raid (touches, bonus, empty, tackled);
+the teams take turns, 5 raids each. If it is still level, tap **Golden raid
+won by …** (or **Coin toss won by …**). Then press **Full time: save the
+result**. The table gives the winner 2 points, and the match shows "Vajra
+won the shootout 4–3". **Back to the 2nd half** undoes a Full time pressed
+by mistake before the first tie-breaker raid; **Undo last** takes back a
+tie-breaker raid.
+
+With the **older rule**, a league tie stays a tie; in a **semi-final or the
+final** choose the winner in **If it's a tie, who goes through** before Full
+time.
 
 **Pressed Full time too early?** Open **Continue live scoring** and press
 **Reopen the match**, or press **Clear the result** on the tournament page.
 
-**No live scoring?** On the match's card, type both scores (and **If tied,
-winner** for a playoff) and press **Save Result**. Use this if the network
+**No live scoring?** On the match's card, type both scores (for a tie also
+**If tied, winner**, and with Season 12 **Tie decided by** and the shootout's
+score) and press **Save Result**. Use this if the network
 fails or for a match scored on paper.
 
 ## 7. What the audience sees
@@ -186,12 +243,17 @@ fails or for a match scored on paper.
   being scored (logos, score, clock, raid and tackle points, the last three
   points), or **Up next** and the last result between matches; both pool
   tables with the top two marked; the **Road to the final**; the top raiders
-  and defenders. It updates itself every 4 seconds.
+  and defenders; with PKL mode, whose raid it is, DO-OR-DIE and the players
+  on the mat; during a tie-breaker, its score. It updates itself every 2
+  seconds. The college logo is at the top, with a **QR code**: the audience
+  scan it and the fixtures page opens on their phones, with the matches being
+  played at the top (**Watch the score live**).
 - **Fixtures page:** `/tournament/fixtures/<event id>`. Every match with its
   M-number, both pool tables, the road to the final, the top raiders and
   defenders, and **Every player's points** team by team (raid, tackle,
   total, matches, Super 10s, High 5s): this is where players see their own
-  progress. Share this link in the WhatsApp group.
+  progress. Share this link in the WhatsApp group: the preview shows the
+  college logo and the event's name.
 - **Live scoreboard for one match:** the **Public scoreboard** link on the
   scoring screen.
 
@@ -242,14 +304,16 @@ Withdraw a team (its remaining matches become walkovers), Bring back,
 2. Add 8 walk-in teams with the names above (part 2).
 3. Assign yourself or a colleague as coordinator.
 4. Generate: two pools, seeds as in the table, Twice, inter-pool ticked,
-   points 5/3/0/1/7. Check that M-01 is Garuda Sena v Vajra.
+   PKL Season 12, PKL mode ticked. Check that M-01 is Garuda Sena v Vajra.
 5. Add one logo. Download the fixture sheet as Excel, swap the teams of two
    matches and upload it. Postpone M-03 and put it back on.
 6. Open the **big screen** on a laptop. On a phone, as the coordinator,
-   **Score live** for M-01 and watch the big screen change.
-   Try Undo and Half time, then Full time.
-7. Quick-enter M-02 to M-28 with **Save Result**. Make one a 30–25 loss to
-   see the close-loss point.
+   **Score live** for M-01 and watch the big screen change. Make a team
+   do-or-die (two empty raids) and an all out. Try Undo and Half time, then
+   end it level and play the tie-breaker. Scan the big screen's QR code with
+   another phone.
+7. Quick-enter M-02 to M-28 with **Save Result**. Make one 30–30 with a
+   shootout winner to see it in the table.
 8. **Make the playoffs**. Check that SF1 is 1st A v 2nd B. Score both semis
    and the final, with one tie and a chosen winner.
 9. **Publish results**, then look at the fixtures page and the event page.

@@ -9,7 +9,7 @@
 (function () {
   'use strict';
 
-  var POLL_MS = 3000;
+  var POLL_MS = 1500;   // the public scoreboard asks this often (UPG-403)
 
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   function clockText(s) { s = Math.max(0, Math.floor(s)); return pad(Math.floor(s / 60)) + ':' + pad(s % 60); }
@@ -49,7 +49,12 @@
     var phase = root.querySelector('[data-phase-name]');
     if (phase) { phase.textContent = state.phase_name; }
     var dot = root.querySelector('[data-live-dot]');
-    if (dot) { dot.hidden = ['first_half', 'half_time', 'second_half'].indexOf(state.phase) < 0; }
+    if (dot) { dot.hidden = ['first_half', 'half_time', 'second_half', 'tiebreak'].indexOf(state.phase) < 0; }
+    // PKL mode: who raids, do-or-die, the mat; and the tie-breaker (UPG-396, UPG-397)
+    [['[data-mat-line]', state.mat_text], ['[data-shootout-line]', state.shootout_text]].forEach(function (x) {
+      var el = root.querySelector(x[0]);
+      if (el) { el.textContent = x[1] || ''; el.hidden = !x[1]; }
+    });
     var list = root.querySelector('[data-recent]');
     if (list) {
       list.innerHTML = '';
@@ -71,6 +76,7 @@
     first_half: ['pause', 'resume', 'half_time'],
     half_time: ['second_half'],
     second_half: ['pause', 'resume', 'full_time'],
+    tiebreak: ['full_time', 'back'],
     full_time: []
   };
 
@@ -87,6 +93,7 @@
       root.querySelectorAll('[data-point]').forEach(function (b) { b.disabled = !scoring; });
       var undo = root.querySelector('[data-undo]');
       if (undo) { undo.disabled = phase === 'full_time' || phase === 'not_started'; }
+      root.setAttribute('data-busy', queue.length ? 'true' : 'false');
       var reopen = root.querySelector('[data-reopen]');
       if (reopen) { reopen.hidden = phase !== 'full_time'; }
       root.querySelectorAll('[data-remove]').forEach(function (b) { b.disabled = phase === 'full_time'; });
@@ -137,11 +144,16 @@
         queue.shift();
         busy = false;
         if (r.data && r.data.ok) {
-          render(root, r.data.state, clock);
-          renderEntries(r.data.entries);
-          say(queue.length ? 'Sending…' : '');
+          // While more taps wait, keep their scores shown; the last answer has them all
+          if (!queue.length) {
+            render(root, r.data.state, clock);
+            renderEntries(r.data.entries);
+            renderPanel(r.data.panel);
+          }
+          if (body.op !== 'state') { say(queue.length ? 'Sending…' : ''); }
         } else {
           say((r.data && r.data.error) || 'That didn\'t save.', true);
+          if (body.op !== 'state') { resync(); }
         }
         refreshButtons();
         next();
@@ -151,6 +163,33 @@
         say('No connection. Retrying…', true);
         setTimeout(next, 2000);
       });
+    }
+
+    function renderPanel(html) {
+      var panel = root.querySelector('[data-panel]');
+      if (panel && typeof html === 'string') { panel.innerHTML = html; }
+    }
+
+    // A refused tap: show the match as the server has it
+    function resync() {
+      queue.push({ op: 'state', tap: tapId() });
+      next();
+    }
+
+    // The score goes up at once; the server's answer confirms it (UPG-403)
+    function bump(side, points) {
+      var el = root.querySelector('[data-score="' + side + '"]');
+      var n = parseInt(points, 10);
+      if (el && n > 0) { el.textContent = (parseInt(el.textContent, 10) || 0) + n; }
+    }
+
+    function value(sel) {
+      var el = root.querySelector(sel);
+      return el ? el.value : '';
+    }
+    function checked(sel) {
+      var el = root.querySelector(sel);
+      return !!(el && el.checked);
     }
 
     function send(body) {
@@ -167,7 +206,39 @@
         var player = root.querySelector('[data-player="' + team + '"]');
         send({ op: 'point', team: team, kind: point.getAttribute('data-kind'),
                points: point.getAttribute('data-points') || '', player: player ? player.value : '' });
+        bump(team, point.getAttribute('data-add'));
         if (player) { player.value = ''; }
+        return;
+      }
+      // PKL mode: one raid as it ended, or a referee's call (UPG-397)
+      var raid = e.target.closest('[data-raid]');
+      if (raid) {
+        var panel = root.querySelector('[data-pkl-panel]');
+        send({ op: 'raid', team: panel ? panel.getAttribute('data-raider') : '',
+               outcome: raid.getAttribute('data-outcome'), touches: raid.getAttribute('data-touches') || '',
+               bonus: checked('[data-pkl-bonus]'), raider: value('[data-pkl-raider]'),
+               tackler: value('[data-pkl-tackler]') });
+        return;
+      }
+      var call = e.target.closest('[data-call]');
+      if (call) {
+        var kind = call.getAttribute('data-kind');
+        if (kind === 'turn' && !window.confirm('Give the next raid to the other team?')) { return; }
+        send({ op: 'call', kind: kind, team: call.getAttribute('data-team') || '',
+               upheld: call.getAttribute('data-upheld') === '1', change: call.getAttribute('data-change') || 0 });
+        return;
+      }
+      // The tie-breaker (UPG-396)
+      var shoot = e.target.closest('[data-shootout]');
+      if (shoot) {
+        send({ op: 'shootout', team: value('[data-sh-team]'), outcome: shoot.getAttribute('data-outcome'),
+               touches: shoot.getAttribute('data-touches') || '', bonus: checked('[data-sh-bonus]') });
+        return;
+      }
+      var decide = e.target.closest('[data-decide]');
+      if (decide) {
+        if (!window.confirm(decide.textContent.trim() + '?')) { return; }
+        send({ op: 'decide', way: decide.getAttribute('data-way'), winner: decide.getAttribute('data-winner') });
         return;
       }
       if (e.target.closest('[data-undo]')) {
@@ -192,9 +263,13 @@
         if (action === 'full_time') {
           var h = root.querySelector('[data-score="home"]').textContent;
           var a = root.querySelector('[data-score="away"]').textContent;
-          if (!window.confirm('End the match and save ' + h + ' – ' + a + ' as the result?')) { return; }
+          var ask = 'End the match and save ' + h + ' – ' + a + ' as the result?';
+          if (root.getAttribute('data-phase') === 'second_half' && h === a && root.getAttribute('data-tiebreak') === 'true') {
+            ask = 'It\'s level at ' + h + ' – ' + a + '. Start the tie-breaker (5 raids each)?';
+          }
+          if (!window.confirm(ask)) { return; }
         }
-        send({ op: 'phase', action: action, winner: winner ? winner.value : '' });
+        send({ op: 'phase', action: action, winner: winner ? winner.value : '', first: value('[data-first]') });
       }
     });
     refreshButtons();

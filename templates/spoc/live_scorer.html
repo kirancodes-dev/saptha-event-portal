@@ -18,7 +18,8 @@
      data-url="/tournament/{{ event.id }}/match/{{ match.id }}/score"
      data-home-id="{{ doc.home }}" data-away-id="{{ doc.away }}"
      data-clock="{{ state.clock }}" data-running="{{ 'true' if state.running else 'false' }}"
-     data-phase="{{ state.phase }}">
+     data-phase="{{ state.phase }}" data-mode="{{ state.mode }}"
+     data-tiebreak="{{ 'true' if tiebreak else 'false' }}">
 
   <section class="live-board" aria-live="polite">
     <div class="live-board__team">
@@ -45,7 +46,7 @@
     <button type="button" class="btn btn-outline-secondary" data-phase-action="resume">Resume clock</button>
     <button type="button" class="btn btn-warning" data-phase-action="half_time">Half time</button>
     <button type="button" class="btn btn-success" data-phase-action="second_half">Start 2nd half</button>
-    {% if knockout %}
+    {% if knockout and not tiebreak %}
     <label class="live-phase__winner">If it's a tie, who goes through
       <select class="form-select form-select-sm" data-winner>
         <option value="">Choose at a tie</option>
@@ -55,10 +56,16 @@
     </label>
     {% endif %}
     <button type="button" class="btn btn-danger" data-phase-action="full_time">Full time: save the result</button>
+    {#- The tie-breaker started by mistake (UPG-396) #}
+    <button type="button" class="btn btn-outline-secondary" data-phase-action="back">Back to the 2nd half</button>
     {#- Full time pressed by mistake: take the result back and play on (UPG-355) #}
     <button type="button" class="btn btn-outline-danger" data-reopen>Reopen the match</button>
   </section>
 
+  {#- PKL mode's raid panel and the tie-breaker (UPG-396, UPG-397) #}
+  <div data-panel>{% include "spoc/_pkl_panel.html" %}</div>
+
+  {% if state.mode != 'pkl' %}
   <div class="live-sides">
     {% for side in ('home', 'away') %}
     <section class="live-side live-side--{{ side }}" aria-label="{{ state[side].name }}">
@@ -77,7 +84,7 @@
         {% if title %}<h3 class="live-group__title">{{ title }}</h3>{% endif %}
         <div class="live-side__buttons">
           {% for b in buttons %}
-          <button type="button" class="btn live-btn live-btn--{{ b.counts }}" data-point data-team="{{ side }}" data-kind="{{ b.kind }}"{% if b.points %} data-points="{{ b.points }}"{% endif %}{% if b.help %} title="{{ b.text }}: {{ b.help }}"{% endif %}>{{ b.text }}</button>
+          <button type="button" class="btn live-btn live-btn--{{ b.counts }}" data-point data-team="{{ side }}" data-kind="{{ b.kind }}" data-add="{{ b.add }}"{% if b.points %} data-points="{{ b.points }}"{% endif %}{% if b.help %} title="{{ b.text }}: {{ b.help }}"{% endif %}>{{ b.text }}</button>
           {% endfor %}
         </div>
       </div>
@@ -85,10 +92,11 @@
     </section>
     {% endfor %}
   </div>
+  {% endif %}
 
   <section class="live-log">
     <div class="d-flex justify-content-between align-items-center">
-      <h2 class="h6 mb-0">Last points</h2>
+      <h2 class="h6 mb-0">{{ 'Last raids and calls' if state.mode == 'pkl' else 'Last points' }}</h2>
       <button type="button" class="btn btn-outline-danger btn-sm" data-undo><i class="fas fa-undo" aria-hidden="true"></i> Undo last</button>
     </div>
     <ol class="live-log__list" data-recent>

@@ -34,6 +34,7 @@
           <span class="bracket-slot__score">{% if s.walkover %}{{ 'W/O' if s.winner == team else '' }}{% elif s[side ~ '_score'] is not none %}{{ s[side ~ '_score'] }}{% endif %}</span>
         </div>
         {% endfor %}
+        {% if s.tiebreak and s.winner %}{% set m = s %}{% include "includes/tiebreak.html" %}{% endif %}
       </div>
       {% endfor %}
       </div>

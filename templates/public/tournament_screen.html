@@ -6,15 +6,23 @@
     {% include "layouts/_fontawesome.html" %}
     <link rel="stylesheet" href="/static/css/live_match.css">
     <link rel="stylesheet" href="/static/css/tournament_screen.css">
+    {% include "includes/og_sports.html" %}
 {% endblock %}
 {% block body_attrs %} class="tv"{% endblock %}
 {% block body %}
 <header class="tv-head">
   <div class="tv-head__title">
+    {#- The college logo on the hall's screen (UPG-402) #}
+    <img src="/static/img/snpsu-logo-reversed.png" alt="Sapthagiri NPS University" class="tv-head__logo" width="191" height="48" data-college-logo>
     <i class="fas fa-trophy" aria-hidden="true"></i>
     <span>{{ event.title }}</span>
   </div>
   <div class="tv-head__right">
+    {#- The audience scan it for the live scores on their phones (UPG-402) #}
+    <a class="tv-qr" href="{{ fixtures_url }}" data-screen-qr>
+      <img src="/tournament/screen/{{ event.id }}/qr.svg" alt="QR code: live scores on your phone" width="84" height="84">
+      <span>Scan for<br>live scores</span>
+    </a>
     <span class="tv-head__time" data-screen-now></span>
     <button type="button" class="tv-btn" data-fullscreen><i class="fas fa-expand" aria-hidden="true"></i> Full screen</button>
   </div>

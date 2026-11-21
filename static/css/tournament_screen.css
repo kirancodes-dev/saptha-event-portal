@@ -60,3 +60,13 @@ body.tv { margin: 0; min-height: 100vh; background: #0b1530; color: #f1f5f9; fon
 .tv-bracket .bracket-slot__team { font-size: clamp(14px, 1.2vw, 22px); }
 .tv-bracket .bracket-slot__meta, .tv-bracket .bracket-slot__label { color: #cbd5e1; }
 .tv-bracket .bracket-slot__team--won { color: #6ee7b7; }
+
+/* The college logo and the audience's QR code (UPG-402) */
+.tv-head__logo { height: clamp(32px, 4vw, 56px); width: auto; }
+.tv-qr { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; font-size: clamp(12px, 1.1vw, 18px);
+         font-weight: 700; line-height: 1.2; }
+.tv-qr img { background: #fff; padding: 4px; border-radius: 6px; width: clamp(64px, 6vw, 110px); height: auto; }
+.tv-board__mat, .tv-board__shootout { text-align: center; font-size: clamp(16px, 1.6vw, 28px); font-weight: 700; margin-top: 8px; }
+.tv-board__mat--dod { color: #f87171; }
+.tv-board__shootout { color: #fcd34d; }
+.match-tiebreak { font-size: .8em; opacity: .85; margin-top: 2px; }

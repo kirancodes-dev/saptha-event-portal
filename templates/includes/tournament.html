@@ -84,6 +84,7 @@
                         <span>{% if logos.get(m.away) %}<img src="{{ logos[m.away] }}" alt="" class="team-logo me-1" width="24" height="24">{% endif %}{{ (names.get(m.away, m.away) if names else m.away) if m.away else 'TBD' }}</span>
                         <span class="match-score">{{ ('W/O' if m.winner == m.away else '–') if m.walkover else (m.away_score if m.away_score is not none else '–') }}</span>
                     </div>
+                    {% include "includes/tiebreak.html" %}
                 </div>
             </div>
             {% endfor %}

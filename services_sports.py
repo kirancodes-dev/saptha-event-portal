@@ -63,6 +63,13 @@ log = logging.getLogger(__name__)
 DEFAULT_POINTS = {'win': 3, 'draw': 1, 'loss': 0, 'close_loss': 0, 'close_margin': 0}
 # A kabaddi league (UPG-350): 5 a win, 3 a tie, 1 for losing by 7 points or fewer
 KABADDI_POINTS = {'win': 5, 'draw': 3, 'loss': 0, 'close_loss': 1, 'close_margin': 7}
+# PKL Season 12 (2025) (UPG-396): 2 a win, 0 a loss, and no ties: a match level at
+# full time goes to a tie-breaker (a five-raid shootout, then a golden raid, then
+# a coin toss), whose winner takes the win; the match keeps its full-time score.
+PKL12_POINTS = {'win': 2, 'draw': 0, 'loss': 0, 'close_loss': 0, 'close_margin': 0}
+RULES = {'pkl12': 'PKL Season 12: win 2, loss 0, a tie goes to the tie-breaker',
+         'classic': 'Older PKL: win 5, tie 3, lost by 7 or fewer 1, loss 0'}
+TIEBREAK_WAYS = {'shootout': 'shootout', 'golden': 'golden raid', 'toss': 'coin toss'}
 FORMATS = ('knockout', 'league', 'league_knockout')
 POOLS = ('A', 'B')                       # two pools (UPG-381)
 FORMAT_NAMES = {'knockout': 'Knockout', 'league': 'League', 'league_knockout': 'League then knockout'}
@@ -253,8 +260,9 @@ def _pooled(teams: list, legs: int, cross: bool) -> list:
 
 
 def generate(teams: list, fmt: str, points: dict = None, third_place: bool = False, sport: str = '',
-             legs: int = 1, pools: dict = None, cross: bool = False) -> dict:
-    """`pools` maps a team id to ('A' or 'B', seed); only a league then knockout has pools."""
+             legs: int = 1, pools: dict = None, cross: bool = False, tiebreak: bool = False) -> dict:
+    """`pools` maps a team id to ('A' or 'B', seed); only a league then knockout has pools.
+    `tiebreak`: a match level at full time is decided by a tie-breaker (PKL Season 12, UPG-396)."""
     if fmt not in FORMATS:
         raise TournamentError("Choose knockout, league, or league then knockout.")
     legs = 2 if str(legs) == '2' else 1
@@ -289,7 +297,29 @@ def generate(teams: list, fmt: str, points: dict = None, third_place: bool = Fal
     if pools:
         t['pools'] = list(POOLS)
         t['cross'] = bool(cross)
+    if tiebreak:
+        t['tiebreak'] = True
     return t
+
+
+def tiebreak_on(tournament: dict) -> bool:
+    """Ties go to a tie-breaker (UPG-396)."""
+    return bool(tournament.get('tiebreak'))
+
+
+def needs_winner(tournament: dict, m: dict) -> bool:
+    """A level score needs a winner: every knockout match, and every match when ties go to a tie-breaker."""
+    return knockout_match(tournament, m) or tiebreak_on(tournament)
+
+
+def tiebreak_text(m: dict, names: dict) -> str:
+    """'Vajra won the shootout 4–3' for a match decided by the tie-breaker, else ''."""
+    tb = m.get('tiebreak') or {}
+    if not tb or not m.get('winner'):
+        return ''
+    way = TIEBREAK_WAYS.get(tb.get('decided'), 'tie-breaker')
+    score = f" {tb['home']}–{tb['away']}" if tb.get('decided') == 'shootout' and tb.get('home') is not None else ''
+    return f"{names.get(m['winner'], '')} won the {way}{score}"
 
 
 def preset_points(sport: str) -> dict:
@@ -415,10 +445,13 @@ def _loser(m):
     return m['away'] if m['winner'] == m['home'] else m['home']
 
 
-def record_result(tournament: dict, match_id: str, home_score: int, away_score: int, winner: str = '') -> dict:
+def record_result(tournament: dict, match_id: str, home_score: int, away_score: int, winner: str = '',
+                  tiebreak: dict = None) -> dict:
     """Enter or correct a result. A knockout needs a winner (the higher score,
     or the one chosen after a tie) and moves it on; a correction is refused
-    once the next match has been played."""
+    once the next match has been played. When ties go to a tie-breaker (PKL
+    Season 12, UPG-396) a league match level at full time needs its winner too;
+    `tiebreak` is how it was decided ({'decided', 'home', 'away'}: a shootout's score)."""
     t = dict(tournament)
     matches = [dict(m) for m in t.get('matches') or []]
     m = _find(matches, match_id)
@@ -431,6 +464,14 @@ def record_result(tournament: dict, match_id: str, home_score: int, away_score: 
     m.update(home_score=home_score, away_score=away_score, status='played', played_at=_stamp())
     m.pop('walkover', None)
     m.pop('postponed', None)                   # played after all (UPG-394)
+    m.pop('tiebreak', None)
+    if home_score == away_score and needs_winner(t, m):
+        if winner not in (m['home'], m['away']):
+            raise TournamentError("It's a tie: choose who won the tie-breaker." if tiebreak_on(t)
+                                  else "It's a tie: choose who goes through.")
+        tb = dict(tiebreak or {})
+        way = tb.get('decided') if tb.get('decided') in TIEBREAK_WAYS else 'tiebreak'
+        m['tiebreak'] = {'decided': way, 'home': tb.get('home'), 'away': tb.get('away')}
     if knockout_match(t, m):
         if home_score != away_score:
             win = m['home'] if home_score > away_score else m['away']
@@ -442,6 +483,8 @@ def record_result(tournament: dict, match_id: str, home_score: int, away_score: 
         m['winner'] = win
         _advance(matches, m)
         _settle_withdrawn(t, matches)
+    elif home_score == away_score and tiebreak_on(t):
+        m['winner'] = winner                   # the tie-breaker's winner takes the win (UPG-396)
     else:
         m['winner'] = (m['home'] if home_score > away_score else m['away'] if away_score > home_score else None)
     t['matches'] = matches
@@ -488,6 +531,7 @@ def clear_result(tournament: dict, match_id: str) -> dict:
             nxt[m[side]] = None
     m.update(home_score=None, away_score=None, winner=None, status='scheduled')
     m.pop('walkover', None)
+    m.pop('tiebreak', None)
     t['matches'] = matches
     return t
 
@@ -508,6 +552,7 @@ def walkover(tournament: dict, match_id: str, winner: str) -> dict:
     _check_next(matches, m, winner)
     m.update(home_score=None, away_score=None, status='played', winner=winner, walkover=True, played_at=_stamp())
     m.pop('postponed', None)
+    m.pop('tiebreak', None)
     _advance(matches, m)
     _settle_withdrawn(t, matches)
     t['matches'] = matches
@@ -654,15 +699,21 @@ def set_match_teams(tournament: dict, match_id: str, home: str, away: str) -> di
     return t
 
 
-def set_points(tournament: dict, points: dict) -> dict:
+def set_points(tournament: dict, points: dict, tiebreak: bool = None) -> dict:
     """Change the league's points rule; the table is worked out again from the
-    results (UPG-358). Refused once the playoffs were seeded from it."""
+    results (UPG-358). Refused once the playoffs were seeded from it. `tiebreak`
+    turns the tie-breaker on or off (UPG-396); None leaves it as it is."""
     t, _ = _copy(tournament)
     if t.get('format') not in ('league', 'league_knockout'):
         raise TournamentError("Only a league has a points rule.")
     if has_playoffs(t):
         raise TournamentError("The playoffs were made from the table. Undo the playoffs first.")
     t['points'] = dict(DEFAULT_POINTS, **{k: max(0, int(v)) for k, v in (points or {}).items() if k in DEFAULT_POINTS})
+    if tiebreak is not None:
+        if tiebreak:
+            t['tiebreak'] = True
+        else:
+            t.pop('tiebreak', None)
     return t
 
 
@@ -725,7 +776,7 @@ def _slot(m: dict = None, home_label: str = '', away_label: str = '', title: str
             'home': m.get('home'), 'away': m.get('away'), 'home_label': home_label, 'away_label': away_label,
             'home_score': m.get('home_score'), 'away_score': m.get('away_score'), 'winner': m.get('winner'),
             'status': m.get('status') or '', 'walkover': bool(m.get('walkover')),
-            'postponed': bool(m.get('postponed')), 'projected': False, **extra}
+            'postponed': bool(m.get('postponed')), 'tiebreak': m.get('tiebreak'), 'projected': False, **extra}
 
 
 ROUND_TITLES = {1: 'Final', 2: 'Semi-finals', 3: 'Quarter-finals'}
@@ -1061,7 +1112,10 @@ def standings(tournament: dict, pool: str = None) -> list:
             row['played'] += 1
             row['for'] += f
             row['against'] += ag
-        if hs > as_:
+        if hs == as_ and m.get('tiebreak') and m.get('winner') in (m['home'], m['away']):
+            win, lose = (h, a) if m['winner'] == m['home'] else (a, h)      # won the tie-breaker (UPG-396)
+            win['won'] += 1; lose['lost'] += 1; win['points'] += pts['win']; lose['points'] += pts['loss']  # noqa: E702
+        elif hs > as_:
             h['won'] += 1; a['lost'] += 1; h['points'] += pts['win']; a['points'] += _loss_points(pts, hs - as_)  # noqa: E702,E501
         elif as_ > hs:
             a['won'] += 1; h['lost'] += 1; a['points'] += pts['win']; h['points'] += _loss_points(pts, as_ - hs)  # noqa: E702,E501

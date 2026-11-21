@@ -1,0 +1,6 @@
+{#- How a level match was decided (UPG-396): "Vajra won the shootout 4–3".
+    Needs `m` and `names`; the words match services_sports.tiebreak_text. -#}
+{% if m.tiebreak and m.winner %}
+{% set way = {'shootout': 'shootout', 'golden': 'golden raid', 'toss': 'coin toss'}.get(m.tiebreak.decided, 'tie-breaker') %}
+<div class="match-tiebreak" data-tiebreak>{{ names.get(m.winner, '') if names else '' }} won the {{ way }}{% if m.tiebreak.decided == 'shootout' and m.tiebreak.home is not none %} {{ m.tiebreak.home }}–{{ m.tiebreak.away }}{% endif %}</div>
+{% endif %}

@@ -21,8 +21,21 @@
 {% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="/static/css/live_match.css">
+{% include "includes/og_sports.html" %}
 {% endblock %}
 {% block content %}
+{#- Where the big screen's QR code lands: the matches being played first (UPG-402) #}
+{% set playing = (t.matches or [])|selectattr('id', 'in', live)|list if t and live else [] %}
+{% if playing %}
+<div class="panel mb-3" data-live-now>
+  <h2 class="h5 mb-2"><span class="live-dot">LIVE</span> Being played now</h2>
+  {% for m in playing %}
+  <a href="/tournament/live/{{ event.id }}/{{ m.id }}" class="btn btn-primary btn-lg w-100 mb-2 text-start" data-live-now-link>
+    {{ names.get(m.home, 'TBD') }} v {{ names.get(m.away, 'TBD') }} <small class="d-block">Watch the score live</small>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
 <div class="panel">
   {% if not t or not t.matches %}
   <div class="empty-state border-0">

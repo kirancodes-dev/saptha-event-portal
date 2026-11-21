@@ -119,3 +119,33 @@
 /* A match put off for later (UPG-394); the pools' top two go to the semi-finals */
 .match-postponed { display: inline-block; background: #fef3c7; color: #92400e; border-radius: 999px; padding: 0 8px; font-size: 11px; font-weight: 700; }
 .pool-row--through td:first-child { box-shadow: inset 4px 0 0 #047857; }
+
+/* PKL mode (UPG-397) and the tie-breaker (UPG-396) */
+.pkl-panel { border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; margin: 12px 0; background: #f8fafc; }
+.pkl-panel__title { font-size: 1rem; font-weight: 700; margin: 0 0 6px; }
+.pkl-mat { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.pkl-mat__team { border: 2px solid transparent; border-radius: 8px; padding: 6px 8px; background: #fff; }
+.pkl-mat__team--raiding { border-color: #1d4ed8; }
+.pkl-mat__name { font-weight: 700; font-size: .9rem; }
+.pkl-mat__dots { display: flex; gap: 4px; margin: 4px 0; }
+.pkl-dot { width: 14px; height: 14px; border-radius: 50%; background: #e2e8f0; border: 1px solid #94a3b8; }
+.pkl-dot--on { background: #16a34a; border-color: #15803d; }
+.pkl-mat__meta { font-size: .75rem; color: #475569; }
+.pkl-raid-head { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
+.pkl-badge { display: inline-block; font-size: .7rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: #dbeafe; color: #1e3a8a; }
+.pkl-badge--dod { background: #dc2626; color: #fff; animation: pkl-pulse 1s ease-in-out infinite alternate; }
+.pkl-badge--super { background: #047857; color: #fff; }
+@keyframes pkl-pulse { from { opacity: 1; } to { opacity: .6; } }
+@media (prefers-reduced-motion: reduce) { .pkl-badge--dod { animation: none; } }
+.pkl-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-bottom: 8px; }
+.pkl-field { display: block; font-size: .8rem; margin-bottom: 8px; }
+.pkl-check { font-size: .9rem; font-weight: 600; display: flex; gap: 6px; align-items: center; padding-bottom: 6px; }
+.pkl-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.pkl-calls summary { font-size: .85rem; color: #1d4ed8; cursor: pointer; }
+.pkl-calls__teams { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.pkl-shootout__score { font-size: 1.2rem; margin-bottom: 6px; }
+.pkl-shootout__raids { font-size: .8rem; color: #475569; margin-left: 6px; }
+.pkl-needs, .pkl-done { font-weight: 600; }
+.live-board__mat, .live-board__shootout { text-align: center; font-weight: 600; margin: 6px 0 0; }
+.live-board__mat [data-dod] { color: #dc2626; }
+@media (max-width: 576px) { .pkl-calls__teams, .pkl-mat { grid-template-columns: 1fr; } }

@@ -190,9 +190,9 @@ def test_the_big_screen_fits_a_tv_and_a_phone_ticks_the_clock_and_refreshes(leag
             page.goto(ORIGIN + path, wait_until='load')
             page.wait_for_timeout(200)
             before = page.evaluate(SCREEN)
-            page.wait_for_timeout(2300)                       # the clock ticks between refreshes
+            page.wait_for_timeout(1300)                       # the clock ticks between refreshes
             ticked = page.evaluate(SCREEN)
-            page.wait_for_timeout(2700)                       # a refresh (every 4 s) has come in
+            page.wait_for_timeout(1500)                       # a refresh (every 2 s, UPG-403) has come in
             results[name] = (before, ticked, page.evaluate(SCREEN))
     finally:
         browser.close()
@@ -200,7 +200,7 @@ def test_the_big_screen_fits_a_tv_and_a_phone_ticks_the_clock_and_refreshes(leag
     (tv0, tv1, tv2), (ph0, _ph1, ph2) = results['tv'], results['phone']
     assert tv0['page'] <= 1920 and ph0['page'] <= PHONE['width'] and ph2['page'] <= PHONE['width'], results
     assert tv0['score'] == '2' and tv2['score'] == '7' and ph2['score'] == '7', results   # the new score came in
-    assert tv0['clock'] == '00:00' and tv1['clock'] in ('00:02', '00:03'), results       # the clock runs
+    assert tv0['clock'] == '00:00' and tv1['clock'] in ('00:01', '00:02'), results       # the clock runs
     assert tv0['scoreSize'] >= 120, results                                    # readable across a hall
 
 

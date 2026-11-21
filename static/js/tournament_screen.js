@@ -4,13 +4,14 @@
 (function () {
   'use strict';
 
-  var POLL_MS = 4000;
+  var POLL_MS = 2000;   // UPG-403: the server renders it once for every screen and phone, and says when it's unchanged
   var root = document.querySelector('[data-screen]');
   if (!root) { return; }
   var url = root.getAttribute('data-url');
   var offline = document.querySelector('[data-screen-offline]');
   var shownAt = Date.now();
   var last = root.innerHTML;
+  var etag = '';
 
   function pad(n) { return (n < 10 ? '0' : '') + n; }
 
@@ -30,11 +31,16 @@
   }
 
   function refresh() {
-    fetch(url, { cache: 'no-store', credentials: 'same-origin' })
-      .then(function (r) { if (!r.ok) { throw new Error(r.status); } return r.text(); })
+    fetch(url, { cache: 'no-store', credentials: 'same-origin', headers: etag ? { 'If-None-Match': etag } : {} })
+      .then(function (r) {
+        if (r.status === 304) { return null; }          // nothing changed
+        if (!r.ok) { throw new Error(r.status); }
+        etag = r.headers.get('ETag') || '';
+        return r.text();
+      })
       .then(function (html) {
         if (offline) { offline.hidden = true; }
-        if (html !== last) {             // a new clock reading counts from now
+        if (html !== null && html !== last) {             // a new clock reading counts from now
           root.innerHTML = html;
           last = html;
           shownAt = Date.now();

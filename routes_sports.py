@@ -20,7 +20,7 @@ once or twice (home and away), an inter-pool round, 1st A v 2nd B and 1st B v
 2nd A in the semi-finals; the schedule as a file to download, fill in and
 upload; a logo for each team.
 """
-from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, session
+from flask import Blueprint, abort, current_app, flash, jsonify, redirect, render_template, request, session
 
 from models import db
 from utils import log_action, login_required
@@ -52,11 +52,18 @@ def _save(event_id, fn, done, anchor='', audit=None):
     except services_sports.TournamentError as exc:
         flash(str(exc), "warning")
         return None
+    _fresh(event_id)
     if audit:
         log_action(db, audit[0], f"{session.get('user_id')} {audit[1]} ({event_id})")
     if done:
         flash(done, "success")
     return t
+
+
+def _fresh(event_id):
+    """A change on this instance shows on its big screen at the next ask."""
+    import services_live_match as live
+    live._cache.pop(('screen', event_id), None)
 
 
 def _team(event_id, team_id):
@@ -112,16 +119,26 @@ def generate(event_id):
     defaults = services_sports.event_defaults(event)
     points = {k: max(0, _int(request.form.get(f'points_{k}'), defaults['points'][k]))
               for k in ('win', 'draw', 'loss', 'close_loss', 'close_margin')}
+    tiebreak = request.form.get('rules') == 'pkl12'       # PKL Season 12 (UPG-396)
+    if tiebreak:
+        points = dict(services_sports.PKL12_POINTS)
+    scoring = 'pkl' if request.form.get('scoring') == 'pkl' else ''   # PKL mode (UPG-397)
     teams = services_sports.confirmed_teams(db, event_id)
     pools = None
     if request.form.get('pools') == 'two':            # UPG-381: each team's pool and seed
         pools = {x['id']: (request.form.get(f"pool_{x['id']}", ''), _int(request.form.get(f"seed_{x['id']}"), 0))
                  for x in teams}
     old_logos = services_sports.logos(event.get('tournament') or {})
-    t = _save(event_id, lambda _cur, _e: services_sports.generate(
-        teams, request.form.get('format', ''), points,
-        third_place=request.form.get('third_place') == 'yes', sport=defaults['sport'],
-        legs=_int(request.form.get('legs'), 1), pools=pools, cross=request.form.get('cross') == 'yes'), None)
+    def made(_cur, _e):
+        new = services_sports.generate(
+            teams, request.form.get('format', ''), points,
+            third_place=request.form.get('third_place') == 'yes', sport=defaults['sport'],
+            legs=_int(request.form.get('legs'), 1), pools=pools, cross=request.form.get('cross') == 'yes',
+            tiebreak=tiebreak)
+        if scoring:
+            new['scoring'] = scoring
+        return new
+    t = _save(event_id, made, None)
     if t is None:
         return _back(event_id)
     if old_logos:                                     # the teams keep their logos (UPG-386)
@@ -143,8 +160,13 @@ def result(event_id, match_id):
     if not _allowed(event, 'edit_event', 'manage_registrations'):
         abort(403)
     home, away = _int(request.form.get('home_score'), -1), _int(request.form.get('away_score'), -1)
+    tiebreak = None
+    if request.form.get('tb_way') in services_sports.TIEBREAK_WAYS:      # how a tie was decided (UPG-396)
+        tb_home, tb_away = _int(request.form.get('tb_home'), -1), _int(request.form.get('tb_away'), -1)
+        tiebreak = {'decided': request.form['tb_way'], 'home': tb_home if tb_home >= 0 else None,
+                    'away': tb_away if tb_away >= 0 else None}
     if _save(event_id, lambda cur, _e: services_sports.record_result(cur, match_id, home, away,
-                                                                     request.form.get('winner', '')),
+                                                                     request.form.get('winner', ''), tiebreak),
              "Result saved.") is not None:
         log_action(db, "MATCH_RESULT", f"{session.get('user_id')} entered {match_id} of {event_id}: "
                    f"{request.form.get('home_score')}-{request.form.get('away_score')}")
@@ -298,10 +320,38 @@ def points_rule(event_id):
     if not _allowed(_event(event_id), 'edit_event'):
         abort(403)
     points = {k: _int(request.form.get(f'points_{k}'), 0) for k in services_sports.DEFAULT_POINTS}
-    _save(event_id, lambda cur, _e: services_sports.set_points(cur, points),
+    tiebreak = request.form.get('tiebreak') == 'yes' if 'tiebreak_field' in request.form else None
+    if request.form.get('rules') == 'pkl12':                # the PKL Season 12 preset (UPG-396)
+        points, tiebreak = dict(services_sports.PKL12_POINTS), True
+    _save(event_id, lambda cur, _e: services_sports.set_points(cur, points, tiebreak),
           "Points rule saved; the table is worked out again.", 'standings',
           ("TOURNAMENT_POINTS", f"set the points to {points}"))
     return _back(event_id, 'standings')
+
+
+@sports_bp.route('/<event_id>/scoring', methods=['POST'])
+@login_required
+def scoring_mode(event_id):
+    """PKL mode on or off (UPG-397): matches opened for live scoring after this
+    are scored raid by raid; a match already being scored keeps its way."""
+    import services_sports
+    if not _allowed(_event(event_id), 'edit_event'):
+        abort(403)
+    on = request.form.get('scoring') == 'pkl'
+
+    def fn(cur, _e):
+        if not services_sports.is_kabaddi(cur):
+            raise services_sports.TournamentError("PKL mode is for a kabaddi tournament.")
+        new = dict(cur)
+        if on:
+            new['scoring'] = 'pkl'
+        else:
+            new.pop('scoring', None)
+        return new
+    _save(event_id, fn, "PKL mode is on: matches opened for scoring from now are scored raid by raid."
+          if on else "PKL mode is off: matches opened from now are scored point by point.", 'scoring',
+          ("TOURNAMENT_SCORING", f"turned PKL mode {'on' if on else 'off'}"))
+    return _back(event_id, 'scoring')
 
 
 @sports_bp.route('/<event_id>/playoffs/undo', methods=['POST'])
@@ -495,7 +545,7 @@ def scorer(event_id, match_id):
                            squads={'home': live.players(full, doc['home']), 'away': live.players(full, doc['away'])},
                            knockout=services_sports.knockout_match(t, live._match(t, match_id)),
                            stage=services_sports.stage_name(live._match(t, match_id)),
-                           max_points=live.MAX_PICKED_POINTS)
+                           max_points=live.MAX_PICKED_POINTS, tiebreak=services_sports.tiebreak_on(t), live=live)
 
 
 @sports_bp.route('/<event_id>/match/<match_id>/score', methods=['POST'])
@@ -521,9 +571,25 @@ def score_tap(event_id, match_id):
         elif op == 'reopen':
             doc = live.reopen(db, event_id, match_id, tap)
             log_action(db, "MATCH_RESULT_CLEARED", f"{session.get('user_id')} reopened {match_id} of {event_id}")
+        elif op == 'state':                           # after a refused tap: the match as it is
+            doc = live.get(db, event_id, match_id)
+            if doc is None:
+                raise live.LiveMatchError("Open the match's scoring page first.")
+        elif op == 'raid' or op == 'call':           # PKL mode (UPG-397)
+            doc = live.add_event(db, event_id, live.with_squads(db, event_id, event, match_id), match_id, tap,
+                                 'raid' if op == 'raid' else str(data.get('kind') or ''), str(data.get('team') or ''),
+                                 str(data.get('outcome') or ''), data.get('touches'), _yes(data.get('bonus')),
+                                 str(data.get('raider') or ''), str(data.get('tackler') or ''),
+                                 _yes(data.get('upheld')), _int(data.get('change'), 0), session.get('user_id', ''))
+        elif op == 'shootout':                        # the tie-breaker (UPG-396)
+            doc = live.shootout_raid(db, event_id, match_id, tap, str(data.get('team') or ''),
+                                     str(data.get('outcome') or ''), data.get('touches'), _yes(data.get('bonus')))
+        elif op == 'decide':
+            doc = live.shootout_decide(db, event_id, match_id, tap, str(data.get('way') or ''),
+                                       str(data.get('winner') or ''))
         elif op == 'phase':
             doc = live.change_phase(db, event_id, event, match_id, tap, str(data.get('action') or ''),
-                                    str(data.get('winner') or ''))
+                                    str(data.get('winner') or ''), str(data.get('first') or ''))
             if doc.get('phase') == 'full_time' and data.get('action') == 'full_time':
                 log_action(db, "MATCH_RESULT", f"{session.get('user_id')} ended {match_id} of {event_id} live: "
                            f"{doc['result']['home']}-{doc['result']['away']}")
@@ -531,8 +597,25 @@ def score_tap(event_id, match_id):
             return jsonify(ok=False, error="Unknown action."), 400
     except live.LiveMatchError as exc:
         return jsonify(ok=False, error=str(exc)), 409
-    names = services_sports.names((_event(event_id).get('tournament') or {}))
-    return jsonify(ok=True, state=live.state(doc, names), entries=live.entries(doc, names))
+    _fresh(event_id)
+    live._cache.pop(('state', event_id, match_id), None)
+    names = services_sports.names(event.get('tournament') or {})   # names don't change with a tap (UPG-403)
+    st = live.state(doc, names)
+    return jsonify(ok=True, state=st, entries=live.entries(doc, names),
+                   panel=_scorer_panel(event, match_id, doc, st, names))
+
+
+def _yes(value) -> bool:
+    return value is True or str(value or '').strip().lower() in ('1', 'true', 'yes', 'on')
+
+
+def _scorer_panel(event, match_id, doc, st, names):
+    """The PKL-mode raid panel and the tie-breaker, rendered again after each tap."""
+    import services_live_match as live
+    full = live.with_squads(db, event['id'], event, match_id)
+    return render_template('spoc/_pkl_panel.html', event=event, doc=doc, state=st, names=names,
+                           squads={'home': live.players(full, doc['home']), 'away': live.players(full, doc['away'])},
+                           live=live)
 
 
 @sports_bp.route('/live/<event_id>/<match_id>')
@@ -594,14 +677,73 @@ def screen(event_id):
     follows the match being played, the pool tables, the bracket and the top
     players, and refreshes by itself."""
     event = _event(event_id)
-    return render_template('public/tournament_screen.html', event=event, **_screen(event))
+    return render_template('public/tournament_screen.html', event=event, **_screen(event),
+                           fixtures_url=f"{public_base()}/tournament/fixtures/{event_id}")
+
+
+SCREEN_SECONDS = 1.5      # one render serves every screen and phone asking in this time (UPG-403)
 
 
 @sports_bp.route('/screen/<event_id>/body')
 def screen_body(event_id):
-    """The big screen's contents, fetched every few seconds."""
-    event = _event(event_id)
-    return render_template('public/_screen_body.html', event=event, **_screen(event))
+    """The big screen's contents, fetched every two seconds. Rendered at most
+    once a second and a half per event, and only sent when it changed (ETag)."""
+    import hashlib
+    import services_live_match as live
+    key = ('screen', event_id)
+    hit = live._cache.get(key)
+    if not hit or hit[0] <= live._now():
+        event = _event(event_id)
+        html = render_template('public/_screen_body.html', event=event, **_screen(event))
+        tag = '"' + hashlib.sha1(html.encode('utf-8'), usedforsecurity=False).hexdigest()[:20] + '"'
+        hit = (live._now() + SCREEN_SECONDS, tag, html)
+        live._cache[key] = hit
+    _, tag, html = hit
+    if request.headers.get('If-None-Match') == tag:
+        resp = current_app.response_class(status=304)
+    else:
+        resp = current_app.response_class(html, mimetype='text/html')
+    resp.headers['ETag'] = tag
+    resp.headers['Cache-Control'] = 'no-cache'
+    return resp
+
+
+_qr_cache = {}
+
+
+def public_base() -> str:
+    """The address people open: the institution's public URL, else the trusted
+    base address (BASE_URL, or a trusted host this request came in on; never a
+    forged Host header). Also the link previews' address (og_sports.html)."""
+    import services_institution
+    from utils_email import _base_url
+    try:
+        base = services_institution.profile(db).get('public_url') or ''
+    except Exception:
+        base = ''
+    return (base or _base_url()).rstrip('/')
+
+
+sports_bp.add_app_template_global(public_base, 'sports_public_base')
+
+
+@sports_bp.route('/screen/<event_id>/qr.svg')
+def screen_qr(event_id):
+    """The QR code on the big screen (UPG-402): the audience scan it to open
+    the fixtures and live scores on their phones. No login."""
+    import io
+    import qrcode
+    import qrcode.image.svg
+    _event(event_id)                                  # 404 for an unknown event
+    target = f"{public_base()}/tournament/fixtures/{event_id}"
+    svg = _qr_cache.get(target)
+    if svg is None:
+        out = io.BytesIO()
+        qrcode.make(target, image_factory=qrcode.image.svg.SvgPathImage, box_size=10, border=2).save(out)
+        svg = _qr_cache[target] = out.getvalue()
+    resp = current_app.response_class(svg, mimetype='image/svg+xml')
+    resp.headers['Cache-Control'] = 'public, max-age=3600'
+    return resp
 
 
 def _screen(event):

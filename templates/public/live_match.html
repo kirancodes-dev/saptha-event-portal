@@ -18,6 +18,8 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="/static/css/live_match.css">
+{% set og_title = names.get(match.home, 'TBD') ~ ' v ' ~ names.get(match.away, 'TBD') ~ ' · ' ~ event.title %}
+{% include "includes/og_sports.html" %}
 {% endblock %}
 
 {% block content %}
@@ -32,7 +34,7 @@
       <div class="live-board__halves" data-halves="home">{% if state %}{{ state.home.halves[0] }} · {{ state.home.halves[1] }}{% endif %}</div>
     </div>
     <div class="live-board__middle">
-      <span class="live-dot" data-live-dot {% if not (state and state.phase in ('first_half', 'half_time', 'second_half')) %}hidden{% endif %}>LIVE</span>
+      <span class="live-dot" data-live-dot {% if not (state and state.phase in ('first_half', 'half_time', 'second_half', 'tiebreak')) %}hidden{% endif %}>LIVE</span>
       <div class="live-board__phase" data-phase-name>{{ state.phase_name if state else ('Full time' if match.status == 'played' else 'Not started') }}</div>
       <div class="live-board__clock" data-clock-text>{% if state %}{{ '%02d:%02d' % (state.clock // 60, state.clock % 60) }}{% endif %}</div>
     </div>
@@ -43,6 +45,10 @@
       <div class="live-board__halves" data-halves="away">{% if state %}{{ state.away.halves[0] }} · {{ state.away.halves[1] }}{% endif %}</div>
     </div>
   </section>
+  {#- PKL mode: who raids, do-or-die, the mat; the tie-breaker (UPG-396, UPG-397) #}
+  <p class="live-board__mat" data-mat-line {% if not (state and state.mat_text) %}hidden{% endif %}>{{ state.mat_text if state else '' }}</p>
+  <p class="live-board__shootout" data-shootout-line {% if not (state and state.shootout_text) %}hidden{% endif %}>{{ state.shootout_text if state else '' }}</p>
+  {% if match.tiebreak and match.winner %}{% set m = match %}{% include "includes/tiebreak.html" %}{% endif %}
 
   {% if (event.tournament.sport or '')|lower == 'kabaddi' %}
   {#- Shown from the start, filled in as the points come (the page may open before kick-off) #}

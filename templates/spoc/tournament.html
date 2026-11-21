@@ -32,24 +32,41 @@
                         <option value="league_knockout" {% if defaults.format == 'league_knockout' %}selected{% endif %}>League then knockout (playoffs)</option>
                     </select>
                 </div>
+                {% if defaults.sport|lower == 'kabaddi' %}
+                {#- PKL Season 12 points and tie-breaker, or the older rule (UPG-396); PKL mode (UPG-397) #}
+                <div class="col-md-5">
+                    <label for="rules" class="form-label mb-1">Points rule</label>
+                    <select id="rules" name="rules" class="form-select" data-rules-switch>
+                        <option value="pkl12" {% if not t or t.tiebreak %}selected{% endif %}>{{ sports.RULES.pkl12 }}</option>
+                        <option value="classic" {% if t and not t.tiebreak %}selected{% endif %}>{{ sports.RULES.classic }} (or your own numbers)</option>
+                    </select>
+                    <div class="form-text">Season 12: a level score after full time goes to a 5-raid shootout, then the golden raid.</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="scoring" value="pkl" id="scoring" {% if not t or t.scoring == 'pkl' %}checked{% endif %}>
+                        <label class="form-check-label" for="scoring">PKL mode: score raid by raid (the mat, do-or-die, all outs, super tackles, time-outs)</label>
+                    </div>
+                </div>
+                {% endif %}
                 {#- League points; a kabaddi event starts at 5 / 3 / 0, and 1 for losing by 7 or fewer (UPG-350) #}
-                <div class="col-6 col-md-2">
+                <div class="col-6 col-md-2" data-points-field>
                     <label for="points_win" class="form-label mb-1">Win points</label>
                     <input type="number" min="0" id="points_win" name="points_win" class="form-control" value="{{ defaults.points.win }}">
                 </div>
-                <div class="col-6 col-md-2">
+                <div class="col-6 col-md-2" data-points-field>
                     <label for="points_draw" class="form-label mb-1">Tie / draw points</label>
                     <input type="number" min="0" id="points_draw" name="points_draw" class="form-control" value="{{ defaults.points.draw }}">
                 </div>
-                <div class="col-6 col-md-2">
+                <div class="col-6 col-md-2" data-points-field>
                     <label for="points_loss" class="form-label mb-1">Loss points</label>
                     <input type="number" min="0" id="points_loss" name="points_loss" class="form-control" value="{{ defaults.points.loss }}">
                 </div>
-                <div class="col-6 col-md-3">
+                <div class="col-6 col-md-3" data-points-field>
                     <label for="points_close_loss" class="form-label mb-1">Close-loss points</label>
                     <input type="number" min="0" id="points_close_loss" name="points_close_loss" class="form-control" value="{{ defaults.points.close_loss }}">
                 </div>
-                <div class="col-6 col-md-3">
+                <div class="col-6 col-md-3" data-points-field>
                     <label for="points_close_margin" class="form-label mb-1">Close loss = lost by at most</label>
                     <input type="number" min="0" id="points_close_margin" name="points_close_margin" class="form-control" value="{{ defaults.points.close_margin }}">
                     <div class="form-text">0 turns the close-loss point off.</div>
@@ -127,6 +144,16 @@
               }
               sw.addEventListener('change', show);
             })();
+            (function () {
+              // PKL Season 12 sets the points itself: the number boxes are for the older rule
+              var rules = document.querySelector('[data-rules-switch]');
+              if (!rules) return;
+              function show() {
+                document.querySelectorAll('[data-points-field]').forEach(function (el) { el.hidden = rules.value === 'pkl12'; });
+              }
+              rules.addEventListener('change', show);
+              show();
+            })();
             </script>
         {% endif %}
     </div>
@@ -141,7 +168,23 @@
             <h2 class="h5 mb-0">Big screen and the road to the final</h2>
             <a href="/tournament/screen/{{ event.id }}" target="_blank" rel="noopener" class="btn btn-sm btn-primary" data-screen-link><i class="fas fa-tv" aria-hidden="true"></i> Open the big screen</a>
         </div>
-        <p class="small text-muted mb-0 mt-1">Open it on the laptop joined to the monitor or projector and press "Full screen". It follows the match being scored, the pool tables, this map and the top players by itself; no login.</p>
+        <p class="small text-muted mb-0 mt-1">Open it on the laptop joined to the monitor or projector and press "Full screen". It follows the match being scored, the pool tables, this map and the top players by itself; no login. The screen shows a QR code: the audience scan it for the live scores on their phones.</p>
+        {% if can_generate and sports.is_kabaddi(t) %}
+        {#- PKL mode on or off (UPG-397) #}
+        <form method="POST" action="/tournament/{{ event.id }}/scoring" class="d-flex flex-wrap gap-2 align-items-center mt-2" id="scoring" data-scoring-mode>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% if t.scoring == 'pkl' %}
+            <span class="badge bg-success">PKL mode on</span>
+            <span class="small text-muted">Matches are scored raid by raid: the mat, do-or-die, all outs, super tackles, time-outs.</span>
+            <button type="submit" name="scoring" value="" class="btn btn-sm btn-outline-secondary">Turn off: score point by point</button>
+            {% else %}
+            <span class="badge bg-secondary">PKL mode off</span>
+            <span class="small text-muted">Matches are scored point by point with the +1 to +7 buttons.</span>
+            <button type="submit" name="scoring" value="pkl" class="btn btn-sm btn-outline-primary">Turn on PKL mode</button>
+            {% endif %}
+            <span class="small text-muted w-100">It applies to matches opened for scoring after the change; a match already being scored keeps its way.</span>
+        </form>
+        {% endif %}
         {% include "includes/bracket.html" %}
     </div>
 </div>
@@ -333,7 +376,17 @@
                     <input type="number" min="0" id="rule_{{ key }}" name="points_{{ key }}" class="form-control form-control-sm" value="{{ t.points[key] if t.points and t.points[key] is defined else 0 }}">
                 </div>
                 {% endfor %}
+                <div class="col-12">
+                    <input type="hidden" name="tiebreak_field" value="1">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="tiebreak" value="yes" id="rule_tiebreak" {% if t.tiebreak %}checked{% endif %}>
+                        <label class="form-check-label small" for="rule_tiebreak">No ties: a level score goes to the tie-breaker (PKL Season 12)</label>
+                    </div>
+                </div>
                 <div class="col-md-2"><button type="submit" class="btn btn-sm btn-outline-primary w-100">Save rule</button></div>
+                {% if sports.is_kabaddi(t) %}
+                <div class="col-md-4"><button type="submit" name="rules" value="pkl12" class="btn btn-sm btn-outline-secondary w-100">Use PKL Season 12 (2 / 0, tie-breaker)</button></div>
+                {% endif %}
             </form>
         </details>
         {% endif %}
@@ -441,6 +494,7 @@
                             <span>{% if logos.get(m.away) %}<img src="{{ logos[m.away] }}" alt="" class="team-logo me-1" width="24" height="24">{% endif %}{% if m.away %}{{ names.get(m.away, m.away) }}{% else %}<em>TBD</em>{% endif %}</span>
                             <span class="badge bg-dark fs-6" data-score-badge>{{ ('W/O' if m.winner == m.away else '–') if m.walkover else (m.away_score if m.away_score is not none else '-') }}</span>
                         </div>
+                        {% include "includes/tiebreak.html" %}
                         {% if m.venue or m.date or m.time %}
                         <div class="small text-muted mt-1">
                             <i class="fas fa-map-marker-alt me-1"></i> {{ m.venue or 'Venue TBA' }}
@@ -471,7 +525,7 @@
                                     <label class="form-label small mb-1 text-truncate d-block" for="as-{{ m.id }}" title="{{ names.get(m.away, m.away) or 'Away' }}">{{ names.get(m.away, m.away) or 'Away' }} score</label>
                                     <input type="number" min="0" id="as-{{ m.id }}" name="away_score" class="form-control form-control-sm" value="{{ m.away_score if m.away_score is not none else 0 }}" required>
                                 </div>
-                                {% if sports.knockout_match(t, m) %}
+                                {% if sports.needs_winner(t, m) %}
                                 <div class="col-4">
                                     <label class="form-label small mb-1" for="tw-{{ m.id }}">If tied, winner</label>
                                     <select id="tw-{{ m.id }}" name="winner" class="form-select form-select-sm">
@@ -480,6 +534,23 @@
                                         {% if m.away %}<option value="{{ m.away }}" {% if m.winner == m.away %}selected{% endif %}>{{ names.get(m.away, m.away) }}</option>{% endif %}
                                     </select>
                                 </div>
+                                {% if sports.tiebreak_on(t) %}
+                                {#- How a tie was decided (UPG-396) #}
+                                <div class="col-4">
+                                    <label class="form-label small mb-1" for="tbw-{{ m.id }}">Tie decided by</label>
+                                    <select id="tbw-{{ m.id }}" name="tb_way" class="form-select form-select-sm">
+                                        {% for way, text in sports.TIEBREAK_WAYS.items() %}<option value="{{ way }}" {% if (m.tiebreak or {}).decided == way %}selected{% endif %}>{{ text|capitalize }}</option>{% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label small mb-1" for="tbh-{{ m.id }}">Shootout: {{ names.get(m.home, m.home) or 'Home' }}</label>
+                                    <input type="number" min="0" id="tbh-{{ m.id }}" name="tb_home" class="form-control form-control-sm" value="{{ (m.tiebreak or {}).home if (m.tiebreak or {}).home is not none else '' }}">
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label small mb-1" for="tba-{{ m.id }}">Shootout: {{ names.get(m.away, m.away) or 'Away' }}</label>
+                                    <input type="number" min="0" id="tba-{{ m.id }}" name="tb_away" class="form-control form-control-sm" value="{{ (m.tiebreak or {}).away if (m.tiebreak or {}).away is not none else '' }}">
+                                </div>
+                                {% endif %}
                                 {% endif %}
                                 <div class="col-12 mt-2">
                                     <button type="submit" class="btn btn-sm btn-success w-100">Save Result</button>

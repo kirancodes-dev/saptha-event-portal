@@ -55,7 +55,8 @@ def _chain(name):
 # Not pages: HTML a page fetches and inserts (the home page's event popup asks
 # /event/<id>?fragment=1 for this, UPG-92; the big screen asks
 # /tournament/screen/<id>/body every few seconds, UPG-392)
-FRAGMENTS = {'public/event_fragment.html', 'public/_screen_body.html'}
+FRAGMENTS = {'public/event_fragment.html', 'public/_screen_body.html',
+             'spoc/_pkl_panel.html'}   # the scorer's PKL panel, sent again after each tap (UPG-397)
 
 
 def test_every_rendered_template_extends_the_shared_document():

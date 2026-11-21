@@ -1,0 +1,14 @@
+{#- Link previews for the public sports pages (UPG-402): a link shared on
+    WhatsApp or anywhere shows the college logo and the event. Needs `event`;
+    `og_title` optional. The address is absolute, as previews need: the portal's public address,
+    never the request's Host header. -#}
+{% set og_base = sports_public_base() %}
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Sapthagiri NPS University">
+<meta property="og:title" content="{{ og_title if og_title is defined and og_title else event.title }}">
+<meta property="og:description" content="Live scores, fixtures and standings: {{ event.title }}">
+<meta property="og:url" content="{{ og_base }}{{ request.path }}">
+<meta property="og:image" content="{{ og_base }}/static/snpsu-logo.png" data-og-logo>
+<meta property="og:image:alt" content="Sapthagiri NPS University">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="{{ og_base }}/static/snpsu-logo.png">

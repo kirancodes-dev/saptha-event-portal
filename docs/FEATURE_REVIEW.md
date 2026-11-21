@@ -439,6 +439,7 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 | UPG-398 | A result counts the moment it's saved, with no approval or reason | TODO | Optional approval: a result waits for the SPOC before the tables count it; a correction asks for a reason; Cancelled as a match state. |
 | UPG-399 | No team page or player profile | TODO | A public team page (squad, logo, results, pool place) and a player profile (matches and points). |
 | UPG-400 | A season's rules aren't versioned | TODO | A season holds its rules version (points, tie handling, half length, roster size), shown before the season is activated; changing it later is recorded. |
+| UPG-401 | Two teams with the same name confuse the fixture sheet | TODO | Generate warns when two confirmed teams share a name; the sheet upload refuses a name that fits two teams and says which, instead of picking one. |
 
 ## Open items
 
@@ -1572,6 +1573,14 @@ The owner asked to "make the full portal user friendly" and chose: walk every ro
 - **Fix:** A season holds its rules version (points, tie handling, half length, roster size), shown before the season is activated; changing it later is recorded.
 - **Acceptance criteria:** to be written when it's picked; each part above needs a test.
 - **Depends on:** UPG-391 to UPG-395.
+
+#### UPG-401 — Two teams with the same name confuse the fixture sheet
+- **Status:** TODO
+- **Last verified:** 2026-11-21, on `b15f603` [C]
+- **Problem:** Found by the owner on 21 Nov 2026: a test kabaddi event had two registrations both called "Saptha Raiders" and one called Vajra. Generate made a 3-team league with no warning, and the exported sheet shows M-03 as "Saptha Raiders v Saptha Raiders". `apply_schedule` (`services_sports.py:883`) maps each name to one team id (`by_name`, the last registration wins), so uploading the sheet unchanged moves M-01 and M-02 to the other "Saptha Raiders" without saying so, and fails on M-03 with "a team can't play itself".
+- **Fix:** Generate (and the SPOC's teams list) warns when two confirmed teams share a name; the upload refuses a name that fits two teams ("two teams are called …; rename one"), and a row it leaves unchanged stays unchanged.
+- **Acceptance criteria:** 1. Test: two teams with the same name: the tournament page warns. 2. Test: the unchanged sheet uploads with 0 changes and no team moved; a row naming the shared name for a new team is refused with the reason.
+- **Depends on:** UPG-391.
 
 ### Sports and cultural events up to the hackathon's level (owner, 2026-11-20; Kabaddi first)
 

@@ -762,6 +762,12 @@ h1, h2, h3, h4, h5, h6 {
     justify-content: flex-start !important;
   }
 }
+/* The list column's own heading, only where the overview is hidden (UPG-374) */
+.spoc-phone-head { display: none; }
+@media (max-width: 992px) {
+  .spoc-phone-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .spoc-phone-head .btn { min-height: 44px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+}
 /* CSS-based display toggling for Master-Detail Layout on Mobile */
   @media (max-width: 992px) {
     .dashboard-layout:not(.show-detail) .sidebar-column {
@@ -1194,6 +1200,14 @@ h1, h2, h3, h4, h5, h6 {
     
     <!-- LEFT COLUMN: SIDEBAR -->
     <div class="sidebar-column" id="tour-sidebar">
+      {#- On a phone the overview (and its heading) is hidden until an event is picked: say where the SPOC is (UPG-374) -#}
+      <div class="spoc-phone-head" data-phone-heading>
+        <div>
+          <h1 class="h5 mb-0">{{ session.get('name', 'SPOC') }}'s console</h1>
+          <p class="text-muted mb-0" style="font-size:12px;">{{ events | length }} event{{ 's' if events | length != 1 }}</p>
+        </div>
+        <a href="/spoc/create_event" class="btn btn-primary btn-sm"><i class="fas fa-plus" aria-hidden="true"></i> Create event</a>
+      </div>
       <div class="event-search-wrapper" id="tour-search">
         <form method="get" action="/spoc/dashboard" class="search-box-container" role="search">
           {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}

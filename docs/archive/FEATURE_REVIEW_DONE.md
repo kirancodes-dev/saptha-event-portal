@@ -69,7 +69,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Coupons | NOT CONNECTED in the UI [C] | `routes_coupons.py`, `services_payments.py:36-73` | `create_order` applies a coupon validated on the server if one is sent (BLK-03), but no template or JS sends one or calls `/coupons/*`. Since UPG-36 each order holds a use when it's created (race-free), so `max_uses` holds even when payers check out together. |
 | Digital ticket page | PARTLY BUILT [R] | `routes_ticket.py:224-281` | New registrations open; the seeded registration shows "not your ticket" because `is_lead` reads `lead_email` (`routes_ticket.py:243`), which postgres mode returned as `leadEmail` at `694c729`. At `1f4cdc8` the key reads back correctly [R round-trip]; the page wasn't re-run. Re-run 2026-10-12 [R, SQLite dev seed]: the owner is sent back "not your ticket" again, because `to_dict()` returns only `leadEmail` (UPG-69). The page is restyled on the brand (UPG-63). Since UPG-242 the back shows the event's own guidelines (set on the edit page, else the general venue lines) and its support email (`routes_ticket.py:392`, `templates/participant/ticket.html:538`). |
 | Camera QR check-in (coordinator, SPOC, HUD) | WORKING [R at UPG-02] | `routes_ticket.py:123-217`, `templates/coordinator/scan.html:238`, `templates/spoc/scan.html:454`, `templates/coordinator/scan_hud.html:340` | Every scanner posts the scanned ticket to `POST /ticket/api/checkin`: signed tokens only, assigned staff only (`can`, BLK-18), one payment rule (free/waived/paid in any case; a free event owes nothing), idempotent with the first check-in time, refuses another event's ticket and a ticket whose event is gone. Tested on the real database and against the page scripts; not yet driven with a phone camera. Scanner list shows events in every event-day status since UPG-43 (built, untested). With the SPOC's entry list on, a team not selected is refused: "Not on the entry list – no entry." (UPG-214, `routes_ticket.py:211`). The coordinator's scanner lists everyone on a team, the lead first and marked Lead, with or without a USN, and saves each person ticked by their place on the team (UPG-318 [T]). |
-| Manual check-in (SPOC list) | WORKING from the first day to the last, and after [T at UPG-378] | `routes_spoc.py:801-911` | Open from the event's first day to its last, in India (it was the first day only, by the server's clock). After the event the button is "Mark present": present for every day, `checkin_late`, who marked them, audit-logged; not a cancelled team (UPG-378). Names read back since BLK-09; BLK-05's journey test checks in through this route on the real database. See UPG-379 (no cancelled check or day during the event). |
+| Manual check-in (SPOC list) | WORKING from the first day to the last, and after [T at UPG-378] | `routes_spoc.py:801-911` | Open from the event's first day to its last, in India (it was the first day only, by the server's clock). After the event the button is "Mark present": present for every day, `checkin_late`, who marked them, audit-logged; not a cancelled team (UPG-378); a team off the entry list once the SPOC confirms it came (UPG-380). Names read back since BLK-09; BLK-05's journey test checks in through this route on the real database. See UPG-379 (no cancelled check or day during the event). |
 | Kiosk check-in | WORKING in the root app [R at UPG-02] | `routes_checkin.py:236-349`, `templates/public/kiosk.html:700` | Login + coordinator role + `check_in` on the event; search returns no email or phone (BLK-12). Confirm after a name search uses the shared check-in (payment rule, "already checked in at HH:MM"); a USB scanner can scan tickets into the search box (UPG-02). Search results insert names with `innerHTML` (BLK-19). **The `functions/saptha_app` copy's kiosk has no login at all** (BLK-12); removed in Phase 5 (UPG-15, D-1). |
 | Venue-QR self check-in | WORKING in the root app [R at BLK-12] | `routes_checkin.py:65-172` | Root app: needs the logged-in owner plus a signed venue code valid for 10 minutes (`routes_checkin.py:86-128`). Pinned on the real database by BLK-12. The `functions/` copy checks in by a typed email alone (removed in Phase 5, UPG-15, D-1). |
 | Offline check-in (PWA queue) | WORKING in tests [R at UPG-02] | `static/js/offline-sync.js`, `templates/coordinator/scan_hud.html:13`, `static/sw.js:20` | The HUD queues scans in IndexedDB when offline (one entry per ticket) and replays them to the shared endpoint; repeats answer "already in". Run in Node against the live app, not yet in a phone browser. `/api/v1/.../checkin-batch` is JWT-only with no UI. The scan screen keeps the SPOC's entry list on the phone and turns away a team not on it while offline (UPG-214). Since 2026-11-15 (UPG-269, T and run in a browser): a kept scan counts for the day it was made; scans belong to the account that made them and are cleared at sync and sign-out; the HUD reports what the server said; `docs/PWA.md` matches. |
@@ -6424,3 +6424,58 @@ The owner asked that any problem in a tournament can be fixed by the SPOC or the
   2. Before the event the message says the day in words. ✅ `test_before_the_event_says_when_check_in_opens`.
   3. After the event the SPOC marks present, it is recorded with who did it, and the certificate counts them. ✅ `test_after_the_event_the_spoc_marks_present_and_the_certificate_counts_them`, `test_the_scan_page_after_the_event_offers_mark_present`.
   4. A cancelled registration can't be marked. ✅ `test_a_cancelled_registration_cannot_be_marked_present`.
+
+#### UPG-380 — "Mark present" refuses a team the entry list left out
+- **Status:** DONE
+- **Last verified:** 2026-11-21, uncommitted on `ec62dc8` [T]
+- **Problem:** Reported by the owner on 21 Nov 2026 with a screenshot of the live v1.16 (`saptha-ec62`): on the hackathon's scanner, Manual List, Absent, pressing **Mark present** (UPG-378) said "Invalid Ticket — Not on the entry list – no entry." The hackathon uses the entry list (UPG-214), and the teams that came but weren't scanned weren't ticked on it, or were out after a round. UPG-378 refused them as the gate does, so the SPOC couldn't mark them or give them certificates.
+- **What was built:** after the event a team the entry list leaves out gets a question instead of a refusal: "<Team> isn't on the entry list" (or "was out of the competition in a round") ". Mark present anyway? Only if you're sure they came." On yes the page sends `override_entry_list` and the team is marked present as in UPG-378, with `checkin_off_list` and "(not on the entry list)" in the `LATE_CHECKIN` audit line. A team on the list gets no second question; a cancelled team is still never marked. During the event the gate's entry list is unchanged.
+- **Evidence:** `routes_spoc.py:829-831` (the override passed on), `:881-896` (the question), `:910-911` (`checkin_off_list`), `:917-918` (the audit line); `templates/spoc/scan.html:414-428`; tests `tests/test_late_checkin.py` (3 new, 16 in all).
+- **Acceptance criteria:**
+  1. A team off the entry list (not ticked, or out in a round) is asked about, unchanged until the SPOC confirms, then marked with the override recorded. ✅ `test_a_team_off_the_entry_list_is_marked_present_once_the_spoc_confirms`, `test_the_scan_page_asks_again_for_a_team_off_the_list`.
+  2. A cancelled team is never marked, even with the override. ✅ `test_a_cancelled_team_is_never_marked_even_with_the_override`.
+
+#### UPG-369 — The admin's lists are wider than a phone
+- **Status:** DONE
+- **Last verified:** 2026-11-21, uncommitted on `ec62dc8` [T, R in Chromium at 390 px and 1280 px]
+- **Problem:** "All events" is 815 px wide on a 390 px screen: the event name, kind, date and "Visitors see" are squeezed into one narrow column, one word a line, and status and registrations are off the screen.
+- **What was built:** Both tables use the shared phone layout `.table-stack` with `data-label` cells; the event's name cell and the user's name cell are the card's title, the action buttons wrap below. The users list's email cell stays a plain `<td>` (the admin users tests read it); its "Email" label comes from CSS. Nothing changes on a computer.
+- **Evidence:** `templates/admin/events.html:26-34,77`, `templates/admin/users.html:9-16,80,93,108` (the shared `.table-stack`, `static/css/global.css:2313-2318`); test `tests/test_phone_cards_and_labels.py:29` (both pages no wider than 390 px).
+- **Acceptance criteria:**
+  1. On a 390 px screen the admin's events and users pages are no wider than the screen. ✅ `test_the_admin_lists_and_numbers_fit_a_phone`.
+
+#### UPG-370 — The admin dashboard's numbers fill a whole phone screen
+- **Status:** DONE
+- **Last verified:** 2026-11-21, uncommitted on `ec62dc8` [T, R in Chromium at 390 px and 1280 px]
+- **Problem:** The six number cards (events, registrations, revenue, staff, SPOCs, students) are one per row on a phone, about 1,100 px before anything else.
+- **What was built:** Under 768 px `.stat-grid` has two columns and each `.stat-card` is a small grid, the icon spanning the number's rows. Nothing changes on a computer.
+- **Evidence:** `templates/admin/dashboard.html:73-77`; test `tests/test_phone_cards_and_labels.py:29` (six cards in at most three rows).
+- **Acceptance criteria:**
+  1. On a 390 px screen the six cards take at most three rows. ✅ `test_the_admin_lists_and_numbers_fit_a_phone`.
+
+#### UPG-371 — The coordinator's event cards start with a large empty banner
+- **Status:** DONE
+- **Last verified:** 2026-11-21, uncommitted on `ec62dc8` [T, R in Chromium at 390 px and 1280 px]
+- **Problem:** With no event image, each card on the coordinator's dashboard begins with a 130 px dark block holding only an icon.
+- **What was built:** Without `banner_url` the card opens with `.ev-band` (navy, a 3 px gold line below) holding the category chip and the status badge; with an image the banner is as before.
+- **Evidence:** `templates/coordinator/dashboard.html:19-22,91-92`; test `tests/test_phone_cards_and_labels.py:66`.
+- **Acceptance criteria:**
+  1. An event without an image has no banner block on the coordinator's dashboard. ✅ `test_an_event_without_an_image_has_a_thin_band_on_the_coordinators_page`.
+
+#### UPG-372 — The tournament page's fields have no labels
+- **Status:** DONE
+- **Last verified:** 2026-11-21, uncommitted on `ec62dc8` [T, R in Chromium at 390 px and 1280 px]
+- **Problem:** The score, winner, date, time, venue and home/away fields on the SPOC's tournament page have no label a screen reader can read (`templates/spoc/tournament.html`, the match forms).
+- **What was built:** Each match form's score, tie-winner, date, time and venue fields and the set-teams selects have a `<label for>` with a unique id per match (`hs-`, `as-`, `tw-`, `md-`, `mt-`, `mv-`, `mteam-<side>-`).
+- **Evidence:** `templates/spoc/tournament.html:350,354,359,381,385,389,424`; test `tests/test_phone_cards_and_labels.py:108`.
+- **Acceptance criteria:**
+  1. Every input and select on the tournament page has a label. ✅ `test_every_field_on_the_tournament_page_has_a_label`.
+
+#### UPG-374 — The SPOC's console on a phone opens with no heading
+- **Status:** DONE
+- **Last verified:** 2026-11-21, uncommitted on `ec62dc8` [T, R in Chromium at 390 px and 1280 px]
+- **Problem:** On a phone `/spoc/dashboard` opens on the search box, the filter pills and the event list. The page's only heading ("…'s console", `templates/spoc/dashboard.html:1257`) is in the overview column, which is hidden on a phone until an event or Global Overview is picked (`:770-776`). The SPOC sees no title saying where they are, and a screen reader finds no heading. Found building UPG-363.
+- **What was built:** A heading block at the top of the list column, shown only up to 992 px (where the overview is hidden), with the Create event button 44 px tall; on a computer the overview's heading is the only one.
+- **Evidence:** `templates/spoc/dashboard.html:765-769,1203-1204`; test `tests/test_spoc_phone_heading.py:24`.
+- **Acceptance criteria:**
+  1. On a 390 px screen the first thing under the header is a visible heading. ✅ `test_the_spoc_console_opens_with_a_heading_on_a_phone`.

@@ -4,6 +4,19 @@
 {% block title %}Users{% endblock %}
 {% block page_title %}Users{% endblock %}
 {% block page_sub %}Every account on the portal. Open one to change its role, department or category, or to deactivate it.{% endblock %}
+{% block extra_css %}
+<style>
+/* On a phone each account is a card (UPG-369) */
+@media (max-width: 767.98px) {
+  .table-stack td.au-main { display: block; text-align: left; padding-top: 0.6rem; }
+  /* the email cell stays a plain <td> (tests read it); its label comes from here */
+  .table-stack td.au-main + td { overflow-wrap: anywhere; }
+  .table-stack td.au-main + td::before { content: "Email"; }
+  .table-stack td.au-act { flex-wrap: wrap; justify-content: flex-start; }
+  .table-stack td.au-act::before { content: none; }
+}
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="card">
@@ -64,7 +77,7 @@
         </div>
         {% include "includes/list_search.html" %}
         <div class="table-responsive">
-            <table class="table">
+            <table class="table table-stack" data-phone-cards>
                 <thead>
                     <tr>
                         <th scope="col">Name</th>
@@ -77,22 +90,22 @@
                 <tbody>
                     {% for a in accounts %}
                     <tr>
-                        <td>
+                        <td class="au-main">
                             <a href="/admin/users/{{ a.email }}">{{ a.name or '—' }}</a>{% if not a.active %} <span class="badge badge-danger">Deactivated</span>{% endif %}
                             {% if a.usn %}
                                 <div class="small text-muted">{{ a.usn }}{% if a.department %} &middot; {{ a.department }}{% endif %}{% if a.year %} (Yr {{ a.year }}{% if a.section %} Sec {{ a.section }}{% endif %}){% endif %}</div>
                             {% endif %}
                         </td>
                         <td>{{ a.email }}</td>
-                        <td>{{ a.role or '—' }}</td>
-                        <td>
+                        <td data-label="Role">{{ a.role or '—' }}</td>
+                        <td data-label="Password">
                             {% if a.waiting %}
                                 <span class="badge badge-warning">Waiting for first password</span>
                             {% else %}
                                 <span class="badge badge-success">Set</span>
                             {% endif %}
                         </td>
-                        <td>
+                        <td class="au-act">
                             {% if a.can_resend %}
                             <form method="POST" action="/admin/users/resend_set_password">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

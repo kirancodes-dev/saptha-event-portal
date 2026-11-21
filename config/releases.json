@@ -2,10 +2,23 @@
   "_about": "Every version of the portal, newest first (UPG-373). The top entry is the version of this code; shown at /whats-new and in the footer. A new entry starts after each deploy; until then every finished item goes into the top entry. 'revision' is the Cloud Run revision it went live as ('' until deployed).",
   "releases": [
     {
+      "version": "1.17",
+      "date": "2026-11-21",
+      "commit": "",
+      "revision": "",
+      "title": "Marking teams present after the event, and pages that fit a phone",
+      "notes": [
+        "After the event the SPOC can mark present a team that wasn't on the entry list or was out after a round, once they confirm it came; the portal records that the list was overridden.",
+        "On a phone the admin's events and users lists are cards that fit the screen, the dashboard's numbers take three short rows, the SPOC's console opens with a heading, and coordinators' event cards without a picture start with a thin band.",
+        "Every box on the tournament page says what it is for, for screen readers too."
+      ],
+      "items": ["UPG-369", "UPG-370", "UPG-371", "UPG-372", "UPG-374", "UPG-380"]
+    },
+    {
       "version": "1.16",
       "date": "2026-11-21",
-      "commit": "47abcc9",
-      "revision": "",
+      "commit": "ec62dc8",
+      "revision": "saptha-ec62",
       "title": "Sports tournaments run like a professional league",
       "notes": [
         "Kabaddi tournaments: kabaddi points (5 for a win, 3 for a tie, 1 for a close loss), a league then playoffs, semi-finals, a final and a third-place match.",

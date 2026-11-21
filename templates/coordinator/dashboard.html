@@ -16,6 +16,10 @@
 <style>
 /* Coordinator dashboard (UPG-63) */
 .ev-status { position: absolute; top: 12px; right: 12px; z-index: 3; }
+/* An event without an image: a thin band, not an empty block (UPG-371) */
+.ev-band { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+           padding: 10px 14px; background: var(--brand-navy); border-bottom: 3px solid var(--brand-gold); }
+.ev-band .ev-cat { position: static; }
 .form-builder-badge.none { background: var(--surface-sunken); color: var(--text-muted); }
 .ev-counts { display: flex; background: var(--surface-sunken); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px; }
 .ev-counts > div { flex: 1; text-align: center; }
@@ -82,13 +86,18 @@
             <div class="ev-card d-flex flex-column h-100" data-event-card="{{ event.id }}">
             {% set os = organiser_status(event) %}{#- UPG-362: the SPOC console's words, not "Closed" for an event yet to start -#}
 
+                {% set cat = event.get('category','General') %}
+                {% if not event.get('banner_url') %}
+                {#- No image: a thin band with the category and status, not a 150 px empty block (UPG-371) -#}
+                <div class="ev-band" data-banner="none">
+                    <span class="ev-cat cat-{{ cat|lower }}">{{ cat }}</span>
+                    <span class="se-badge se-badge--{{ os.tone }}" title="{{ os.explanation }}" data-organiser-status="{{ os.key }}">{{ os.label }}</span>
+                </div>
+                {% else %}
                 <!-- Card Banner (matches Home Page UI) -->
                 <div class="ev-banner" aria-hidden="true">
-                    {% if event.get('banner_url') %}
                         <img src="{{ event.banner_url }}" alt="" loading="lazy" data-h-error="coordinator/dashboard:5">
                         <div class="ev-overlay"></div>
-                    {% endif %}
-                    {% set cat = event.get('category','General') %}
                     {% if   cat == 'Technical'  %}<div class="ev-banner-icon"><i class="fas fa-laptop-code" aria-hidden="true"></i></div>
                     {% elif cat == 'Cultural'   %}<div class="ev-banner-icon"><i class="fas fa-masks-theater" aria-hidden="true"></i></div>
                     {% elif cat == 'Sports'     %}<div class="ev-banner-icon"><i class="fas fa-futbol" aria-hidden="true"></i></div>
@@ -97,6 +106,7 @@
                     <span class="ev-cat cat-{{ cat|lower }}">{{ cat }}</span>
                     <span class="se-badge se-badge--{{ os.tone }} ev-status" title="{{ os.explanation }}" data-organiser-status="{{ os.key }}">{{ os.label }}</span>
                 </div>
+                {% endif %}
 
                 <!-- Card body (matches Home Page ev-body style but with coordinator actions) -->
                 <div class="ev-body d-flex flex-column flex-grow-1">

@@ -23,6 +23,16 @@
 @media (max-width: 1199.98px) { .ae-owner .form-select { min-width: 150px; } }
 .ae-title { font-weight: 600; color: var(--text-strong); }
 .ae-meta { font-size: var(--fs-xs); color: var(--text-muted); }
+/* On a phone each event is a card: name and details, then status, registrations, owner, actions (UPG-369) */
+@media (max-width: 767.98px) {
+  .table-stack td.ae-main { display: block; text-align: left; padding-top: 0.6rem; }
+  .table-stack td.ae-wide { flex-wrap: wrap; }
+  .table-stack td.ae-act::before { content: none; }
+  .table-stack .ae-owner { flex: 1; justify-content: flex-end; min-width: 0; }
+  .table-stack .ae-owner .form-select { min-width: 0; flex: 1; }
+  .table-stack .ae-actions { justify-content: flex-start; width: 100%; }
+  .table-stack .ae-actions .form-select { min-width: 0; }
+}
 </style>
 {% endblock %}
 {% block content %}
@@ -64,22 +74,22 @@
 {% if events %}
 <div class="table-card">
   <div class="table-responsive">
-    <table class="table align-middle mb-0">
+    <table class="table align-middle mb-0 table-stack" data-phone-cards>
       <thead><tr><th scope="col">Event</th><th scope="col">Status</th><th scope="col">Registrations</th><th scope="col">Owner</th><th scope="col" class="text-end">Actions</th></tr></thead>
       <tbody>
       {% for e in events %}
       {% set lab = labels.get(e.status, (e.status|replace('_', ' ')|capitalize, 'neutral')) %}
       <tr>
-        <td>
+        <td class="ae-main">
           <a href="/spoc/event/{{ e.id }}/review" class="ae-title">{{ e.title }}</a>{% if e.is_fest %} <span class="se-badge se-badge--gold">Fest</span>{% endif %}
           <div class="ae-meta">{{ e.type_label }} · {{ (e.date | day) or '—' }}{% if e.end_date and e.end_date != e.date %} – {{ e.end_date | day }}{% endif %} · {{ e.venue or e.event_mode or '—' }}</div>
           {% set rs = reg_state_of(e) %}{#- what visitors are told (UPG-266) -#}
           <div class="ae-meta" data-visitor-state="{{ rs.key }}" data-live-event="{{ e.id }}" data-live-scope="ops">Visitors see: <span data-live-label>{{ rs.label }}</span>. <span data-live-explanation>{{ rs.explanation }}</span>
             <span data-live-when-known hidden> Now: <span data-live-count="registered"></span> registered, <span data-live-count="checked_in"></span> checked in, <span data-live-count="waiting"></span> waiting.</span></div>
         </td>
-        <td><span class="se-badge se-badge--{{ lab[1] }}">{{ lab[0] }}</span></td>
-        <td>{{ e.registration_count or 0 }}{% if e.capacity %} / {{ e.capacity }}{% endif %}</td>
-        <td>
+        <td data-label="Status"><span class="se-badge se-badge--{{ lab[1] }}">{{ lab[0] }}</span></td>
+        <td data-label="Registrations">{{ e.registration_count or 0 }}{% if e.capacity %} / {{ e.capacity }}{% endif %}</td>
+        <td data-label="Owner" class="ae-wide">
           <form method="POST" action="/admin/events/{{ e.id }}/owner" class="d-flex gap-1 ae-owner">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path }}">
             <label class="visually-hidden" for="own-{{ e.id }}">Owner of {{ e.title }}</label>
@@ -90,7 +100,7 @@
             <button class="btn btn-sm btn-outline-secondary" type="submit" title="Hand to this SPOC" aria-label="Hand {{ e.title }} to the chosen SPOC"><i class="fas fa-right-left" aria-hidden="true"></i></button>
           </form>
         </td>
-        <td>
+        <td class="ae-wide ae-act">
           <div class="ae-actions">
             {% if e.next_states %}
             <form method="POST" action="/admin/events/{{ e.id }}/status">

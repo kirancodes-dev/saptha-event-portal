@@ -70,6 +70,15 @@
       color: var(--ink-400);
       margin-top: 4px;
     }
+/* On a phone: two a row, the icon beside the number, so the six take three short rows (UPG-370) */
+@media (max-width: 767.98px) {
+  .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 20px; }
+  .stat-card { padding: 12px; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 10px; align-items: center; }
+  .stat-card .stat-icon { width: 34px; height: 34px; font-size: 14px; margin: 0; grid-row: span 3; align-self: start; }
+  .stat-card .stat-val { font-size: 19px; overflow-wrap: anywhere; }
+  .stat-card .stat-label { font-size: 10.5px; }
+  .stat-card .stat-sub { font-size: 10.5px; margin-top: 2px; }
+}
 /* ── QUICK ACCESS ── */
     .quick-grid {
       display: grid;

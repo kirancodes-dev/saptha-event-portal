@@ -347,17 +347,17 @@
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="row g-2 align-items-end">
                                 <div class="col-4">
-                                    <label class="form-label small mb-1">Home Score</label>
-                                    <input type="number" min="0" name="home_score" class="form-control form-control-sm" value="{{ m.home_score if m.home_score is not none else 0 }}" required>
+                                    <label class="form-label small mb-1 text-truncate d-block" for="hs-{{ m.id }}" title="{{ names.get(m.home, m.home) or 'Home' }}">{{ names.get(m.home, m.home) or 'Home' }} score</label>
+                                    <input type="number" min="0" id="hs-{{ m.id }}" name="home_score" class="form-control form-control-sm" value="{{ m.home_score if m.home_score is not none else 0 }}" required>
                                 </div>
                                 <div class="col-4">
-                                    <label class="form-label small mb-1">Away Score</label>
-                                    <input type="number" min="0" name="away_score" class="form-control form-control-sm" value="{{ m.away_score if m.away_score is not none else 0 }}" required>
+                                    <label class="form-label small mb-1 text-truncate d-block" for="as-{{ m.id }}" title="{{ names.get(m.away, m.away) or 'Away' }}">{{ names.get(m.away, m.away) or 'Away' }} score</label>
+                                    <input type="number" min="0" id="as-{{ m.id }}" name="away_score" class="form-control form-control-sm" value="{{ m.away_score if m.away_score is not none else 0 }}" required>
                                 </div>
                                 {% if sports.knockout_match(t, m) %}
                                 <div class="col-4">
-                                    <label class="form-label small mb-1">If Tie, Winner</label>
-                                    <select name="winner" class="form-select form-select-sm">
+                                    <label class="form-label small mb-1" for="tw-{{ m.id }}">If tied, winner</label>
+                                    <select id="tw-{{ m.id }}" name="winner" class="form-select form-select-sm">
                                         <option value="">Auto (score)</option>
                                         {% if m.home %}<option value="{{ m.home }}" {% if m.winner == m.home %}selected{% endif %}>{{ names.get(m.home, m.home) }}</option>{% endif %}
                                         {% if m.away %}<option value="{{ m.away }}" {% if m.winner == m.away %}selected{% endif %}>{{ names.get(m.away, m.away) }}</option>{% endif %}
@@ -378,16 +378,16 @@
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="row g-2">
                                 <div class="col-4">
-                                    <label class="form-label small mb-1">Date</label>
-                                    <input type="date" name="date" class="form-control form-control-sm" value="{{ m.date }}">
+                                    <label class="form-label small mb-1" for="md-{{ m.id }}">Date</label>
+                                    <input type="date" id="md-{{ m.id }}" name="date" class="form-control form-control-sm" value="{{ m.date }}">
                                 </div>
                                 <div class="col-4">
-                                    <label class="form-label small mb-1">Time</label>
-                                    <input type="time" name="time" class="form-control form-control-sm" value="{{ m.time }}">
+                                    <label class="form-label small mb-1" for="mt-{{ m.id }}">Time</label>
+                                    <input type="time" id="mt-{{ m.id }}" name="time" class="form-control form-control-sm" value="{{ m.time }}">
                                 </div>
                                 <div class="col-4">
-                                    <label class="form-label small mb-1">Venue</label>
-                                    <input type="text" name="venue" class="form-control form-control-sm" value="{{ m.venue }}" placeholder="Court/Pitch">
+                                    <label class="form-label small mb-1" for="mv-{{ m.id }}">Venue</label>
+                                    <input type="text" id="mv-{{ m.id }}" name="venue" class="form-control form-control-sm" value="{{ m.venue }}" placeholder="Court/Pitch">
                                 </div>
                                 <div class="col-12 mt-2">
                                     <button type="submit" class="btn btn-sm btn-outline-secondary w-100">Save Schedule</button>
@@ -421,8 +421,8 @@
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 {% for side in ('home', 'away') %}
                                 <div class="col-5">
-                                    <label class="form-label small mb-0">{{ side|title }}</label>
-                                    <select name="{{ side }}" class="form-select form-select-sm">
+                                    <label class="form-label small mb-0" for="mteam-{{ side }}-{{ m.id }}">{{ side|title }} team</label>
+                                    <select id="mteam-{{ side }}-{{ m.id }}" name="{{ side }}" class="form-select form-select-sm">
                                         <option value="">TBD</option>
                                         {% for team in t.teams %}<option value="{{ team.id }}" {% if m[side] == team.id %}selected{% endif %}>{{ team.name }}</option>{% endfor %}
                                     </select>

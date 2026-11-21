@@ -411,15 +411,20 @@ async function manualCheckIn(regId) {
   }
   
   try {
-    const resp = await fetch(`/spoc/api/checkin/${EVENT_ID}/${regId}`, {
+    const send = extra => fetch(`/spoc/api/checkin/${EVENT_ID}/${regId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-CSRFToken': CSRF_TOKEN,
       },
-      body: JSON.stringify(CHECKIN_OVER ? { late: true } : {}),
+      body: JSON.stringify(CHECKIN_OVER ? Object.assign({ late: true }, extra) : {}),
     });
-    const data = await resp.json();
+    let data = await (await send({})).json();
+    // After the event the SPOC may mark a team the entry list left out, if they confirm it came (UPG-380)
+    if (data.status === 'not_selected' && data.can_override) {
+      if (!confirm(data.message)) return;            // left as it was; the list is drawn again below
+      data = await (await send({ override_entry_list: true })).json();
+    }
     showResult(data.status, data);
     addLog(data.status, data);
     

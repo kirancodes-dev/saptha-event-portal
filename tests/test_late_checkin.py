@@ -154,3 +154,49 @@ def test_the_coordinator_scanner_is_open_on_day_two(spoc_event):
     s['days'](-2, -1)
     html = _login(s['app'], coord, 'EventCoordinator').get(f"/coordinator/scan/{s['event_id']}").get_data(as_text=True)
     assert 'Scanner locked' in html and 'ask the event' in html
+
+
+# ── UPG-380: a team the entry list left out, once the SPOC confirms it came ──
+
+def test_a_team_off_the_entry_list_is_marked_present_once_the_spoc_confirms(spoc_event):
+    s = spoc_event
+    left_out, knocked_out, chosen = s['register']('Left Out'), s['register']('Knocked Out'), s['register']('Chosen')
+    s['db'].collection('events').document(s['event_id']).update({'entry_selection': True})
+    s['db'].collection('registrations').document(knocked_out).update({'entry_selected': True, 'is_eliminated': True})
+    s['db'].collection('registrations').document(chosen).update({'entry_selected': True})
+    s['days'](-2, -1)
+
+    resp = s['checkin'](left_out, late=True)          # asked first, nothing changes
+    body = resp.get_json()
+    assert resp.status_code == 409 and body['status'] == 'not_selected' and body['can_override'] is True
+    assert "isn't on the entry list" in body['message'] and 'Mark present anyway?' in body['message']
+    assert s['reg'](left_out).get('attendance') != 'Present'
+    assert 'out of the competition in a round' in s['checkin'](knocked_out, late=True).get_json()['message']
+    assert s['checkin'](chosen, late=True).get_json()['status'] == 'success'     # on the list: no second question
+
+    resp = s['checkin'](left_out, late=True, override_entry_list=True)
+    assert resp.status_code == 200 and resp.get_json()['status'] == 'success'
+    reg = s['reg'](left_out)
+    assert reg['attendance'] == 'Present' and reg['checkin_off_list'] is True and reg['checked_in_by'] == s['spoc']
+    assert not s['reg'](chosen).get('checkin_off_list')
+    logs = [d.to_dict() for d in s['db'].collection('audit_log').stream()]
+    assert any(l.get('action') == 'LATE_CHECKIN' and left_out in l.get('details', '')
+               and '(not on the entry list)' in l.get('details', '') for l in logs)
+
+
+def test_a_cancelled_team_is_never_marked_even_with_the_override(spoc_event):
+    s = spoc_event
+    rid = s['register']('Not Chosen')
+    s['db'].collection('events').document(s['event_id']).update({'entry_selection': True})
+    s['days'](-2, -1)
+    s['db'].collection('registrations').document(rid).update({'status': 'cancelled'})
+    assert s['checkin'](rid, late=True, override_entry_list=True).status_code == 409   # cancelled: never
+    assert s['reg'](rid).get('attendance') != 'Present'
+
+
+def test_the_scan_page_asks_again_for_a_team_off_the_list(spoc_event):
+    s = spoc_event
+    s['register']('Listed')
+    s['days'](-2, -1)
+    html = s['client'].get(f"/spoc/scan/{s['event_id']}").get_data(as_text=True)
+    assert "data.can_override" in html and 'override_entry_list: true' in html

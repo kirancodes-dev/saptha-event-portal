@@ -827,7 +827,8 @@ def api_checkin(event_id, reg_id):
     if reg.get('event_id') != event_id:
         return jsonify({'status': 'invalid', 'message': 'Ticket is for a different event'}), 400
     if late:
-        return _late_checkin(event_id, event, reg_id, reg)
+        return _late_checkin(event_id, event, reg_id, reg,
+                             override=str(body.get('override_entry_list') or '').lower() in ('1', 'true', 'yes'))
 
     round_to_scan = 1
     try:
@@ -877,16 +878,21 @@ def api_checkin(event_id, reg_id):
     }), 200
 
 
-def _late_checkin(event_id, event, reg_id, reg):
+def _late_checkin(event_id, event, reg_id, reg, override=False):
     """After the event: the SPOC marks someone who came but wasn't scanned as
-    present, so the certificates count them (UPG-378). Not a cancelled team, nor
-    one left off the entry list; who marked whom is kept."""
+    present, so the certificates count them (UPG-378). Not a cancelled team. A
+    team the entry list leaves out (not selected, or out in a round) only once
+    the SPOC confirms it came (UPG-380); who marked whom is kept."""
     import services_entry
     if services_entry.inactive(reg):
         return jsonify({'status': 'invalid', 'message': "This registration is cancelled: it can't be marked present."}), 409
-    if not services_entry.may_enter(event, reg):
-        return jsonify({'status': 'not_selected', 'message': services_entry.REFUSED}), 409
     name, team = reg.get('lead_name', ''), reg.get('team_name', '')
+    off_list = not services_entry.may_enter(event, reg)
+    if off_list and not override:
+        why = 'was out of the competition in a round' if reg.get('is_eliminated') else "isn't on the entry list"
+        return jsonify({'status': 'not_selected', 'can_override': True, 'name': name, 'team': team,
+                        'message': f"{registration_state.team_label(team) or name} {why}. "
+                                   "Mark present anyway? Only if you're sure they came."}), 409
     if str(reg.get('attendance') or '').lower() == 'present':
         return jsonify({'status': 'already_in', 'message': 'Already marked present', 'name': name, 'team': team,
                         'checkin_time': reg.get('checkin_time', '')}), 200
@@ -901,12 +907,15 @@ def _late_checkin(event_id, event, reg_id, reg):
             if first and last and last >= first else [])
     updates = {'attendance': 'Present', 'attended': True, 'checkin_time': stamp,
                'checkin_late': True, 'checked_in_by': who}
+    if off_list:
+        updates['checkin_off_list'] = True          # the SPOC overrode the entry list (UPG-380)
     if days:
         updates['attendance_days'] = sorted(set(list(reg.get('attendance_days') or []) + days))
     if members:
         updates['members'] = members
     db.collection('registrations').document(reg_id).update(updates)
-    log_action(db, "LATE_CHECKIN", f"{who} marked {reg_id} ({team or name}) present after the event")
+    log_action(db, "LATE_CHECKIN", f"{who} marked {reg_id} ({team or name}) present after the event"
+                                   + (" (not on the entry list)" if off_list else ""))
     return jsonify({'status': 'success', 'message': 'Marked present after the event', 'name': name, 'team': team,
                     'members': len(members), 'checkin_time': stamp}), 200
 

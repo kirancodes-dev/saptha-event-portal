@@ -9,8 +9,8 @@ the real event.
 
 | Person | What they do on the portal |
 |---|---|
-| **SPOC** (the event's owner) | Creates the event, assigns the coordinators, makes the fixtures (pools, seeds, home and away), adds team logos, uploads the schedule, makes the playoffs, publishes the results, issues the certificates. Can also score any match. |
-| **Coordinator** (assigned to this event) | Scores matches live from a phone, or types in a final score. Checks teams in at the gate. Can't change the fixtures, the pools, the schedule or the logos. |
+| **SPOC** (the event's owner) | Creates the event, assigns the coordinators, makes the fixtures (pools, seeds, home and away), adds team logos, uploads the fixture sheet (teams, dates), makes the playoffs, publishes the results, issues the certificates. Can also score any match. |
+| **Coordinator** (assigned to this event) | Scores matches live from a phone, or types in a final score. Postpones a match or puts it back on. Checks teams in at the gate. Can't change the fixtures, the pools, the schedule or the logos. |
 | **Teams and players** | Register (captain plus members) and get a ticket. Follow the fixtures, tables and live scores. |
 | **Anyone** (audience, big screen) | Opens the public fixtures page and the live scoreboard. No login needed. |
 
@@ -99,21 +99,36 @@ two tables, Pool A and Pool B.
 
 **Logos.** In the Teams card, press **Add logo** next to a team and choose a
 picture (PNG, JPG or WebP, up to 2 MB). The portal makes it a square and
-keeps the whole logo. Logos appear in the tables, the fixtures and on the
-scoreboard.
+keeps the whole logo. Logos appear in the tables, the fixtures, the
+scoreboard and the big screen. The eight logos from the fixture PDF are in
+the `kpl-team-logos` folder in Downloads, named A1 Garuda Sena … B4
+Gandaberunda Warriors.
 
-**Schedule (date, time, venue for all 31 matches at once):**
+**The fixture sheet: who plays each match, and when (Excel or CSV):**
 
-1. In the **Schedule** card, press the download link to get a CSV file
-   with the columns Match, Stage, Team 1, Team 2, Date, Time, Venue.
-2. Open it in Excel or Google Sheets. Fill Date (for example 2026-12-05 or
-   05-12-2026), Time (15:30 or 3:30 PM) and Venue. Don't change the Match
-   column.
-3. Save it as CSV and press **Upload the schedule**.
+1. In the **Fixture sheet** card, download it as **Excel** (or CSV). It has
+   every match: Match, Stage, Team 1, Team 2, Date, Time, Venue.
+2. Change **Team 1** and **Team 2** to the teams that play that match,
+   spelled as they registered (capitals and extra spaces don't matter).
+   Date, Time and Venue can stay empty: there is no fixed time, a match
+   plays when the coordinator starts it.
+3. Press **Upload the fixture sheet** with the .xlsx (or .csv) file.
 
-If any row is wrong, nothing is changed, and the page says which row
-(for example "Row 7 (M-06): …"). Fix that row and upload again. To change one
-match, use **Save Schedule** on that match's card.
+Your own sheet works too: it needs a **Match** column (M1, M-01 or 1) and
+**Team 1 / Team 2** (or Team A / Team B, Home / Away). A title row above the
+header is fine. Rows for M-29 to M-31 are skipped: the semi-finals and the
+final are made by **Make the playoffs** from the pool tables.
+
+If any row is wrong (a team name not on the list, a match already played, a
+team against itself), nothing is changed and the page names the row, for
+example "Row 7 (M-06): no team is called …". Fix it and upload again. To
+change one match, use **Fix this match → Set the teams** or **Save
+Schedule** on its card.
+
+**Postponed.** A match that can't be played yet: **Fix this match →
+Postpone this match** (the SPOC or a coordinator). It shows "Postponed" on
+every page and the big screen skips it for "Up next". **Back on: play it
+now** undoes it; starting it for live scoring or saving its result does too.
 
 ## 6. Scoring a match: who and how
 
@@ -147,7 +162,7 @@ A phone works best.
 3. Pick the player in **Who scored (optional)** before the tap if you want
    top raider and top defender stats.
 4. A wrong tap: press **Undo last**, or **Remove** next to it in **Last points**.
-5. **Pause clock** and **Resume clock** for time-outs. Press **Half time**,
+5. **Pause clock** and **Resume clock** for time-outs and reviews. Press **Half time**,
    then **Start 2nd half**.
 6. At the end press **Full time: save the result**. The score goes into the
    table at once: 5 points for a win, 3 each for a tie, and 1 for losing by
@@ -165,13 +180,40 @@ fails or for a match scored on paper.
 
 ## 7. What the audience sees
 
-- **Fixtures page:** `/tournament/fixtures/<event id>`. It has every match
-  with its M-number, date, time and venue, both pool tables, logos and the
-  champion. The event page shows the same tables.
-- **Live scoreboard:** the **Public scoreboard** link on the scoring screen.
-  It shows the score, the clock, the half and the logos, and updates by
-  itself every few seconds. Put it on a projector or share it in the WhatsApp
-  group.
+- **Big screen (for the hall):** `/tournament/screen/<event id>`, also the
+  **Open the big screen** button on the tournament page and **Big screen**
+  on the scoring page and the fixtures page. No login. It shows the match
+  being scored (logos, score, clock, raid and tackle points, the last three
+  points), or **Up next** and the last result between matches; both pool
+  tables with the top two marked; the **Road to the final**; the top raiders
+  and defenders. It updates itself every 4 seconds.
+- **Fixtures page:** `/tournament/fixtures/<event id>`. Every match with its
+  M-number, both pool tables, the road to the final, the top raiders and
+  defenders, and **Every player's points** team by team (raid, tackle,
+  total, matches, Super 10s, High 5s): this is where players see their own
+  progress. Share this link in the WhatsApp group.
+- **Live scoreboard for one match:** the **Public scoreboard** link on the
+  scoring screen.
+
+**Putting the big screen on a monitor or projector:**
+
+1. Join the laptop to the monitor or projector with an HDMI cable (a Mac may
+   need a USB-C to HDMI adapter). On a smart TV you can cast a Chrome tab
+   instead (Chrome menu → Cast).
+2. Choose "Mirror" or "Duplicate" display (Windows: Win+P → Duplicate; Mac:
+   Control Centre → Screen Mirroring), so you see what the hall sees.
+3. Open the big-screen link in Chrome and press **Full screen** on the page
+   (or F11 on Windows, Ctrl+Cmd+F on a Mac).
+4. Keep the laptop on charge. The page asks the browser to keep the screen
+   awake; also set the laptop's sleep to "Never" for the day.
+5. Use a different device (a phone) to score. If the Wi-Fi drops, the screen
+   shows "Connection lost" and keeps the last score; it carries on by itself
+   when the network is back.
+
+**The road to the final** is on the tournament page, the fixtures page and
+the big screen: SF1 (1st Pool A v 2nd Pool B), SF2 (1st Pool B v 2nd Pool A),
+the final and the champion. Until the playoffs are made it shows who would
+meet if the league ended now (dashed boxes), changing with every result.
 
 ## 8. Semi-finals, final, results and certificates (SPOC)
 
@@ -201,9 +243,10 @@ Withdraw a team (its remaining matches become walkovers), Bring back,
 3. Assign yourself or a colleague as coordinator.
 4. Generate: two pools, seeds as in the table, Twice, inter-pool ticked,
    points 5/3/0/1/7. Check that M-01 is Garuda Sena v Vajra.
-5. Add one logo. Download the schedule, fill two rows and upload it.
-6. On a phone, as the coordinator, **Score live** for M-01. Open the
-   **Public scoreboard** on a laptop at the same time and watch it change.
+5. Add one logo. Download the fixture sheet as Excel, swap the teams of two
+   matches and upload it. Postpone M-03 and put it back on.
+6. Open the **big screen** on a laptop. On a phone, as the coordinator,
+   **Score live** for M-01 and watch the big screen change.
    Try Undo and Half time, then Full time.
 7. Quick-enter M-02 to M-28 with **Save Result**. Make one a 30–25 loss to
    see the close-loss point.
@@ -211,3 +254,26 @@ Withdraw a team (its remaining matches become walkovers), Bring back,
    and the final, with one tie and a chosen winner.
 9. **Publish results**, then look at the fixtures page and the event page.
 10. Delete the demo event afterwards (SPOC console → **Delete Event Permanently**).
+
+## 10. On the day: run order
+
+**The day before**
+
+1. Register the 8 teams (part 2): only the captain's details are needed;
+   the team is confirmed at once and the players get no email.
+2. Assign the coordinators (part 3).
+3. Make the fixtures (part 4), add the logos, and upload the fixture sheet
+   if any match's teams differ from the draw (part 5).
+4. Open the big screen on the hall laptop once to check it shows both pool
+   tables and "Up next: M-01".
+
+**On the day**
+
+1. Hall laptop: big screen, full screen, on charge.
+2. Each coordinator: Dashboard → **Matches & live scoring** → the match →
+   **Score live** → **Start 1st half**. Points as in part 6, Half time,
+   2nd half, **Full time: save the result**. The tables, the road to the final
+   and the big screen update by themselves.
+3. A match that can't go ahead: **Postpone this match**; play the next one.
+4. After M-28: **Make the playoffs** (part 8), score M-29, M-30 and the final.
+5. **Publish results**, then the certificates.

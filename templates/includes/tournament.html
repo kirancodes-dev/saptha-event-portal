@@ -35,7 +35,8 @@
                 </thead>
                 <tbody>
                     {% for row in rows %}
-                    <tr>
+                    {#- The top two of each pool go to the semi-finals (UPG-393) #}
+                    <tr{% if pool and t.format == 'league_knockout' and loop.index <= 2 %} class="pool-row--through" title="In the semi-finals if the league ended now"{% endif %}>
                         <td>{{ loop.index }}</td>
                         <td>{% if logos.get(row.id) %}<img src="{{ logos[row.id] }}" alt="" class="team-logo me-1" width="24" height="24">{% endif %}<strong>{{ row.name }}</strong></td>
                         <td>{{ row.played }}</td>
@@ -53,6 +54,8 @@
     {% endfor %}
     {% endif %}
 
+    {% if bracket is defined and bracket %}{% include "includes/bracket.html" %}{% endif %}
+
     {% if t.matches %}
     <div>
         <h3 class="eyebrow mb-2">Fixtures &amp; results</h3>
@@ -63,6 +66,8 @@
                     {#- A match being played links its live scoreboard (UPG-351) #}
                     {% if live is defined and live.get(m.id) %}
                     <a href="/tournament/live/{{ event.id }}/{{ m.id }}" class="d-inline-block mb-1 text-decoration-none" data-live-link><span class="live-dot">LIVE</span> Watch the score</a>
+                    {% elif m.postponed and m.status != 'played' %}
+                    <span class="match-postponed mb-1" data-postponed>Postponed</span>
                     {% endif %}
                     <div class="d-flex justify-content-between text-muted mb-1" style="font-size:11px;">
                         {% set digits = m.id[1:] if m.id and m.id[0] == 'm' else '' %}

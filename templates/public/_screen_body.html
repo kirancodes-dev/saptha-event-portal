@@ -1,0 +1,105 @@
+{#- What the big screen shows (UPG-392); fetched again every few seconds. -#}
+{% set kabaddi = (t.sport or '')|lower == 'kabaddi' if t else false %}
+{% if not t or not t.matches %}
+<div class="tv-empty">The fixtures appear here once the organisers make them.</div>
+{% else %}
+<div class="tv-grid">
+  <section class="tv-left">
+    {% if boards %}
+      {% for b in boards %}
+      {% set m, st = b.match, b.state %}
+      <div class="tv-board" data-screen-board="{{ m.id }}">
+        <div class="tv-board__meta"><span class="live-dot">LIVE</span> {{ sports.match_no(m) }} · {{ sports.stage_name(m) }}{% if m.venue %} · {{ m.venue }}{% endif %}</div>
+        <div class="tv-board__row">
+          {% for side in ('home', 'away') %}
+          {% if side == 'away' %}
+          <div class="tv-board__middle">
+            <div class="tv-board__phase">{{ st.phase_name if st else 'Starting' }}</div>
+            <div class="tv-board__clock" data-screen-clock="{{ st.clock if st else 0 }}" data-running="{{ 'true' if st and st.running else 'false' }}">{% if st %}{{ '%02d:%02d' % (st.clock // 60, st.clock % 60) }}{% else %}00:00{% endif %}</div>
+          </div>
+          {% endif %}
+          <div class="tv-board__team">
+            {% if logos.get(m[side]) %}<img src="{{ logos[m[side]] }}" alt="" class="tv-board__logo" width="120" height="120">{% endif %}
+            <div class="tv-board__name">{{ names.get(m[side], 'TBD') }}</div>
+            <div class="tv-board__score" data-screen-score="{{ side }}">{{ st[side].total if st else 0 }}</div>
+            {% if st and kabaddi %}<div class="tv-board__split">Raid {{ st[side].raid }} · Tackle {{ st[side].tackle }} · Extra {{ st[side].extra }}</div>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% if st and st.recent %}
+        <ol class="tv-board__recent">{% for line in st.recent[:3] %}<li>{{ line }}</li>{% endfor %}</ol>
+        {% endif %}
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="tv-cards">
+        {% if champion %}
+        <div class="tv-card tv-card--champion" data-screen-champion>
+          <div class="tv-card__label">Champion</div>
+          <div class="tv-card__big"><i class="fas fa-trophy" aria-hidden="true"></i> {{ names.get(champion, champion) }}</div>
+        </div>
+        {% elif next_match %}
+        <div class="tv-card" data-screen-next>
+          <div class="tv-card__label">Up next · {{ sports.match_no(next_match) }} · {{ sports.stage_name(next_match) }}</div>
+          <div class="tv-card__big">
+            {% if logos.get(next_match.home) %}<img src="{{ logos[next_match.home] }}" alt="" width="64" height="64">{% endif %}
+            {{ names.get(next_match.home, 'TBD') }} <span class="tv-card__v">v</span> {{ names.get(next_match.away, 'TBD') }}
+            {% if logos.get(next_match.away) %}<img src="{{ logos[next_match.away] }}" alt="" width="64" height="64">{% endif %}
+          </div>
+          {% if next_match.venue or next_match.time %}<div class="tv-card__sub">{{ next_match.venue }} {{ next_match.time }}</div>{% endif %}
+        </div>
+        {% endif %}
+        {% if last_match %}
+        <div class="tv-card" data-screen-last>
+          <div class="tv-card__label">Last result · {{ sports.match_no(last_match) }} · {{ sports.stage_name(last_match) }}</div>
+          <div class="tv-card__result">
+            {% for side in ('home', 'away') %}
+            <div class="{% if last_match.winner == last_match[side] %}tv-won{% endif %}">
+              <span>{{ names.get(last_match[side], 'TBD') }}</span>
+              <strong>{% if last_match.walkover %}{{ 'W/O' if last_match.winner == last_match[side] else '' }}{% else %}{{ last_match[side ~ '_score'] }}{% endif %}</strong>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    {% endif %}
+    <div class="tv-panel tv-bracket">{% include "includes/bracket.html" %}</div>
+  </section>
+
+  <aside class="tv-right">
+    {% for pool, rows in (pool_tables or ([(None, table)] if table else [])) %}
+    <div class="tv-panel" data-screen-pool="{{ pool or '' }}">
+      <h2 class="tv-panel__title">{% if pool %}Pool {{ pool }}{% else %}Points table{% endif %}</h2>
+      <table class="tv-table">
+        <thead><tr><th>#</th><th>Team</th><th>P</th><th>W</th><th>L</th><th>{{ 'T' if kabaddi else 'D' }}</th><th>{{ 'SD' if kabaddi else 'GD' }}</th><th>Pts</th></tr></thead>
+        <tbody>
+          {% for row in rows %}
+          <tr{% if pool and t.format == 'league_knockout' and loop.index <= 2 %} class="tv-through"{% endif %}>
+            <td>{{ loop.index }}</td>
+            <td class="tv-table__team">{% if logos.get(row.id) %}<img src="{{ logos[row.id] }}" alt="" width="26" height="26">{% endif %}{{ row.name }}</td>
+            <td>{{ row.played }}</td><td>{{ row.won }}</td><td>{{ row.lost }}</td><td>{{ row.drawn }}</td>
+            <td>{{ row.for - row.against }}</td><td><strong>{{ row.points }}</strong></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endfor %}
+    {% for title, rows, key in (('Top raiders', raiders, 'raid'), ('Top defenders', defenders, 'tackle')) %}
+    {% if rows %}
+    <div class="tv-panel" data-screen-leaders="{{ key }}">
+      <h2 class="tv-panel__title">{{ title }}</h2>
+      <table class="tv-table">
+        <tbody>
+          {% for r in rows %}
+          <tr><td>{{ loop.index }}</td><td class="tv-table__team">{{ r.player }} <small>{{ r.team }}</small></td><td><strong>{{ r[key] }}</strong></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+    {% endfor %}
+  </aside>
+</div>
+{% endif %}

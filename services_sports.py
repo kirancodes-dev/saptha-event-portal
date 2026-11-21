@@ -428,8 +428,9 @@ def record_result(tournament: dict, match_id: str, home_score: int, away_score: 
         raise TournamentError("Scores can't be negative.")
     if m.get('stage') == 'league' and has_playoffs(t):
         raise TournamentError("The playoffs were seeded from the league table, so its results can't change now.")
-    m.update(home_score=home_score, away_score=away_score, status='played')
+    m.update(home_score=home_score, away_score=away_score, status='played', played_at=_stamp())
     m.pop('walkover', None)
+    m.pop('postponed', None)                   # played after all (UPG-394)
     if knockout_match(t, m):
         if home_score != away_score:
             win = m['home'] if home_score > away_score else m['away']
@@ -505,7 +506,8 @@ def walkover(tournament: dict, match_id: str, winner: str) -> dict:
     if m.get('stage') == 'league' and has_playoffs(t):
         raise TournamentError("The playoffs were made from the league table. Undo the playoffs first.")
     _check_next(matches, m, winner)
-    m.update(home_score=None, away_score=None, status='played', winner=winner, walkover=True)
+    m.update(home_score=None, away_score=None, status='played', winner=winner, walkover=True, played_at=_stamp())
+    m.pop('postponed', None)
     _advance(matches, m)
     _settle_withdrawn(t, matches)
     t['matches'] = matches
@@ -681,6 +683,122 @@ def playoff_ids(tournament: dict) -> list:
     return [m['id'] for m in tournament.get('matches') or [] if m.get('stage') in KNOCKOUT_STAGES]
 
 
+def _stamp() -> str:
+    return datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')
+
+
+# ── Postponed matches, what's next, the bracket (UPG-392 to UPG-394) ────────
+def postpone(tournament: dict, match_id: str, on: bool = True) -> dict:
+    """Mark a match postponed (it keeps its place and plays later) or back on.
+    A result, live or typed, takes the mark off by itself (UPG-394)."""
+    t, matches = _copy(tournament)
+    m = _find(matches, match_id)
+    if on and m.get('status') in ('played', 'bye'):
+        raise TournamentError("This match has a result, so it can't be postponed.")
+    if on:
+        m['postponed'] = True
+    else:
+        m.pop('postponed', None)
+    return t
+
+
+def up_next(tournament: dict, live=()) -> 'dict | None':
+    """The first match in order that can be played now: both teams known, no
+    result, not being played, not postponed (UPG-392)."""
+    for m in tournament.get('matches') or []:
+        if (m.get('home') and m.get('away') and m.get('status') not in ('played', 'bye')
+                and m['id'] not in live and not m.get('postponed')):
+            return m
+    return None
+
+
+def last_result(tournament: dict) -> 'dict | None':
+    """The match most recently given a result (UPG-392)."""
+    played = [(m.get('played_at') or '', i, m) for i, m in enumerate(tournament.get('matches') or [])
+              if m.get('status') == 'played']
+    return max(played, key=lambda x: (x[0], x[1]))[2] if played else None
+
+
+def _slot(m: dict = None, home_label: str = '', away_label: str = '', title: str = '', **extra) -> dict:
+    m = m or {}
+    return {'id': m.get('id'), 'no': match_no(m) if m.get('id') else '', 'title': title or (stage_name(m) if m else ''),
+            'home': m.get('home'), 'away': m.get('away'), 'home_label': home_label, 'away_label': away_label,
+            'home_score': m.get('home_score'), 'away_score': m.get('away_score'), 'winner': m.get('winner'),
+            'status': m.get('status') or '', 'walkover': bool(m.get('walkover')),
+            'postponed': bool(m.get('postponed')), 'projected': False, **extra}
+
+
+ROUND_TITLES = {1: 'Final', 2: 'Semi-finals', 3: 'Quarter-finals'}
+
+
+def bracket(tournament: dict) -> dict:
+    """The road to the title, for the map on the SPOC's page, the fixtures page
+    and the big screen (UPG-393): {'columns': [{'title', 'slots'}], 'champion',
+    'projected'}. In a league then knockout, before the playoffs are made the
+    semi-finals show who would play if the league ended now (1st A v 2nd B,
+    1st B v 2nd A with pools; 1 v 4, 2 v 3 without). {} for a plain league."""
+    t = tournament or {}
+    matches = t.get('matches') or []
+    fmt = t.get('format')
+    if not matches or fmt not in ('knockout', 'league_knockout'):
+        return {}
+    if fmt == 'knockout':
+        rounds = {}
+        for m in matches:
+            rounds.setdefault(int(m.get('round') or 0), []).append(m)
+        cols = []
+        for i, rnd in enumerate(sorted(rounds)):
+            left = len(rounds) - i
+            cols.append({'title': ROUND_TITLES.get(left, f'Round {rnd}'),
+                         'slots': [_slot(m) for m in rounds[rnd]]})
+        return {'columns': cols, 'champion': champion(t), 'projected': False}
+    pools = bool(t.get('pools'))
+    ko = [m for m in matches if m.get('stage') in KNOCKOUT_STAGES]
+    if ko:
+        semis = [m for m in ko if m['stage'] == 'semi']
+        finals = [m for m in ko if m['stage'] == 'final']
+        third = [m for m in ko if m['stage'] == 'third']
+        labels = ((('1st Pool A', '2nd Pool B'), ('1st Pool B', '2nd Pool A')) if pools
+                  else (('1st', '4th'), ('2nd', '3rd')))
+        cols = []
+        if semis:
+            cols.append({'title': 'Semi-finals', 'slots': [_slot(m, *labels[i], title=f'Semi-final {i + 1}')
+                                                           for i, m in enumerate(semis[:2])]})
+        final_labels = ('Winner SF1', 'Winner SF2') if semis else (('1st Pool A', '1st Pool B') if pools else ('1st', '2nd'))
+        cols.append({'title': 'Final', 'slots': [_slot(m, *final_labels, title='Final') for m in finals]
+                     + [_slot(m, 'Loser SF1', 'Loser SF2', title='Third place') for m in third]})
+        return {'columns': cols, 'champion': champion(t), 'projected': False}
+    # Not made yet: today's table positions (a pool none of whose teams has
+    # played names nobody), settled once the league is over
+    def ranked(rows):
+        return rows if any(r['played'] for r in rows) else [{'id': None}] * len(rows)
+    if pools:
+        a, b = ranked(standings(t, 'A')), ranked(standings(t, 'B'))
+        size = 4 if len(a) >= 2 and len(b) >= 2 else 2
+        pick = {'1st Pool A': a[:1], '2nd Pool A': a[1:2], '1st Pool B': b[:1], '2nd Pool B': b[1:2]}
+        pairs = ((('1st Pool A', '2nd Pool B'), ('1st Pool B', '2nd Pool A')) if size == 4
+                 else (('1st Pool A', '1st Pool B'),))
+    else:
+        table = ranked(standings(t))
+        size = 4 if len(table) >= 4 else 2
+        pick = {label: table[i:i + 1] for i, label in enumerate(('1st', '2nd', '3rd', '4th'))}
+        pairs = (('1st', '4th'), ('2nd', '3rd')) if size == 4 else (('1st', '2nd'),)
+
+    def team(label):
+        rows = pick.get(label) or []
+        return rows[0]['id'] if rows else None
+
+    def projected(h, a_, title):
+        return dict(_slot(None, h, a_, title=title), home=team(h), away=team(a_), projected=True)
+
+    if size == 4:
+        cols = [{'title': 'Semi-finals', 'slots': [projected(*pairs[0], 'Semi-final 1'), projected(*pairs[1], 'Semi-final 2')]},
+                {'title': 'Final', 'slots': [dict(_slot(None, 'Winner SF1', 'Winner SF2', title='Final'), projected=True)]}]
+    else:
+        cols = [{'title': 'Final', 'slots': [projected(*pairs[0], 'Final')]}]
+    return {'columns': cols, 'champion': None, 'projected': True, 'settled': league_done(t)}
+
+
 def update_schedule(tournament: dict, match_id: str, date: str, time: str, venue: str) -> dict:
     t = dict(tournament)
     matches = [dict(m) for m in t.get('matches') or []]
@@ -726,22 +844,58 @@ def _clean_time(value: str) -> str:
     raise ValueError(f"time \"{value}\" isn't a time like 15:30 or 3:30 PM")
 
 
-def apply_schedule(tournament: dict, rows: list) -> tuple:
-    """Every match's date, time and venue from the schedule file's rows
-    ({'Match', 'Date', 'Time', 'Venue'}); all or nothing: one wrong row and
-    nothing changes, every problem listed (UPG-385). Returns (tournament, count)."""
+# Other headings people use for the same columns, as on a printed fixture sheet (UPG-391)
+COLUMN_NAMES = {
+    'match': ('match', 'match no', 'match no.', 'match number', 'm.no', 'm no', 'no', 'no.', '#', 'sl no', 'sl. no.'),
+    'team 1': ('team 1', 'team1', 'team a', 'home', 'home team'),
+    'team 2': ('team 2', 'team2', 'team b', 'away', 'away team'),
+    'date': ('date', 'day'),
+    'time': ('time', 'start time', 'start'),
+    'venue': ('venue', 'court', 'ground', 'place'),
+}
+
+
+def _column(head) -> str:
+    head = ' '.join(str(head or '').strip().lower().split())
+    return next((key for key, names_ in COLUMN_NAMES.items() if head in names_), head)
+
+
+def _match_key(value: str) -> str:
+    """'M-01', 'M1', 'm 1', 'Match 1' or '1' → 'M-01'; anything else as typed."""
+    key = str(value or '').upper().replace(' ', '').replace('MATCH', 'M')
+    digits = key.lstrip('M-').lstrip('.')
+    if digits.isdigit() and (key.isdigit() or key.startswith('M')):
+        return f"M-{int(digits):02d}"
+    return key
+
+
+def _team_key(name: str) -> str:
+    return ' '.join(str(name or '').lower().split())
+
+
+def apply_schedule(tournament: dict, rows: list, skipped: 'list | None' = None) -> tuple:
+    """Every match's date, time and venue — and its two teams, if the file
+    names them (UPG-391) — from the schedule file's rows; all or nothing: one
+    wrong row and nothing changes, every problem listed (UPG-385). A row for a
+    playoff match not made yet is passed over and named in `skipped`.
+    Returns (tournament, count of matches changed)."""
     t, matches = _copy(tournament)
     by_no = {match_no(m): m for m in matches}
+    by_name = {_team_key(x['name']): x['id'] for x in t.get('teams') or []}
+    out = withdrawn(t)
     problems, changed = [], 0
     for line, row in enumerate(rows, start=2):
-        row = {str(k or '').strip().lower(): str(v or '').strip() for k, v in row.items()}
-        key = row.get('match', '').upper().replace(' ', '')
+        line = row.get('_row') or line                 # the sheet's own row number
+        row = {_column(k): str(v if v is not None else '').strip() for k, v in row.items() if k != '_row'}
+        key = _match_key(row.get('match', ''))
         if not key:
             continue
-        if key.isdigit() or (key.startswith('M') and key.lstrip('M-').isdigit()):
-            key = f"M-{int(key.lstrip('M-')):02d}"
         m = by_no.get(key)
         if m is None:
+            if key.startswith('M-') and key[2:].isdigit() and int(key[2:]) > len(matches):
+                if skipped is not None:
+                    skipped.append(key)            # a semi-final or final the playoffs will make
+                continue
             problems.append(f"Row {line}: there is no match {row.get('match')}.")
             continue
         try:
@@ -750,6 +904,33 @@ def apply_schedule(tournament: dict, rows: list) -> tuple:
             problems.append(f"Row {line} ({key}): {exc}.")
             continue
         new = {'date': date, 'time': time_, 'venue': row.get('venue', '')[:200]}
+        sides, bad = {}, False
+        for side, col in (('home', 'team 1'), ('away', 'team 2')):
+            typed = row.get(col, '')
+            if not typed or typed.upper() == 'TBD' or by_name.get(_team_key(typed)) == m.get(side):
+                continue
+            team_id = by_name.get(_team_key(typed))
+            if team_id is None:
+                if m.get('stage') in KNOCKOUT_STAGES:
+                    continue                       # "1st A", "Winner SF1": the playoffs fill these
+                problems.append(f"Row {line} ({key}): no team is called \"{typed}\"; use the names on the teams list.")
+                bad = True
+            elif team_id in out:
+                problems.append(f"Row {line} ({key}): {typed} was withdrawn.")
+                bad = True
+            else:
+                sides[side] = team_id
+        if bad:
+            continue
+        if sides:
+            if m.get('status') == 'played':
+                problems.append(f"Row {line} ({key}): it has been played; clear its result before changing its teams.")
+                continue
+            home, away = sides.get('home', m.get('home')), sides.get('away', m.get('away'))
+            if home and home == away:
+                problems.append(f"Row {line} ({key}): a team can't play itself.")
+                continue
+            new.update(sides)
         if any((m.get(k) or '') != v for k, v in new.items()):
             changed += 1
         m.update(new)
@@ -758,6 +939,52 @@ def apply_schedule(tournament: dict, rows: list) -> tuple:
                               + (f" And {len(problems) - 8} more." if len(problems) > 8 else ''))
     t['matches'] = matches
     return t, changed
+
+
+def read_sheet(raw: bytes, filename: str) -> list:
+    """The rows of an uploaded fixture sheet, CSV or Excel (.xlsx), as dicts
+    keyed by the header row: the first row, within the top 10, that has a
+    Match column (a printed sheet may start with a title) (UPG-391)."""
+    import csv
+    import io
+    if str(filename or '').lower().endswith(('.xlsx', '.xlsm')):
+        from openpyxl import load_workbook
+        try:
+            book = load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
+        except Exception as exc:
+            raise TournamentError("That Excel file couldn't be read. Save it again as .xlsx (or CSV).") from exc
+        grid = []
+        for values in book.worksheets[0].iter_rows(values_only=True):
+            grid.append([_cell(v) for v in values])
+            if len(grid) > 2000:
+                break
+    else:
+        try:
+            text = raw.decode('utf-8-sig')
+        except UnicodeDecodeError:
+            text = raw.decode('latin-1')
+        grid = [list(r) for r in csv.reader(io.StringIO(text))]
+    for start, head in enumerate(grid[:10]):
+        cols = [_column(h) for h in head]
+        if 'match' in cols:
+            return [dict(zip(cols, r), _row=n) for n, r in enumerate(grid[start + 1:], start=start + 2)
+                    if any(str(c or '').strip() for c in r)]
+    return []
+
+
+def _cell(value) -> str:
+    """An Excel cell as the text a person would type: a date as 2026-11-24, a time as 15:30."""
+    if value is None:
+        return ''
+    if isinstance(value, datetime.datetime):
+        return value.strftime('%H:%M') if value.date() == datetime.date(1899, 12, 30) else value.date().isoformat()
+    if isinstance(value, datetime.date):
+        return value.isoformat()
+    if isinstance(value, datetime.time):
+        return value.strftime('%H:%M')
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    return str(value)
 
 
 def set_logo(tournament: dict, team_id: str, url: str) -> dict:

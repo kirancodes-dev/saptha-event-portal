@@ -133,21 +133,39 @@
 </div>
 {% endif %}
 
+{% if t and t.matches %}
+{#- The big screen and the road to the final (UPG-392, UPG-393) #}
+<div class="card mb-3" id="bracket">
+    <div class="card-body">
+        <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
+            <h2 class="h5 mb-0">Big screen and the road to the final</h2>
+            <a href="/tournament/screen/{{ event.id }}" target="_blank" rel="noopener" class="btn btn-sm btn-primary" data-screen-link><i class="fas fa-tv" aria-hidden="true"></i> Open the big screen</a>
+        </div>
+        <p class="small text-muted mb-0 mt-1">Open it on the laptop joined to the monitor or projector and press "Full screen". It follows the match being scored, the pool tables, this map and the top players by itself; no login.</p>
+        {% include "includes/bracket.html" %}
+    </div>
+</div>
+{% endif %}
+
 {% if t and t.matches and can_generate %}
-{#- The whole schedule from one file (UPG-385) #}
+{#- The whole schedule from one file (UPG-385); which teams play each match too (UPG-391) #}
 <div class="card mb-3" id="schedule" data-schedule-file>
     <div class="card-body">
-        <h2 class="h5">Schedule: every date, time and venue at once</h2>
+        <h2 class="h5">Fixture sheet: who plays each match, and when</h2>
         <ol class="small mb-2 ps-3">
-            <li><a href="/tournament/{{ event.id }}/schedule.csv" data-schedule-download><i class="fas fa-download" aria-hidden="true"></i> Download the schedule file</a> (every match, M-01 onwards).</li>
-            <li>Open it in Excel or Google Sheets and fill in Date (28-11-2026), Time (15:30 or 3:30 PM) and Venue. Don't change the Match column.</li>
-            <li>Save it as CSV and upload it here. If a row is wrong, nothing changes and the page lists what to fix.</li>
+            <li>Download the sheet:
+                <a href="/tournament/{{ event.id }}/schedule.xlsx" data-schedule-excel><i class="fas fa-file-excel" aria-hidden="true"></i> Excel</a> or
+                <a href="/tournament/{{ event.id }}/schedule.csv" data-schedule-download><i class="fas fa-download" aria-hidden="true"></i> CSV</a>
+                (every match, M-01 onwards).</li>
+            <li>Change <strong>Team 1</strong> and <strong>Team 2</strong> to the teams that play that match, spelled as they registered (capitals don't matter). Date, Time and Venue can stay empty: a match plays when you start it.</li>
+            <li>Upload it here (.xlsx or .csv). Your own sheet works too if it has a Match column (M1, M-01 or 1) and Team 1 / Team 2 (or Team A / Team B). If a row is wrong, nothing changes and the page lists what to fix.</li>
         </ol>
+        <p class="small text-muted mb-2">Semi-finals and the final are made by "Make the playoffs" from the pool tables; their rows are skipped until then.</p>
         <form method="POST" action="/tournament/{{ event.id }}/schedule/upload" enctype="multipart/form-data" class="d-flex flex-wrap gap-2 align-items-center">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <label class="visually-hidden" for="schedule-file">Schedule file (CSV)</label>
-            <input type="file" id="schedule-file" name="file" accept=".csv,text/csv" class="form-control form-control-sm" style="max-width:320px" required>
-            <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-upload" aria-hidden="true"></i> Upload the schedule</button>
+            <label class="visually-hidden" for="schedule-file">Fixture sheet (Excel or CSV)</label>
+            <input type="file" id="schedule-file" name="file" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="form-control form-control-sm" style="max-width:320px" required>
+            <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-upload" aria-hidden="true"></i> Upload the fixture sheet</button>
         </form>
     </div>
 </div>
@@ -405,9 +423,13 @@
                 <div class="p-3 border rounded {% if m.winner %}bg-light{% endif %}">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="badge bg-secondary">{{ sports.match_no(m) }} · {{ sports.stage_name(m) }}</span>
+                        {% if m.postponed and m.status != 'played' %}
+                        <span class="match-postponed" data-postponed>Postponed</span>
+                        {% else %}
                         <span class="badge {% if m.status == 'played' %}bg-success{% elif m.status == 'bye' %}bg-info text-dark{% else %}bg-warning text-dark{% endif %}">
                             {{ m.status|title }}
                         </span>
+                        {% endif %}
                     </div>
 
                     <div class="mb-3">
@@ -509,6 +531,18 @@
                                     <option value="{{ m.away }}">{{ names.get(m.away, m.away) }}</option>
                                 </select>
                                 <button type="submit" class="btn btn-sm btn-outline-secondary">Give walkover</button>
+                            </form>
+                            {% endif %}
+                            {% if m.status not in ('played', 'bye') %}
+                            {#- Put off for later, or back on (UPG-394) #}
+                            <form method="POST" action="/tournament/{{ event.id }}/match/{{ m.id }}/postpone" data-postpone-form>
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                {% if m.postponed %}
+                                <input type="hidden" name="action" value="resume">
+                                <button type="submit" class="btn btn-sm btn-outline-success w-100">Back on: play it now</button>
+                                {% else %}
+                                <button type="submit" class="btn btn-sm btn-outline-warning w-100">Postpone this match</button>
+                                {% endif %}
                             </form>
                             {% endif %}
                             {% if can_generate and m.status != 'played' %}

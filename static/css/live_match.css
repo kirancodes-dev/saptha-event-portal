@@ -87,3 +87,35 @@
   .live-scorer .live-btn { font-size: 13px; min-height: 48px; padding: 4px; }
   .live-side__title { font-size: 14px; }
 }
+
+/* The road to the final: semi-finals → final → champion (UPG-393) */
+.bracket-map { margin: 16px 0; }
+.bracket-map__head { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; margin-bottom: 8px; }
+.bracket-map__note { font-size: 13px; color: var(--text-muted, #64748b); }
+.bracket-map__grid { display: flex; gap: 28px; overflow-x: auto; padding-bottom: 6px; align-items: stretch; }
+.bracket-map__col { display: flex; flex-direction: column; gap: 8px; min-width: 210px; flex: 1 1 0; position: relative; }
+.bracket-map__slots { display: flex; flex-direction: column; justify-content: space-around; gap: 16px; flex: 1; }
+.bracket-map__col + .bracket-map__col::before { content: '›'; position: absolute; left: -20px; top: 50%; transform: translateY(-50%); font-size: 22px; color: #94a3b8; }
+.bracket-map__title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted, #64748b); }
+.bracket-slot { border: 1px solid var(--border, #e2e8f0); border-left: 4px solid #1d4ed8; border-radius: 10px; padding: 8px 10px; background: var(--surface, #fff); }
+.bracket-slot--projected { border-style: dashed; border-left-style: solid; border-left-color: #94a3b8; }
+.bracket-slot--done { border-left-color: #047857; }
+.bracket-slot--champion { border-left-color: #d4a017; display: flex; align-items: center; gap: 8px; font-size: 16px; min-height: 64px; }
+.bracket-slot--champion .fa-trophy { color: #d4a017; font-size: 22px; }
+.bracket-slot__meta { display: flex; justify-content: space-between; gap: 6px; font-size: 11px; color: var(--text-muted, #64748b); margin-bottom: 4px; }
+.bracket-slot__badge { background: #fef3c7; color: #92400e; border-radius: 999px; padding: 0 8px; font-weight: 700; }
+.bracket-slot__team { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 2px 0; font-size: 14px; }
+.bracket-slot__team--won { font-weight: 800; color: #047857; }
+.bracket-slot__team--out { opacity: .55; }
+.bracket-slot__name { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; overflow-wrap: anywhere; }
+.bracket-slot__label { font-size: 11px; color: var(--text-muted, #64748b); font-weight: 400; }
+.bracket-slot__score { font-weight: 800; font-variant-numeric: tabular-nums; }
+@media (max-width: 576px) {
+  .bracket-map__grid { flex-direction: column; gap: 18px; }
+  .bracket-map__col { min-width: 0; }
+  .bracket-map__col + .bracket-map__col::before { content: '⌄'; left: 50%; top: -18px; transform: none; }
+}
+
+/* A match put off for later (UPG-394); the pools' top two go to the semi-finals */
+.match-postponed { display: inline-block; background: #fef3c7; color: #92400e; border-radius: 999px; padding: 0 8px; font-size: 11px; font-weight: 700; }
+.pool-row--through td:first-child { box-shadow: inset 4px 0 0 #047857; }

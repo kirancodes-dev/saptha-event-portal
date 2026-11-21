@@ -1,0 +1,29 @@
+{% extends "layouts/fullscreen.html" %}
+{#- The big screen for a monitor or projector (UPG-392): no login. It asks for
+    its contents every few seconds and ticks the match clock in between. -#}
+{% block head %}
+    <title>{{ event.title }} · Live</title>
+    {% include "layouts/_fontawesome.html" %}
+    <link rel="stylesheet" href="/static/css/live_match.css">
+    <link rel="stylesheet" href="/static/css/tournament_screen.css">
+{% endblock %}
+{% block body_attrs %} class="tv"{% endblock %}
+{% block body %}
+<header class="tv-head">
+  <div class="tv-head__title">
+    <i class="fas fa-trophy" aria-hidden="true"></i>
+    <span>{{ event.title }}</span>
+  </div>
+  <div class="tv-head__right">
+    <span class="tv-head__time" data-screen-now></span>
+    <button type="button" class="tv-btn" data-fullscreen><i class="fas fa-expand" aria-hidden="true"></i> Full screen</button>
+  </div>
+</header>
+<main class="tv-main" data-screen data-url="/tournament/screen/{{ event.id }}/body" aria-live="polite">
+  {% include "public/_screen_body.html" %}
+</main>
+<p class="tv-offline" data-screen-offline hidden>Connection lost: showing the last score. Trying again…</p>
+{% endblock %}
+{% block body_end %}
+<script src="/static/js/tournament_screen.js"></script>
+{% endblock %}

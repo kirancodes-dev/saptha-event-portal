@@ -6,6 +6,7 @@
 {% block page_actions %}
 <a href="/tournament/{{ event.id }}#{{ match.id }}" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Tournament</a>
 <a href="/tournament/live/{{ event.id }}/{{ match.id }}" class="btn btn-outline-primary" target="_blank" rel="noopener"><i class="fas fa-tv" aria-hidden="true"></i> Public scoreboard</a>
+<a href="/tournament/screen/{{ event.id }}" class="btn btn-outline-primary" target="_blank" rel="noopener" data-screen-link><i class="fas fa-desktop" aria-hidden="true"></i> Big screen</a>
 {% endblock %}
 
 {% block extra_css %}

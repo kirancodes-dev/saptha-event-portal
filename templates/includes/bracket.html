@@ -1,0 +1,56 @@
+{#- The road to the title (UPG-393): semi-finals → final → champion. Needs
+    `bracket` (services_sports.bracket), `names`, `logos`; `live` optional. -#}
+{% set logos = logos if logos is defined and logos else {} %}
+{% set live = live if live is defined and live else {} %}
+{% if bracket and bracket.columns %}
+<section class="bracket-map" data-bracket aria-label="Road to the final">
+  <div class="bracket-map__head">
+    <h3 class="eyebrow mb-0">Road to the final</h3>
+    {% if bracket.projected %}
+    <span class="bracket-map__note" data-bracket-projected>{% if bracket.settled %}The league is over: make the playoffs to start the semi-finals.{% else %}If the league ended now. It changes as results come in.{% endif %}</span>
+    {% endif %}
+  </div>
+  <div class="bracket-map__grid">
+    {% for col in bracket.columns %}
+    <div class="bracket-map__col">
+      <div class="bracket-map__title">{{ col.title }}</div>
+      <div class="bracket-map__slots">
+      {% for s in col.slots %}
+      <div class="bracket-slot{% if s.projected %} bracket-slot--projected{% endif %}{% if s.status == 'played' %} bracket-slot--done{% endif %}"
+           {% if s.id %}data-bracket-match="{{ s.id }}"{% endif %}>
+        <div class="bracket-slot__meta">
+          <span>{% if s.no %}{{ s.no }} · {% endif %}{{ s.title }}</span>
+          {% if s.id and live.get(s.id) %}<span class="live-dot">LIVE</span>
+          {% elif s.postponed %}<span class="bracket-slot__badge" data-postponed>Postponed</span>{% endif %}
+        </div>
+        {% for side in ('home', 'away') %}
+        {% set team = s[side] %}
+        <div class="bracket-slot__team{% if s.winner and s.winner == team %} bracket-slot__team--won{% elif s.winner and team %} bracket-slot__team--out{% endif %}">
+          <span class="bracket-slot__name">
+            {% if team and logos.get(team) %}<img src="{{ logos[team] }}" alt="" class="team-logo" width="20" height="20">{% endif %}
+            {% if team %}{{ names.get(team, team) }}{% else %}<em>{{ s[side ~ '_label'] or 'TBD' }}</em>{% endif %}
+            {% if team and s[side ~ '_label'] %}<small class="bracket-slot__label">{{ s[side ~ '_label'] }}</small>{% endif %}
+          </span>
+          <span class="bracket-slot__score">{% if s.walkover %}{{ 'W/O' if s.winner == team else '' }}{% elif s[side ~ '_score'] is not none %}{{ s[side ~ '_score'] }}{% endif %}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+    <div class="bracket-map__col bracket-map__col--champion">
+      <div class="bracket-map__title">Champion</div>
+      <div class="bracket-map__slots">
+      <div class="bracket-slot bracket-slot--champion" data-bracket-champion>
+        <i class="fas fa-trophy" aria-hidden="true"></i>
+        {% if bracket.champion %}
+          {% if logos.get(bracket.champion) %}<img src="{{ logos[bracket.champion] }}" alt="" class="team-logo" width="28" height="28">{% endif %}
+          <strong>{{ names.get(bracket.champion, bracket.champion) }}</strong>
+        {% else %}<em>To be decided</em>{% endif %}
+      </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}

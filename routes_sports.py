@@ -87,6 +87,7 @@ def manage(event_id):
                            logos=services_sports.logos(t) if t else {},
                            start_pools=_start_pools(t, services_sports.confirmed_teams(db, event_id)),
                            champion=services_sports.champion(t) if t else None,
+                           bracket=services_sports.bracket(t) if t else {},
                            placings=services_sports.placings(t) if t else {},
                            defaults=services_sports.event_defaults(event), sports=services_sports,
                            can_generate=_allowed(event, 'edit_event'),
@@ -183,6 +184,21 @@ def playoffs(event_id):
 
 
 # ── Fixing mistakes from the page (UPG-355 to UPG-358) ───────────────────
+@sports_bp.route('/<event_id>/match/<match_id>/postpone', methods=['POST'])
+@login_required
+def postpone(event_id, match_id):
+    """Postpone a match, or put it back on (UPG-394): the SPOC or a coordinator."""
+    import services_sports
+    if not _allowed(_event(event_id), 'edit_event', 'manage_registrations'):
+        abort(403)
+    on = request.form.get('action') != 'resume'
+    _save(event_id, lambda cur, _e: services_sports.postpone(cur, match_id, on),
+          "Match postponed: it keeps its number and plays when you start it." if on else "The match is back on.",
+          match_id, ("MATCH_POSTPONED" if on else "MATCH_RESUMED",
+                     f"{'postponed' if on else 'put back on'} {match_id}"))
+    return _back(event_id, match_id)
+
+
 @sports_bp.route('/<event_id>/match/<match_id>/clear', methods=['POST'])
 @login_required
 def clear_result(event_id, match_id):
@@ -342,38 +358,69 @@ def schedule_file(event_id):
                     headers={'Content-Disposition': f'attachment; filename="schedule-{event_id}.csv"'})
 
 
+@sports_bp.route('/<event_id>/schedule.xlsx')
+@login_required
+def schedule_excel(event_id):
+    """The same fixture list as an Excel file (UPG-391)."""
+    import io
+
+    from flask import Response
+    from openpyxl import Workbook
+
+    import services_sports
+    event = _event(event_id)
+    if not _allowed(event, 'edit_event'):
+        abort(403)
+    book = Workbook()
+    sheet = book.active
+    sheet.title = 'Fixtures'
+    sheet.append(list(services_sports.SCHEDULE_COLUMNS))
+    for row in services_sports.schedule_rows(event.get('tournament') or {}):
+        sheet.append(row)
+    for col, width in zip('ABCDEFG', (8, 22, 24, 24, 12, 8, 20)):
+        sheet.column_dimensions[col].width = width
+    out = io.BytesIO()
+    book.save(out)
+    return Response(out.getvalue(), mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    headers={'Content-Disposition': f'attachment; filename="fixtures-{event_id}.xlsx"'})
+
+
 @sports_bp.route('/<event_id>/schedule/upload', methods=['POST'])
 @login_required
 def schedule_upload(event_id):
-    import csv
-    import io
-
+    """The fixture sheet back, CSV or Excel: each match's teams, date, time and
+    venue (UPG-385, UPG-391)."""
     import services_sports
     if not _allowed(_event(event_id), 'edit_event'):
         abort(403)
     upload = request.files.get('file')
     if not upload or not upload.filename:
-        flash("Choose the schedule file to upload.", "warning")
+        flash("Choose the fixture sheet to upload.", "warning")
         return _back(event_id, 'schedule')
-    raw = upload.read(512 * 1024 + 1)
-    if len(raw) > 512 * 1024:
-        flash("That file is too large for a schedule.", "warning")
+    raw = upload.read(2 * 1024 * 1024 + 1)
+    if len(raw) > 2 * 1024 * 1024:
+        flash("That file is too large for a fixture sheet.", "warning")
         return _back(event_id, 'schedule')
     try:
-        text = raw.decode('utf-8-sig')
-    except UnicodeDecodeError:
-        text = raw.decode('latin-1')
-    rows = list(csv.DictReader(io.StringIO(text)))
-    if not rows or 'match' not in {str(k or '').strip().lower() for k in rows[0]}:
-        flash("The file needs a Match column. Download the schedule file and fill that in.", "warning")
+        rows = services_sports.read_sheet(raw, upload.filename)
+    except services_sports.TournamentError as exc:
+        flash(str(exc), "warning")
         return _back(event_id, 'schedule')
-    count = {}
+    if not rows:
+        flash("The file needs a Match column (M-01, M-02, …). Download the fixture sheet and fill that in.", "warning")
+        return _back(event_id, 'schedule')
+    count, skipped = {}, []
 
     def fn(cur, _e):
-        new, count['n'] = services_sports.apply_schedule(cur, rows)
+        skipped.clear()
+        new, count['n'] = services_sports.apply_schedule(cur, rows, skipped)
         return new
-    if _save(event_id, fn, None, 'schedule', ("TOURNAMENT_SCHEDULE", "uploaded the schedule")) is not None:
-        flash(f"Schedule saved: {count['n']} match{'' if count['n'] == 1 else 'es'} changed.", "success")
+    if _save(event_id, fn, None, 'schedule', ("TOURNAMENT_SCHEDULE", "uploaded the fixture sheet")) is not None:
+        msg = f"Schedule saved: {count['n']} match{'' if count['n'] == 1 else 'es'} changed."
+        if skipped:
+            msg += (f" {', '.join(skipped)} will be made by Make the playoffs; set {'its' if len(skipped) == 1 else 'their'}"
+                    " date and venue after that.")
+        flash(msg, "success")
     return _back(event_id, 'schedule')
 
 
@@ -437,6 +484,8 @@ def scorer(event_id, match_id):
         flash(str(exc), "warning")
         return redirect(f'/tournament/{event_id}#{match_id}')
     t = event.get('tournament') or {}
+    if live._match(t, match_id).get('postponed'):           # being played after all (UPG-394)
+        t = _save(event_id, lambda cur, _e: services_sports.postpone(cur, match_id, False), None) or t
     full = live.with_squads(db, event_id, event, match_id)
     names = services_sports.names(t)
     return render_template('spoc/live_scorer.html', event=event, match=live._match(t, match_id), doc=doc,
@@ -532,10 +581,49 @@ def fixtures(event_id):
         pool_tables=services_sports.pool_tables(t) if t else [],
         logos=services_sports.logos(t) if t else {},
         champion=services_sports.champion(t) if t else None,
+        bracket=services_sports.bracket(t) if t else {},
         sports=services_sports,
         live=_live(event_id) if t else {},
         **_leaders(event_id, t),
     )
+
+
+@sports_bp.route('/screen/<event_id>')
+def screen(event_id):
+    """The big screen for a monitor or projector (UPG-392): no login; it
+    follows the match being played, the pool tables, the bracket and the top
+    players, and refreshes by itself."""
+    event = _event(event_id)
+    return render_template('public/tournament_screen.html', event=event, **_screen(event))
+
+
+@sports_bp.route('/screen/<event_id>/body')
+def screen_body(event_id):
+    """The big screen's contents, fetched every few seconds."""
+    event = _event(event_id)
+    return render_template('public/_screen_body.html', event=event, **_screen(event))
+
+
+def _screen(event):
+    import services_live_match as live_match
+    import services_sports
+    t = event.get('tournament') or {}
+    live = _live(event['id']) if t else {}
+    boards = []
+    for m in t.get('matches') or []:
+        if m['id'] in live:
+            try:
+                state = live_match.public_state(db, event['id'], m['id'])
+            except Exception:
+                state = None
+            boards.append({'match': m, 'state': state})
+    return dict(t=t, names=services_sports.names(t) if t else {}, logos=services_sports.logos(t) if t else {},
+                pool_tables=services_sports.pool_tables(t) if t else [],
+                table=services_sports.standings(t) if t and not t.get('pools') else [],
+                bracket=services_sports.bracket(t) if t else {}, champion=services_sports.champion(t) if t else None,
+                boards=boards, next_match=services_sports.up_next(t, live) if t else None,
+                last_match=services_sports.last_result(t) if t else None, live=live,
+                sports=services_sports, **_leaders(event['id'], t))
 
 
 def _leaders(event_id, t):
@@ -543,12 +631,13 @@ def _leaders(event_id, t):
     import services_live_match as live
     import services_sports
     if not t:
-        return {'raiders': [], 'defenders': []}
+        return {'raiders': [], 'defenders': [], 'team_players': []}
     try:
         stats = live.event_stats(db, event_id, services_sports.names(t))
     except Exception:
         stats = []
-    return {'raiders': live.top(stats, 'raid'), 'defenders': live.top(stats, 'tackle')}
+    return {'raiders': live.top(stats, 'raid'), 'defenders': live.top(stats, 'tackle'),
+            'team_players': live.by_team(stats, t)}
 
 
 def _live(event_id):

@@ -491,6 +491,17 @@ def top(stats: list, kind: str, n: int = 5) -> list:
     return sorted([r for r in stats if r[kind] > 0], key=lambda r: (-r[kind], r['player'].lower()))[:n]
 
 
+def by_team(stats: list, tournament: dict) -> list:
+    """[(team name, team id, rows best first)] in the fixtures' team order, for
+    "Every player's points" (UPG-395); only teams with a player who scored."""
+    out = []
+    for team in tournament.get('teams') or []:
+        rows = [r for r in stats if r['team_id'] == team['id']]
+        if rows:
+            out.append((team['name'], team['id'], sorted(rows, key=lambda r: (-r['total'], r['player'].lower()))))
+    return out
+
+
 def event_stats(db, event_id: str, names: dict) -> list:
     """player_stats over every match of the event scored live (cached a little)."""
     key = ('stats', event_id)

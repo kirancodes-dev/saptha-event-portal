@@ -6,11 +6,15 @@
       "date": "2026-11-21",
       "commit": "",
       "revision": "",
-      "title": "Sports teams confirmed by the lead",
+      "title": "Kabaddi match day",
       "notes": [
-        "In a sports event the team is confirmed as soon as the lead registers: the players get no email to confirm. The organiser can still turn member confirmation on."
+        "In a sports event the team is confirmed as soon as the lead registers: the players get no email to confirm. The organiser can still turn member confirmation on.",
+        "The SPOC sets which teams play each match from an Excel or CSV fixture sheet, along with dates, times and venues.",
+        "A big screen for a monitor or projector follows the match being scored, with the pool tables, the road to the final and the top players; no login, it refreshes by itself.",
+        "A map of the road to the final (semi-finals, final, champion) on the tournament, fixtures and big-screen pages.",
+        "A match can be postponed and put back on; every player's points are listed team by team on the fixtures page."
       ],
-      "items": ["UPG-389"]
+      "items": ["UPG-389", "UPG-391", "UPG-392", "UPG-393", "UPG-394", "UPG-395"]
     },
     {
       "version": "1.17",

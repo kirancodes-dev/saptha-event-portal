@@ -32,7 +32,7 @@
   <ul class="list-unstyled mb-0">
     {% for e in pending %}
     <li class="d-flex flex-wrap justify-content-between align-items-center gap-2 py-2 border-bottom">
-      <span><a href="/spoc/event/{{ e.id }}/review" class="ae-title">{{ e.title }}</a> <span class="ae-meta">· {{ e.type_label }} · {{ e.date }} · by {{ e.owner or '—' }}</span></span>
+      <span><a href="/spoc/event/{{ e.id }}/review" class="ae-title">{{ e.title }}</a> <span class="ae-meta">· {{ e.type_label }} · {{ e.date | day }} · by {{ e.owner or '—' }}</span></span>
       <span class="ae-actions">
         <form method="POST" action="/admin/events/approve/{{ e.id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="/admin/events"><button class="btn btn-sm btn-success" type="submit"><i class="fas fa-check" aria-hidden="true"></i> Approve and publish</button></form>
         <form method="POST" action="/admin/events/{{ e.id }}/status"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="target_state" value="draft"><input type="hidden" name="next" value="/admin/events"><button class="btn btn-sm btn-outline-secondary" type="submit">Send back to draft</button></form>
@@ -72,7 +72,7 @@
       <tr>
         <td>
           <a href="/spoc/event/{{ e.id }}/review" class="ae-title">{{ e.title }}</a>{% if e.is_fest %} <span class="se-badge se-badge--gold">Fest</span>{% endif %}
-          <div class="ae-meta">{{ e.type_label }} · {{ e.date or '—' }}{% if e.end_date and e.end_date != e.date %} – {{ e.end_date }}{% endif %} · {{ e.venue or e.event_mode or '—' }}</div>
+          <div class="ae-meta">{{ e.type_label }} · {{ (e.date | day) or '—' }}{% if e.end_date and e.end_date != e.date %} – {{ e.end_date | day }}{% endif %} · {{ e.venue or e.event_mode or '—' }}</div>
           {% set rs = reg_state_of(e) %}{#- what visitors are told (UPG-266) -#}
           <div class="ae-meta" data-visitor-state="{{ rs.key }}" data-live-event="{{ e.id }}" data-live-scope="ops">Visitors see: <span data-live-label>{{ rs.label }}</span>. <span data-live-explanation>{{ rs.explanation }}</span>
             <span data-live-when-known hidden> Now: <span data-live-count="registered"></span> registered, <span data-live-count="checked_in"></span> checked in, <span data-live-count="waiting"></span> waiting.</span></div>

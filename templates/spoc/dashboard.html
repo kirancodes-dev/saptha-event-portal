@@ -821,6 +821,10 @@ h1, h2, h3, h4, h5, h6 {
     align-items: flex-end;
     gap: 12px;
   }
+/* On a phone the round button sits above the bottom menu, not on its last item (UPG-368) */
+@media (max-width: 767.98px) {
+  body:has(.mobile-nav-bar) .speed-dial { bottom: calc(62px + env(safe-area-inset-bottom, 0px) + 16px); right: 16px; }
+}
 .speed-dial-trigger {
     width: 56px;
     height: 56px;

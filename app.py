@@ -310,6 +310,7 @@ from models import db, DATABASE_TYPE
 app.jinja_env.globals.update(reg_state_of=lambda ev: registration_state.of(db, ev))
 # Dates and organisers' statuses in plain words (UPG-294)
 app.jinja_env.filters['day'] = registration_state.day_text
+app.jinja_env.filters['prize'] = registration_state.prize_text   # UPG-367
 
 
 def _organiser_status(event):

@@ -24,7 +24,7 @@
         </div>
         <h1 class="ev-hero__title">{{ event.title }}</h1>
         <div class="ev-hero__meta">
-            <span><i class="fas fa-calendar-alt" aria-hidden="true"></i> {{ event.date }}{% if event.end_date and event.end_date != event.date %} – {{ event.end_date }}{% endif %}</span>
+            <span><i class="fas fa-calendar-alt" aria-hidden="true"></i> {{ event.date | day }}{% if event.end_date and event.end_date != event.date %} – {{ event.end_date | day }}{% endif %}</span>
             {% if not event.is_fest %}<span><i class="fas fa-clock" aria-hidden="true"></i> {{ event.time or "Time to be announced" }}{% if event.end_time %} – {{ event.end_time }}{% endif %}</span>{% endif %}
             {% if event.venue %}<span><i class="fas fa-map-marker-alt" aria-hidden="true"></i> {{ event.venue }}</span>{% endif %}
         </div>
@@ -168,17 +168,17 @@
                 <div class="prize-card gold">
                     <div class="prize-icon"><i class="fas fa-medal" aria-hidden="true"></i></div>
                     <div class="prize-rank">Winner</div>
-                    <div class="prize-val">{{ event.prizes.get('1st', '—') }}</div>
+                    <div class="prize-val">{{ event.prizes.get('1st', '—') | prize }}</div>
                 </div>
                 <div class="prize-card silver">
                     <div class="prize-icon"><i class="fas fa-medal" aria-hidden="true"></i></div>
                     <div class="prize-rank">Runner-up</div>
-                    <div class="prize-val">{{ event.prizes.get('2nd', '—') }}</div>
+                    <div class="prize-val">{{ event.prizes.get('2nd', '—') | prize }}</div>
                 </div>
                 <div class="prize-card bronze">
                     <div class="prize-icon"><i class="fas fa-medal" aria-hidden="true"></i></div>
                     <div class="prize-rank">Third place</div>
-                    <div class="prize-val">{{ event.prizes.get('3rd', '—') }}</div>
+                    <div class="prize-val">{{ event.prizes.get('3rd', '—') | prize }}</div>
                 </div>
             </div>
         </section>
@@ -219,7 +219,7 @@
                 <div class="tl-icon tl-icon--deadline" aria-hidden="true"><i class="fas fa-hourglass-end"></i></div>
                 <div>
                     <div class="tl-label">Registration deadline</div>
-                    <div class="tl-val">{{ event.reg_deadline }}</div>
+                    <div class="tl-val">{{ event.reg_deadline | day }}</div>
                 </div>
             </div>
             {% endif %}
@@ -227,7 +227,7 @@
                 <div class="tl-icon" aria-hidden="true"><i class="fas fa-calendar-day"></i></div>
                 <div>
                     <div class="tl-label">Event date</div>
-                    <div class="tl-val">{{ event.date }}</div>
+                    <div class="tl-val">{{ event.date | day }}</div>
                     <div class="tl-sub">{{ event.time or "Time to be announced" }}</div>
                 </div>
             </div>
@@ -284,7 +284,7 @@
         <section class="panel">
             <h2 class="ev-section-title"><i class="fas fa-share-nodes" aria-hidden="true"></i>Share this event</h2>
             <div class="share-strip">
-                {%- set share_text = 'Check out: ' ~ event.title ~ ' on ' ~ event.date ~ (' at ' ~ event.venue if event.venue else '') ~ '. Register now!' %}
+                {%- set share_text = 'Check out: ' ~ event.title ~ ' on ' ~ (event.date | day) ~ (' at ' ~ event.venue if event.venue else '') ~ '. Register now!' %}
                 <a class="btn btn-outline-secondary btn-sm" href="https://api.whatsapp.com/send?text={{ (share_text ~ ' ' ~ share_url)|urlencode }}" target="_blank" rel="noopener"><i class="fab fa-whatsapp" aria-hidden="true"></i> WhatsApp</a>
                 <a class="btn btn-outline-secondary btn-sm" href="https://www.linkedin.com/sharing/share-offsite/?url={{ share_url|urlencode }}" target="_blank" rel="noopener"><i class="fab fa-linkedin-in" aria-hidden="true"></i> LinkedIn</a>
                 <a class="btn btn-outline-secondary btn-sm" href="https://twitter.com/intent/tweet?text={{ share_text|urlencode }}&amp;url={{ share_url|urlencode }}" target="_blank" rel="noopener"><i class="fab fa-x-twitter" aria-hidden="true"></i> X</a>

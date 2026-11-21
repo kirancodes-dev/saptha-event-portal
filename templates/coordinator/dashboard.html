@@ -76,7 +76,8 @@
     <div class="row g-4">
         {% for event in page.items %}
         <div class="col-lg-4 col-md-6">
-            <div class="ev-card d-flex flex-column h-100">
+            <div class="ev-card d-flex flex-column h-100" data-event-card="{{ event.id }}">
+            {% set os = organiser_status(event) %}{#- UPG-362: the SPOC console's words, not "Closed" for an event yet to start -#}
 
                 <!-- Card Banner (matches Home Page UI) -->
                 <div class="ev-banner" aria-hidden="true">
@@ -91,15 +92,7 @@
                     {% elif cat == 'Management' %}<div class="ev-banner-icon"><i class="fas fa-chart-line" aria-hidden="true"></i></div>
                     {% else                     %}<div class="ev-banner-icon"><i class="fas fa-star" aria-hidden="true"></i></div>{% endif %}
                     <span class="ev-cat cat-{{ cat|lower }}">{{ cat }}</span>
-                    {% if event.status == 'active' %}
-                        <span class="se-badge se-badge--success ev-status">
-                            Live (Round {{ event.active_round | default(1) }})
-                        </span>
-                    {% else %}
-                        <span class="se-badge se-badge--neutral ev-status">
-                            Closed
-                        </span>
-                    {% endif %}
+                    <span class="se-badge se-badge--{{ os.tone }} ev-status" title="{{ os.explanation }}" data-organiser-status="{{ os.key }}">{{ os.label }}</span>
                 </div>
 
                 <!-- Card body (matches Home Page ev-body style but with coordinator actions) -->
@@ -132,7 +125,7 @@
                         </p>
                         <p class="text-danger small mb-0">
                             <i class="fas fa-hourglass-end me-1" aria-hidden="true"></i>
-                            <strong>Deadline:</strong> {{ event.deadline if event.deadline else 'Not set' }}
+                            <strong>Deadline:</strong> {{ (event.deadline | day) if event.deadline else 'Not set' }}
                         </p>
                     </div>
 
@@ -261,10 +254,12 @@
                             </button>
 
                         {% else %}
+                            {% if os.key == 'ended' %}
                             <a data-pick-columns href="/coordinator/export_registrations/{{ event.id }}"
                                class="btn btn-primary w-100 mb-2">
                                 <i class="fas fa-file-excel me-1" aria-hidden="true"></i> Export final data
                             </a>
+                            {% endif %}
                             <div class="btn-group w-100 mb-2">
                                 <a href="/coordinator/registrations/{{ event.id }}"
                                    class="btn btn-primary w-50">
@@ -279,16 +274,11 @@
                                class="btn btn-outline-secondary w-100 mb-2">
                                 <i class="fas fa-table me-1" aria-hidden="true"></i> View form responses
                             </a>
+                            {% if os.key == 'ended' %}
                             <button type="button" class="btn btn-secondary" disabled>Event concluded</button>
+                            {% endif %}
                         {% endif %}
-
-                        <form method="POST" action="/coordinator/delete_event/{{ event.id }}" class="text-center mt-2 m-0"
-                              data-h-submit="coordinator/dashboard:7">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="btn btn-link text-danger small fw-bold text-decoration-none p-0">
-                                <i class="fas fa-trash me-1" aria-hidden="true"></i> Delete event
-                            </button>
-                        </form>
+                        {#- UPG-362: no "Delete event" here; the SPOC deletes from the event's own page -#}
                     </div>
                 </div>
             </div>

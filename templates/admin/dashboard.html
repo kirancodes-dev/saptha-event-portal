@@ -3,7 +3,7 @@
 {% set app_active = 'dashboard' %}
 {% block title %}Admin dashboard | SapthaEvent{% endblock %}
 {% block page_title %}Admin dashboard{% endblock %}
-{% block page_sub %}Hello, {{ user_name }}. Platform overview for {{ today }}.{% endblock %}
+{% block page_sub %}Hello, {{ user_name }}. Platform overview for {{ today | day }}.{% endblock %}
 {% block page_actions %}
 <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#appointSpocModal"><i class="fas fa-user-shield" aria-hidden="true"></i> New SPOC</button>
 <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#aiCopilotModal"><i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i> AI copilot</button>

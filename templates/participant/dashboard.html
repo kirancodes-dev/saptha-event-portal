@@ -57,6 +57,13 @@
 .ticket-chip-attended { background: var(--success-soft); color: var(--success-text); }
 .ticket-chip-absent { background: var(--danger-soft); color: var(--danger-text); }
 .ticket-chip-room { background: var(--brand-navy-50); color: var(--brand-ink); }
+/* The ticket's other actions, folded under "More" (UPG-366) */
+.ticket-more > summary { list-style: none; }
+.ticket-more > summary::-webkit-details-marker { display: none; }
+.ticket-more[open] { flex-basis: 100%; }
+.ticket-more[open] > summary { margin-bottom: 0.5rem; }
+.ticket-more__list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.ticket-more__cancel { flex-basis: 100%; margin: 0.25rem 0 0; padding-top: 0.6rem; border-top: 1px dashed var(--border); }
 .qr-box-lms { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; display: inline-flex; flex-direction: column; align-items: center; gap: 6px; }
 .qr-box-lms img { width: 92px; height: 92px; image-rendering: pixelated; }
 .qr-box-lms--locked { background: var(--surface-sunken); border-style: dashed; min-width: 112px; text-align: center; color: var(--text-subtle); }
@@ -289,33 +296,39 @@
           </div>
           {% endif %}
 
-          <div class="d-flex flex-wrap gap-2 pt-2 border-top">
+          {#- UPG-366: one main button (and the hackathon page or certificate when there is one); the rest under "More", Cancel last and apart -#}
+          <div class="d-flex flex-wrap gap-2 pt-2 border-top" data-ticket-actions>
             {% if reg.hackathon_page %}
             <a href="/hackathon/{{ reg.event_id }}" class="btn btn-gold btn-sm" data-hackathon-page><i class="fas fa-code" aria-hidden="true"></i> Hackathon page</a>
             {% endif %}
             <a href="/ticket/{{ reg.id }}" class="btn btn-primary btn-sm"><i class="fas fa-qrcode" aria-hidden="true"></i> View ticket</a>
-            {% if reg.may_edit %}
-            <a href="/participant/registration/{{ reg.id }}/edit" class="btn btn-outline-primary btn-sm" data-edit-details><i class="fas fa-pen" aria-hidden="true"></i> Edit details</a>
-            {% endif %}
-            {% if reg.team_code %}
-            <a href="/teams/{{ reg.id }}" class="btn btn-outline-secondary btn-sm" data-team-page><i class="fas fa-users" aria-hidden="true"></i> Team page</a>
-            {% endif %}
-            <a href="/participant/badge/{{ reg.id }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-id-badge" aria-hidden="true"></i> Badge</a>
-            <a href="/event/{{ reg.event_id }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-info-circle" aria-hidden="true"></i> Event info</a>
-            {% if reg.leaderboard_public %}
-            <a href="/participant/leaderboard/{{ reg.event_id }}" class="btn btn-outline-secondary btn-sm" data-leaderboard-link><i class="fas fa-trophy" aria-hidden="true"></i> Leaderboard</a>
-            {% endif %}
             {% if reg.cert_eligible %}
             <a href="/participant/certificate/{{ reg.id }}" class="btn btn-gold btn-sm"><i class="fas fa-certificate" aria-hidden="true"></i> Certificate</a>
             {% endif %}
-            {% if reg.is_lead and reg.get('status') != 'Cancelled' and reg.get('attendance') != 'Present' %}
-            <form method="POST" action="/participant/cancel/{{ reg.id }}" style="margin:0;display:inline;">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Cancel registration for {{ reg.event_title|e }}?">
-                <i class="fas fa-times-circle"></i> Cancel
-              </button>
-            </form>
-            {% endif %}
+            <details class="ticket-more" data-ticket-more>
+              <summary class="btn btn-outline-secondary btn-sm"><i class="fas fa-ellipsis-h" aria-hidden="true"></i> More</summary>
+              <div class="ticket-more__list">
+                {% if reg.may_edit %}
+                <a href="/participant/registration/{{ reg.id }}/edit" class="btn btn-outline-primary btn-sm" data-edit-details><i class="fas fa-pen" aria-hidden="true"></i> Edit details</a>
+                {% endif %}
+                {% if reg.team_code %}
+                <a href="/teams/{{ reg.id }}" class="btn btn-outline-secondary btn-sm" data-team-page><i class="fas fa-users" aria-hidden="true"></i> Team page</a>
+                {% endif %}
+                <a href="/participant/badge/{{ reg.id }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-id-badge" aria-hidden="true"></i> Badge</a>
+                <a href="/event/{{ reg.event_id }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-info-circle" aria-hidden="true"></i> Event info</a>
+                {% if reg.leaderboard_public %}
+                <a href="/participant/leaderboard/{{ reg.event_id }}" class="btn btn-outline-secondary btn-sm" data-leaderboard-link><i class="fas fa-trophy" aria-hidden="true"></i> Leaderboard</a>
+                {% endif %}
+                {% if reg.is_lead and reg.get('status') != 'Cancelled' and reg.get('attendance') != 'Present' %}
+                <form method="POST" action="/participant/cancel/{{ reg.id }}" class="ticket-more__cancel" data-ticket-cancel>
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Cancel registration for {{ reg.event_title|e }}?">
+                    <i class="fas fa-times-circle" aria-hidden="true"></i> Cancel registration
+                  </button>
+                </form>
+                {% endif %}
+              </div>
+            </details>
           </div>
         </div>
       </div>

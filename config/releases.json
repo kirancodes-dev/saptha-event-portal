@@ -15,9 +15,16 @@
         "Every tournament mistake is fixed on the page, without help: clear a wrong result, reopen a match ended too early, remove any wrong point, walkovers, withdraw or bring back a team, rename, replace or add a late team, change a match's teams, change the points rule, undo the playoffs, and publish corrected results.",
         "Two courts finishing at the same moment both keep their result.",
         "The SPOC gives one person the participation certificate by hand (for example a winner judged without a check-in).",
-        "A page listing every version of the portal and what changed (this page)."
+        "A page listing every version of the portal and what changed (this page).",
+        "The coordinator's event cards say \"Opens soon\" for an event yet to start, not \"Closed\"; the card no longer has a Delete button.",
+        "On a phone, messages such as \"Welcome back\" show at the bottom, above the menu, instead of over the page's title.",
+        "On a phone every header button, the bottom menu, the sign-in page's controls and the category chips are big enough to tap.",
+        "Dates read \"26 Nov 2026\" on the event page, the admin's pages and the coordinator's cards.",
+        "Each ticket shows View ticket and a More button; Cancel sits apart under More, so it isn't tapped by mistake.",
+        "Prizes typed as a number show in rupees, such as ₹3,000.",
+        "On a phone the SPOC's round quick-actions button no longer covers the bottom menu."
       ],
-      "items": ["UPG-341", "UPG-342", "UPG-350", "UPG-351", "UPG-352", "UPG-353", "UPG-354", "UPG-355", "UPG-356", "UPG-357", "UPG-358", "UPG-359", "UPG-373"]
+      "items": ["UPG-341", "UPG-342", "UPG-350", "UPG-351", "UPG-352", "UPG-353", "UPG-354", "UPG-355", "UPG-356", "UPG-357", "UPG-358", "UPG-359", "UPG-362", "UPG-363", "UPG-364", "UPG-365", "UPG-366", "UPG-367", "UPG-368", "UPG-373"]
     },
     {
       "version": "1.15",
@@ -37,7 +44,9 @@
       "commit": "f36219a",
       "revision": "saptha-f362",
       "title": "Marks changed on the Round panel",
-      "notes": ["The SPOC changes each judge's mark on the Round panel too (read-only once results are out)."],
+      "notes": [
+        "The SPOC changes each judge's mark on the Round panel too (read-only once results are out)."
+      ],
       "items": ["UPG-337"]
     },
     {
@@ -72,7 +81,9 @@
       "commit": "e108d68",
       "revision": "saptha-00042-lat",
       "title": "A newer AI model for scoring",
-      "notes": ["AI scoring uses a newer Gemini model and tries again when the service is busy."],
+      "notes": [
+        "AI scoring uses a newer Gemini model and tries again when the service is busy."
+      ],
       "items": ["UPG-328"]
     },
     {
@@ -94,7 +105,9 @@
       "commit": "ca8bdc5",
       "revision": "saptha-00037-lok",
       "title": "Problem statement selection",
-      "notes": ["Teams choose a problem statement in a time the SPOC sets (a limit per problem, lock, reopen, extend, or the SPOC assigns one); the submission is for that problem."],
+      "notes": [
+        "Teams choose a problem statement in a time the SPOC sets (a limit per problem, lock, reopen, extend, or the SPOC assigns one); the submission is for that problem."
+      ],
       "items": ["UPG-321"]
     },
     {
@@ -150,7 +163,9 @@
       "commit": "2555456",
       "revision": "saptha-00016-k2b",
       "title": "A clear registrations table",
-      "notes": ["The registrations list is a clear table with Edit, Cancel and Delete."],
+      "notes": [
+        "The registrations list is a clear table with Edit, Cancel and Delete."
+      ],
       "items": ["UPG-226", "UPG-229"]
     },
     {
@@ -159,7 +174,9 @@
       "commit": "b10f553",
       "revision": "saptha-00015-h7z",
       "title": "Correcting details",
-      "notes": ["The lead and the SPOC correct registration details; members see their team."],
+      "notes": [
+        "The lead and the SPOC correct registration details; members see their team."
+      ],
       "items": ["UPG-225", "UPG-227"]
     },
     {

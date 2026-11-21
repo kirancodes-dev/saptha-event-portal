@@ -1232,6 +1232,17 @@ input[type="file"]::file-selector-button {
     transition: opacity var(--t), transform var(--t);
 }
 .se-toast.is-shown { opacity: 1; transform: none; }
+/* On a phone the toast sits at the bottom, above the bottom menu, clear of the page's title (UPG-363) */
+@media (max-width: 767.98px) {
+    #sp-toast-container {
+        top: auto;
+        bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 12px);
+        left: 16px;
+        right: 16px;
+        max-width: none;
+    }
+    .se-toast { transform: translateY(6px); }
+}
 .se-toast__icon { flex-shrink: 0; margin-top: 1px; font-size: 1rem; }
 .se-toast__msg { flex: 1; }
 .se-toast__close { background: none; border: 0; color: var(--text-subtle); font-size: 1.1rem; line-height: 1; padding: 0 0 0 4px; cursor: pointer; }
@@ -2389,6 +2400,23 @@ button, a.btn, .nav-link, .form-check-label { touch-action: manipulation; }
     body:has(.mobile-nav-bar) #sp-btt { bottom: 80px !important; }
     /* Touch targets: controls, not text links */
     .btn, .nav-link, .ftab, .seg__btn, .dropdown-item { min-height: 44px; }
+    /* A finger needs about 44×44 px, and text stays 12 px or more (UPG-364) */
+    .app-bar__link { min-width: 44px; height: 44px; justify-content: center; }
+    .app-bar__brand, .app-bar__user { min-height: 44px; display: inline-flex; align-items: center; }
+    .mobile-nav-item { font-size: 0.75rem; }
+    .hsc-cat { min-height: 44px; font-size: 0.8125rem; }
+    .pw-toggle { right: 0; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+    .login-card .form-check { display: flex; align-items: center; gap: 0.25rem; }
+    .login-card .form-check-input { width: 1.4em; height: 1.4em; margin-top: 0; }
+    .login-card .form-check-label { display: inline-flex; align-items: center; min-height: 44px; padding-left: 0.35rem; }
+    .login-card form a:not(.btn) { display: inline-flex; align-items: center; min-height: 44px; }
+}
+/* A narrow phone fits the 44 px header buttons: the bottom menu does the
+   finding, so the search button goes, and the logo and avatar take less room */
+@media (max-width: 479.98px) {
+    body:has(.mobile-nav-bar) .app-bar__link[data-h-click="palette:open"] { display: none; }
+    .app-bar .brand-logo { height: 24px; }
+    .app-bar__user { margin-left: 2px; padding-left: 0; border-left: 0; min-width: 44px; justify-content: center; }
 }
 
 /* PWA install sheet (components/mobile_nav.html) */

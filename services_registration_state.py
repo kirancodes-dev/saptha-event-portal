@@ -182,6 +182,28 @@ def day_text(value) -> str:
     return f"{day.day} {day.strftime('%b %Y')}" + (f", {clock.group(1)}" if clock else '')
 
 
+_PRIZE_NUMBER = re.compile(r'^(?:₹|rs\.?|inr)?\s*(\d[\d,]*)(\.\d{1,2})?\s*(?:/-|rs\.?|inr|rupees)?$', re.I)
+
+
+def prize_text(value) -> str:
+    """A prize as people read it (UPG-367): a plain amount ('3000', 'Rs. 3,000',
+    '3000/-') is '₹3,000', grouped the Indian way ('₹1,00,000'); any other
+    text ('Trophy and goodies') comes back as it was typed."""
+    text = str(value if value is not None else '').strip()
+    found = _PRIZE_NUMBER.match(text)
+    if not found:
+        return text
+    digits = found.group(1).replace(',', '').lstrip('0') or '0'
+    head, tail = digits[:-3], digits[-3:]
+    groups = []
+    while len(head) > 2:
+        groups.insert(0, head[-2:])
+        head = head[:-2]
+    if head:
+        groups.insert(0, head)
+    return '₹' + ','.join(groups + [tail]) + (found.group(2) or '')
+
+
 _LISTING_GROUP = {OPEN: 0, WAITLIST: 0, PROGRAMME: 0, NOT_OPEN: 1, FULL: 1, CLOSED: 2}
 
 

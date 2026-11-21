@@ -121,7 +121,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Shared page layout | WORKING [T at UPG-23] | `templates/layouts/document.html`, `templates/base_classic.html` | Every template a route renders extends the shared document (app layout, standalone or full-screen child); only unrendered templates remain standalone (UPG-15) (UPG-23). Since UPG-63 (built, untested), signed-in pages use one app bar, page head and flash (`templates/base_classic.html`, `templates/includes/ui.html`), and status pages use `templates/layouts/status.html`. |
 | Portal design system | WORKING [T at UPG-63; 375px checks at UPG-23, UPG-28] | `static/css/global.css` (v9), `static/js/chart-theme.js`, `docs/FRONTEND_CHECKLIST.md` | One navy-and-gold token set, light by default with an optional dark theme, one heading and one body font, shared components, and a validated chart palette. Every rendered template is on it (56 rebuilt on the app/status layout, 49 restyled in place). Checked at 1280px and 360px for every role (UPG-63). |
 | Super Admin control centre | WORKING [T at UPG-75] | `routes_admin.py:1588-1920`, `templates/admin/{events,user_detail,registrations,system}.html` | Every event (approvals, any workflow status, hand to another SPOC), every account (add any role, edit role/department/category, deactivate; login refuses deactivated accounts), every registration (search, attendance, cancel), system status (integrations yes/no, failed jobs, retry), announcements in the app; dashboard "needs attention" (UPG-75). |
-| Coordinator view (Super Admin) | WORKING [T, R at UPG-80] | `routes_coordinator.py:80-125`, `templates/coordinator/dashboard.html` | Labelled "Coordinator view · Seen as Super Admin" with a way back to the admin dashboard; counts real registrations. Events are created only in the wizard; the old coordinator form and route are retired (UPG-78). |
+| Coordinator view (Super Admin) | WORKING [T, R at UPG-80; T at UPG-362] | `routes_coordinator.py:80-125`, `templates/coordinator/dashboard.html` | Labelled "Coordinator view · Seen as Super Admin" with a way back to the admin dashboard; counts real registrations. Events are created only in the wizard; the old coordinator form and route are retired (UPG-78). Each card's badge is the SPOC console's status; "Event concluded" only once over; no delete on the card (UPG-362). |
 | Profile photos | WORKING [T at UPG-71] | `routes_profile.py:119-221`, `static/img/avatars/`, `templates/profile/dashboard.html` | Every role can upload a photo (validated and re-encoded as a 512px WebP) or choose one of 8 brand avatars; shown in the app bar and on the profile; a Google/Microsoft photo is used when nothing was chosen (UPG-71). |
 | Ticket types (early bird, seats per type, team or per-head price) | WORKING [T at UPG-155] | `services_ticket_types.py`, `services_payments.py:101-119`, `routes_payment.py:428-450` | Chosen on the form, priced at checkout, seats taken race-free; exports show the type. |
 | Apple / Google Wallet passes | WORKING in tests, off until keys are set [T at UPG-156] | `services_wallet.py`, `routes_ticket.py:484,498` | Not tried with real Apple or Google accounts. |
@@ -6315,3 +6315,82 @@ The owner asked that any problem in a tournament can be fixed by the SPOC or the
   3. ✅ Test: `/whats-new` shows every version, the newest first and marked, dates as "20 Oct 2026"; the footer links it with the version, signed in or not; an unreadable list shows no version.
 - **Evidence:** `config/releases.json`; `services_releases.py`; `routes_marketing.py:45-49`; `templates/public/whats_new.html`; `templates/includes/site_footer.html:8-9`; `app.py:402`; `docs/DEPLOY.md` "Release check" step 10; tests `tests/test_releases.py` (4). Checked in Chromium at 390 px and 1280 px: no sideways scroll.
 
+### Easy to use everywhere (owner, 2026-11-21)
+
+#### UPG-362 — The coordinator's dashboard calls upcoming events "Closed" and "Event concluded"
+- **Status:** DONE
+- **Last verified:** 2026-11-21, on `7146f32` plus this change [T]
+- **Problem:** Every event whose status wasn't `active` got a grey "Closed" badge and a disabled "Event concluded" button, so an event five days away, with registration about to open, looked finished; the SPOC's console called the same events "Opens soon". Every card also ended in a red "Delete event" link that deleted the event, its registrations and form answers for good after one confirm.
+- **Who benefits:** coordinators (and the SPOC, who is asked why the event says closed).
+- **What was built:** the card's badge is `organiser_status(event)`, the SPOC console's words (Opens soon, Registration open, Full: waitlist open, Registration closed, Event over, Draft, Waiting for approval…), with its explanation as the tooltip. (The item first named "Live" and "Ended"; the console's own words are "Registration open" and "Event over", and those are used.) "Export final data" and the disabled "Event concluded" show only once the event is over; an upcoming event's card keeps View students, Excel and form responses. "Delete event" is gone from the coordinator's card; the SPOC deletes from the event's own page, and the route stays for the admin dashboard.
+- **Depends on:** none.
+- **Acceptance criteria:**
+  1. ✅ Test: a published event with registration not yet open shows "Opens soon" and no "Closed", "Event concluded" or "Export final data"; an active one shows "Registration open"; an ended one shows "Event over" and "Event concluded" (`test_an_event_that_has_not_started_opens_soon_and_only_an_ended_one_is_concluded`).
+  2. ✅ Test: the coordinator's dashboard has no delete form (`test_the_coordinator_dashboard_has_no_delete_form`).
+- **Evidence:** `templates/coordinator/dashboard.html:79-80` (card and status), `:95` (badge), `:257-262` and `:277-279` (only once over), `:281` (no delete); tests `tests/test_coordinator_card_status.py` (2).
+
+#### UPG-363 — The welcome pop-up covers the page title on a phone
+- **Status:** DONE
+- **Last verified:** 2026-11-21, on `7146f32` plus this change [T, R in Chromium at 390 px and 1280 px]
+- **Problem:** After signing in, "Welcome back, …" was drawn over the top of the page on every dashboard (student, SPOC, coordinator, judge, admin), hiding the title ("Dashb…", "Welc…") until it was closed. Every flash message becomes a toast pinned top right under the header, and on a phone that is across the heading.
+- **Who benefits:** everyone who signs in on a phone.
+- **What was built:** under 768 px the toast container sits at the bottom, full width, 12 px above the 64 px bottom menu (and the phone's safe area), sliding up instead of down. It still goes after 6 seconds or on a tap. On a computer it stays top right, where it never reached the title.
+- **Depends on:** none.
+- **Acceptance criteria:**
+  1. ✅ Test: on a 390 px screen the "Welcome back" toast is in the bottom half, above the bottom menu, clear of any heading, and goes by itself; at 1280 px it doesn't overlap the heading. Student and SPOC (`test_the_welcome_message_never_covers_the_heading[phone]`, `[desktop]`).
+- **Evidence:** `static/css/global.css:1235-1245`; tests `tests/test_welcome_toast.py` (2).
+
+#### UPG-364 — Buttons and labels too small to tap or read on a phone
+- **Status:** DONE
+- **Last verified:** 2026-11-21, on `7146f32` plus this change [T, R in Chromium at 390 px]
+- **Problem:** Measured at 390 px: the header's icon buttons (search, notifications, theme, log out) were 28×38 px and the profile button 45×32; the bottom menu's labels and the category chips were under 12 px; on the sign-in page "Remember me" was 18×18 px, the show-password eye 23×35 px and "Forgot password?" / "Create an account" 16 px tall. A finger needs about 44×44 px.
+- **Who benefits:** everyone on a phone.
+- **What was built:** in the phone layout (under 768 px), `global.css` section 33: header links at least 44×44, the logo and profile button 44 px tall; bottom-menu words 12 px; category chips 44 px tall with 13 px words; on the sign-in card the eye 44×44, the checkbox 1.4 em with its label 44 px tall (the box and its words are one target), and the text links 44 px tall. Under 480 px, with the bottom menu, the header's search button is left out and the logo and profile button take less room, so six 44 px controls fit a 375 px screen (`tests/test_shared_layout.py` and `tests/test_spoc_event_panel.py` check nothing is cut off). The computer layout is unchanged.
+- **Depends on:** none.
+- **Acceptance criteria:**
+  1. ✅ Test: on a 390 px screen every header and bottom-menu button (student and SPOC), the sign-in page's eye, checkbox and links, and the home page's category chips are at least 44×44 px with words of 12 px or more, and no page scrolls sideways (`test_every_control_is_big_enough_to_tap_on_a_phone`).
+- **Evidence:** `static/css/global.css:2403-2420`; tests `tests/test_tap_targets.py` (1).
+
+#### UPG-365 — Dates are shown as 2026-11-26 in many places
+- **Status:** DONE
+- **Last verified:** 2026-11-21, on `7146f32` plus this change [T]
+- **Problem:** The public event page's header and "Key dates", the admin dashboard ("Platform overview for 2026-11-21"), the admin's events list and the coordinator's "Deadline:" printed the stored date as it is, while the student's dashboard said "26 Nov 2026".
+- **Who benefits:** everyone.
+- **What was built:** the existing `day` filter (`services_registration_state.day_text`, UPG-294: "26 Nov 2026", with the time "26 Nov 2026, 10:00") on each of those dates, and on the event page's share text. The item first asked for a new filter with the weekday ("Thu, 26 Nov 2026"); keeping the one filter means every page words dates alike. The admin dashboard's activity feed (raw times and codes) is UPG-297 (a).
+- **Depends on:** none.
+- **Acceptance criteria:**
+  1. ✅ Test: the event page (header "20 Mar 2031 – 21 Mar 2031", deadline "18 Mar 2031", share text), the admin dashboard's "Platform overview for …", the admin's events list and the coordinator's "Deadline:" say the date in words, with no `2031-03-20` in the words on the page (`test_each_page_says_the_date_in_words`).
+- **Evidence:** `templates/public/_event_content.html:27,222,230,287`, `templates/admin/dashboard.html:6`, `templates/admin/events.html:35,75`, `templates/coordinator/dashboard.html:128`; tests `tests/test_dates_in_words.py` (1).
+
+#### UPG-366 — The student's ticket card has five buttons in a row, Cancel among them
+- **Status:** DONE
+- **Last verified:** 2026-11-21, on `7146f32` plus this change [T, R in Chromium at 390 px]
+- **Problem:** Each ticket on the student's dashboard showed View ticket, Edit details, Badge, Event info and a red Cancel side by side, two rows deep on a phone; Cancel was one tap from View ticket.
+- **Who benefits:** students.
+- **What was built:** View ticket is the one main button, with the Hackathon page and the Certificate beside it when there is one (each is the thing a student came for). A "More" button (`<details>`, works without script) holds Edit details, Team page, Badge, Event info and Leaderboard, then "Cancel registration" alone below a dashed line, still asking to confirm.
+- **Depends on:** none.
+- **Acceptance criteria:**
+  1. ✅ Test: the card shows one main button and the others inside "More", with Cancel last and asking first (`test_one_main_button_and_the_rest_under_more_with_cancel_last`); Cancel still cancels (`test_cancel_from_more_still_cancels`).
+- **Evidence:** `templates/participant/dashboard.html:60-66` (style), `:299-331` (the actions); tests `tests/test_ticket_card_more.py` (2).
+
+#### UPG-367 — Prize amounts are shown without ₹
+- **Status:** DONE
+- **Last verified:** 2026-11-21, on `7146f32` plus this change [T]
+- **Problem:** The event page's prizes printed the SPOC's text as typed, so "3000" appeared with no currency.
+- **Who benefits:** visitors and students.
+- **What was built:** a `prize` filter (`services_registration_state.prize_text`): a plain amount, with or without ₹, "Rs.", "INR", commas or "/-", is "₹3,000", grouped the Indian way ("₹1,00,000"), paise kept; any other text as typed. The event page's Winner, Runner-up and Third place cards use it.
+- **Depends on:** none.
+- **Acceptance criteria:**
+  1. ✅ Test: a prize of 3000 shows "₹3,000"; "Trophy and goodies" shows unchanged, on the event page and for 13 typed forms (`test_the_event_page_shows_prizes_in_rupees`, `test_a_plain_amount_is_in_rupees_and_other_text_as_typed`).
+- **Evidence:** `services_registration_state.py:185-204`, `app.py:313`, `templates/public/_event_content.html:171,176,181`; tests `tests/test_prize_rupees.py` (14).
+
+#### UPG-368 — The round help button covers the bottom menu on a phone
+- **Status:** DONE
+- **Last verified:** 2026-11-21, on `7146f32` plus this change [T, R in Chromium at 390 px]
+- **Problem:** The floating round button at the bottom corner sat on top of the bottom menu's last item on a phone. Measured: it was the SPOC console's quick-actions "speed dial" (`bottom: 24px`), its 56 px button reaching 820 px on an 844 px screen, over the menu from 782 px.
+- **Who benefits:** everyone on a phone.
+- **What was built:** under 768 px, when the bottom menu shows, the speed dial sits 16 px above it (62 px menu plus the phone's safe area). Back to top and the chat button were already lifted above the menu (UPG-63).
+- **Depends on:** none.
+- **Acceptance criteria:**
+  1. ✅ Test: on a 390 px screen the round buttons (quick actions, back to top, chat) and the bottom menu don't overlap, on the SPOC console, create event and the student's dashboard (`test_the_round_buttons_sit_above_the_bottom_menu`; fails without the fix).
+- **Evidence:** `templates/spoc/dashboard.html:824-827`; tests `tests/test_round_buttons.py` (1).

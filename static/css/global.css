@@ -493,6 +493,7 @@ small, .small { font-size: var(--fs-sm); }
     display: flex;
     flex-direction: column;
     min-width: 0;
+    flex-shrink: 0;   /* the page's name stays whole; a long user name shortens instead (UPG-297 (b)) */
     line-height: 1.2;
 }
 .app-bar__name {
@@ -560,7 +561,8 @@ small, .small { font-size: var(--fs-sm); }
     font-weight: 600;
     max-width: 220px;
 }
-.app-bar__user { text-decoration: none; }
+.app-bar__user { text-decoration: none; min-width: 0; }
+.app-bar__nav { min-width: 0; }
 .app-bar__user:hover { color: #fff; }
 .app-bar__user span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .app-bar__more { position: relative; }
@@ -2602,6 +2604,9 @@ body.status-page { background: var(--surface-page); min-height: 100vh; }
 .profile-hero { background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-xs); margin-bottom: var(--grid-gap, 20px); }
 .profile-hero__banner { display: block; position: relative; border-bottom: 3px solid var(--brand-gold); }
 .profile-hero__banner img { display: block; width: 100%; height: auto; aspect-ratio: 1347 / 533; object-fit: cover; }
+/* UPG-297 (d): on the student dashboard the photo is a short banner */
+.profile-hero[data-banner="short"] .profile-hero__banner img { aspect-ratio: auto; height: 140px; object-position: center 40%; }
+@media (max-width: 767.98px) { .profile-hero[data-banner="short"] .profile-hero__banner img { height: 96px; } }
 .profile-hero__banner::after { content: ""; position: absolute; inset: auto 0 0 0; height: 28%; background: linear-gradient(180deg, transparent, rgba(0, 16, 70, 0.35)); pointer-events: none; }
 .profile-hero__body { padding: 0 24px 22px; position: relative; }
 .profile-hero__avatar-wrap { position: relative; width: 120px; height: 120px; margin-top: -60px; z-index: 1; }

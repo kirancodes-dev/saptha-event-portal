@@ -108,7 +108,9 @@
     the profile card and the activity figures follow. -#}
 <div class="page-head">
   <div class="page-head__text">
-    <h1 class="page-head__title" id="page-title">Dashboard</h1>
+    {#- The student's own name says more than "Dashboard" (UPG-297 (c)) -#}
+    {% set first_name = ((user_name or '').split('(')[0].strip().split() or [''])[0] %}
+    <h1 class="page-head__title" id="page-title">{{ ('Hello, ' ~ first_name) if first_name else 'Dashboard' }}</h1>
     {% if last_updated %}<p class="page-head__sub">Last updated {{ last_updated }}</p>{% endif %}
   </div>
   <div class="page-head__actions">
@@ -420,7 +422,7 @@
   <span>Your profile and activity</span>
 </div>
 {% set nm = (user_name or '').split('(')[0].strip() %}
-{% call ui.profile_hero(user_name or 'Student', user_email, current_avatar, lazy=True) %}
+{% call ui.profile_hero(user_name or 'Student', user_email, current_avatar, lazy=True, short=True) %}
     <div class="portal-hero-meta-row">
       <span class="portal-hero-meta-item">Register number: <strong>{{ up.get('usn') or '—' }}</strong></span>
       <span class="portal-hero-meta-item">Degree: <strong>{{ up.get('degree') or (up.get('department') and 'B.E - ' ~ up.get('department')) or '—' }}</strong></span>
@@ -436,18 +438,17 @@
     <div class="score-metric-value">{{ user_xp or 0 }}</div>
     <div class="mt-2 small text-subtle"><i class="fas fa-medal me-1 text-gold" aria-hidden="true"></i> Level {{ ((user_xp or 0) // 100) + 1 }} · activity tier</div>
   </div>
-  <div class="panel portal-widget-card">
+  {#- Without tickets the "My active tickets" section above already says so (UPG-297 (c)) -#}
+  {% if active_tickets %}
+  <div class="panel portal-widget-card" data-widget="my-registrations">
     <div class="portal-widget-header"><span>My registrations</span><span class="se-badge se-badge--neutral se-badge--plain">{{ active_tickets|length }} active</span></div>
-    {% if active_tickets %}
     <div class="d-flex flex-column gap-2">
       {% for t in active_tickets[:2] %}
       <div class="mini-reg"><span>{{ t.event_title }}</span><span class="ticket-chip ticket-chip-upcoming">Registered</span></div>
       {% endfor %}
     </div>
-    {% else %}
-    <p class="text-subtle small mb-0">No upcoming registrations. <a href="/events" class="fw-semibold">Explore events →</a></p>
-    {% endif %}
   </div>
+  {% endif %}
   <div class="panel portal-widget-card">
     <div class="portal-widget-header"><span>Event attendance</span><span class="se-badge se-badge--success se-badge--plain">Verified</span></div>
     <div class="attendance-metric-layout">

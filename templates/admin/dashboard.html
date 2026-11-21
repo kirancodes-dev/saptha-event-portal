@@ -526,14 +526,15 @@
         <a href="/admin/audit_log" class="btn btn-sm btn-outline-primary fw-bold" style="font-size:12px;">View All</a>
       </div>
       <div>
+        {#- Plain words and the time in India; signing in and out are on the audit log page (UPG-297 (a)) -#}
         {% for log in audit_log[:15] %}
-        <div class="log-row">
+        <div class="log-row" data-activity="{{ log.action }}">
           <div class="log-dot"></div>
           <div>
-            <div class="log-action">{{ log.action|default('ACTION') }}</div>
-            <div class="log-detail">{{ log.detail|default(log.message|default('—')) }}</div>
+            <div class="log-action">{{ log.action | action_words }}</div>
+            <div class="log-detail">{{ log.details or log.detail or log.message or '—' }}</div>
           </div>
-          <div class="log-time">{{ log.timestamp|default('')|string|truncate(16,True,'') }}</div>
+          <div class="log-time">{{ log.timestamp | ist }}</div>
         </div>
         {% endfor %}
       </div>

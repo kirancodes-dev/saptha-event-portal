@@ -65,6 +65,9 @@
         {{ ui.stat_tile('fa-users', total_regs, 'Total registrations') }}
         {{ ui.stat_tile('fa-user-tie', total_staff, 'Staff appointed') }}
     </div>
+    {% if hides_finished %}
+    <p class="small text-muted mt-n2 mb-3" data-stats-note>Events that are over aren't shown or counted here.</p>
+    {% endif %}
 
     <h2 class="h5 fw-bold mb-3">
         <i class="fas fa-tasks me-2 text-gold" aria-hidden="true"></i> Event control centre

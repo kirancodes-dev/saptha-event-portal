@@ -226,7 +226,9 @@ function stopListening() {
 // ── UNIFIED FILTERING, SEARCH, AND PAGINATION ──
 let activeCategory = 'all';
 let searchKeyword = '';
-let visibleCount = 9; // Show 9 initially
+// The home page shows the next 6 that match; "See all events" opens the rest (UPG-297 (g))
+const HOME_EVENTS = 6;
+let visibleCount = HOME_EVENTS;
 
 // Quick filter states
 let filterFree = false;
@@ -242,7 +244,7 @@ function setCategoryFilter(cat, btn) {
   btn.classList.add('active');
   btn.setAttribute('aria-pressed', 'true');
   activeCategory = cat;
-  visibleCount = 9; // Reset pagination
+  visibleCount = HOME_EVENTS; // Reset pagination
   applyFiltersAndPagination();
 }
 
@@ -267,7 +269,7 @@ function filterEvs() {
     clearBtn.classList.add('d-none');
   }
   
-  visibleCount = 9; // Reset pagination
+  visibleCount = HOME_EVENTS; // Reset pagination
   applyFiltersAndPagination();
 }
 
@@ -276,7 +278,7 @@ function clearSearch() {
   searchInput.value = '';
   document.getElementById('evSearchClear').classList.add('d-none');
   searchKeyword = '';
-  visibleCount = 9;
+  visibleCount = HOME_EVENTS;
   applyFiltersAndPagination();
   searchInput.focus();
 }
@@ -321,12 +323,12 @@ function toggleQuickFilter(type) {
     pill.setAttribute('aria-pressed', filterSoon ? 'true' : 'false');
   }
   
-  visibleCount = 9; // Reset pagination
+  visibleCount = HOME_EVENTS; // Reset pagination
   applyFiltersAndPagination();
 }
 
 function loadMoreEvents() {
-  visibleCount += 9;
+  visibleCount += HOME_EVENTS;
   applyFiltersAndPagination();
 }
 
@@ -388,15 +390,8 @@ function applyFiltersAndPagination() {
     }
   }
   
-  // Toggle Load More Button
-  const loadMoreContainer = document.getElementById('loadMoreContainer');
-  if (loadMoreContainer) {
-    if (matchCount > visibleCount) {
-      loadMoreContainer.classList.remove('d-none');
-    } else {
-      loadMoreContainer.classList.add('d-none');
-    }
-  }
+  // Past the first 6, "See all events" opens the rest (UPG-297 (g))
+
 }
 
 // ── STICKY CONTROL SCROLL HANDLER ─────────────
@@ -482,6 +477,6 @@ document.addEventListener('DOMContentLoaded', function(){
   initStickyControls();
   initCategoryScrollAffordance();
   
-  // Initialize unified filtering & pagination once skeletal loader starts disappearing
-  setTimeout(applyFiltersAndPagination, 350);
+  // Show only the first events at once, so the page doesn't jump (UPG-297 (g))
+  applyFiltersAndPagination();
 });

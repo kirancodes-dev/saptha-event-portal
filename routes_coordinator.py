@@ -81,8 +81,8 @@ def dashboard():
     user_role = session.get('role', '')
     user_email = session.get('user_id')
     club_category = session.get('category', 'General')
+    is_super = user_role in ('SuperAdmin', 'Super Admin') or club_category == 'All'
     try:
-        is_super = user_role in ('SuperAdmin', 'Super Admin') or club_category == 'All'
         all_events_ref = (db.collection('events')
                             .order_by('created_at', direction=firestore.Query.DESCENDING)
                             .stream())
@@ -121,6 +121,7 @@ def dashboard():
         status_filter=(request.args.get('status') or '').strip().lower(),
         club_category=club_category,
         total_regs=total_regs, total_staff=total_staff,
+        hides_finished=not is_super,   # the figures leave out events that are over (UPG-297 (f))
         user_name=session.get('name'))
 
 

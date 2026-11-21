@@ -22,9 +22,10 @@
         "Dates read \"26 Nov 2026\" on the event page, the admin's pages and the coordinator's cards.",
         "Each ticket shows View ticket and a More button; Cancel sits apart under More, so it isn't tapped by mistake.",
         "Prizes typed as a number show in rupees, such as ₹3,000.",
-        "On a phone the SPOC's round quick-actions button no longer covers the bottom menu."
+        "On a phone the SPOC's round quick-actions button no longer covers the bottom menu.",
+        "The admin dashboard's recent activity says what happened in words, at the time in India, without sign-ins. Students are greeted by name, with a short campus banner. The home page shows the next 6 events and \"See all events\". Page names in the top bar are no longer cut; the SPOC's event header and the coordinator's figures say what is true."
       ],
-      "items": ["UPG-341", "UPG-342", "UPG-350", "UPG-351", "UPG-352", "UPG-353", "UPG-354", "UPG-355", "UPG-356", "UPG-357", "UPG-358", "UPG-359", "UPG-362", "UPG-363", "UPG-364", "UPG-365", "UPG-366", "UPG-367", "UPG-368", "UPG-373"]
+      "items": ["UPG-297", "UPG-341", "UPG-342", "UPG-350", "UPG-351", "UPG-352", "UPG-353", "UPG-354", "UPG-355", "UPG-356", "UPG-357", "UPG-358", "UPG-359", "UPG-362", "UPG-363", "UPG-364", "UPG-365", "UPG-366", "UPG-367", "UPG-368", "UPG-373"]
     },
     {
       "version": "1.15",

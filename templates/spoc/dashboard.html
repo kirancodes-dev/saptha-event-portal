@@ -1429,12 +1429,14 @@ h1, h2, h3, h4, h5, h6 {
             </div>
             
             <div class="event-head-actions d-flex flex-column align-items-end gap-2">
-              <span class="badge {{ 'bg-success' if event.status in ('active', 'published', 'registration_open', 'in_progress') else 'bg-secondary' }} px-3 py-2 fs-7" style="border-radius:100px;">
-                <i class="fas fa-{{ 'circle fa-xs' if event.status in ('active', 'published', 'registration_open') else 'check-circle' }} me-1"></i>
-                {{ event.status | replace('_', ' ') | title }}
-              </span>
               {#- What visitors are told right now: the same state the public pages show (UPG-266) -#}
               {% set rs = reg_state_of(event) %}
+              {#- Not the stored status ("Registration Open" beside "Event over"): the organiser's
+                  words, and only when they say something "Visitors see" doesn't (Draft, Waiting for approval) (UPG-297 (e)) -#}
+              {% set os = organiser_status(event) %}
+              {% if os.label != rs.label %}
+              <span class="se-badge se-badge--{{ os.tone }}" data-organiser-status="{{ os.key }}" title="{{ os.explanation }}">{{ os.label }}</span>
+              {% endif %}
               <span class="small text-muted text-end" data-visitor-state="{{ rs.key }}" data-live-event="{{ event.id }}" data-live-scope="ops">Visitors see: <strong data-live-label>{{ rs.label }}</strong><br><span data-live-explanation>{{ rs.explanation }}</span>
                 <span data-live-when-known hidden><br>Registered <strong data-live-count="registered"></strong> · checked in <strong data-live-count="checked_in"></strong> · waiting <strong data-live-count="waiting"></strong> · <span data-live-status role="status"></span></span></span>
               <div class="d-flex gap-2 flex-wrap justify-content-end">

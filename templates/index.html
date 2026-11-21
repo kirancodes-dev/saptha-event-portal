@@ -650,13 +650,15 @@ button.hsc-cat { font-family: inherit; line-height: 1.2; }
       </div>
     </div>
 
-    <!-- Load More Button -->
-    <div class="load-more-container d-none" id="loadMoreContainer">
-      <button class="btn btn-outline-primary btn-load-more" id="loadMoreBtn" data-h-click="index:22">
-        <span>Load More Events</span>
-        <i class="fas fa-chevron-down"></i>
-      </button>
+    {#- The next 6 events, then every event on its own page: the home page stays short on a phone (UPG-297 (g)) -#}
+    {% if events %}
+    <div class="load-more-container" id="seeAllEvents">
+      <a href="/events" class="btn btn-outline-primary btn-load-more" data-see-all-events>
+        <span>See all events</span>
+        <i class="fas fa-arrow-right" aria-hidden="true"></i>
+      </a>
     </div>
+    {% endif %}
 
   </div>
 </section>

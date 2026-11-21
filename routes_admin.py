@@ -95,8 +95,10 @@ def dashboard():
         try:
             logs = (db.collection('audit_log')
                       .order_by('timestamp', direction=DESCENDING)
-                      .limit(20).stream())
-            audit_log = [l.to_dict() for l in logs]
+                      .limit(80).stream())
+            # Without signing in and out, 15 newest (UPG-297 (a))
+            from services_activity import dashboard_feed
+            audit_log = dashboard_feed([l.to_dict() for l in logs])
         except Exception:
             pass
 

@@ -5,6 +5,7 @@
     © 2026 {{ institution().name }} ·
     <a href="/about">About</a> ·
     <a href="/privacy">Privacy notice</a> ·
-    <a href="/terms">Terms</a>{% if powered_by() %} ·
+    <a href="/terms">Terms</a>{% if app_version() %} ·
+    <a href="/whats-new" data-app-version>What's new · {{ app_version() }}</a>{% endif %}{% if powered_by() %} ·
     <span class="site-footer__powered">Powered by SapthaEvent</span>{% endif %}
 </footer>

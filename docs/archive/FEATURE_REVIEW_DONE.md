@@ -141,6 +141,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Event summary report | WORKING [T, R in a browser at UPG-273] | `services_summary.py`, `routes_analytics.py:24-80`, `templates/analytics/event_summary.html` | Counted from the records; payments not included; not an accreditation format. |
 | About page and demo marker | WORKING [T, R in a browser at UPG-275] | `routes_marketing.py`, `templates/public/about.html`, `config.py:256`, `templates/layouts/document.html` | `DEMO_ENVIRONMENT=1` puts a Demo banner on every page; `/pricing` left as it was (UPG-287). |
 | First pages: order, dates and status wording | WORKING [T, R in a browser at UPG-294] | `services_registration_state.py:173-218`, `app.py:312-319,741,869`, `templates/participant/dashboard.html`, `templates/spoc/dashboard.html:1238`, `templates/admin/dashboard.html:485`, `templates/coordinator/dashboard.html:579-586` | Home page and catalogue list what can be registered for first; dates as "25 Nov 2026"; organisers' status in plain words; student's tickets before the profile card. Left out: UPG-297. |
+| What's new and the portal's version | WORKING [T, R in a browser at UPG-373] | `config/releases.json`, `services_releases.py`, `routes_marketing.py:45-49`, `templates/public/whats_new.html`, `templates/includes/site_footer.html:8-9`, `app.py:402` | Every version from v1.0 (20 Oct 2026), newest first, in plain words; the footer shows the version. A new entry after each deploy (`docs/DEPLOY.md` Release check step 10). |
 
 ---
 
@@ -6298,3 +6299,19 @@ The owner asked that any problem in a tournament can be fixed by the SPOC or the
 - **Acceptance criteria:**
   1. ✅ Test: published, then the final corrected: the page shows the changed-places alert; republishing swaps the places, emails both changed teams their new place, revokes the old winner's certificate; pressed again: nobody is told anything.
 - **Evidence:** `services_sports.py:686-783`; `routes_sports.py:289-304`; `templates/spoc/tournament.html:150-183`; test `tests/test_tournament_fixes.py::test_corrected_results_are_published_again`.
+
+### The portal's versions (owner, 2026-11-21)
+
+#### UPG-373 — A What's new page with every version
+- **Status:** DONE
+- **Last verified:** 2026-11-21, on `47abcc9` plus this change [T]
+- **Problem:** Nothing in the portal said which version was live or what each update changed; the owner wanted every update numbered, the earlier ones worked out too, and future updates added as they come ("i also need version calculate previous also and in future it need to go").
+- **Who benefits:** the owner and everyone using the portal.
+- **What was built:** `config/releases.json`, one entry per deploy, newest first: v1.0 (`dfce764`, 20 Oct 2026, the first live deploy) to v1.15 (`51ea502`, `saptha-51ea`), worked out from the deploy history, and v1.16 (this code: UPG-341, 342, 350–359, 373), each with its date, commit, Cloud Run revision, a title, what changed in plain words and its items. `services_releases` reads it; `/whats-new` shows every version, the top one marked "You're using this version"; the footer on every page shows "What's new · v1.16". `docs/DEPLOY.md` "Release check" step 10: after a deploy, write its revision into the top entry; the next finished item starts a new version.
+- **Depends on:** none.
+- **Acceptance criteria:**
+  1. ✅ Test: the versions are newest first with rising numbers and dates, each has a title and notes, holds only finished items, no item twice, and only the newest may lack a revision.
+  2. ✅ Test: every item the changelog (last 20) finished is in some version, so a future change can't be left off.
+  3. ✅ Test: `/whats-new` shows every version, the newest first and marked, dates as "20 Oct 2026"; the footer links it with the version, signed in or not; an unreadable list shows no version.
+- **Evidence:** `config/releases.json`; `services_releases.py`; `routes_marketing.py:45-49`; `templates/public/whats_new.html`; `templates/includes/site_footer.html:8-9`; `app.py:402`; `docs/DEPLOY.md` "Release check" step 10; tests `tests/test_releases.py` (4). Checked in Chromium at 390 px and 1280 px: no sideways scroll.
+

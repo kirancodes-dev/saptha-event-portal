@@ -42,6 +42,13 @@ def pricing():
     return _demo_page(lambda: render_template('marketing/pricing.html'))
 
 
+@marketing_bp.route('/whats-new')
+def whats_new():
+    """Every version of the portal and what changed in it, newest first (UPG-373)."""
+    import services_releases
+    return render_template('public/whats_new.html', releases=services_releases.releases())
+
+
 @marketing_bp.route('/platform/wayfinder')
 def wayfinder():
     return render_template('public/wayfinder.html')

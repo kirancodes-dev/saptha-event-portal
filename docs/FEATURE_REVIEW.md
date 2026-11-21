@@ -400,6 +400,18 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 | UPG-359 | Corrected results published again | DONE | When the fixtures no longer match the published places the result card says so and offers "Publish the corrected results": only the teams whose place changed are told, the old places' position certificates are revoked, the event's winners and ranks are rewritten; pressed with nothing changed it says so (`services_sports.py:686-783`, `routes_sports.py:289-304`, `templates/spoc/tournament.html:150-183`). |
 | UPG-360 | A team corrected back to a place it once had gets no certificate for it | TODO | A revoked certificate stays the person's current one for that type (`services_certificates.py:350-375`, `services_certificate_changes.py:146-162`), so a place taken away and given back can't be issued again, and nothing on a page restores it. |
 | UPG-361 | The NAAC daily reminder can go twice between midnight and 05:30 IST | TODO | `daily_reminders` compares today's IST date with the UTC date of the last reminder (`services_naac.py:52-53`, `:321`, `:332-337`), so a run after IST midnight but before UTC midnight sends again; its test failed when the suite ran across 05:30 IST. |
+| UPG-362 | The coordinator's dashboard calls upcoming events "Closed" and "Event concluded" | TODO | Every event whose status isn't `active` gets a grey "Closed" badge and a disabled "Event concluded" button (`templates/coordinator/dashboard.html:94-101`, `:282`), so an event five days away, with registration about to open, looks finished; the SPOC's console calls the same events "Opens soon". |
+| UPG-363 | The welcome pop-up covers the page title on a phone | TODO | After signing in, "Welcome back, …" is drawn over the top of the page on every dashboard (student, SPOC, coordinator, judge, admin), hiding the title ("Dashb…", "Welc…") until it is closed. |
+| UPG-364 | Buttons and labels too small to tap or read on a phone | TODO | Measured at 390 px: the header's icon buttons (search, notifications, theme, log out) are 28×38 px; the bottom menu's labels and the category chips are under 12 px; on the sign-in page "Remember me" is 18×18 px, the show-password eye 23×35 px and "Forgot password?" / "Create an account" 16 px tall. |
+| UPG-365 | Dates are shown as 2026-11-26 in many places | TODO | The public event page's header and "Key dates", the admin dashboard ("Platform overview for 2026-11-21"), the admin's events list and the coordinator's "Deadline:" print the stored date as it is, while the student's dashboard says "26 Nov 2026". |
+| UPG-366 | The student's ticket card has five buttons in a row, Cancel among them | TODO | Each ticket on the student's dashboard shows View ticket, Edit details, Badge, Event info and a red Cancel side by side, two rows deep on a phone; Cancel is one tap from View ticket. |
+| UPG-367 | Prize amounts are shown without ₹ | TODO | The event page's prizes print the SPOC's text as typed (`templates/public/_event_content.html:164-185`), so "3000" appears with no currency. |
+| UPG-368 | The round help button covers the bottom menu on a phone | TODO | The floating round button at the bottom corner sits on top of the bottom menu's last item ("Install" or "Console") on a phone. |
+| UPG-369 | The admin's lists are wider than a phone | TODO | "All events" is 815 px wide on a 390 px screen: the event name, kind, date and "Visitors see" are squeezed into one narrow column, one word a line, and status and registrations are off the screen. |
+| UPG-370 | The admin dashboard's numbers fill a whole phone screen | TODO | The six number cards (events, registrations, revenue, staff, SPOCs, students) are one per row on a phone, about 1,100 px before anything else. |
+| UPG-371 | The coordinator's event cards start with a large empty banner | TODO | With no event image, each card on the coordinator's dashboard begins with a 130 px dark block holding only an icon. |
+| UPG-372 | The tournament page's fields have no labels | TODO | The score, winner, date, time, venue and home/away fields on the SPOC's tournament page have no label a screen reader can read (`templates/spoc/tournament.html`, the match forms). |
+| UPG-373 | A What's new page with every version | DONE | `/whats-new` lists every version from v1.0 (20 Oct 2026) to this one, each with its date, a title and what changed in plain words, newest first, from `config/releases.json`; the footer on every page shows "What's new · v1.16"; a test fails if a finished item is in no version (`services_releases.py`, `routes_marketing.py:45-49`, `templates/public/whats_new.html`, `templates/includes/site_footer.html:8-9`, `app.py:402`). |
 
 ## Open items
 
@@ -1459,6 +1471,121 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 - **Acceptance criteria:**
   1. Test: with the clock set to 00:30 IST, a reminder sent at 00:10 IST the same day stops a second one; one sent at 23:50 IST the day before doesn't.
 
+### Easy to use everywhere (owner, 2026-11-21)
+
+The owner asked to "make the full portal user friendly" and chose: walk every role's main pages on a phone and a computer, write each problem down, fix them starting with those most people meet. Walked on 2026-11-21 in Chromium at 390 px and 1280 px as a visitor, student, SPOC, coordinator, judge and Super Admin (about 20 pages each width, with a measuring script: page width, tap-target size, text size, unlabelled fields, codes and raw dates). UPG-373 (a What's new page with versions, the owner's request the same day) came first. Order agreed: UPG-362, UPG-363, UPG-364, UPG-365, UPG-366, UPG-367, UPG-368, UPG-297 (a)–(g), UPG-369, UPG-370, UPG-371, UPG-372.
+
+#### UPG-362 — The coordinator's dashboard calls upcoming events "Closed" and "Event concluded"
+- **Status:** TODO
+- **Last verified:** 2026-11-21, on `47abcc9` [R in Chromium, 390 px and 1280 px]
+- **Problem:** Every event whose status isn't `active` gets a grey "Closed" badge and a disabled "Event concluded" button (`templates/coordinator/dashboard.html:94-101`, `:282`), so an event five days away, with registration about to open, looks finished; the SPOC's console calls the same events "Opens soon". Every card also ends in a red "Delete event" link that deletes the event, its registrations and form answers for good after one confirm (`:285-291`, `routes_coordinator.py:1139-1156`).
+- **Who benefits:** coordinators (and the SPOC, who is asked why the event says closed).
+- **What to build:** the card shows what visitors see, with the same words as the SPOC's console (Opens soon, Registration open, Live, Ended); "Event concluded" and "Export final data" as the main button only once the event has ended; "Delete event" taken off the coordinator's card (the SPOC deletes from the event's own page).
+- **Depends on:** none.
+- **Acceptance criteria:**
+  1. Test: a published event with registration not yet open shows "Opens soon" and no "Event concluded"; an ended event shows "Ended" and "Event concluded".
+  2. Test: the coordinator's dashboard has no delete form.
+
+#### UPG-363 — The welcome pop-up covers the page title on a phone
+- **Status:** TODO
+- **Last verified:** 2026-11-21, on `47abcc9` [R in Chromium, 390 px and 1280 px]
+- **Problem:** After signing in, "Welcome back, …" is drawn over the top of the page on every dashboard (student, SPOC, coordinator, judge, admin), hiding the title ("Dashb…", "Welc…") until it is closed.
+- **Who benefits:** everyone who signs in on a phone.
+- **What to build:** on a phone the pop-up sits at the bottom, above the bottom menu, and goes by itself after a few seconds; on a computer it stays at the top right, clear of the title.
+- **Depends on:** none.
+- **Acceptance criteria:**
+  1. Test: on a 390 px screen the pop-up doesn't overlap the page's heading (browser test).
+
+#### UPG-364 — Buttons and labels too small to tap or read on a phone
+- **Status:** TODO
+- **Last verified:** 2026-11-21, on `47abcc9` [R in Chromium, 390 px and 1280 px]
+- **Problem:** Measured at 390 px: the header's icon buttons (search, notifications, theme, log out) are 28×38 px; the bottom menu's labels and the category chips are under 12 px; on the sign-in page "Remember me" is 18×18 px, the show-password eye 23×35 px and "Forgot password?" / "Create an account" 16 px tall. A finger needs about 44×44 px.
+- **Who benefits:** everyone on a phone.
+- **What to build:** tap targets of at least 44×44 px for the header buttons, the bottom menu, the sign-in page's checkbox, eye and links, and the category chips; text at least 12 px.
+- **Depends on:** none.
+- **Acceptance criteria:**
+  1. Test: on a 390 px screen every header and bottom-menu button and the sign-in page's controls are at least 44 px tall (browser test).
+
+#### UPG-365 — Dates are shown as 2026-11-26 in many places
+- **Status:** TODO
+- **Last verified:** 2026-11-21, on `47abcc9` [R in Chromium, 390 px and 1280 px]
+- **Problem:** The public event page's header and "Key dates", the admin dashboard ("Platform overview for 2026-11-21"), the admin's events list and the coordinator's "Deadline:" print the stored date as it is, while the student's dashboard says "26 Nov 2026".
+- **Who benefits:** everyone.
+- **What to build:** one date filter ("Thu, 26 Nov 2026"; with the time "Thu, 26 Nov 2026, 10:00 AM") used on those pages.
+- **Depends on:** none.
+- **Acceptance criteria:**
+  1. Test: each of those pages shows the event date as "26 Nov 2026" and no `2026-11-26`.
+
+#### UPG-366 — The student's ticket card has five buttons in a row, Cancel among them
+- **Status:** TODO
+- **Last verified:** 2026-11-21, on `47abcc9` [R in Chromium, 390 px and 1280 px]
+- **Problem:** Each ticket on the student's dashboard shows View ticket, Edit details, Badge, Event info and a red Cancel side by side, two rows deep on a phone; Cancel is one tap from View ticket.
+- **Who benefits:** students.
+- **What to build:** View ticket as the one main button; Edit details, Badge and Event info under "More"; Cancel inside "More", apart from the rest, still asking to confirm.
+- **Depends on:** none.
+- **Acceptance criteria:**
+  1. Test: the ticket card shows one main button and the others inside "More"; Cancel still works.
+
+#### UPG-367 — Prize amounts are shown without ₹
+- **Status:** TODO
+- **Last verified:** 2026-11-21, on `47abcc9` [R in Chromium, 390 px and 1280 px]
+- **Problem:** The event page's prizes print the SPOC's text as typed (`templates/public/_event_content.html:164-185`), so "3000" appears with no currency.
+- **Who benefits:** visitors and students.
+- **What to build:** a plain number is shown as ₹3,000; any other text ("Trophy") as typed.
+- **Depends on:** none.
+- **Acceptance criteria:**
+  1. Test: a prize of 3000 shows "₹3,000"; "Trophy and goodies" shows unchanged.
+
+#### UPG-368 — The round help button covers the bottom menu on a phone
+- **Status:** TODO
+- **Last verified:** 2026-11-21, on `47abcc9` [R in Chromium, 390 px and 1280 px]
+- **Problem:** The floating round button at the bottom corner sits on top of the bottom menu's last item ("Install" or "Console") on a phone.
+- **Who benefits:** everyone on a phone.
+- **What to build:** on a phone the round button sits above the bottom menu.
+- **Depends on:** none.
+- **Acceptance criteria:**
+  1. Test: on a 390 px screen the round button and the bottom menu don't overlap (browser test).
+
+#### UPG-369 — The admin's lists are wider than a phone
+- **Status:** TODO
+- **Last verified:** 2026-11-21, on `47abcc9` [R in Chromium, 390 px and 1280 px]
+- **Problem:** "All events" is 815 px wide on a 390 px screen: the event name, kind, date and "Visitors see" are squeezed into one narrow column, one word a line, and status and registrations are off the screen.
+- **Who benefits:** the Super Admin on a phone.
+- **What to build:** on a phone each row becomes a card (name, status, registrations, date); the same for the admin's users list.
+- **Depends on:** none.
+- **Acceptance criteria:**
+  1. Test: on a 390 px screen the admin's events and users pages are no wider than the screen (browser test).
+
+#### UPG-370 — The admin dashboard's numbers fill a whole phone screen
+- **Status:** TODO
+- **Last verified:** 2026-11-21, on `47abcc9` [R in Chromium, 390 px and 1280 px]
+- **Problem:** The six number cards (events, registrations, revenue, staff, SPOCs, students) are one per row on a phone, about 1,100 px before anything else.
+- **Who benefits:** the Super Admin on a phone.
+- **What to build:** two cards a row on a phone, each shorter (icon beside the number).
+- **Depends on:** none.
+- **Acceptance criteria:**
+  1. Test: on a 390 px screen the six cards take at most three rows (browser test).
+
+#### UPG-371 — The coordinator's event cards start with a large empty banner
+- **Status:** TODO
+- **Last verified:** 2026-11-21, on `47abcc9` [R in Chromium, 390 px and 1280 px]
+- **Problem:** With no event image, each card on the coordinator's dashboard begins with a 130 px dark block holding only an icon.
+- **Who benefits:** coordinators on a phone.
+- **What to build:** without an image, a thin coloured band with the category instead of the block.
+- **Depends on:** none.
+- **Acceptance criteria:**
+  1. Test: an event without an image has no banner block on the coordinator's dashboard.
+
+#### UPG-372 — The tournament page's fields have no labels
+- **Status:** TODO
+- **Last verified:** 2026-11-21, on `47abcc9` [R in Chromium, 390 px and 1280 px]
+- **Problem:** The score, winner, date, time, venue and home/away fields on the SPOC's tournament page have no label a screen reader can read (`templates/spoc/tournament.html`, the match forms).
+- **Who benefits:** staff using a screen reader, and anyone unsure what a box is for.
+- **What to build:** a label (visible or `aria-label`) on each field, naming the team or the field.
+- **Depends on:** none.
+- **Acceptance criteria:**
+  1. Test: every input and select on the tournament page has a label.
+
 ### Sports and cultural events up to the hackathon's level (owner, 2026-11-20; Kabaddi first)
 
 The owner asked for every kind of event to work as well as SAPTHAHACKS'26 did, starting with a Kabaddi tournament run like a professional kabaddi league. Order agreed ("go"): UPG-342, UPG-350, UPG-351, UPG-352, UPG-344, UPG-345, UPG-343, then UPG-346 to UPG-349. UPG-342, UPG-350, UPG-351 and UPG-352 are done (archived).
@@ -1545,7 +1672,6 @@ The owner asked for every kind of event to work as well as SAPTHAHACKS'26 did, s
 
 | Date | Commit | Item ID | What changed |
 |---|---|---|---|
-| 2026-11-17 | (uncommitted, on `25640b5`) | UPG-308, UPG-309, UPG-310, UPG-312, UPG-313; new UPG-311, UPG-314 | **The owner's hackathon, end to end (owner's request, 2026-11-17), and two room changes:** a "Team code" column in the registrations export; a third way to score round 1, "Outside evaluators": their file (Excel/CSV) with team codes, their marks uploaded back, checked and submitted, which saves the marks and sends the top N (10, ties together) to round 2 in one step; an old team code still matches (`services_hackathon_marks.py`, no migration). The finale: every judge sees every finalist (on by itself after the evaluators' marks; a switch otherwise, so the earlier finale test stands), a search by team name or code, a judge's score is the marks added up ("80 / 100"), a team's score the average of the judges who scored it, the finale ranking and results from those judges only, the criteria total with a warning off 100. Participation certificates: who (checked in, every member of a team that submitted, everyone registered) and the portal only or email too, per event. Rooms: a seat can be a whole team (UPG-312); a room number typed by hand joins the list (UPG-313). UPG-311 (new): the coordinator's event edit flattens criteria marks; UPG-314 (new): a dashboard test fails by chance on a random ID. 33 new tests in five new files; no existing test changed (an error message and the stored `total` of a judge score were kept as existing tests read them). Full run (a clone with this change; the committed `tests/test_certificate_delivery.py`, since the working copy is the truncated one, UPG-293): 1,781 passed, 8 skipped, 5 failed: the two known `[coordinator registrations]` pagination tests (UPG-289), `test_type_check_config` (the clone has no `.venv`; 2 passed in the project), and two tests that read the stored `total` of a judge score, after which `total` was put back; the suite again in four parts on the fix: 1,780 passed, 8 skipped, the same known failures plus `tests/test_admin_users.py` by order (UPG-154; 6 passed alone). Also seen once: UPG-314. Ruff clean. Rule 8 (`routes_judge.py`, `services_leaderboard.py`, `services_certificates.py`, `routes_spoc.py`): citations still hold; UPG-301 gained the three new hackathon fields a copy should drop. |
 | 2026-11-17 | (uncommitted, on `e7b3d46`) | UPG-315 | **The owner's certificate, on their own design (owner's request, with their Sapthahacks'26 participation certificate as the reference):** the QR code can go "Where I place it": a square the SPOC drags onto the design's own "scan to verify" box and resizes by its corner (or types from top %, from left %, size % of the page width, kept on the page, 5-30%); the PDF draws the QR there at that size with no white patch and no number under it (`certificate_pdf.placed_qr`). The certificate number is now an optional box like team, USN and college (off by default). The four corners and designs saved before are unchanged. For the owner's template (measured from their image): name 16.5% from the left, 50% from the top, 62% wide, 30 pt bold, #2a2e77, left-aligned; QR 82.2% from the left, 44.8% from the top, 11.8% (the defaults for a placed QR). 4 tests (`tests/test_certificate_design_qr.py`, one headless); tests changed: none. Full pytest (four copies with `.git`, the committed `tests/test_certificate_delivery.py`, UPG-293): 1,788 passed, 8 skipped, 2 failed: the two known `[coordinator registrations]` pagination tests (UPG-289). Ruff clean. Rule 8: the only open item citing the changed files (`certificate_pdf.py:172`, pyrefly) still holds. Not deployed. |
 | 2026-11-18 | (uncommitted, on `88afa47`) | UPG-316 | **Rooms: teams of 3 and 4 apart, or mixed (owner's request, 2026-11-18: "if 3 member room separate and 4 member separate … the allocation is important", then "keep it flexible like if they want mix 3 and 4 both"):** step 1 asks "Teams of different sizes: Mixed / Separate" (Mixed by default, as before); each room can be "Mixed (any size)" or "Only teams of N"; Auto-fill with Separate puts the biggest teams first and never mixes sizes in a room except a "Mixed" one; each team stays together; hand moves are allowed and the room cards and final check show and note sizes without blocking. 5 new tests (`tests/test_room_team_sizes.py`). |
 | 2026-11-18 | (uncommitted, on `f718743`) | UPG-317 | **Delete the waitlist (owner's request, 2026-11-18: "keep the button in waiting list to delete the waiting list"; the same message reported rooms allocated final weren't reaching participants, then the owner confirmed everyone had received them, so rooms are unchanged and UPG-306's 28 tests pass):** on the waitlist card the hosting SPOC deletes one person (Delete under Accept) or the whole waitlist ("Delete the whole waitlist (N)"), each after a dialog and a tick; only entries still waiting go (accepted teams and their records, other events and accounts stay), nobody is told, they can sign up again; logged as `WAITLIST_DELETED` (`services_waitlist.delete_waiting`, `routes_coordinator.delete_waitlist`, no migration). 7 new tests (`tests/test_waitlist_delete.py`); no existing test changed. Full run (four copies, the committed `tests/test_certificate_delivery.py`, UPG-293): 1,799 passed, 8 skipped, 3 failed: the two UPG-289 pagination tests and `test_type_check_config` (no `.venv` in the copies; 2 passed in the project). Ruff clean. Rule 8: citations moved by the new lines corrected for UPG-203, UPG-215, UPG-221, UPG-247, UPG-307 and UPG-311 (UPG-215's and UPG-221's were already stale); none changed status. Not deployed. |
@@ -1565,3 +1691,4 @@ The owner asked for every kind of event to work as well as SAPTHAHACKS'26 did, s
 | 2026-11-20 | (uncommitted, on `51ea502`) | UPG-341 | **The participation certificate by hand, for the winners (owner, 2026-11-20, screenshot after issuing 560 participation certificates: "they also need to get … add a drop down to them separately to send the participation in that only").** The Award row's Certificate list has "Participation (your design)": pick a registered person, Award, and they get it on the SPOC's design, once; nobody else is touched (`services_certificates.py:242-272`, `routes_certificates.py:90-91`, `templates/certificates/manage.html:96`). New `tests/test_certificate_award_participation.py` (2). Three references that moved were corrected (UPG-330, UPG-331). Full pytest: 4 failed, 1,888 passed, 8 skipped, all logged before (UPG-289 ×2, UPG-333, and `test_type_check_config`, which fails only in the scratch copy). |
 | 2026-11-20 | (uncommitted, on `98b036b`) | UPG-342, UPG-350, UPG-351, UPG-352; new UPG-353, UPG-354 | **A Kabaddi tournament run like a professional kabaddi league (owner, 2026-11-20: "we are having a kabaddi sports event, like how the PKL and other leagues are happening … test it manually").** UPG-342: a tournament's places become the event's result: "Publish results" on the tournament page (and the SPOC's or coordinator's Publish) writes 1st/2nd from the final and 3rd from the third-place match or both losing semi-finalists (a league's top three), completes the event, emails the placed leads their place (no score), pushes, and owes position certificates by place. UPG-350: kabaddi points 5/3/1 (loss by 7 or fewer)/0 with score difference, chosen by itself on a Kabaddi event; "League then knockout" with "Make the playoffs" (top 4 or top 2, optional third-place match); stage names (Semi-final 1, Final, Third place). UPG-351: "Score live" on each match opens a phone scorer (raid 1–7, bonus, tackle, super tackle, all out, technical point, by player; undo; halves and a pausable clock; full time saves the result and moves the winner on, a knockout tie asks who went through); each match keeps its own record, a repeated tap counts once; anyone opens the match's scoreboard, which refreshes itself every 3 s, and the fixtures show LIVE. UPG-352: top raiders and defenders with Super 10s and High 5s on the public fixtures, and who scored on each scoreboard. No migration (the live records are native documents). 11 new tests (`tests/test_tournament_results.py` 3, `tests/test_tournament_kabaddi.py` 3, `tests/test_live_match.py` 3, `tests/test_live_match_stats.py` 2); no existing test changed. Checked by hand in Chromium at phone width on a throwaway database, from making the league to publishing; fixed there: the LIVE mark and the raid/tackle table were missing on a board opened before kick-off, and two tables were wider than a phone. Rule 8: 26 line references in open items moved by the new lines were corrected. Full pytest: 4 failed, 1,899 passed, 8 skipped, all logged before (UPG-289 ×2, UPG-333 seminar, and `test_type_check_config`, which fails only in the scratch copy; 2 passed in the repo). Found: UPG-353 (scores unreadable on the staff page), UPG-354 (two results at the same moment). |
 | 2026-11-21 | (uncommitted, on `57778db`) | UPG-353, UPG-354, UPG-355, UPG-356, UPG-357, UPG-358, UPG-359; new UPG-360 | **Nothing in a tournament needs code to fix (owner, 2026-11-21: "i dont want any gap so the any problem happened spoc or super admin can fix it not alwayes required to code").** UPG-353: the staff page's scores are dark badges. UPG-354: every change to a tournament (a result, full time, a schedule, the playoffs, every fix below) reads it afresh under a lock that every copy of the app shares, so two courts finishing together both keep their result. UPG-355: Clear the result on any match (a knockout's winner comes back out of the next match; a correction past a played match says which match to clear first); Reopen the match on the scorer after full time; remove any point from the live log. UPG-356: Give walkover; Withdraw a team (its matches still to play become walkovers, later knockout rounds too) and Bring back; a walkover scores win points and 0, no score, W/O on the pages. UPG-357: a Teams card: rename, replace with another confirmed team (results and live records move), add a late team to a league; Fix this match sets a match's teams (a playoff seeding by toss), refused while scored live or if the team already plays in that round. UPG-358: change the points rule before the playoffs; Undo the playoffs while none is played; making the fixtures again forgets old live records. UPG-359: when the fixtures no longer match the published places the page says so; Publish the corrected results tells only the teams whose place changed and revokes the old places' certificates. Every fix is logged in the audit log; the Super Admin can use all of them. A help card on the page lists what to do for each mistake. No migration (the lock is a row in the existing counter table). 13 new tests (`tests/test_tournament_fixes.py`); no existing test changed. Checked by hand in Chromium at phone width: a match ended too early reopened, a wrong point removed, a result cleared; fixed there: the Teams table was wider than a phone (now one block per team). Rule 8: no open item cites the changed lines. Full pytest: 5 failed, 1,911 passed, 8 skipped: four logged before (UPG-289 ×2, UPG-333 seminar, `test_type_check_config` in the scratch copy only) and one new, UPG-361 (the NAAC reminder test run across 05:30 IST; passes alone and in its file). Found: UPG-360 (a place given back gets no certificate), UPG-361 (the NAAC daily reminder can go twice between midnight and 05:30 IST). |
+| 2026-11-21 | (uncommitted, on `47abcc9`) | UPG-373; new UPG-362, UPG-363, UPG-364, UPG-365, UPG-366, UPG-367, UPG-368, UPG-369, UPG-370, UPG-371, UPG-372 | **The portal's versions (owner, 2026-11-21: "i also need version calculate previous also and in future it need to go").** `config/releases.json` holds every version, newest first: v1.0 (`dfce764`, 20 Oct 2026, the first live deploy) to v1.15 (`51ea502`), worked out from the deploy history, and v1.16 for this code (UPG-341, 342, 350–359, 373). `/whats-new` lists them with the date, a title and what changed in plain words, the top one marked "You're using this version"; every page's footer links it as "What's new · v1.16". `docs/DEPLOY.md` Release check step 10: write the Cloud Run revision into the top entry after a deploy; the next finished item starts a new version. 4 new tests (`tests/test_releases.py`), one of which fails if a finished item in this changelog is left out of every version. **The usability walk (owner, "make the full portal user friendly"):** every role's main pages on a 390 px phone and a 1280 px computer, measured for sideways scroll, small taps, tiny text, unlabelled fields and codes or ISO dates on screen; 11 new items, UPG-362 to UPG-372, to build in the agreed order with UPG-297 (a)–(g). Full pytest: 5 failed, 1,915 passed, 8 skipped. The 5 are known: UPG-333 (`test_seminar_e2e`), UPG-289 (2 `[coordinator registrations]` pagination tests), UPG-322 (`test_hackathon_browser`, passes alone) and `test_type_check_config` (fails only in the scratch copies). The NAAC test (UPG-361) passed this time. Rule 8: no open item cites the changed lines. |

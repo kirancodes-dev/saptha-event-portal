@@ -639,6 +639,12 @@ record the results in `docs/FEATURE_REVIEW.md` (UPG-32 has the first run's).
    checks on every test run where Chromium is installed.
 9. **Container:** `docker compose up --build` starts the app, worker and
    database (Cloud Build builds the same `Dockerfile` on deploy).
+10. **Version (UPG-373):** the top entry of `config/releases.json` is what this
+   deploy carries, shown at `/whats-new` and in the footer. Once the deploy is
+   live, write its Cloud Run revision (e.g. `saptha-47ab`) into that entry's
+   `revision`; the next finished item then starts a new entry with the next
+   number. `tests/test_releases.py` fails if a finished item in the changelog is
+   in no version, or if more than the newest version has no revision.
 
 ## Hackathon release (UPG-199)
 

@@ -1,0 +1,219 @@
+{
+  "_about": "Every version of the portal, newest first (UPG-373). The top entry is the version of this code; shown at /whats-new and in the footer. A new entry starts after each deploy; until then every finished item goes into the top entry. 'revision' is the Cloud Run revision it went live as ('' until deployed).",
+  "releases": [
+    {
+      "version": "1.16",
+      "date": "2026-11-21",
+      "commit": "47abcc9",
+      "revision": "",
+      "title": "Sports tournaments run like a professional league",
+      "notes": [
+        "Kabaddi tournaments: kabaddi points (5 for a win, 3 for a tie, 1 for a close loss), a league then playoffs, semi-finals, a final and a third-place match.",
+        "Live scoring on a phone: raid, bonus, tackle, all out and more, by player; anyone can watch the live scoreboard, which updates by itself.",
+        "Top raiders and top defenders, with Super 10s and High 5s, on the fixtures page.",
+        "Publishing a tournament's results gives the places, tells the teams and owes position certificates.",
+        "Every tournament mistake is fixed on the page, without help: clear a wrong result, reopen a match ended too early, remove any wrong point, walkovers, withdraw or bring back a team, rename, replace or add a late team, change a match's teams, change the points rule, undo the playoffs, and publish corrected results.",
+        "Two courts finishing at the same moment both keep their result.",
+        "The SPOC gives one person the participation certificate by hand (for example a winner judged without a check-in).",
+        "A page listing every version of the portal and what changed (this page)."
+      ],
+      "items": ["UPG-341", "UPG-342", "UPG-350", "UPG-351", "UPG-352", "UPG-353", "UPG-354", "UPG-355", "UPG-356", "UPG-357", "UPG-358", "UPG-359", "UPG-373"]
+    },
+    {
+      "version": "1.15",
+      "date": "2026-11-20",
+      "commit": "51ea502",
+      "revision": "saptha-51ea",
+      "title": "Hackathon certificates for everyone who came",
+      "notes": [
+        "At a two-day hackathon, one check-in is enough for the participation certificate.",
+        "The student's Certificate button shows the organiser's own design, as issued."
+      ],
+      "items": ["UPG-338", "UPG-339"]
+    },
+    {
+      "version": "1.14",
+      "date": "2026-11-20",
+      "commit": "f36219a",
+      "revision": "saptha-f362",
+      "title": "Marks changed on the Round panel",
+      "notes": ["The SPOC changes each judge's mark on the Round panel too (read-only once results are out)."],
+      "items": ["UPG-337"]
+    },
+    {
+      "version": "1.13",
+      "date": "2026-11-20",
+      "commit": "e113785",
+      "revision": "saptha-e113",
+      "title": "Places, not scores",
+      "notes": [
+        "Teams see only their place once results are out, never scores or judges' marks.",
+        "The SPOC changes any judge's mark in the ranking until results are published.",
+        "A running two-day event stays in the student's active tickets until its last day.",
+        "The phone menu's Results tab is now Certificates."
+      ],
+      "items": ["UPG-334", "UPG-335", "UPG-336"]
+    },
+    {
+      "version": "1.12",
+      "date": "2026-11-20",
+      "commit": "745c447",
+      "revision": "saptha-c745",
+      "title": "Certificate fonts",
+      "notes": [
+        "Each box of the organiser's own certificate design has its own font: one of eight included, or the organiser's own font file.",
+        "\"Issue certificates\" can issue only participation certificates."
+      ],
+      "items": ["UPG-330", "UPG-331"]
+    },
+    {
+      "version": "1.11",
+      "date": "2026-11-19",
+      "commit": "e108d68",
+      "revision": "saptha-00042-lat",
+      "title": "A newer AI model for scoring",
+      "notes": ["AI scoring uses a newer Gemini model and tries again when the service is busy."],
+      "items": ["UPG-328"]
+    },
+    {
+      "version": "1.10",
+      "date": "2026-11-19",
+      "commit": "cf7305a",
+      "revision": "saptha-00039-jid",
+      "title": "Choose your columns",
+      "notes": [
+        "Every Excel and CSV download lets you choose the columns.",
+        "The SPOC deletes an update; the evaluators' marks upload is always on the page.",
+        "Claude can score submissions when its key is set up."
+      ],
+      "items": ["UPG-323", "UPG-324", "UPG-325", "UPG-326"]
+    },
+    {
+      "version": "1.9",
+      "date": "2026-11-19",
+      "commit": "ca8bdc5",
+      "revision": "saptha-00037-lok",
+      "title": "Problem statement selection",
+      "notes": ["Teams choose a problem statement in a time the SPOC sets (a limit per problem, lock, reopen, extend, or the SPOC assigns one); the submission is for that problem."],
+      "items": ["UPG-321"]
+    },
+    {
+      "version": "1.8",
+      "date": "2026-11-19",
+      "commit": "fb34d9c",
+      "revision": "saptha-00035-liv",
+      "title": "Rooms, feedback, evaluators and a steadier site",
+      "notes": [
+        "Rooms: a draft only the SPOC sees, a final check, then Allocate final; teams of 3 and 4 kept apart or mixed.",
+        "Website feedback from every participant, in rounds.",
+        "Outside evaluators' marks send the top teams through; a finale every judge scores.",
+        "The certificate's QR code sits in the design's own scan-to-verify box.",
+        "The scanner lists everyone on a team and saves each person ticked.",
+        "The SPOC deletes one person or the whole waitlist, and finds people on it with a search.",
+        "Registrations list filters, sorting, a filtered download and a WhatsApp message.",
+        "The lead and the SPOC add an email for a member who has none.",
+        "Easier first pages, a leaderboard switch, and judges or AI for the submission round.",
+        "The site no longer runs out of database connections when busy."
+      ],
+      "items": ["UPG-262", "UPG-263", "UPG-264", "UPG-265", "UPG-266", "UPG-267", "UPG-268", "UPG-269", "UPG-270", "UPG-271", "UPG-272", "UPG-273", "UPG-274", "UPG-275", "UPG-294", "UPG-298", "UPG-299", "UPG-300", "UPG-302", "UPG-304", "UPG-306", "UPG-308", "UPG-309", "UPG-310", "UPG-312", "UPG-313", "UPG-315", "UPG-316", "UPG-317", "UPG-318", "UPG-319", "UPG-320"]
+    },
+    {
+      "version": "1.7",
+      "date": "2026-11-14",
+      "commit": "49647da",
+      "revision": "saptha-00021-qjh",
+      "title": "Team changes and a clearer SPOC panel",
+      "notes": [
+        "After the deadline the SPOC lets teams add and remove members for a set time.",
+        "The SPOC's event panel shows what to do now first, every tool kept but grouped.",
+        "The SPOC adds a team by hand; a deleted team can come back.",
+        "Every team member can sign in."
+      ],
+      "items": ["UPG-244", "UPG-245", "UPG-246", "UPG-249", "UPG-250", "UPG-251", "UPG-252", "UPG-253", "UPG-254", "UPG-255", "UPG-256", "UPG-257", "UPG-259", "UPG-209", "UPG-260", "UPG-261"]
+    },
+    {
+      "version": "1.6",
+      "date": "2026-11-12",
+      "commit": "ddcc1a8",
+      "revision": "saptha-00019-w46",
+      "title": "The waitlist",
+      "notes": [
+        "The waitlist on the SPOC's page, with Accept and an email for the accepted.",
+        "Each event's ticket guidelines and support email.",
+        "Documents for teams; the lead adds members."
+      ],
+      "items": ["UPG-218", "UPG-230", "UPG-231", "UPG-232", "UPG-233", "UPG-234", "UPG-235", "UPG-236", "UPG-238", "UPG-239", "UPG-240", "UPG-241", "UPG-242", "UPG-243"]
+    },
+    {
+      "version": "1.5",
+      "date": "2026-11-10",
+      "commit": "2555456",
+      "revision": "saptha-00016-k2b",
+      "title": "A clear registrations table",
+      "notes": ["The registrations list is a clear table with Edit, Cancel and Delete."],
+      "items": ["UPG-226", "UPG-229"]
+    },
+    {
+      "version": "1.4",
+      "date": "2026-11-10",
+      "commit": "b10f553",
+      "revision": "saptha-00015-h7z",
+      "title": "Correcting details",
+      "notes": ["The lead and the SPOC correct registration details; members see their team."],
+      "items": ["UPG-225", "UPG-227"]
+    },
+    {
+      "version": "1.3",
+      "date": "2026-11-10",
+      "commit": "ecf1bc0",
+      "revision": "saptha-00016-den",
+      "title": "The form people register with",
+      "notes": [
+        "The form made while creating the event is the one people register with.",
+        "The export shows every detail; a backup email account."
+      ],
+      "items": ["UPG-219", "UPG-220", "UPG-222", "UPG-224"]
+    },
+    {
+      "version": "1.2",
+      "date": "2026-11-09",
+      "commit": "a5da346",
+      "revision": "saptha-00008-bup",
+      "title": "Certificate design and member logins",
+      "notes": [
+        "The organiser's own certificate design.",
+        "Team members confirm and sign in; the SPOC cancels a team; the SPOC's own form; the entry list."
+      ],
+      "items": ["UPG-206", "UPG-207", "UPG-211", "UPG-212", "UPG-214", "UPG-216"]
+    },
+    {
+      "version": "1.1",
+      "date": "2026-11-06",
+      "commit": "406f952",
+      "revision": "saptha-00007-j48",
+      "title": "The hackathon portal",
+      "notes": [
+        "The hackathon portal: teams, problem statements, submissions, AI scoring, rounds, judging and results.",
+        "Multi-round competitions; the registration form as a full official page.",
+        "NAAC / AQAR reports from event data; an impact page.",
+        "WhatsApp messages; open events for students from other colleges; share cards.",
+        "Merit and special-mention certificates."
+      ],
+      "items": ["UPG-142", "UPG-143", "UPG-144", "UPG-145", "UPG-146", "UPG-147", "UPG-148", "UPG-149", "UPG-150"]
+    },
+    {
+      "version": "1.0",
+      "date": "2026-10-20",
+      "commit": "dfce764",
+      "revision": "saptha-00005-jlg",
+      "title": "First live version",
+      "notes": [
+        "Events of every kind: created, reviewed and published.",
+        "Registration forms, tickets with QR codes, check-in by coordinators.",
+        "Judging, results and certificates that can be checked online.",
+        "Student, SPOC, coordinator, judge and admin pages."
+      ],
+      "items": []
+    }
+  ]
+}

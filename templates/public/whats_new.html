@@ -1,0 +1,29 @@
+{% extends "base_classic.html" %}
+{#- Every version of the portal and what changed in it, newest first (UPG-373).
+    The list is config/releases.json; the top entry is the version serving this page. -#}
+{% block title %}What's new{% endblock %}
+{% block meta_description %}Every version of the portal, with its date and what changed.{% endblock %}
+{% block page_title %}What's new{% endblock %}
+{% block page_sub %}Every version of the portal and what changed in it{% endblock %}
+{% block content %}
+{% if not releases %}
+<p class="text-muted">The list of versions isn't available right now.</p>
+{% endif %}
+<div class="whats-new" data-whats-new>
+  {% for r in releases %}
+  <article class="card mb-3" id="v{{ r.version }}" data-release="{{ r.version }}">
+    <div class="card-body">
+      <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+        <h2 class="h5 mb-0">Version {{ r.version }}</h2>
+        {% if loop.first %}<span class="badge bg-success" data-current-version>You're using this version</span>{% endif %}
+        <span class="text-muted small">{{ r.date | day }}</span>
+      </div>
+      <p class="fw-semibold mb-2">{{ r.title }}</p>
+      <ul class="mb-0">
+        {% for line in r.notes %}<li>{{ line }}</li>{% endfor %}
+      </ul>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% endblock %}

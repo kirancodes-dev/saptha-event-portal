@@ -1644,8 +1644,10 @@ def scan_page(event_id):
         return redirect('/coordinator/scanner')
     today_str      = datetime.datetime.now().strftime('%Y-%m-%d')
     event_date_str = str(d.get('date', ''))[:10]
-    scanning_open  = event_date_str == today_str
-    return render_template('coordinator/scan.html',
+    import services_registration_state
+    window = services_registration_state.checkin_window(d)   # first day to last, in India (UPG-378)
+    scanning_open  = window['key'] == 'open'
+    return render_template('coordinator/scan.html', checkin=window,
                             event_id=event_id,
                             event_title=d.get('title'),
                             event_date=event_date_str,

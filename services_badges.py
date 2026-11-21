@@ -50,7 +50,8 @@ def participant_badges(reg_id: str, reg: dict, event: dict, qr_text: str, profil
     else:
         line = department_and_year(reg, profile)[0]
     team = reg.get('team_name') if reg.get('team_name') not in (None, '', 'Individual') else ''
-    role = f"Team {team}" if team else TYPE_LABELS.get(ptype, 'Participant')
+    from services_registration_state import team_label
+    role = team_label(team) if team else TYPE_LABELS.get(ptype, 'Participant')   # UPG-377
     names = [reg.get('lead_name') or '']
     lead = (reg.get('lead_email') or '').lower()
     names += [m.get('name') or '' for m in reg.get('members') or []

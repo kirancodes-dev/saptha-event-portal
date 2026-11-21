@@ -191,10 +191,13 @@ h1,h2,h3,h4,h5,h6{font-family: var(--font-heading);}
   <div class="scan-locked">
     <div class="scan-locked__icon" aria-hidden="true"><i class="fas fa-lock"></i></div>
     <h2>Scanner locked</h2>
-    <p>
-      Scanning opens on <strong>{{ event_date }}</strong>.
-      {% if today < event_date %}Come back on the event day.{% else %}This event has already passed.{% endif %}
-    </p>
+    {#- The event's days in India (UPG-378) -#}
+    {% if checkin.key == 'before' %}
+    <p>Check-in opens on <strong>{{ checkin.first }}</strong>. Come back on the event day.</p>
+    {% else %}
+    <p data-checkin-over>The event ended on <strong>{{ checkin.last }}</strong>. Someone who came but wasn't scanned:
+      open <strong>Manual List</strong> and choose <strong>Mark present</strong>.</p>
+    {% endif %}
     <a href="/spoc/dashboard" class="scan-ghost-btn">
       <i class="fas fa-arrow-left" aria-hidden="true"></i> Back to dashboard
     </a>
@@ -227,6 +230,15 @@ h1,h2,h3,h4,h5,h6{font-family: var(--font-heading);}
 
 <!-- MANUAL CHECK-IN TAB VIEW -->
 <div id="manualView" style="display:none;">
+  {% if checkin.key == 'over' %}
+  {#- After the event: mark who came but wasn't scanned, then issue certificates again (UPG-378) -#}
+  <div class="callout callout--brand mx-3 mt-3" data-late-checkin-note>
+    <i class="fas fa-circle-info" aria-hidden="true"></i>
+    <span>The event ended on {{ checkin.last }}. Mark present anyone who came but wasn't scanned.
+      Then open <a href="/certificates/events/{{ event_id }}">Certificates</a> and issue them again: only the people
+      newly marked present get one, nobody gets a second.</span>
+  </div>
+  {% endif %}
   <!-- SEARCH -->
   <div class="search-wrap">
     <div class="search-box-custom">
@@ -271,6 +283,7 @@ h1,h2,h3,h4,h5,h6{font-family: var(--font-heading);}
 <script src="/static/js/escape.js"></script>
 <script nonce="{{ csp_nonce() }}">
 const EVENT_ID        = {{ event_id | tojson }};
+const CHECKIN_OVER    = {{ (checkin.key == 'over') | tojson }};   // after the event: Mark present (UPG-378)
 const CSRF_TOKEN      = document.querySelector('meta[name="csrf-token"]')?.content || '';
 const registrations   = {{ registrations | tojson }};
 let scanner           = null;
@@ -369,7 +382,7 @@ function renderManualList() {
     if (r.attendance === 'Present') {
       actionHtml = `<span class="manual-status status-present"><i class="fas fa-check-circle"></i> Checked In</span>`;
     } else {
-      actionHtml = `<button class="manual-btn" id="btn-${escapeHtml(r.id)}" data-h-click="se:call" data-call="manualCheckIn" data-args="${escapeHtml(JSON.stringify([r.id]))}"><i class="fas fa-user-check"></i> Check In</button>`;
+      actionHtml = `<button class="manual-btn" id="btn-${escapeHtml(r.id)}" data-h-click="se:call" data-call="manualCheckIn" data-args="${escapeHtml(JSON.stringify([r.id]))}"><i class="fas fa-user-check"></i> ${CHECKIN_OVER ? 'Mark present' : 'Check In'}</button>`;
     }
     
     item.innerHTML = `
@@ -389,6 +402,8 @@ async function manualCheckIn(regId) {
   const item = registrations.find(r => r.id === regId);
   if (!item) return;
   
+  if (CHECKIN_OVER && !confirm(`Mark ${item.team_name || item.lead_name} present? Only for someone who came but wasn't scanned. `
+                               + 'They are marked present for the whole event and can then get the participation certificate.')) return;
   const btn = document.getElementById(`btn-${regId}`);
   if (btn) {
     btn.disabled = true;
@@ -402,6 +417,7 @@ async function manualCheckIn(regId) {
         'Content-Type': 'application/json',
         'X-CSRFToken': CSRF_TOKEN,
       },
+      body: JSON.stringify(CHECKIN_OVER ? { late: true } : {}),
     });
     const data = await resp.json();
     showResult(data.status, data);

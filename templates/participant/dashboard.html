@@ -156,7 +156,7 @@
   <h2 class="h6 mb-2" id="event-documents-title"><i class="fas fa-file-pdf me-2 text-danger" aria-hidden="true"></i>From the organisers</h2>
   {% for group in event_documents %}
   <div class="mb-3">
-    <h3 class="h6 fw-bold mb-2">{{ group.event_title }}{% if group.team_name %} <span class="small text-muted fw-normal">· Team {{ group.team_name }}</span>{% endif %}</h3>
+    <h3 class="h6 fw-bold mb-2">{{ group.event_title }}{% if group.team_name %} <span class="small text-muted fw-normal">· {{ group.team_name | team }}</span>{% endif %}</h3>
     <ul class="list-unstyled d-grid gap-2 mb-0">
       {% for d in group.documents %}
       <li class="border rounded p-3 bg-white" data-event-document="{{ d.id }}">

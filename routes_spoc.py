@@ -6,6 +6,7 @@ import re
 import io
 import json
 from utils import login_required, role_required, log_action
+import services_registration_state as registration_state   # check-in days (UPG-378)
 from services_accounts import create_unverified_account, send_set_password_link
 
 XLSX_MIMETYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -776,6 +777,8 @@ def scan_page(event_id):
     present_count = sum(1 for r in registrations if r.get('attendance') == 'Present')
     today_str      = datetime.datetime.now().strftime('%Y-%m-%d')
     event_date_str = str(event.get('date', ''))[:10]
+    # First day to last day, in India; after it the SPOC marks people present by hand (UPG-378)
+    window = registration_state.checkin_window(event)
     return render_template(
         'spoc/scan.html',
         event=FirebaseWrapper(event_id, event),
@@ -784,7 +787,8 @@ def scan_page(event_id):
         total_count=total_count,
         event_date=event_date_str,
         today=today_str,
-        scanning_open=(event_date_str == today_str),
+        scanning_open=(window['key'] == 'open'),
+        checkin=window,
         registrations=registrations,
         sessions=services_sessions.sessions_for(event),   # session mode (UPG-159)
     )
@@ -804,10 +808,16 @@ def api_checkin(event_id, reg_id):
     if not can(session, 'check_in', event, db=db):
         return jsonify({'status': 'unauthorized', 'message': 'Not your event'}), 403
 
-    today_str      = datetime.datetime.now().strftime('%Y-%m-%d')
-    event_date_str = str(event.get('date', ''))[:10]
-    if event_date_str and event_date_str != today_str:
-        return jsonify({'status': 'locked', 'message': f'Scanning only opens on {event_date_str}'}), 403
+    # From the event's first day to its last, in India (UPG-378); it was only the
+    # first day, by the server's clock, so day two of a two-day event was refused
+    window = registration_state.checkin_window(event)
+    body = request.get_json(silent=True) or {}
+    late = window['key'] == 'over' and str(body.get('late') or '').lower() in ('1', 'true', 'yes')
+    if window['key'] == 'before':
+        return jsonify({'status': 'locked', 'message': f"Check-in opens on {window['first']}."}), 403
+    if window['key'] == 'over' and not late:
+        return jsonify({'status': 'locked', 'message': f"The event ended on {window['last']}. "
+                        "Use Mark present on the list for someone who came but wasn't scanned."}), 403
 
     reg_doc = db.collection('registrations').document(reg_id).get()
     if not reg_doc.exists:
@@ -816,6 +826,8 @@ def api_checkin(event_id, reg_id):
     reg = reg_doc.to_dict()
     if reg.get('event_id') != event_id:
         return jsonify({'status': 'invalid', 'message': 'Ticket is for a different event'}), 400
+    if late:
+        return _late_checkin(event_id, event, reg_id, reg)
 
     round_to_scan = 1
     try:
@@ -863,6 +875,40 @@ def api_checkin(event_id, reg_id):
         'members':      len(reg.get('members', [])),
         'checkin_time': checkin_time,
     }), 200
+
+
+def _late_checkin(event_id, event, reg_id, reg):
+    """After the event: the SPOC marks someone who came but wasn't scanned as
+    present, so the certificates count them (UPG-378). Not a cancelled team, nor
+    one left off the entry list; who marked whom is kept."""
+    import services_entry
+    if services_entry.inactive(reg):
+        return jsonify({'status': 'invalid', 'message': "This registration is cancelled: it can't be marked present."}), 409
+    if not services_entry.may_enter(event, reg):
+        return jsonify({'status': 'not_selected', 'message': services_entry.REFUSED}), 409
+    name, team = reg.get('lead_name', ''), reg.get('team_name', '')
+    if str(reg.get('attendance') or '').lower() == 'present':
+        return jsonify({'status': 'already_in', 'message': 'Already marked present', 'name': name, 'team': team,
+                        'checkin_time': reg.get('checkin_time', '')}), 200
+    who = session.get('user_id', '')
+    stamp = datetime.datetime.now(registration_state.IST).strftime('%Y-%m-%d %H:%M')
+    members = [dict(m, attendance='Present') if isinstance(m, dict) else m for m in reg.get('members') or []]
+    # the SPOC says they came: every day of the event, so a multi-day event's
+    # certificate (80% of its days) counts them
+    first = registration_state._day(event.get('date') or event.get('start_datetime'))
+    last = registration_state._day(event.get('end_date') or event.get('end_datetime')) or first
+    days = ([(first + datetime.timedelta(days=i)).isoformat() for i in range((last - first).days + 1)]
+            if first and last and last >= first else [])
+    updates = {'attendance': 'Present', 'attended': True, 'checkin_time': stamp,
+               'checkin_late': True, 'checked_in_by': who}
+    if days:
+        updates['attendance_days'] = sorted(set(list(reg.get('attendance_days') or []) + days))
+    if members:
+        updates['members'] = members
+    db.collection('registrations').document(reg_id).update(updates)
+    log_action(db, "LATE_CHECKIN", f"{who} marked {reg_id} ({team or name}) present after the event")
+    return jsonify({'status': 'success', 'message': 'Marked present after the event', 'name': name, 'team': team,
+                    'members': len(members), 'checkin_time': stamp}), 200
 
 
 # --- 7. END EVENT (send certificates + award achievements) ---

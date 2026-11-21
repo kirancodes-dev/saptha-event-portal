@@ -47,13 +47,10 @@
     <div class="text-center px-3 py-5 scan-locked">
       <div class="scan-locked__icon" aria-hidden="true"><i class="fas fa-lock"></i></div>
       <h2 class="fw-bold mt-3">Scanner locked</h2>
+      {#- The event's days in India (UPG-378) -#}
       <p class="text-white-50">
-        Scanning opens on <strong class="text-white">{{ event_date }}</strong>.
-        {% if today < event_date %}
-          Come back on the event day.
-        {% else %}
-          This event has already passed.
-        {% endif %}
+        {% if checkin.key == 'before' %}Check-in opens on <strong class="text-white">{{ checkin.first }}</strong>. Come back on the event day.
+        {% else %}The event ended on <strong class="text-white">{{ checkin.last }}</strong>. To mark someone who came but wasn't scanned, ask the event's SPOC.{% endif %}
       </p>
       <a href="/coordinator/scanner" class="btn btn-outline-light mt-3"><i class="fas fa-arrow-left me-2"></i>Back</a>
     </div>

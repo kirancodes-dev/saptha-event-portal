@@ -311,6 +311,7 @@ app.jinja_env.globals.update(reg_state_of=lambda ev: registration_state.of(db, e
 # Dates and organisers' statuses in plain words (UPG-294)
 app.jinja_env.filters['day'] = registration_state.day_text
 app.jinja_env.filters['prize'] = registration_state.prize_text   # UPG-367
+app.jinja_env.filters['team'] = registration_state.team_label   # UPG-377
 import services_activity as _activity   # noqa: E402
 app.jinja_env.filters['action_words'] = _activity.action_text   # UPG-297 (a)
 app.jinja_env.filters['ist'] = _activity.when_text

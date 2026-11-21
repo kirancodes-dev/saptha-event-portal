@@ -238,3 +238,27 @@ def organiser_status(event: dict, view: Optional[dict] = None) -> dict:
     else:
         label, tone = view['label'], view['tone']
     return {'label': label, 'tone': tone, 'explanation': view['explanation'], 'key': view['key']}
+
+
+def team_label(name) -> str:
+    """'Phoenix' is 'Team Phoenix'; a name that already says it ('Team Phoenix',
+    'TEAM X', 'team-alpha') stays as it is (UPG-377)."""
+    text = str(name or '').strip()
+    if not text:
+        return ''
+    return text if re.match(r'team\b', text, re.I) else f'Team {text}'
+
+
+def checkin_window(event: dict) -> dict:
+    """When the event's people can be checked in (UPG-378): from its first day
+    to its last, in India. 'before', 'open' or 'over', and the two days in words.
+    An event without a date is always open."""
+    event = event or {}
+    first = _day(event.get('date') or event.get('start_datetime'))
+    last = _day(event.get('end_date') or event.get('end_datetime')) or first
+    if first and last and last < first:
+        last = first
+    now = today()
+    key = 'open' if not first else ('before' if now < first else ('over' if now > last else 'open'))
+    return {'key': key, 'first': day_text(first.isoformat()) if first else '',
+            'last': day_text(last.isoformat()) if last else ''}

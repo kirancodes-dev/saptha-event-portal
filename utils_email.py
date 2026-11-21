@@ -1072,6 +1072,11 @@ def send_result_email(to_email: str, name: str, event_title: str,
     return _send(to_email, f"🏆 Results — {event_title}", html)
 
 
+def _team_label(name):
+    from services_registration_state import team_label   # "Team Phoenix", never "Team Team Phoenix" (UPG-377)
+    return team_label(name)
+
+
 def send_hackathon_result_email(to_email: str, name: str, event_title: str, team_name: str,
                                 result: str, rank=None, score=None, portal_url: str = '') -> bool:
     """The one result email a hackathon team's lead gets (UPG-194): the
@@ -1086,7 +1091,7 @@ def send_hackathon_result_email(to_email: str, name: str, event_title: str, team
         <p style="color:#475569;">The results of <strong>{_e(event_title)}</strong> are out.</p>
         <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;
                     padding:20px;text-align:center;margin:16px 0;">
-          <p style="color:#64748b;margin:0 0 4px;">Team {_e(team_name)}</p>
+          <p style="color:#64748b;margin:0 0 4px;">{_e(_team_label(team_name))}</p>
           <p style="font-size:24px;font-weight:800;color:#1a2557;margin:0;">{_e(result)}</p>
           {f'<p style="color:#475569;margin:6px 0 0;">{rank_line}</p>' if rank_line else ''}
         </div>

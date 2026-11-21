@@ -13,9 +13,10 @@
         "Every box on the tournament page says what it is for, for screen readers too.",
         "A kabaddi or football league can have two pools with a table each, every pair can play twice (home and away), an inter-pool round counts in each team's own pool, and the semi-finals are 1st A v 2nd B and 1st B v 2nd A.",
         "Matches are numbered M-01 onwards; the SPOC sets every match's date, time and venue from one spreadsheet file, and teams can have logos in the tables, fixtures and live scoreboard.",
-        "Coordinators open a sports event's matches and live scoring from their dashboard."
+        "Coordinators open a sports event's matches and live scoring from their dashboard.",
+        "Live kabaddi scoring has a button for every score, two a row on a phone with both teams side by side: Raid +1 to +7, Bonus, Tackle, Super tackle, All out, Technical point, Out of bounds and Do-or-die failed."
       ],
-      "items": ["UPG-369", "UPG-370", "UPG-371", "UPG-372", "UPG-374", "UPG-380", "UPG-381", "UPG-382", "UPG-383", "UPG-384", "UPG-385", "UPG-386", "UPG-387"]
+      "items": ["UPG-369", "UPG-370", "UPG-371", "UPG-372", "UPG-374", "UPG-380", "UPG-381", "UPG-382", "UPG-383", "UPG-384", "UPG-385", "UPG-386", "UPG-387", "UPG-388"]
     },
     {
       "version": "1.16",

@@ -441,6 +441,7 @@ def scorer(event_id, match_id):
     names = services_sports.names(t)
     return render_template('spoc/live_scorer.html', event=event, match=live._match(t, match_id), doc=doc,
                            state=live.state(doc, names), actions=live.actions(t), names=names,
+                           groups=live.button_groups(t),
                            entries=live.entries(doc, names),
                            squads={'home': live.players(full, doc['home']), 'away': live.players(full, doc['away'])},
                            knockout=services_sports.knockout_match(t, live._match(t, match_id)),

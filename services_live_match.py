@@ -49,6 +49,21 @@ KABADDI_ACTIONS = {
     'super_tackle': ('Super tackle', 2, 'tackle'),
     'all_out': ('All out', 2, 'extra'),
     'technical': ('Technical point', 1, 'extra'),
+    # A player of the other team stepped out of the court; a do-or-die raid came back empty (UPG-388)
+    'out_of_bounds': ('Out of bounds', 1, 'extra'),
+    'do_or_die': ('Do-or-die failed', 1, 'extra'),
+}
+# The scorer's buttons, a group at a time, two a row (UPG-388); a raid is +1 to +7, one per defender touched
+KABADDI_GROUPS = (
+    ('Raid points', ('raid', 'bonus')),
+    ('Tackle points', ('tackle', 'super_tackle')),
+    ('Other points', ('all_out', 'technical', 'out_of_bounds', 'do_or_die')),
+)
+KABADDI_HELP = {
+    'raid': 'defenders touched in one raid', 'bonus': 'the raider crossed the bonus line',
+    'tackle': 'the raider was caught', 'super_tackle': 'caught with 3 or fewer defenders on court',
+    'all_out': 'every player of the other team is out', 'technical': "the referee's technical point",
+    'out_of_bounds': 'a player of the other team stepped out', 'do_or_die': 'the other team’s do-or-die raid scored nothing',
 }
 OTHER_ACTIONS = {'score': ('Score', None, 'score')}
 MAX_PICKED_POINTS = 7
@@ -70,6 +85,24 @@ def doc_id(event_id: str, match_id: str) -> str:
 
 def actions(tournament: dict) -> dict:
     return KABADDI_ACTIONS if services_sports.is_kabaddi(tournament) else OTHER_ACTIONS
+
+
+def button_groups(tournament: dict) -> list:
+    """[(group title or '', [{'kind', 'points', 'text', 'help', 'counts'}])]: every
+    score the scorer can tap, one button each — kabaddi's raid +1 to +7 (UPG-388)."""
+    if not services_sports.is_kabaddi(tournament):
+        return [('', [{'kind': 'score', 'points': n, 'text': f'Score +{n}', 'help': '', 'counts': 'score'}
+                      for n in range(1, 4)])]
+    out = []
+    for title, kinds in KABADDI_GROUPS:
+        buttons = []
+        for kind in kinds:
+            label, fixed, counts = KABADDI_ACTIONS[kind]
+            for n in ([fixed] if fixed else range(1, MAX_PICKED_POINTS + 1)):
+                buttons.append({'kind': kind, 'points': None if fixed else n, 'text': f'{label} +{n}',
+                                'help': KABADDI_HELP.get(kind, ''), 'counts': counts})
+        out.append((title, buttons))
+    return out
 
 
 def _lock(key):

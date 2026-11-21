@@ -64,7 +64,6 @@
 @media (max-width: 420px) {
   .live-sides { gap: 8px; }
   .live-side { padding: 8px; }
-  .live-side__buttons { grid-template-columns: 1fr; }
   .live-board__score { font-size: 40px; }
 }
 .live-split th, .live-split td { white-space: normal; overflow-wrap: anywhere; }
@@ -77,3 +76,14 @@
 
 /* A team logo above its name on the big scoreboard (UPG-386) */
 .live-board__logo { width: 72px; height: 72px; object-fit: contain; display: block; margin: 0 auto 6px; }
+
+/* Every score its own button, in groups, two a row for each team — side by side on a phone too (UPG-388) */
+.live-group + .live-group { margin-top: 10px; }
+.live-group__title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--text-muted, #64748b); margin: 0 0 4px; }
+.live-btn { white-space: normal; line-height: 1.15; padding: 4px 6px; overflow-wrap: anywhere; }
+@media (max-width: 420px) {
+  .live-scorer .live-side__buttons { gap: 5px; }
+  .live-scorer .live-btn { font-size: 13px; min-height: 48px; padding: 4px; }
+  .live-side__title { font-size: 14px; }
+}

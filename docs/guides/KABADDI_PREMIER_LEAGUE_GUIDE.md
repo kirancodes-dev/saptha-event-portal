@@ -123,16 +123,23 @@ A phone works best.
 
 1. Press **Start 1st half**. The clock starts at 20 minutes a half.
 2. For each point, press the button on the side of the team that **got** the
-   points:
+   points. Every score has its own button, two a row, in three groups, with
+   both teams side by side:
 
-   | Button | Points | When |
+   | Group | Button | When |
    |---|---|---|
-   | Raid +1 … +4 | 1–4 | Touch points on a raid (+2 if the raider touched two, and so on) |
-   | Bonus | 1 | Bonus line crossed |
-   | Tackle | 1 | The defenders stopped the raider |
-   | Super tackle | 2 | Stopped with 3 or fewer defenders on court |
-   | All out | 2 | All 7 of the other side are out |
-   | Technical point | 1 | Referee's technical point |
+   | Raid points | **Raid +1 … Raid +7** | The raider touched that many defenders and got back (Raid +3 or more is a super raid) |
+   | Raid points | **Bonus +1** | The raider crossed the bonus line |
+   | Tackle points | **Tackle +1** | The defenders caught the raider |
+   | Tackle points | **Super tackle +2** | Caught with 3 or fewer defenders on court |
+   | Other points | **All out +2** | Every player of the other team is out |
+   | Other points | **Technical point +1** | The referee gave a technical point |
+   | Other points | **Out of bounds +1** | A player of the other team stepped out of the court |
+   | Other points | **Do-or-die failed +1** | The other team's do-or-die raid scored nothing |
+
+   A raid with touches **and** a bonus is two taps: for example **Raid +2**,
+   then **Bonus +1**. A raid that makes an all out is the raid's points, then
+   **All out +2**.
 
 3. Pick the player in **Who scored (optional)** before the tap if you want
    top raider and top defender stats.

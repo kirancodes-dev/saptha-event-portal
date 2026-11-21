@@ -70,17 +70,17 @@
         </select>
       </label>
       {% endif %}
-      <div class="live-side__buttons">
-        {% for kind, spec in actions.items() %}
-          {% if spec[1] is none %}
-            {% for n in range(1, (5 if kind == 'raid' else 4)) %}
-            <button type="button" class="btn live-btn live-btn--{{ spec[2] }}" data-point data-team="{{ side }}" data-kind="{{ kind }}" data-points="{{ n }}">{{ spec[0] }} +{{ n }}</button>
-            {% endfor %}
-          {% else %}
-            <button type="button" class="btn live-btn live-btn--{{ spec[2] }}" data-point data-team="{{ side }}" data-kind="{{ kind }}">{{ spec[0] }} +{{ spec[1] }}</button>
-          {% endif %}
-        {% endfor %}
+      {#- Every score its own button, a group at a time, two a row (UPG-388) #}
+      {% for title, buttons in groups %}
+      <div class="live-group" data-button-group="{{ title }}">
+        {% if title %}<h3 class="live-group__title">{{ title }}</h3>{% endif %}
+        <div class="live-side__buttons">
+          {% for b in buttons %}
+          <button type="button" class="btn live-btn live-btn--{{ b.counts }}" data-point data-team="{{ side }}" data-kind="{{ b.kind }}"{% if b.points %} data-points="{{ b.points }}"{% endif %}{% if b.help %} title="{{ b.text }}: {{ b.help }}"{% endif %}>{{ b.text }}</button>
+          {% endfor %}
+        </div>
       </div>
+      {% endfor %}
     </section>
     {% endfor %}
   </div>

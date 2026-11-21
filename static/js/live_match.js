@@ -87,6 +87,9 @@
       root.querySelectorAll('[data-point]').forEach(function (b) { b.disabled = !scoring; });
       var undo = root.querySelector('[data-undo]');
       if (undo) { undo.disabled = phase === 'full_time' || phase === 'not_started'; }
+      var reopen = root.querySelector('[data-reopen]');
+      if (reopen) { reopen.hidden = phase !== 'full_time'; }
+      root.querySelectorAll('[data-remove]').forEach(function (b) { b.disabled = phase === 'full_time'; });
       root.querySelectorAll('[data-phase-action]').forEach(function (b) {
         b.hidden = (ALLOWED[phase] || []).indexOf(b.getAttribute('data-phase-action')) < 0;
       });
@@ -96,6 +99,28 @@
       if (!message) { return; }
       message.textContent = text || '';
       message.className = 'live-message' + (bad ? ' live-message--bad' : '');
+    }
+
+    function renderEntries(entries) {
+      var list = root.querySelector('[data-entries]');
+      if (!list || !entries) { return; }
+      list.innerHTML = '';
+      entries.forEach(function (e) {
+        var li = document.createElement('li');
+        var text = document.createElement('span');
+        text.textContent = e.text + ' · ' + (e.half === 1 ? 'H1' : 'H2');
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-sm btn-outline-danger';
+        btn.setAttribute('data-remove', e.id);
+        btn.textContent = 'Remove';
+        li.appendChild(text);
+        li.appendChild(document.createTextNode(' '));
+        li.appendChild(btn);
+        list.appendChild(li);
+      });
+      var summary = root.querySelector('[data-all-points] summary');
+      if (summary) { summary.textContent = 'All points (' + entries.length + '): remove a wrong one'; }
     }
 
     function next() {
@@ -113,6 +138,7 @@
         busy = false;
         if (r.data && r.data.ok) {
           render(root, r.data.state, clock);
+          renderEntries(r.data.entries);
           say(queue.length ? 'Sending…' : '');
         } else {
           say((r.data && r.data.error) || 'That didn\'t save.', true);
@@ -148,6 +174,17 @@
         send({ op: 'undo' });
         return;
       }
+      var remove = e.target.closest('[data-remove]');
+      if (remove) {
+        if (!window.confirm('Remove this point?')) { return; }
+        send({ op: 'remove', entry: remove.getAttribute('data-remove') });
+        return;
+      }
+      if (e.target.closest('[data-reopen]')) {
+        if (!window.confirm('Take the result off the fixtures and go back to the 2nd half?')) { return; }
+        send({ op: 'reopen' });
+        return;
+      }
       var phase = e.target.closest('[data-phase-action]');
       if (phase) {
         var action = phase.getAttribute('data-phase-action');
@@ -171,10 +208,11 @@
         return resp.ok ? resp.json() : null;
       }).then(function (data) {
         if (data && data.ok) { render(root, data.state, clock); }
-        if (!data || !data.ok || data.state.phase !== 'full_time') { setTimeout(poll, POLL_MS); }
+        // After full time it still looks now and then: a match reopened by mistake goes on
+        setTimeout(poll, data && data.ok && data.state.phase === 'full_time' ? POLL_MS * 10 : POLL_MS);
       }).catch(function () { setTimeout(poll, POLL_MS * 2); });
     }
-    if (root.getAttribute('data-phase') !== 'full_time') { setTimeout(poll, POLL_MS); }
+    setTimeout(poll, root.getAttribute('data-phase') === 'full_time' ? POLL_MS * 10 : POLL_MS);
   }
 
   document.querySelectorAll('[data-live-scorer]').forEach(scorer);

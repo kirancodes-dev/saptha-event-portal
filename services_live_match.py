@@ -21,6 +21,11 @@ crowd watching one match costs one database read every few seconds.
 
 The logs also give each player's raid and tackle points across the
 tournament: the top raiders and defenders, Super 10s and High 5s (UPG-352).
+
+Mistakes are fixed on the scorer's page (UPG-355): any point in the log can be
+removed, and a match ended by mistake is reopened (its result is taken back).
+Fixtures made again, playoffs undone or a team replaced keep the live records
+in step (`forget`, `retarget`).
 """
 import datetime
 import threading
@@ -237,13 +242,11 @@ def change_phase(db, event_id: str, event: dict, match_id: str, tap: str, action
         elif action == 'full_time' and phase == 'second_half':
             totals = score(doc)
             home, away = totals['home']['total'], totals['away']['total']
-            ref = db.collection('events').document(event_id)
-            current = ref.get().to_dict() or {}
             try:
-                t = services_sports.record_result(current.get('tournament') or {}, match_id, home, away, winner)
+                t = services_sports.change(db, event_id, lambda cur, _e: services_sports.record_result(
+                    cur, match_id, home, away, winner))
             except services_sports.TournamentError as exc:
                 raise LiveMatchError(str(exc))
-            ref.update({'tournament': t})
             played = _match(t, match_id)
             doc['phase'] = 'full_time'
             _stop_clock(doc)
@@ -251,6 +254,88 @@ def change_phase(db, event_id: str, event: dict, match_id: str, tap: str, action
         else:
             raise LiveMatchError(f"Can't {action.replace('_', ' ')} now ({PHASE_NAMES.get(phase, phase)}).")
     return _change(db, event_id, match_id, tap, apply)
+
+
+def remove_point(db, event_id: str, match_id: str, tap: str, entry_id: str) -> dict:
+    """Take back one point anywhere in the log (given to the wrong team or
+    player, or by mistake), while the match is being played (UPG-355)."""
+    def apply(doc):
+        if doc.get('phase') == 'full_time':
+            raise LiveMatchError("The match is over. Reopen it first to change its points.")
+        log = doc.get('log') or []
+        keep = [e for e in log if e.get('id') != entry_id]
+        if len(keep) == len(log):
+            raise LiveMatchError("That point isn't in the log.")
+        doc['log'] = keep
+    return _change(db, event_id, match_id, tap, apply)
+
+
+def _reopen(doc):
+    doc['phase'] = 'second_half'
+    doc['result'] = None
+    _stop_clock(doc)
+
+
+def reopen(db, event_id: str, match_id: str, tap: str) -> dict:
+    """Full time was pressed by mistake: the result comes off the fixtures and
+    the second half goes on (the clock paused) (UPG-355)."""
+    def apply(doc):
+        if doc.get('phase') != 'full_time':
+            raise LiveMatchError("The match isn't over.")
+        try:
+            services_sports.change(db, event_id, lambda cur, _e: services_sports.clear_result(cur, match_id)
+                                   if _match(cur, match_id).get('status') == 'played' else cur)
+        except services_sports.TournamentError as exc:
+            raise LiveMatchError(str(exc))
+        _reopen(doc)
+    return _change(db, event_id, match_id, tap, apply)
+
+
+def result_cleared(db, event_id: str, match_id: str) -> None:
+    """The result was cleared on the tournament page: a match scored live goes
+    back to its second half, so it can be finished again."""
+    with _lock(doc_id(event_id, match_id)):
+        doc = get(db, event_id, match_id)
+        if doc and doc.get('phase') == 'full_time':
+            _reopen(doc)
+            _save(db, event_id, match_id, doc)
+
+
+def forget(db, event_id: str, match_ids=None) -> int:
+    """Delete the live records of these matches (every match when None): the
+    fixtures were made again, or the playoffs undone, so the ids mean other
+    matches now."""
+    count = 0
+    for snap in list(db.collection(COLLECTION).where('event_id', '==', event_id).stream()):
+        d = snap.to_dict() or {}
+        if match_ids is None or d.get('match_id') in match_ids:
+            db.collection(COLLECTION).document(snap.id).delete()
+            count += 1
+    for key in [k for k in _cache if len(k) > 1 and k[1] == event_id]:
+        _cache.pop(key, None)
+    return count
+
+
+def has_points(db, event_id: str, match_id: str) -> bool:
+    doc = get(db, event_id, match_id)
+    return bool(doc and doc.get('log'))
+
+
+def retarget(db, event_id: str, old_id: str, new_id: str) -> None:
+    """A team was replaced in the fixtures: its live records follow."""
+    for snap in list(db.collection(COLLECTION).where('event_id', '==', event_id).stream()):
+        d = snap.to_dict() or {}
+        if old_id in (d.get('home'), d.get('away')):
+            for side in ('home', 'away'):
+                if d.get(side) == old_id:
+                    d[side] = new_id
+            _save(db, event_id, d.get('match_id'), d)
+
+
+def entries(doc: dict, names: dict) -> list:
+    """The whole log, newest first, for the scorer to remove any point."""
+    return [{'id': e.get('id'), 'text': describe(e, names, doc), 'half': e.get('half')}
+            for e in reversed(doc.get('log') or [])]
 
 
 def players(event: dict, team_id: str) -> list:

@@ -70,3 +70,7 @@
 .live-split th, .live-split td { white-space: normal; overflow-wrap: anywhere; }
 .live-split thead th { text-transform: none; letter-spacing: 0; }
 .live-watch, .live-scorer { max-width: 100%; overflow-x: hidden; }
+.live-all { margin-top: 12px; }
+.live-all__list { list-style: none; padding: 0; margin: 8px 0 0; max-height: 320px; overflow-y: auto; font-size: 14px; }
+.live-all__list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--border, #e2e8f0); }
+.live-all__list span { overflow-wrap: anywhere; }

@@ -67,11 +67,11 @@
                     </div>
                     <div class="d-flex justify-content-between align-items-center {% if m.winner and m.winner == m.home %}fw-bold text-success match-winner{% endif %}">
                         <span>{{ (names.get(m.home, m.home) if names else m.home) if m.home else 'TBD' }}</span>
-                        <span class="match-score">{{ m.home_score if m.home_score is not none else '–' }}</span>
+                        <span class="match-score">{{ ('W/O' if m.winner == m.home else '–') if m.walkover else (m.home_score if m.home_score is not none else '–') }}</span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center mt-1 {% if m.winner and m.winner == m.away %}fw-bold text-success match-winner{% endif %}">
                         <span>{{ (names.get(m.away, m.away) if names else m.away) if m.away else 'TBD' }}</span>
-                        <span class="match-score">{{ m.away_score if m.away_score is not none else '–' }}</span>
+                        <span class="match-score">{{ ('W/O' if m.winner == m.away else '–') if m.walkover else (m.away_score if m.away_score is not none else '–') }}</span>
                     </div>
                 </div>
             </div>

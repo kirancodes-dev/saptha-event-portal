@@ -8,6 +8,12 @@ assigned coordinator (whoever may manage the event's registrations) enters each
 result. The public event page shows fixtures, results and the table, no login
 needed (templates/includes/tournament.html). Whoever may publish the event's
 results publishes the tournament's places as its result (UPG-342).
+
+Every change is saved through `services_sports.change`, one at a time
+(UPG-354). Mistakes are fixed here, without code (UPG-355 to UPG-359): clear a
+result, give a walkover, withdraw or bring back a team, rename, replace or add
+a team, change a match's teams, change the points rule, undo the playoffs, and
+publish corrected results.
 """
 from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, session
 
@@ -27,6 +33,31 @@ def _event(event_id):
 def _allowed(event, *permissions):
     from services_permission import can
     return any(can(session, p, event, db=db) for p in permissions)
+
+
+def _back(event_id, anchor=''):
+    return redirect(f'/tournament/{event_id}' + (f'#{anchor}' if anchor else ''))
+
+
+def _save(event_id, fn, done, anchor='', audit=None):
+    """Apply one change under the tournament's lock; flash the outcome."""
+    import services_sports
+    try:
+        t = services_sports.change(db, event_id, fn)
+    except services_sports.TournamentError as exc:
+        flash(str(exc), "warning")
+        return None
+    if audit:
+        log_action(db, audit[0], f"{session.get('user_id')} {audit[1]} ({event_id})")
+    if done:
+        flash(done, "success")
+    return t
+
+
+def _team(event_id, team_id):
+    """A confirmed registration, as a fixtures team."""
+    import services_sports
+    return next((x for x in services_sports.confirmed_teams(db, event_id) if x['id'] == team_id), None)
 
 
 def _int(value, default=0):
@@ -51,7 +82,12 @@ def manage(event_id):
                            placings=services_sports.placings(t) if t else {},
                            defaults=services_sports.event_defaults(event), sports=services_sports,
                            can_generate=_allowed(event, 'edit_event'),
-                           can_publish=_allowed(event, 'publish_results'), live=_live(event_id) if t else {})
+                           can_publish=_allowed(event, 'publish_results'), live=_live(event_id) if t else {},
+                           published=services_sports.published_places(db, event_id)
+                           if event.get('results_published') else {},
+                           withdrawn=services_sports.withdrawn(t) if t else set(),
+                           spare_teams=[x for x in services_sports.confirmed_teams(db, event_id)
+                                        if x['id'] not in services_sports.names(t)] if t else [])
 
 
 @sports_bp.route('/<event_id>/generate', methods=['POST'])
@@ -67,15 +103,14 @@ def generate(event_id):
     defaults = services_sports.event_defaults(event)
     points = {k: max(0, _int(request.form.get(f'points_{k}'), defaults['points'][k]))
               for k in ('win', 'draw', 'loss', 'close_loss', 'close_margin')}
-    try:
-        t = services_sports.generate(services_sports.confirmed_teams(db, event_id),
-                                     request.form.get('format', ''), points,
-                                     third_place=request.form.get('third_place') == 'yes',
-                                     sport=defaults['sport'])
-    except services_sports.TournamentError as exc:
-        flash(str(exc), "warning")
-        return redirect(f'/tournament/{event_id}')
-    db.collection('events').document(event_id).update({'tournament': t})
+    teams = services_sports.confirmed_teams(db, event_id)
+    t = _save(event_id, lambda _cur, _e: services_sports.generate(
+        teams, request.form.get('format', ''), points,
+        third_place=request.form.get('third_place') == 'yes', sport=defaults['sport']), None)
+    if t is None:
+        return _back(event_id)
+    import services_live_match
+    services_live_match.forget(db, event_id)          # the old match ids mean other matches now
     log_action(db, "TOURNAMENT_GENERATED",
                f"{session.get('user_id')} generated a {t['format']} of {len(t['teams'])} teams for {event_id}")
     flash(f"{len(t['matches'])} matches generated for {len(t['teams'])} teams.", "success")
@@ -89,19 +124,13 @@ def result(event_id, match_id):
     event = _event(event_id)
     if not _allowed(event, 'edit_event', 'manage_registrations'):
         abort(403)
-    try:
-        t = services_sports.record_result(event.get('tournament') or {}, match_id,
-                                          _int(request.form.get('home_score'), -1),
-                                          _int(request.form.get('away_score'), -1),
-                                          request.form.get('winner', ''))
-    except services_sports.TournamentError as exc:
-        flash(str(exc), "warning")
-        return redirect(f'/tournament/{event_id}')
-    db.collection('events').document(event_id).update({'tournament': t})
-    log_action(db, "MATCH_RESULT", f"{session.get('user_id')} entered {match_id} of {event_id}: "
-               f"{request.form.get('home_score')}-{request.form.get('away_score')}")
-    flash("Result saved.", "success")
-    return redirect(f'/tournament/{event_id}#{match_id}')
+    home, away = _int(request.form.get('home_score'), -1), _int(request.form.get('away_score'), -1)
+    if _save(event_id, lambda cur, _e: services_sports.record_result(cur, match_id, home, away,
+                                                                     request.form.get('winner', '')),
+             "Result saved.") is not None:
+        log_action(db, "MATCH_RESULT", f"{session.get('user_id')} entered {match_id} of {event_id}: "
+                   f"{request.form.get('home_score')}-{request.form.get('away_score')}")
+    return _back(event_id, match_id)
 
 
 @sports_bp.route('/<event_id>/match/<match_id>/schedule', methods=['POST'])
@@ -111,15 +140,10 @@ def schedule(event_id, match_id):
     event = _event(event_id)
     if not _allowed(event, 'edit_event'):
         abort(403)
-    try:
-        t = services_sports.update_schedule(event.get('tournament') or {}, match_id, request.form.get('date', ''),
-                                            request.form.get('time', ''), request.form.get('venue', ''))
-    except services_sports.TournamentError as exc:
-        flash(str(exc), "warning")
-        return redirect(f'/tournament/{event_id}')
-    db.collection('events').document(event_id).update({'tournament': t})
-    flash("Schedule saved.", "success")
-    return redirect(f'/tournament/{event_id}#{match_id}')
+    _save(event_id, lambda cur, _e: services_sports.update_schedule(
+        cur, match_id, request.form.get('date', ''), request.form.get('time', ''), request.form.get('venue', '')),
+        "Schedule saved.")
+    return _back(event_id, match_id)
 
 
 @sports_bp.route('/<event_id>/playoffs', methods=['POST'])
@@ -130,17 +154,136 @@ def playoffs(event_id):
     event = _event(event_id)
     if not _allowed(event, 'edit_event'):
         abort(403)
-    try:
-        t = services_sports.make_playoffs(event.get('tournament') or {}, _int(request.form.get('size'), 4),
-                                          request.form.get('third_place') == 'yes')
-    except services_sports.TournamentError as exc:
-        flash(str(exc), "warning")
-        return redirect(f'/tournament/{event_id}')
-    db.collection('events').document(event_id).update({'tournament': t})
+    t = _save(event_id, lambda cur, _e: services_sports.make_playoffs(
+        cur, _int(request.form.get('size'), 4), request.form.get('third_place') == 'yes'), None)
+    if t is None:
+        return _back(event_id)
     log_action(db, "TOURNAMENT_PLAYOFFS", f"{session.get('user_id')} made the top-{t['playoffs']['size']} "
                f"playoffs of {event_id}")
     flash(f"Playoffs made: the top {t['playoffs']['size']} play off.", "success")
     return redirect(f'/tournament/{event_id}')
+
+
+# ── Fixing mistakes from the page (UPG-355 to UPG-358) ───────────────────
+@sports_bp.route('/<event_id>/match/<match_id>/clear', methods=['POST'])
+@login_required
+def clear_result(event_id, match_id):
+    """Take a result back (and the team it sent on in a knockout)."""
+    import services_live_match as live
+    import services_sports
+    if not _allowed(_event(event_id), 'edit_event', 'manage_registrations'):
+        abort(403)
+    if _save(event_id, lambda cur, _e: services_sports.clear_result(cur, match_id),
+             "Result cleared. The match is to be played (or scored) again.", match_id,
+             ("MATCH_RESULT_CLEARED", f"cleared the result of {match_id}")) is not None:
+        live.result_cleared(db, event_id, match_id)
+    return _back(event_id, match_id)
+
+
+@sports_bp.route('/<event_id>/match/<match_id>/walkover', methods=['POST'])
+@login_required
+def walkover(event_id, match_id):
+    """A team didn't turn up: the other wins the match without a score."""
+    import services_sports
+    if not _allowed(_event(event_id), 'edit_event', 'manage_registrations'):
+        abort(403)
+    winner = request.form.get('winner', '')
+    _save(event_id, lambda cur, _e: services_sports.walkover(cur, match_id, winner),
+          "Walkover saved.", match_id, ("MATCH_WALKOVER", f"gave {match_id} to {winner} by walkover"))
+    return _back(event_id, match_id)
+
+
+@sports_bp.route('/<event_id>/match/<match_id>/teams', methods=['POST'])
+@login_required
+def match_teams(event_id, match_id):
+    """Change who plays in a match not yet played."""
+    import services_live_match as live
+    import services_sports
+    if not _allowed(_event(event_id), 'edit_event'):
+        abort(403)
+    if live.has_points(db, event_id, match_id):
+        flash("This match is being scored live. Remove its points on the scoring page first.", "warning")
+        return _back(event_id, match_id)
+    home, away = request.form.get('home', ''), request.form.get('away', '')
+    if _save(event_id, lambda cur, _e: services_sports.set_match_teams(cur, match_id, home, away),
+             "The match's teams are changed.", match_id,
+             ("MATCH_TEAMS_CHANGED", f"set {match_id} to {home or 'TBD'} v {away or 'TBD'}")) is not None:
+        live.forget(db, event_id, [match_id])
+    return _back(event_id, match_id)
+
+
+@sports_bp.route('/<event_id>/team/<team_id>/<action>', methods=['POST'])
+@login_required
+def team_action(event_id, team_id, action):
+    """Withdraw, bring back, rename or replace a team in the fixtures."""
+    import services_live_match as live
+    import services_sports
+    if not _allowed(_event(event_id), 'edit_event'):
+        abort(403)
+    if action == 'withdraw':
+        _save(event_id, lambda cur, _e: services_sports.withdraw(cur, team_id),
+              "The team is withdrawn: its matches still to play are walkovers to its opponents.", 'teams',
+              ("TEAM_WITHDRAWN", f"withdrew {team_id}"))
+    elif action == 'reinstate':
+        _save(event_id, lambda cur, _e: services_sports.reinstate(cur, team_id),
+              "The team is back. Walkovers already given stay: clear any you want played.", 'teams',
+              ("TEAM_REINSTATED", f"brought back {team_id}"))
+    elif action == 'rename':
+        _save(event_id, lambda cur, _e: services_sports.rename_team(cur, team_id, request.form.get('name', '')),
+              "Team name saved.", 'teams', ("TEAM_RENAMED", f"renamed {team_id}"))
+    elif action == 'replace':
+        new = _team(event_id, request.form.get('new_team', ''))
+        if _save(event_id, lambda cur, _e: services_sports.replace_team(cur, team_id, new),
+                 "The team is replaced everywhere in the fixtures.", 'teams',
+                 ("TEAM_REPLACED", f"replaced {team_id} with {(new or {}).get('id')}")) is not None:
+            live.retarget(db, event_id, team_id, new['id'])
+    else:
+        abort(404)
+    return _back(event_id, 'teams')
+
+
+@sports_bp.route('/<event_id>/teams/add', methods=['POST'])
+@login_required
+def add_team(event_id):
+    """A late team joins the league."""
+    import services_sports
+    if not _allowed(_event(event_id), 'edit_event'):
+        abort(403)
+    new = _team(event_id, request.form.get('new_team', ''))
+    _save(event_id, lambda cur, _e: services_sports.add_team(cur, new),
+          "The team is added, with a match against every other team.", 'teams',
+          ("TEAM_ADDED", f"added {(new or {}).get('id')} to the league"))
+    return _back(event_id, 'teams')
+
+
+@sports_bp.route('/<event_id>/points', methods=['POST'])
+@login_required
+def points_rule(event_id):
+    """Change the league's points rule; the table follows."""
+    import services_sports
+    if not _allowed(_event(event_id), 'edit_event'):
+        abort(403)
+    points = {k: _int(request.form.get(f'points_{k}'), 0) for k in services_sports.DEFAULT_POINTS}
+    _save(event_id, lambda cur, _e: services_sports.set_points(cur, points),
+          "Points rule saved; the table is worked out again.", 'standings',
+          ("TOURNAMENT_POINTS", f"set the points to {points}"))
+    return _back(event_id, 'standings')
+
+
+@sports_bp.route('/<event_id>/playoffs/undo', methods=['POST'])
+@login_required
+def undo_playoffs(event_id):
+    """Take the playoffs away, to correct the league and make them again."""
+    import services_live_match as live
+    import services_sports
+    if not _allowed(_event(event_id), 'edit_event'):
+        abort(403)
+    gone = services_sports.playoff_ids(_event(event_id).get('tournament') or {})
+    if _save(event_id, lambda cur, _e: services_sports.undo_playoffs(cur),
+             "Playoffs undone. Correct the league, then make the playoffs again.", '',
+             ("TOURNAMENT_PLAYOFFS_UNDONE", "undid the playoffs")) is not None:
+        live.forget(db, event_id, gone)
+    return _back(event_id)
 
 
 @sports_bp.route('/<event_id>/publish', methods=['POST'])
@@ -179,6 +322,7 @@ def scorer(event_id, match_id):
     names = services_sports.names(t)
     return render_template('spoc/live_scorer.html', event=event, match=live._match(t, match_id), doc=doc,
                            state=live.state(doc, names), actions=live.actions(t), names=names,
+                           entries=live.entries(doc, names),
                            squads={'home': live.players(full, doc['home']), 'away': live.players(full, doc['away'])},
                            knockout=services_sports.knockout_match(t, live._match(t, match_id)),
                            stage=services_sports.stage_name(live._match(t, match_id)),
@@ -203,6 +347,11 @@ def score_tap(event_id, match_id):
                                  str(data.get('player') or ''), session.get('user_id', ''))
         elif op == 'undo':
             doc = live.undo(db, event_id, match_id, tap)
+        elif op == 'remove':
+            doc = live.remove_point(db, event_id, match_id, tap, str(data.get('entry') or ''))
+        elif op == 'reopen':
+            doc = live.reopen(db, event_id, match_id, tap)
+            log_action(db, "MATCH_RESULT_CLEARED", f"{session.get('user_id')} reopened {match_id} of {event_id}")
         elif op == 'phase':
             doc = live.change_phase(db, event_id, event, match_id, tap, str(data.get('action') or ''),
                                     str(data.get('winner') or ''))
@@ -214,7 +363,7 @@ def score_tap(event_id, match_id):
     except live.LiveMatchError as exc:
         return jsonify(ok=False, error=str(exc)), 409
     names = services_sports.names((_event(event_id).get('tournament') or {}))
-    return jsonify(ok=True, state=live.state(doc, names))
+    return jsonify(ok=True, state=live.state(doc, names), entries=live.entries(doc, names))
 
 
 @sports_bp.route('/live/<event_id>/<match_id>')

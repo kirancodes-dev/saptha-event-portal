@@ -54,6 +54,8 @@
     </label>
     {% endif %}
     <button type="button" class="btn btn-danger" data-phase-action="full_time">Full time: save the result</button>
+    {#- Full time pressed by mistake: take the result back and play on (UPG-355) #}
+    <button type="button" class="btn btn-outline-danger" data-reopen>Reopen the match</button>
   </section>
 
   <div class="live-sides">
@@ -91,6 +93,13 @@
     <ol class="live-log__list" data-recent>
       {% for line in state.recent %}<li>{{ line }}</li>{% endfor %}
     </ol>
+    {#- Any point can be taken back, not only the last (UPG-355) #}
+    <details class="live-all" data-all-points>
+      <summary class="small">All points ({{ entries|length }}): remove a wrong one</summary>
+      <ul class="live-all__list" data-entries>
+        {% for e in entries %}<li><span>{{ e.text }} · {{ 'H1' if e.half == 1 else 'H2' }}</span> <button type="button" class="btn btn-sm btn-outline-danger" data-remove="{{ e.id }}">Remove</button></li>{% endfor %}
+      </ul>
+    </details>
   </section>
 </div>
 {% endblock %}

@@ -28,10 +28,22 @@ Once the deciding matches are played, `placings` gives each team's place and
 `publish` makes it the event's result (UPG-342): places on the registrations,
 the result email and WhatsApp to the placed teams, a push to everyone, and the
 position certificates.
+
+Every change to the fixtures goes through `change`, which holds a short lock
+across every copy of the app while it reads the tournament, changes it and
+writes it back, so two results saved at the same moment both stay (UPG-354).
+
+Mistakes are fixed from the page, not in code (UPG-355 to UPG-359): a result
+cleared (and the knockout winner taken back), a walkover, a team withdrawn or
+brought back, renamed, replaced or added late, a match's teams changed, the
+points rule changed, the playoffs undone, and corrected results published again.
 """
+import contextlib
 import datetime
 import logging
 import math
+import threading
+import time
 
 log = logging.getLogger(__name__)
 
@@ -46,6 +58,66 @@ STAGE_NAMES = {'final': 'Final', 'semi': 'Semi-final', 'third': 'Third place'}
 
 class TournamentError(ValueError):
     pass
+
+
+# ── One change at a time (UPG-354) ─────────────────────────────────────────
+LOCK_SECONDS = 10        # a lock older than this is taken over (its holder died)
+LOCK_WAIT = 8.0
+_plocks: dict = {}
+_plocks_guard = threading.Lock()
+
+
+def _process_lock(event_id):
+    with _plocks_guard:
+        return _plocks.setdefault(event_id, threading.Lock())
+
+
+@contextlib.contextmanager
+def _tournament_lock(event_id: str):
+    """A lease in the shared counter table (one conditional UPDATE takes it),
+    so two copies of the app never change one tournament at once."""
+    from sqlalchemy import update
+    from sqlalchemy.exc import IntegrityError
+    from db_pg import get_session
+    from models_pg import TicketTypeSale
+    key = f"{event_id}:tournament-lock"
+    try:
+        with get_session(primary=True) as s:
+            if s.get(TicketTypeSale, key) is None:
+                s.add(TicketTypeSale(key=key, sold=0))
+    except IntegrityError:
+        pass                                   # another copy made it first
+    deadline = time.time() + LOCK_WAIT
+    while True:
+        now = int(time.time())
+        with get_session(primary=True) as s:
+            taken = s.execute(update(TicketTypeSale)
+                              .where(TicketTypeSale.key == key, TicketTypeSale.sold < now - LOCK_SECONDS)
+                              .values(sold=now)).rowcount == 1
+        if taken:
+            break
+        if time.time() > deadline:
+            raise TournamentError("Someone else is saving a change to this tournament. Try again in a moment.")
+        time.sleep(0.05)
+    try:
+        yield
+    finally:
+        with get_session(primary=True) as s:
+            s.execute(update(TicketTypeSale).where(TicketTypeSale.key == key, TicketTypeSale.sold == now)
+                      .values(sold=0))
+
+
+def change(db, event_id: str, fn) -> dict:
+    """Read the event's tournament afresh, apply `fn(tournament, event)` (which
+    returns the new tournament or raises TournamentError) and save it, all under
+    the lock. Returns the saved tournament."""
+    with _process_lock(event_id), _tournament_lock(event_id):
+        ref = db.collection('events').document(event_id)
+        snap = ref.get()
+        event = dict(snap.to_dict() or {}, id=event_id)
+        t = fn(event.get('tournament') or {}, event)
+        ref.update({'tournament': t})
+        return t
 
 
 def confirmed_teams(db, event_id: str) -> list:
@@ -271,6 +343,7 @@ def record_result(tournament: dict, match_id: str, home_score: int, away_score: 
     if m.get('stage') == 'league' and has_playoffs(t):
         raise TournamentError("The playoffs were seeded from the league table, so its results can't change now.")
     m.update(home_score=home_score, away_score=away_score, status='played')
+    m.pop('walkover', None)
     if knockout_match(t, m):
         if home_score != away_score:
             win = m['home'] if home_score > away_score else m['away']
@@ -278,17 +351,244 @@ def record_result(tournament: dict, match_id: str, home_score: int, away_score: 
             win = winner                       # decided on penalties, a tie-break, …
         else:
             raise TournamentError("It's a tie: choose who goes through.")
-        for key in ('next', 'loser_next'):
-            if m.get(key):
-                nxt = _find(matches, m[key])
-                if nxt.get('status') == 'played' and m.get('winner') and m['winner'] != win:
-                    raise TournamentError("The next match is already played; correct it first.")
+        _check_next(matches, m, win)
         m['winner'] = win
         _advance(matches, m)
+        _settle_withdrawn(t, matches)
     else:
         m['winner'] = (m['home'] if home_score > away_score else m['away'] if away_score > home_score else None)
     t['matches'] = matches
     return t
+
+
+def _check_next(matches, m, win):
+    """A knockout result that changes who goes through is refused once the
+    match they went on to is played: clear that one first."""
+    for key in ('next', 'loser_next'):
+        if m.get(key):
+            nxt = _find(matches, m[key])
+            if nxt.get('status') == 'played' and m.get('winner') and m['winner'] != win:
+                raise TournamentError(f"{stage_name(nxt)} (match {nxt['id'].upper()}) is already played with the "
+                                      "team that went through. Clear that result first, then correct this one.")
+
+
+# ── Fixing mistakes (UPG-355 to UPG-358) ───────────────────────────────────
+def _copy(tournament):
+    t = dict(tournament)
+    t['matches'] = [dict(m) for m in t.get('matches') or []]
+    t['teams'] = [dict(x) for x in t.get('teams') or []]
+    return t, t['matches']
+
+
+def clear_result(tournament: dict, match_id: str) -> dict:
+    """Take a match's result back: it is to be played again, and in a knockout
+    the team it sent on (and the loser sent to the third-place match) is taken
+    back out. Refused while that next match has a result (UPG-355)."""
+    t, matches = _copy(tournament)
+    m = _find(matches, match_id)
+    if m.get('status') == 'bye':
+        raise TournamentError("A bye has no result to clear.")
+    if m.get('status') != 'played':
+        raise TournamentError("This match has no result yet.")
+    if m.get('stage') == 'league' and has_playoffs(t):
+        raise TournamentError("The playoffs were made from the league table. Undo the playoffs first.")
+    for key, side in (('next', 'next_side'), ('loser_next', 'loser_side')):
+        if m.get(key):
+            nxt = _find(matches, m[key])
+            if nxt.get('status') == 'played':
+                raise TournamentError(f"{stage_name(nxt)} (match {nxt['id'].upper()}) is already played. "
+                                      "Clear that result first.")
+            nxt[m[side]] = None
+    m.update(home_score=None, away_score=None, winner=None, status='scheduled')
+    m.pop('walkover', None)
+    t['matches'] = matches
+    return t
+
+
+def walkover(tournament: dict, match_id: str, winner: str) -> dict:
+    """A team didn't turn up or gave the match away: the other wins with no
+    score. In a league it counts as a win and a loss (no close-loss point)."""
+    t, matches = _copy(tournament)
+    m = _find(matches, match_id)
+    if not m.get('home') or not m.get('away'):
+        raise TournamentError("Both teams must be known before a walkover is given.")
+    if m.get('status') == 'bye':
+        raise TournamentError("A bye isn't played.")
+    if winner not in (m['home'], m['away']):
+        raise TournamentError("Choose the team that gets the walkover.")
+    if m.get('stage') == 'league' and has_playoffs(t):
+        raise TournamentError("The playoffs were made from the league table. Undo the playoffs first.")
+    _check_next(matches, m, winner)
+    m.update(home_score=None, away_score=None, status='played', winner=winner, walkover=True)
+    _advance(matches, m)
+    _settle_withdrawn(t, matches)
+    t['matches'] = matches
+    return t
+
+
+def withdrawn(tournament: dict) -> set:
+    return {x['id'] for x in tournament.get('teams') or [] if x.get('withdrawn')}
+
+
+def _settle_withdrawn(t, matches):
+    """Every match still to play against a withdrawn team is a walkover to
+    the other team (a knockout's next round included, as teams reach it)."""
+    out = {x['id'] for x in t.get('teams') or [] if x.get('withdrawn')}
+    changed = True
+    while out and changed:
+        changed = False
+        for m in matches:
+            if m.get('status') != 'scheduled' or not m.get('home') or not m.get('away'):
+                continue
+            if m.get('stage') == 'league' and has_playoffs(dict(t, matches=matches)):
+                continue
+            gone = [side for side in ('home', 'away') if m[side] in out]
+            if len(gone) == 1:
+                win = m['away'] if gone[0] == 'home' else m['home']
+                m.update(home_score=None, away_score=None, status='played', winner=win, walkover=True)
+                _advance(matches, m)
+                changed = True
+
+
+def withdraw(tournament: dict, team_id: str) -> dict:
+    """The team pulls out: its matches still to play become walkovers to its
+    opponents; results it already has stay (UPG-356)."""
+    t, matches = _copy(tournament)
+    team = next((x for x in t['teams'] if x['id'] == team_id), None)
+    if team is None:
+        raise TournamentError("That team isn't in the fixtures.")
+    if team.get('withdrawn'):
+        raise TournamentError("That team has withdrawn already.")
+    team['withdrawn'] = True
+    _settle_withdrawn(t, matches)
+    t['matches'] = matches
+    return t
+
+
+def reinstate(tournament: dict, team_id: str) -> dict:
+    """Bring a withdrawn team back. Walkovers already given stay; clear any of
+    them to have that match played."""
+    t, _ = _copy(tournament)
+    team = next((x for x in t['teams'] if x['id'] == team_id), None)
+    if team is None or not team.get('withdrawn'):
+        raise TournamentError("That team hasn't withdrawn.")
+    team.pop('withdrawn', None)
+    return t
+
+
+def rename_team(tournament: dict, team_id: str, name: str) -> dict:
+    t, _ = _copy(tournament)
+    name = ' '.join(str(name or '').split())[:120]
+    if not name:
+        raise TournamentError("Give the team a name.")
+    team = next((x for x in t['teams'] if x['id'] == team_id), None)
+    if team is None:
+        raise TournamentError("That team isn't in the fixtures.")
+    team['name'] = name
+    return t
+
+
+def replace_team(tournament: dict, old_id: str, new_team: dict) -> dict:
+    """Another registration takes a team's place everywhere in the fixtures,
+    its results included (registered under the wrong team, a late swap) (UPG-357)."""
+    t, matches = _copy(tournament)
+    if not any(x['id'] == old_id for x in t['teams']):
+        raise TournamentError("That team isn't in the fixtures.")
+    if not new_team or any(x['id'] == new_team['id'] for x in t['teams']):
+        raise TournamentError("Choose a confirmed team that isn't in the fixtures yet.")
+    t['teams'] = [dict(new_team) if x['id'] == old_id else x for x in t['teams']]
+    for m in matches:
+        for key in ('home', 'away', 'winner'):
+            if m.get(key) == old_id:
+                m[key] = new_team['id']
+    if t.get('playoffs'):
+        t['playoffs'] = dict(t['playoffs'], seeds=[new_team['id'] if x == old_id else x
+                                                   for x in t['playoffs'].get('seeds') or []])
+    return t
+
+
+def add_team(tournament: dict, new_team: dict) -> dict:
+    """A late team joins a league (before any playoffs): it gets a match
+    against every other team, in new rounds after the last one (UPG-357)."""
+    t, matches = _copy(tournament)
+    if t.get('format') not in ('league', 'league_knockout'):
+        raise TournamentError("A knockout's draw is fixed. Replace a team, or make the fixtures again.")
+    if has_playoffs(t):
+        raise TournamentError("The playoffs are made. Undo the playoffs first.")
+    if not new_team or any(x['id'] == new_team['id'] for x in t['teams']):
+        raise TournamentError("Choose a confirmed team that isn't in the fixtures yet.")
+    counter = max([int(str(m['id']).lstrip('m') or 0) for m in matches] or [0])
+    rnd = max([int(m.get('round') or 0) for m in matches] or [0])
+    for other in t['teams']:
+        counter += 1
+        rnd += 1
+        m = _match(f"m{counter}", rnd, other['id'], new_team['id'])
+        if t.get('format') == 'league_knockout':
+            m['stage'] = 'league'
+        matches.append(m)
+    t['teams'].append(dict(new_team))
+    _settle_withdrawn(t, matches)
+    t['matches'] = matches
+    return t
+
+
+def set_match_teams(tournament: dict, match_id: str, home: str, away: str) -> dict:
+    """Change who plays in a match not yet played: a seeding decided by a
+    toss, a team put in the wrong slot (UPG-357)."""
+    t, matches = _copy(tournament)
+    m = _find(matches, match_id)
+    if m.get('status') in ('played', 'bye'):
+        raise TournamentError("Clear this match's result first.")
+    ids = {x['id'] for x in t['teams']}
+    home, away = (home or None), (away or None)
+    if (home and home not in ids) or (away and away not in ids):
+        raise TournamentError("Choose teams from the fixtures.")
+    if home and home == away:
+        raise TournamentError("A team can't play itself.")
+    for other in matches:                     # one match a round: swapping two matches goes through TBD
+        if other is not m and other.get('round') == m.get('round') and other.get('stage') == m.get('stage'):
+            clash = {home, away} & {other.get('home'), other.get('away')} - {None}
+            if clash:
+                raise TournamentError(
+                    f"{names(t).get(clash.pop(), 'That team')} already plays in match {other['id'].upper()} "
+                    "in this round. Set that side to TBD there first.")
+    m.update(home=home, away=away)
+    if t.get('playoffs'):                     # the seeds are whoever starts the playoffs now
+        first = 'semi' if t['playoffs'].get('size') == 4 else 'final'
+        t['playoffs'] = dict(t['playoffs'], seeds=[x for mm in matches if mm.get('stage') == first
+                                                   for x in (mm.get('home'), mm.get('away')) if x])
+    _settle_withdrawn(t, matches)
+    t['matches'] = matches
+    return t
+
+
+def set_points(tournament: dict, points: dict) -> dict:
+    """Change the league's points rule; the table is worked out again from the
+    results (UPG-358). Refused once the playoffs were seeded from it."""
+    t, _ = _copy(tournament)
+    if t.get('format') not in ('league', 'league_knockout'):
+        raise TournamentError("Only a league has a points rule.")
+    if has_playoffs(t):
+        raise TournamentError("The playoffs were made from the table. Undo the playoffs first.")
+    t['points'] = dict(DEFAULT_POINTS, **{k: max(0, int(v)) for k, v in (points or {}).items() if k in DEFAULT_POINTS})
+    return t
+
+
+def undo_playoffs(tournament: dict) -> dict:
+    """Take the playoffs away (none of them played yet), so the league can be
+    corrected and the playoffs made again (UPG-358)."""
+    t, matches = _copy(tournament)
+    if not has_playoffs(t):
+        raise TournamentError("There are no playoffs to undo.")
+    if any(m.get('stage') in KNOCKOUT_STAGES and m.get('status') == 'played' for m in matches):
+        raise TournamentError("A playoff match has a result. Clear the playoff results first (the final first).")
+    t['matches'] = [m for m in matches if m.get('stage') not in KNOCKOUT_STAGES]
+    t.pop('playoffs', None)
+    return t
+
+
+def playoff_ids(tournament: dict) -> list:
+    return [m['id'] for m in tournament.get('matches') or [] if m.get('stage') in KNOCKOUT_STAGES]
 
 
 def update_schedule(tournament: dict, match_id: str, date: str, time: str, venue: str) -> dict:
@@ -318,6 +618,11 @@ def standings(tournament: dict) -> list:
         if m.get('stage') in KNOCKOUT_STAGES:
             continue
         h, a = rows[m['home']], rows[m['away']]
+        if m.get('walkover'):                 # a win and a loss, no score (UPG-356)
+            win, lose = (h, a) if m.get('winner') == m['home'] else (a, h)
+            win['played'] += 1; lose['played'] += 1; win['won'] += 1; lose['lost'] += 1  # noqa: E702
+            win['points'] += pts['win']; lose['points'] += pts['loss']  # noqa: E702
+            continue
         hs, as_ = int(m['home_score']), int(m['away_score'])
         for row, f, ag in ((h, hs, as_), (a, as_, hs)):
             row['played'] += 1
@@ -378,33 +683,52 @@ def _registrations(db, event_id):
     return [(d.id, d.to_dict() or {}) for d in db.collection('registrations').where('event_id', '==', event_id).stream()]
 
 
+def published_places(db, event_id: str) -> dict:
+    """Registration id → the place it was given when the results were published."""
+    return {rid: r['final_rank'] for rid, r in _registrations(db, event_id) if r.get('final_rank')}
+
+
 def publish(db, event_id: str, actor: str) -> list:
     """Make the tournament's places the event's result (UPG-342). Returns notes
-    for the publisher; raises TournamentError while the places aren't known."""
+    for the publisher; raises TournamentError while the places aren't known.
+
+    Pressed again after a result was corrected (UPG-359), it changes only what
+    changed: the teams whose place changed are told their new place, and the
+    position certificates issued for an old place are revoked before the right
+    ones are issued."""
     ref = db.collection('events').document(event_id)
     event = ref.get().to_dict() or {}
     places = placings(event.get('tournament') or {})
     if not places:
         raise TournamentError("The places aren't known yet: play the final (and the third-place match) first.")
+    again = bool(event.get('results_published'))
     import services_hackathon
     portal = services_hackathon.portal_only(event)
     title = event.get('title', 'Event')
-    winners = []
+    winners, changed = [], set()
     for reg_id, reg in _registrations(db, event_id):
         place = places.get(reg_id)
-        if reg.get('final_rank') != place:
+        if (reg.get('final_rank') or None) != place:
+            changed.add(reg_id)
             db.collection('registrations').document(reg_id).update({'final_rank': place})
         if place:
             team = reg.get('team_name') if reg.get('team_name') not in (None, '', 'Individual') else ''
             winners.append({'team_name': team or reg.get('lead_name') or '', 'lead_name': reg.get('lead_name') or '',
                             'email': reg.get('lead_email') or '', 'phone': reg.get('lead_phone') or reg.get('phone') or '',
-                            'rank': place, 'score': None})
+                            'rank': place, 'score': None, 'reg_id': reg_id})
+    if again and not changed:
+        return ["The published places already match the fixtures; nothing was changed."]
     winners.sort(key=lambda w: (w['rank'], w['team_name'].lower()))
-    ref.update({'status': 'completed', 'winners': winners, 'results_published': True,
-                'completed_at': datetime.datetime.now(datetime.timezone.utc)})
+    ref.update({'status': 'completed', 'winners': [{k: v for k, v in w.items() if k != 'reg_id'} for w in winners],
+                'results_published': True,
+                **({} if again else {'completed_at': datetime.datetime.now(datetime.timezone.utc)})})
     podium = ', '.join(_ordinal(w['rank']) + ' ' + w['team_name'] for w in winners)
-    notes = [f"Results published: {podium}."]
+    notes = [f"{'Corrected results' if again else 'Results'} published: {podium}."]
+    told = 0
     for w in winners:                       # the place only, never a score
+        if again and w['reg_id'] not in changed:
+            continue
+        told += 1
         if w['email'] and not portal:
             try:
                 from utils_email import send_result_email
@@ -417,19 +741,45 @@ def publish(db, event_id: str, actor: str) -> list:
                 send_result_whatsapp(w['phone'], w['lead_name'], title, w['rank'], None)
             except Exception:
                 log.warning("Result WhatsApp for %s failed", event_id, exc_info=True)
+    if again:
+        notes.append(f"{told} team{'s' if told != 1 else ''} told {'their' if told != 1 else 'its'} new place.")
+        revoked = _revoke_old_places(db, event_id, changed, actor)
+        if revoked:
+            notes.append(f"{revoked} position certificate{'s' if revoked != 1 else ''} for the old places revoked.")
     try:
         import services_push
-        services_push.push_to_registrants(db, event_id, 'results', f"Results are out: {title}",
+        services_push.push_to_registrants(db, event_id, 'results',
+                                          f"Results {'corrected' if again else 'are out'}: {title}",
                                           "See where your team placed.", f"/tournament/fixtures/{event_id}")
     except Exception:
         log.warning("Results push failed for %s", event_id, exc_info=True)
     from utils import log_action
-    log_action(db, "RESULTS_PUBLISHED", f"Tournament {event_id} by {actor}")
+    log_action(db, "RESULTS_REPUBLISHED" if again else "RESULTS_PUBLISHED",
+               f"Tournament {event_id} by {actor}" + (f": {len(changed)} places changed" if again else ''))
     from services_certificate_runs import on_results_published   # position certificates (UPG-124)
     note = on_results_published(db, event_id, actor)
     if note:
         notes.append(note)
     return notes
+
+
+def _revoke_old_places(db, event_id: str, reg_ids: set, actor: str) -> int:
+    """Revoke the valid winner, runner-up and third-place certificates of the
+    registrations whose place changed (UPG-359)."""
+    if not reg_ids:
+        return 0
+    try:
+        import services_certificates as certs
+        import services_certificate_changes as changes
+        count = 0
+        for cert in certs.for_event(event_id):
+            if cert['cert_type'] in certs.POSITION_TYPES and cert['status'] == 'valid' and cert['reg_id'] in reg_ids:
+                changes.revoke(db, cert['number'], actor, "The tournament's result was corrected.")
+                count += 1
+        return count
+    except Exception:
+        log.warning("Revoking old position certificates for %s failed", event_id, exc_info=True)
+        return 0
 
 
 def has_tournament(event: dict) -> bool:

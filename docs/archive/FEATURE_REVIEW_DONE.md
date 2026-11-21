@@ -171,7 +171,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 
 | Step | Result | Where it breaks |
 |---|---|---|
-| Create event (seminar / hackathon / sports) | Created [R] | All settings persist since BLK-09 [R]. Sports fixtures & standings generated on tournament page (UPG-13, tested); kabaddi league then knockout, live scoring and publishing the places (UPG-342, UPG-350–352). Since UPG-73: every kind of event, saved as a draft, then reviewed and published. |
+| Create event (seminar / hackathon / sports) | Created [R] | All settings persist since BLK-09 [R]. Sports fixtures & standings generated on tournament page (UPG-13, tested); kabaddi league then knockout, live scoring and publishing the places (UPG-342, UPG-350–352); every mistake fixed from the page: clear, reopen, walkover, withdraw, rename, replace, late team, points rule, undo playoffs, republish (UPG-353–359). Since UPG-73: every kind of event, saved as a draft, then reviewed and published. |
 | Build form | Page OK [R] | — |
 | Publish (pending → approve → open) | OK [R] | Two steps after approval; not obvious from the UI copy. |
 | Manage registrations / waitlist | Working [R; T at UPG-225, UPG-229, UPG-230, UPG-231, UPG-234, UPG-235, UPG-239, UPG-317] | Exports work since UPG-03 (CSV and Excel with every column); the SPOC and coordinators correct a registration's details from the list (UPG-225); the list is a table with Edit, Cancel and Delete per team, the hosting SPOC deleting for good a team with no record elsewhere (UPG-229), and it shows and searches USNs (UPG-226); each team opens to every detail the form gave (UPG-231); the waitlist is on the same page, and the hosting SPOC accepts anyone on it (UPG-230), who is emailed (UPG-235); Details and the Cancel, Delete and Accept dialogs work without Bootstrap's script, the waitlist folds away, search and the filters come back to the list, and a summary gives the numbers (UPG-234); the hosting SPOC gives registered teams documents (instructions, a PDF, or both), which teams download from their dashboard (UPG-239); the hosting SPOC deletes one person or the whole waitlist (UPG-317 [T]). |
@@ -225,7 +225,7 @@ Since 2026-11-15 (UPG-266 to UPG-273), for every type: one registration state on
 | Workshop | Same as seminar; preset applied (`routes_spoc.py:154`); Own type with trainer, prerequisites, what to bring (UPG-73) | Same; paid workshops: payments are verified safely since BLK-03 and confirmed with Razorpay since UPG-94, not yet run against Razorpay test mode | + UPG-30 |
 | Guest lecture | Same as seminar (no own template); Own type (UPG-73) | Speaker invite and attendance list | Seminar items |
 | Hackathon | Create, judges, project submission page, rubric scoring (UPG-04), leaderboard, QR check-in (UPG-02), winner and participation certificates (UPG-06), team registration with invite codes (UPG-08); Own type: duration, themes, judging criteria, rounds, prizes in the wizard (UPG-73); qualifying rounds with shortlists by top N or cut-off, round history, result emails and the student's round status (UPG-149); one email per new team registration, to the lead, under a daily email limit, with one-time password links (UPG-152); problem statements published after registration, now or at a set time (UPG-190); a submission form the SPOC builds, open between two times, editable until the deadline, with deadline extensions (UPG-191); participants emailed only at registration, for passwords and the final result, the rest on the team's hackathon page with stages, countdowns and updates (UPG-195, UPG-196); each listed member gets one link to confirm and get a login, so they see their own certificate (UPG-207); the college's own certificate design (UPG-206); after the deadline the SPOC lets teams add and remove members for a set time (UPG-250); the SPOC's panel shows this kind's tools only on these events (UPG-253); the submission round scored by AI with weighted criteria or by judges, as the SPOC chooses (UPG-298, UPG-299); the leaderboard hidden until the SPOC makes it public (UPG-300); round 1 marked by outside evaluators from a file with the team code, Submit sending the top N through (UPG-308); a finale every judge scores, averaged over the judges who scored (UPG-309); participation certificates for every member of a team that submitted, in the portal only (UPG-310); a set time when each team's lead chooses one problem statement, with a cap per problem statement, lock, reopen and extend, then locked, and the submission is for it (UPG-321); the SPOC deletes an update (UPG-323); the marks upload always shown with when it opens (UPG-324); the columns of each download chosen (UPG-325); Claude as the AI scorer, 25 teams per step, when its key is set (UPG-326); Gemini scoring on gemini-3.8-flash (or `GEMINI_MODEL`), busy retried (UPG-328) | WhatsApp group (link in the registration email) | AI scoring of submissions (UPG-192), the SPOC's ranking and top-N shortlist (UPG-193), the finale and results email (UPG-194); UPG-198, UPG-199 |
-| Sports | Create, registration (teams since UPG-08), leaderboard page, fixtures & standings: knockout and league, results by the SPOC or an assigned coordinator, public fixtures page (UPG-13, tested); tournament and fixtures pages on the design system (UPG-63); Tournament (sport, format, gender category), athletics and e-sports types; a sports meet is a fest with sub-events (UPG-73, UPG-74); after the deadline the SPOC lets teams add and remove members for a set time (UPG-250); the SPOC's panel shows this kind's tools only on these events (UPG-253); a tournament's places become the event's result, with result emails and position certificates (UPG-342); kabaddi points (5/3/1/0, score difference) and League then knockout with playoffs and a third-place match (UPG-350); live point-by-point scoring on a phone and a public live scoreboard (UPG-351); top raiders and defenders with Super 10s and High 5s (UPG-352) | Whiteboard/Excel replaced; a live scoreboard for the crowd | — |
+| Sports | Create, registration (teams since UPG-08), leaderboard page, fixtures & standings: knockout and league, results by the SPOC or an assigned coordinator, public fixtures page (UPG-13, tested); tournament and fixtures pages on the design system (UPG-63); Tournament (sport, format, gender category), athletics and e-sports types; a sports meet is a fest with sub-events (UPG-73, UPG-74); after the deadline the SPOC lets teams add and remove members for a set time (UPG-250); the SPOC's panel shows this kind's tools only on these events (UPG-253); a tournament's places become the event's result, with result emails and position certificates (UPG-342); kabaddi points (5/3/1/0, score difference) and League then knockout with playoffs and a third-place match (UPG-350); live point-by-point scoring on a phone and a public live scoreboard (UPG-351); top raiders and defenders with Super 10s and High 5s (UPG-352); two courts saving at once both kept (UPG-354); every tournament mistake fixed from the page by the SPOC or Super Admin, with a help card: clear a result, reopen a live match, remove any point, walkovers and withdrawn teams, rename, replace or add a team, set a match's teams, change the points rule, undo the playoffs, publish corrected results (UPG-353, UPG-355–359) | Whiteboard/Excel replaced; a live scoreboard for the crowd | — |
 | Cultural | Template exists (`services_templates.py:494`); judging as hackathon; certificates (UPG-06); Cultural competition (discipline, solo/group, time on stage) and show/concert types; a cultural fest holds them as sub-events (UPG-73, UPG-74) | Slots, judging sheets | — (rubric judging done, UPG-04) |
 | Club activities | Org units can be clubs (`routes_admin.py:812`); Club activity type (UPG-73) | Membership lists, recurring meetings, attendance across the year | Membership not yet listed (activity points ledger done, UPG-11) |
 | Placement drives | Company details, eligibility from the roster (branch, year, CGPA, backlogs) checked at registration, rounds with shortlist/reject notices and per-round exports (UPG-57, tested); Placement drive type with company and eligibility in the wizard (UPG-73) | Company communication | — |
@@ -6212,3 +6212,89 @@ The owner asked for every kind of event to work as well as SAPTHAHACKS'26 did, s
   1. ✅ Test: the stats add up across two matches, with Super 10 and High 5 counted.
   2. ✅ Test: the public page lists the top raiders and defenders.
 - **Evidence:** `services_live_match.py:336-385`; `routes_sports.py:220-236`, `:269-280`; `templates/public/tournament_fixtures.html:38`; `templates/public/live_match.html:57-67`; tests `tests/test_live_match_stats.py` (2). A point not given to a player counts for the team only.
+
+#### UPG-353 — Match scores can't be read on the staff tournament page
+- **Status:** DONE
+- **Last verified:** 2026-11-21, on `57778db` plus this change [T]
+- **Problem:** On the SPOC's tournament page each match's score was a `<span class="badge fs-6">` with no background class (there since UPG-13), so the numbers printed white on the light card. Seen in the browser while checking UPG-351.
+- **Who benefits:** the SPOC and coordinators entering results.
+- **What was built:** the score badges are `badge bg-dark fs-6`; a walkover shows W/O for the winner and – for the other side.
+- **Depends on:** none.
+- **Acceptance criteria:**
+  1. ✅ Test: the staff page's score badges carry a background class; checked by hand that the numbers can be read (Chromium, phone width).
+- **Evidence:** `templates/spoc/tournament.html:321`, `:325`; test `tests/test_tournament_fixes.py::test_the_staff_page_scores_can_be_read`.
+
+#### UPG-354 — Two results saved at the same moment can undo each other
+- **Status:** DONE
+- **Last verified:** 2026-11-21, on `57778db` plus this change [T]
+- **Problem:** A result (typed, or at a live match's full time), a schedule change and the playoffs each read `event['tournament']`, changed one match and wrote the whole of it back. Two courts finishing within the same moment could write over each other and lose one result. The per-process lock in `services_live_match` didn't cover several Cloud Run copies.
+- **Who benefits:** any tournament playing matches side by side.
+- **What was built:** `services_sports.change(db, event_id, fn)`: under a per-process lock and a lease shared by every copy of the app (a row `<event_id>:tournament-lock` in the existing `ticket_type_sales` counter table, taken with one conditional UPDATE `WHERE sold < now - 10`, released after the write; a lease older than 10 s is taken over, so a copy that died holding it blocks nothing), it reads the tournament afresh from the primary, applies the change and saves it. After 8 s of waiting it refuses with "Someone else is saving a change to this tournament. Try again in a moment." Every route that changes a tournament and the live scorer's full time use it.
+- **Depends on:** none.
+- **Acceptance criteria:**
+  1. ✅ Test: two results for different matches saved at the same moment (threads, each slow to write) both end up in the fixtures; a held lease refuses with the message, and a dead holder's lease is taken over and let go after.
+  2. ✅ Test: the existing tournament tests pass unchanged (`tests/test_sports_tournament.py`, `tests/test_tournament_results.py`, `tests/test_tournament_kabaddi.py`, `tests/test_live_match.py`, `tests/test_live_match_stats.py`).
+- **Evidence:** `services_sports.py:63-120`; `routes_sports.py:42-55`; `services_live_match.py:243-247`; tests `tests/test_tournament_fixes.py::test_two_results_saved_at_the_same_moment_both_stay`, `::test_the_lock_is_shared_and_a_dead_holders_lock_is_taken_over`.
+
+### Nothing in a tournament needs code to fix (owner, 2026-11-21)
+
+The owner asked that any problem in a tournament can be fixed by the SPOC or the Super Admin from the page, without code. Every fix below is on the tournament page (or the scorer), is written to the audit log, goes through UPG-354's lock, and is open to the Super Admin (`services_permission.can`). A "Something went wrong? How to fix it here" card on the page lists them (`templates/spoc/tournament.html:86`).
+
+#### UPG-355 — A wrong result, or a match ended live too early, is undone from the page
+- **Status:** DONE
+- **Last verified:** 2026-11-21, on `57778db` plus this change [T]
+- **Problem:** A wrong knockout result could be corrected only while the next match was unplayed, with no way to say which match blocked it; a result couldn't be taken off; a live match ended by mistake couldn't be reopened; only the last live point could be undone.
+- **Who benefits:** the SPOC and coordinators scoring matches.
+- **What was built:** `clear_result` (a match back to scheduled; a knockout's winner and loser come back out of the next matches; refused for a bye, a league match once the playoffs exist, or while the next match is played, naming it); a correction that would change who went through past a played match says "…is already played with the team that went through. Clear that result first"; route `POST /tournament/<event>/match/<match>/clear` (SPOC or coordinator), which also puts a finished live record back into the 2nd half; on the scorer, "Reopen the match" after full time (the fixtures' result is cleared, the 2nd half goes on with the clock stopped) and "All points: remove a wrong one" (any point, refused at full time).
+- **Depends on:** UPG-351, UPG-354.
+- **Acceptance criteria:**
+  1. ✅ Test: clearing a semi-final empties the final and third-place slots; a correction past a played final and clearing then are refused with the message; the same team going through is still allowed.
+  2. ✅ Test: a live match ended too early is reopened (result off the fixtures, 2nd half), a point in the middle removed, full time saves the new score; removing at full time is refused; clearing on the page reopens the live record; a stranger gets 403.
+- **Evidence:** `services_sports.py:332-406`; `services_live_match.py:259-302`, `:335-339`; `routes_sports.py:168-181`, `:332-366`; `templates/spoc/live_scorer.html:58`, `:97-102`; `static/js/live_match.js:90-91`, `:104-124`, `:176-186`; tests `tests/test_tournament_fixes.py::test_a_result_is_cleared_and_the_winner_comes_back_out_of_the_next_match`, `::test_clearing_on_the_page_and_reopening_a_match_ended_live_by_mistake`.
+
+#### UPG-356 — Walkovers and withdrawn teams
+- **Status:** DONE
+- **Last verified:** 2026-11-21, on `57778db` plus this change [T]
+- **Problem:** A team that doesn't turn up, or pulls out, could only be given a made-up score.
+- **Who benefits:** the SPOC, and the teams' tables.
+- **What was built:** `walkover` (a match won without a score); "Give walkover" on a match (SPOC or coordinator); `withdraw` / `reinstate` and the Withdraw / Bring back buttons (SPOC): a withdrawn team's matches still to play become walkovers to its opponents, also knockout rounds it reaches later; played results stay; the table counts a walkover as played, won/lost, win points and loss points (no close-loss point), no score; W/O on the staff and public pages.
+- **Depends on:** UPG-354.
+- **Acceptance criteria:**
+  1. ✅ Test: a league walkover gives 5 points and 0; withdrawing turns unplayed matches into walkovers and keeps played ones; bringing back works; a real result over a walkover takes it off.
+  2. ✅ Test: a semi-final winner withdrawn before the final: the final goes by walkover and the places follow; W/O on both pages; a coordinator can give a walkover but not withdraw.
+- **Evidence:** `services_sports.py:408-477`, `:609-638`; `routes_sports.py:183-194`, `:215-243`; `templates/spoc/tournament.html:321`, `:325`, `:400-435`; `templates/includes/tournament.html:70`, `:74`; tests `tests/test_tournament_fixes.py::test_a_walkover_and_a_withdrawn_team_in_a_league`, `::test_a_team_withdrawn_from_a_knockout_and_walkovers_on_the_pages`, `::test_a_coordinator_gives_a_walkover_and_the_super_admin_fixes_everything`.
+
+#### UPG-357 — A team renamed, replaced or added late; a match's teams changed
+- **Status:** DONE
+- **Last verified:** 2026-11-21, on `57778db` plus this change [T]
+- **Problem:** A misspelt team name, a team replaced by another registration, a late team, or a playoff seeding decided by a toss all meant making the fixtures again, losing the results.
+- **Who benefits:** the SPOC.
+- **What was built:** a Teams card (one block per team, fits a phone): Rename; Replace with another confirmed team not in the fixtures (results, seeds and live records move to it); "Add a late team to the league" (a league before its playoffs: one match against every team, in new rounds); "Fix this match" sets home and away of a match not yet played (refused while it has live points, or if the team already plays in that round: go through TBD), and the playoff seeds follow.
+- **Depends on:** UPG-354.
+- **Acceptance criteria:**
+  1. ✅ Test: a rename shows on the public page; a replacement takes over a played result; a late team gets a match against each team; adding to a knockout is refused; a played match's teams can't change; a team can't play itself; a coordinator can't rename.
+  2. ✅ Test: a playoff seeding changed by toss through TBD, the seeds follow; a match with live points keeps its teams.
+- **Evidence:** `services_sports.py:479-563`; `services_live_match.py:304-333`; `routes_sports.py:196-257`; `templates/spoc/tournament.html:247-296`, `:400-435`; tests `tests/test_tournament_fixes.py::test_teams_renamed_replaced_added_and_a_matchs_teams_changed`, `::test_a_playoff_seeding_by_toss_and_a_match_with_live_points_keeps_its_teams`.
+
+#### UPG-358 — The points rule changed, the playoffs undone
+- **Status:** DONE
+- **Last verified:** 2026-11-21, on `57778db` plus this change [T]
+- **Problem:** A wrong points rule, or playoffs made from a wrong table, could only be fixed by making the fixtures again; old live records stayed behind when the fixtures were made again.
+- **Who benefits:** the SPOC.
+- **What was built:** "Change the points rule" under the table (league, before the playoffs; the table is worked out again from the results); "Undo the playoffs" while none is played (the playoff matches and their live records go); making the fixtures again forgets all the old live records.
+- **Depends on:** UPG-350, UPG-354.
+- **Acceptance criteria:**
+  1. ✅ Test: a close-loss point added re-ranks the table; refused after the playoffs; Undo refused while a playoff is played, then works after clearing it, its live record goes, a coordinator gets 403, a league result is corrected and the playoffs are made again.
+  2. ✅ Test: making the fixtures again forgets the old live records.
+- **Evidence:** `services_sports.py:565-592`; `services_live_match.py:304-317`; `routes_sports.py:93-118`, `:259-287`; `templates/spoc/tournament.html:137-147`, `:227-245`; tests `tests/test_tournament_fixes.py::test_the_points_rule_changes_and_the_playoffs_are_undone`, `::test_making_the_fixtures_again_forgets_the_old_live_records`.
+
+#### UPG-359 — Corrected results published again
+- **Status:** DONE
+- **Last verified:** 2026-11-21, on `57778db` plus this change [T]
+- **Problem:** After the results were published, a corrected result changed nothing: the places, emails and certificates stayed as first published.
+- **Who benefits:** the SPOC and the teams.
+- **What was built:** the result card compares the fixtures with the published places; when they differ it says so and offers "Publish the corrected results": the changed teams' `final_rank` and the event's winners are rewritten, only those teams are emailed and messaged their new place, their position certificates for the old places are revoked ("The tournament's result was corrected.", issued again by place as before), a push "Results corrected", audit `RESULTS_REPUBLISHED`. Pressed again with nothing changed it says nothing was changed.
+- **Depends on:** UPG-342, UPG-355.
+- **Acceptance criteria:**
+  1. ✅ Test: published, then the final corrected: the page shows the changed-places alert; republishing swaps the places, emails both changed teams their new place, revokes the old winner's certificate; pressed again: nobody is told anything.
+- **Evidence:** `services_sports.py:686-783`; `routes_sports.py:289-304`; `templates/spoc/tournament.html:150-183`; test `tests/test_tournament_fixes.py::test_corrected_results_are_published_again`.

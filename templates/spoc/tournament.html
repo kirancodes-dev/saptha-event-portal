@@ -81,6 +81,22 @@
 </div>
 {% endif %}
 
+{% if t and t.matches %}
+{#- What to do when something goes wrong, all from this page (UPG-355 to UPG-359) #}
+<details class="card mb-3" data-fix-help>
+    <summary class="card-body py-2 fw-semibold">Something went wrong? How to fix it here</summary>
+    <ul class="card-body pt-0 mb-0 small">
+        <li><strong>A wrong score:</strong> open the match's "Enter / Update Result" and save the right one. If the knockout's next match is already played, clear that result first ("Fix this match").</li>
+        <li><strong>Full time pressed too early on the phone:</strong> open "Continue live scoring" and press "Reopen the match", or "Clear the result" here.</li>
+        <li><strong>A point given to the wrong team or player:</strong> on the scoring page, press Remove next to it in "All points".</li>
+        <li><strong>A team didn't turn up:</strong> "Fix this match" → Give walkover. A team pulling out of the tournament: Withdraw it in "Teams in the fixtures".</li>
+        <li><strong>Wrong team name, wrong team in a slot, a late team:</strong> "Teams in the fixtures" (rename, replace, add) or "Fix this match" → Set the teams.</li>
+        <li><strong>Wrong points rule:</strong> League standings → Change the points rule. <strong>Playoffs made too early:</strong> Undo the playoffs.</li>
+        <li><strong>Results published with a mistake:</strong> correct the match, then "Publish the corrected results".</li>
+    </ul>
+</details>
+{% endif %}
+
 {% if t and t.format == 'league_knockout' and not sports.has_playoffs(t) %}
 {#- After the league, its top 4 (or 2) play off (UPG-350) #}
 <div class="card mb-3" data-playoffs>
@@ -116,6 +132,19 @@
 </div>
 {% endif %}
 
+{% if t and sports.has_playoffs(t) and can_generate and not (t.matches|selectattr('stage', 'in', sports.KNOCKOUT_STAGES)|selectattr('status', 'equalto', 'played')|list) %}
+{#- Undo the playoffs to correct the league (UPG-358) #}
+<div class="card mb-3" data-undo-playoffs>
+    <div class="card-body d-flex flex-wrap gap-2 align-items-center justify-content-between">
+        <p class="mb-0 small text-muted">The playoffs are made and none is played yet. A league result wrong? Undo the playoffs, correct it, and make them again.</p>
+        <form method="POST" action="/tournament/{{ event.id }}/playoffs/undo" data-confirm="Take the playoff matches away?">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-outline-danger btn-sm"><i class="fas fa-undo" aria-hidden="true"></i> Undo the playoffs</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
 {% if t and t.matches %}
 {#- The places become the event's result (UPG-342) #}
 <div class="card mb-3" data-tournament-result>
@@ -127,8 +156,18 @@
                 <li value="{{ place }}"><strong>{{ names.get(team, team) }}</strong></li>
                 {% endfor %}
             </ol>
-            {% if event.results_published %}
-                <p class="text-success mb-0"><i class="fas fa-check-circle" aria-hidden="true"></i> Published. Each team sees its place on its dashboard.</p>
+            {% if event.results_published and published != placings %}
+                {#- A result was corrected after publishing (UPG-359) #}
+                <div class="alert alert-warning mb-2" data-results-changed>The places have changed since the results were published.</div>
+                {% if can_publish %}
+                <form method="POST" action="/tournament/{{ event.id }}/publish">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <p class="small text-muted">Publishing again tells only the teams whose place changed, revokes any winner, runner-up or third-place certificate issued for an old place, and issues the right ones.</p>
+                    <button type="submit" class="btn btn-warning"><i class="fas fa-trophy" aria-hidden="true"></i> Publish the corrected results</button>
+                </form>
+                {% endif %}
+            {% elif event.results_published %}
+                <p class="text-success mb-0"><i class="fas fa-check-circle" aria-hidden="true"></i> Published. Each team sees its place on its dashboard. If a result was wrong, correct it below and publish again.</p>
             {% elif can_publish %}
                 <form method="POST" action="/tournament/{{ event.id }}/publish">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -145,7 +184,7 @@
 
 {% set kabaddi = sports.is_kabaddi(t) if t else false %}
 {% if t and t.format in ('league', 'league_knockout') and table %}
-<div class="card mb-3">
+<div class="card mb-3" id="standings">
     <div class="card-body">
         <h2 class="h5 mb-3">League standings</h2>
         {% if t.points %}<p class="small text-muted">Win {{ t.points.win }} · {{ 'Tie' if kabaddi else 'Draw' }} {{ t.points.draw }} · Loss {{ t.points.loss }}{% if t.points.close_margin %} ({{ t.points.close_loss }} if lost by {{ t.points.close_margin }} or fewer){% endif %} · ties on points go to the {{ 'score' if kabaddi else 'goal' }} difference, then {{ 'points' if kabaddi else 'goals' }} scored</p>{% endif %}
@@ -183,6 +222,80 @@
                 </tbody>
             </table>
         </div>
+        {% if can_generate and not sports.has_playoffs(t) %}
+        {#- Change the points rule without making the fixtures again (UPG-358) #}
+        <details class="mt-3" data-points-rule>
+            <summary class="small text-primary">Change the points rule</summary>
+            <form method="POST" action="/tournament/{{ event.id }}/points" class="row g-2 align-items-end mt-1">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% for key, label in (('win', 'Win'), ('draw', 'Tie / draw'), ('loss', 'Loss'), ('close_loss', 'Close loss'), ('close_margin', 'Close = lost by at most')) %}
+                <div class="col-6 col-md-2">
+                    <label class="form-label small mb-1" for="rule_{{ key }}">{{ label }}</label>
+                    <input type="number" min="0" id="rule_{{ key }}" name="points_{{ key }}" class="form-control form-control-sm" value="{{ t.points[key] if t.points and t.points[key] is defined else 0 }}">
+                </div>
+                {% endfor %}
+                <div class="col-md-2"><button type="submit" class="btn btn-sm btn-outline-primary w-100">Save rule</button></div>
+            </form>
+        </details>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% if t and t.teams and can_generate %}
+{#- The teams in the fixtures: rename, withdraw, bring back, replace, add (UPG-356, UPG-357) #}
+<div class="card mb-3" id="teams" data-teams>
+    <div class="card-body">
+        <h2 class="h5 mb-1">Teams in the fixtures</h2>
+        <p class="small text-muted">Fix a team here without making the fixtures again. Withdraw gives its opponents walkovers in the matches it has still to play; Replace puts another confirmed team in its place everywhere, results included.</p>
+        {#- One block per team, its tools wrapping under the name: fits a phone #}
+        <ul class="list-unstyled mb-2">
+            {% for team in t.teams %}
+            <li class="border rounded p-2 mb-2" data-team-row="{{ team.id }}">
+                <div class="mb-1"><strong>{{ team.name }}</strong>{% if team.id in withdrawn %} <span class="badge bg-secondary">Withdrawn</span>{% endif %}</div>
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <form method="POST" action="/tournament/{{ event.id }}/team/{{ team.id }}/rename" class="d-flex gap-1 flex-grow-1" style="min-width: 220px">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="text" name="name" class="form-control form-control-sm" value="{{ team.name }}" maxlength="120" aria-label="New name for {{ team.name }}" required>
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">Rename</button>
+                    </form>
+                    {% if spare_teams %}
+                    <form method="POST" action="/tournament/{{ event.id }}/team/{{ team.id }}/replace" class="d-flex gap-1 flex-grow-1" style="min-width: 220px">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <select name="new_team" class="form-select form-select-sm" aria-label="Team to put in place of {{ team.name }}" required>
+                            <option value="">Replace with…</option>
+                            {% for spare in spare_teams %}<option value="{{ spare.id }}">{{ spare.name }}</option>{% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-sm btn-outline-secondary" data-confirm="Put the chosen team in place of {{ team.name }} everywhere in the fixtures?">Replace</button>
+                    </form>
+                    {% endif %}
+                    {% if team.id in withdrawn %}
+                    <form method="POST" action="/tournament/{{ event.id }}/team/{{ team.id }}/reinstate">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm btn-outline-success">Bring back</button>
+                    </form>
+                    {% else %}
+                    <form method="POST" action="/tournament/{{ event.id }}/team/{{ team.id }}/withdraw">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Withdraw {{ team.name }}? Its matches still to play become walkovers to its opponents.">Withdraw</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% if spare_teams and t.format in ('league', 'league_knockout') and not sports.has_playoffs(t) %}
+        <form method="POST" action="/tournament/{{ event.id }}/teams/add" class="d-flex flex-wrap gap-2 align-items-end" data-add-team>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label class="small">Add a late team to the league
+                <select name="new_team" class="form-select form-select-sm" required>
+                    <option value="">Choose…</option>
+                    {% for spare in spare_teams %}<option value="{{ spare.id }}">{{ spare.name }}</option>{% endfor %}
+                </select>
+            </label>
+            <button type="submit" class="btn btn-sm btn-outline-primary">Add, with a match against every team</button>
+        </form>
+        {% endif %}
     </div>
 </div>
 {% endif %}
@@ -205,11 +318,11 @@
                     <div class="mb-3">
                         <div class="d-flex justify-content-between align-items-center py-1 {% if m.winner == m.home %}fw-bold text-success{% endif %}">
                             <span>{% if m.home %}{{ names.get(m.home, m.home) }}{% else %}<em>TBD</em>{% endif %}</span>
-                            <span class="badge fs-6">{{ m.home_score if m.home_score is not none else '-' }}</span>
+                            <span class="badge bg-dark fs-6" data-score-badge>{{ ('W/O' if m.winner == m.home else '–') if m.walkover else (m.home_score if m.home_score is not none else '-') }}</span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center py-1 {% if m.winner == m.away %}fw-bold text-success{% endif %}">
                             <span>{% if m.away %}{{ names.get(m.away, m.away) }}{% else %}<em>TBD</em>{% endif %}</span>
-                            <span class="badge fs-6">{{ m.away_score if m.away_score is not none else '-' }}</span>
+                            <span class="badge bg-dark fs-6" data-score-badge>{{ ('W/O' if m.winner == m.away else '–') if m.walkover else (m.away_score if m.away_score is not none else '-') }}</span>
                         </div>
                         {% if m.venue or m.date or m.time %}
                         <div class="small text-muted mt-1">
@@ -283,6 +396,43 @@
                         </form>
                     </details>
                     {% endif %}
+                    {#- Fix this match (UPG-355 to UPG-357) #}
+                    <details class="mt-1" data-fix-match>
+                        <summary class="small text-muted">Fix this match</summary>
+                        <div class="mt-2 p-2 border-top d-grid gap-2">
+                            {% if m.status == 'played' %}
+                            <form method="POST" action="/tournament/{{ event.id }}/match/{{ m.id }}/clear" data-confirm="Clear this result? The match is to be played again{% if sports.knockout_match(t, m) %} and the team that went through comes back out of the next match{% endif %}.">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger w-100">Clear the result</button>
+                            </form>
+                            {% elif m.home and m.away %}
+                            <form method="POST" action="/tournament/{{ event.id }}/match/{{ m.id }}/walkover" class="d-flex gap-1">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <select name="winner" class="form-select form-select-sm" aria-label="Who gets the walkover" required>
+                                    <option value="">Walkover to…</option>
+                                    <option value="{{ m.home }}">{{ names.get(m.home, m.home) }}</option>
+                                    <option value="{{ m.away }}">{{ names.get(m.away, m.away) }}</option>
+                                </select>
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">Give walkover</button>
+                            </form>
+                            {% endif %}
+                            {% if can_generate and m.status != 'played' %}
+                            <form method="POST" action="/tournament/{{ event.id }}/match/{{ m.id }}/teams" class="row g-1 align-items-end">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                {% for side in ('home', 'away') %}
+                                <div class="col-5">
+                                    <label class="form-label small mb-0">{{ side|title }}</label>
+                                    <select name="{{ side }}" class="form-select form-select-sm">
+                                        <option value="">TBD</option>
+                                        {% for team in t.teams %}<option value="{{ team.id }}" {% if m[side] == team.id %}selected{% endif %}>{{ team.name }}</option>{% endfor %}
+                                    </select>
+                                </div>
+                                {% endfor %}
+                                <div class="col-2"><button type="submit" class="btn btn-sm btn-outline-secondary w-100">Set</button></div>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </details>
                     {% endif %}
                 </div>
             </div>

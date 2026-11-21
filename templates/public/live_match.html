@@ -26,6 +26,7 @@
      data-phase="{{ state.phase if state else 'not_started' }}">
   <section class="live-board live-board--big" aria-live="polite">
     <div class="live-board__team">
+      {% if logos is defined and logos.get(match.home) %}<img src="{{ logos[match.home] }}" alt="" class="live-board__logo" width="72" height="72" data-team-logo>{% endif %}
       <div class="live-board__name">{{ names.get(match.home, 'TBD') }}</div>
       <div class="live-board__score" data-score="home">{{ state.home.total if state else (match.home_score if match.home_score is not none else 0) }}</div>
       <div class="live-board__halves" data-halves="home">{% if state %}{{ state.home.halves[0] }} · {{ state.home.halves[1] }}{% endif %}</div>
@@ -36,6 +37,7 @@
       <div class="live-board__clock" data-clock-text>{% if state %}{{ '%02d:%02d' % (state.clock // 60, state.clock % 60) }}{% endif %}</div>
     </div>
     <div class="live-board__team">
+      {% if logos is defined and logos.get(match.away) %}<img src="{{ logos[match.away] }}" alt="" class="live-board__logo" width="72" height="72" data-team-logo>{% endif %}
       <div class="live-board__name">{{ names.get(match.away, 'TBD') }}</div>
       <div class="live-board__score" data-score="away">{{ state.away.total if state else (match.away_score if match.away_score is not none else 0) }}</div>
       <div class="live-board__halves" data-halves="away">{% if state %}{{ state.away.halves[0] }} · {{ state.away.halves[1] }}{% endif %}</div>

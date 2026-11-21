@@ -74,3 +74,6 @@
 .live-all__list { list-style: none; padding: 0; margin: 8px 0 0; max-height: 320px; overflow-y: auto; font-size: 14px; }
 .live-all__list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--border, #e2e8f0); }
 .live-all__list span { overflow-wrap: anywhere; }
+
+/* A team logo above its name on the big scoreboard (UPG-386) */
+.live-board__logo { width: 72px; height: 72px; object-fit: contain; display: block; margin: 0 auto 6px; }

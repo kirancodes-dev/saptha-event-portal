@@ -14,6 +14,11 @@ Every change is saved through `services_sports.change`, one at a time
 result, give a walkover, withdraw or bring back a team, rename, replace or add
 a team, change a match's teams, change the points rule, undo the playoffs, and
 publish corrected results.
+
+A kabaddi premier league (UPG-381 to UPG-386): two pools with seeds, each pair
+once or twice (home and away), an inter-pool round, 1st A v 2nd B and 1st B v
+2nd A in the semi-finals; the schedule as a file to download, fill in and
+upload; a logo for each team.
 """
 from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, session
 
@@ -78,6 +83,9 @@ def manage(event_id):
     return render_template('spoc/tournament.html', event=event, t=t,
                            teams=services_sports.confirmed_teams(db, event_id),
                            names=services_sports.names(t), table=services_sports.standings(t) if t else [],
+                           pool_tables=services_sports.pool_tables(t) if t else [],
+                           logos=services_sports.logos(t) if t else {},
+                           start_pools=_start_pools(t, services_sports.confirmed_teams(db, event_id)),
                            champion=services_sports.champion(t) if t else None,
                            placings=services_sports.placings(t) if t else {},
                            defaults=services_sports.event_defaults(event), sports=services_sports,
@@ -104,11 +112,20 @@ def generate(event_id):
     points = {k: max(0, _int(request.form.get(f'points_{k}'), defaults['points'][k]))
               for k in ('win', 'draw', 'loss', 'close_loss', 'close_margin')}
     teams = services_sports.confirmed_teams(db, event_id)
+    pools = None
+    if request.form.get('pools') == 'two':            # UPG-381: each team's pool and seed
+        pools = {x['id']: (request.form.get(f"pool_{x['id']}", ''), _int(request.form.get(f"seed_{x['id']}"), 0))
+                 for x in teams}
+    old_logos = services_sports.logos(event.get('tournament') or {})
     t = _save(event_id, lambda _cur, _e: services_sports.generate(
         teams, request.form.get('format', ''), points,
-        third_place=request.form.get('third_place') == 'yes', sport=defaults['sport']), None)
+        third_place=request.form.get('third_place') == 'yes', sport=defaults['sport'],
+        legs=_int(request.form.get('legs'), 1), pools=pools, cross=request.form.get('cross') == 'yes'), None)
     if t is None:
         return _back(event_id)
+    if old_logos:                                     # the teams keep their logos (UPG-386)
+        t = services_sports.change(db, event_id, lambda cur, _e: dict(cur, teams=[
+            dict(x, logo=old_logos[x['id']]) if x['id'] in old_logos else x for x in cur.get('teams') or []]))
     import services_live_match
     services_live_match.forget(db, event_id)          # the old match ids mean other matches now
     log_action(db, "TOURNAMENT_GENERATED",
@@ -160,7 +177,8 @@ def playoffs(event_id):
         return _back(event_id)
     log_action(db, "TOURNAMENT_PLAYOFFS", f"{session.get('user_id')} made the top-{t['playoffs']['size']} "
                f"playoffs of {event_id}")
-    flash(f"Playoffs made: the top {t['playoffs']['size']} play off.", "success")
+    flash("Semi-finals made: 1st A v 2nd B and 1st B v 2nd A." if t.get('pools') and t['playoffs']['size'] == 4
+          else f"Playoffs made: the top {t['playoffs']['size']} play off.", "success")
     return redirect(f'/tournament/{event_id}')
 
 
@@ -302,6 +320,107 @@ def publish(event_id):
     return redirect(f'/tournament/{event_id}')
 
 
+# ── The schedule as a file, and team logos (UPG-385, UPG-386) ────────────
+@sports_bp.route('/<event_id>/schedule.csv')
+@login_required
+def schedule_file(event_id):
+    """Every match with its date, time and venue, to fill in and upload back."""
+    import csv
+    import io
+
+    from flask import Response
+
+    import services_sports
+    event = _event(event_id)
+    if not _allowed(event, 'edit_event'):
+        abort(403)
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(services_sports.SCHEDULE_COLUMNS)
+    writer.writerows(services_sports.schedule_rows(event.get('tournament') or {}))
+    return Response('\ufeff' + out.getvalue(), mimetype='text/csv',   # the BOM: Excel reads the names right
+                    headers={'Content-Disposition': f'attachment; filename="schedule-{event_id}.csv"'})
+
+
+@sports_bp.route('/<event_id>/schedule/upload', methods=['POST'])
+@login_required
+def schedule_upload(event_id):
+    import csv
+    import io
+
+    import services_sports
+    if not _allowed(_event(event_id), 'edit_event'):
+        abort(403)
+    upload = request.files.get('file')
+    if not upload or not upload.filename:
+        flash("Choose the schedule file to upload.", "warning")
+        return _back(event_id, 'schedule')
+    raw = upload.read(512 * 1024 + 1)
+    if len(raw) > 512 * 1024:
+        flash("That file is too large for a schedule.", "warning")
+        return _back(event_id, 'schedule')
+    try:
+        text = raw.decode('utf-8-sig')
+    except UnicodeDecodeError:
+        text = raw.decode('latin-1')
+    rows = list(csv.DictReader(io.StringIO(text)))
+    if not rows or 'match' not in {str(k or '').strip().lower() for k in rows[0]}:
+        flash("The file needs a Match column. Download the schedule file and fill that in.", "warning")
+        return _back(event_id, 'schedule')
+    count = {}
+
+    def fn(cur, _e):
+        new, count['n'] = services_sports.apply_schedule(cur, rows)
+        return new
+    if _save(event_id, fn, None, 'schedule', ("TOURNAMENT_SCHEDULE", "uploaded the schedule")) is not None:
+        flash(f"Schedule saved: {count['n']} match{'' if count['n'] == 1 else 'es'} changed.", "success")
+    return _back(event_id, 'schedule')
+
+
+@sports_bp.route('/<event_id>/team/<team_id>/logo', methods=['POST'])
+@login_required
+def team_logo(event_id, team_id):
+    import secrets
+
+    import services_sports
+    from utils_storage import upload_file
+    if not _allowed(_event(event_id), 'edit_event'):
+        abort(403)
+    url = ''
+    if request.form.get('action') != 'remove':
+        upload = request.files.get('logo')
+        if not upload or not upload.filename:
+            flash("Choose a logo to upload.", "warning")
+            return _back(event_id, 'teams')
+        try:
+            data = services_sports.logo_webp(upload.read(services_sports.LOGO_MAX_BYTES + 1))
+        except services_sports.TournamentError as exc:
+            flash(str(exc), "warning")
+            return _back(event_id, 'teams')
+        url = upload_file(data, f'team-logos/{event_id}-{secrets.token_hex(6)}.webp', 'image/webp')
+        if not url:
+            flash("The logo couldn't be saved. Please try again.", "warning")
+            return _back(event_id, 'teams')
+        url = url[url.index('/static/uploads/'):] if '/static/uploads/' in url else url
+    _save(event_id, lambda cur, _e: services_sports.set_logo(cur, team_id, url),
+          "Logo saved." if url else "Logo removed.", 'teams', ("TEAM_LOGO", f"{'set' if url else 'removed'} the logo of {team_id}"))
+    return _back(event_id, 'teams')
+
+
+def _start_pools(t, teams):
+    """The generate form's pools: as the fixtures have them, else the first half
+    in pool A and the rest in pool B, seeded in registration order."""
+    now = {x['id']: x for x in (t or {}).get('teams') or []}
+    half = (len(teams) + 1) // 2
+    out = []
+    for i, x in enumerate(teams):
+        had = now.get(x['id']) or {}
+        pool = had.get('pool') or ('A' if i < half else 'B')
+        out.append({'id': x['id'], 'name': x['name'], 'pool': pool,
+                    'seed': had.get('seed') or (i + 1 if i < half else i - half + 1)})
+    return out
+
+
 # ── Live scoring (UPG-351) ────────────────────────────────────────────────
 @sports_bp.route('/<event_id>/match/<match_id>/score')
 @login_required
@@ -380,6 +499,7 @@ def live_board(event_id, match_id):
     names = services_sports.names(t)
     doc = live.get(db, event_id, match_id)
     return render_template('public/live_match.html', event=event, match=m, names=names,
+                           logos=services_sports.logos(t),
                            stage=services_sports.stage_name(m), state=live.public_state(db, event_id, match_id),
                            players=live.player_stats([doc], names) if doc else [])
 
@@ -408,6 +528,8 @@ def fixtures(event_id):
         t=t,
         names=services_sports.names(t) if t else {},
         table=services_sports.standings(t) if t else [],
+        pool_tables=services_sports.pool_tables(t) if t else [],
+        logos=services_sports.logos(t) if t else {},
         champion=services_sports.champion(t) if t else None,
         sports=services_sports,
         live=_live(event_id) if t else {},

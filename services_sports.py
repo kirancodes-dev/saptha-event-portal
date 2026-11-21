@@ -8,14 +8,18 @@ A tournament is kept on its event as `tournament`:
      'points': {'win': 3, 'draw': 1, 'loss': 0,             # league only
                 'close_loss': 0, 'close_margin': 0},        # kabaddi: 1 within 7
      'playoffs': {'size': 4, 'seeds': [...]},               # league then knockout
-     'teams':  [{'id': <registration id>, 'name': <team or lead name>}, …],
+     'legs': 2,                                             # each pair plays twice, home and away
+     'pools': ['A', 'B'], 'cross': True,                    # two pools, an inter-pool round
+     'teams':  [{'id': <registration id>, 'name': <team or lead name>,
+                 'pool': 'A', 'seed': 1, 'logo': <url>}, …],
      'matches': [{'id': 'm1', 'round': 1, 'home': id|None, 'away': id|None,
                   'date': '', 'time': '', 'venue': '',
                   'home_score': None, 'away_score': None, 'winner': None,
                   'status': 'scheduled' | 'played' | 'bye',
                   'next': 'm5', 'next_side': 'home',        # knockout only
                   'stage': 'final' | 'third' | …,           # where it is in the draw
-                  'loser_next': 'm8', 'loser_side': 'home'}, …]}  # a semi-final's loser to the third-place match
+                  'loser_next': 'm8', 'loser_side': 'home',  # a semi-final's loser to the third-place match
+                  'pool': 'A', 'leg': 2, 'cross': True}, …]}  # a pool match, its leg; an inter-pool match
 
 Teams come from the event's confirmed registrations (UPG-08 teams are
 registrations with members). A knockout gets byes up to the next power of
@@ -23,6 +27,15 @@ two; a bye's team goes straight through, and each result moves the winner on.
 A league plays every pair once (circle method) and its table counts played,
 won, drawn, lost, scored, conceded and points. A league then knockout plays
 the league, then its top 4 (or 2) play off (UPG-350).
+
+A league then knockout may have two pools, A and B (UPG-381), like a
+kabaddi premier league: each pool plays its own league, once or twice
+(home and away, UPG-382), then an inter-pool round, A1 v B1, A2 v B2, …,
+whose points count in each team's own pool table (UPG-383), and then 1st A
+v 2nd B and 1st B v 2nd A in the semi-finals (UPG-384). The matches are
+numbered M-01, M-02, … pool A first, then pool B, then the inter-pool round,
+then the playoffs; a schedule file sets every date, time and venue at once
+(UPG-385); each team may have a logo (UPG-386).
 
 Once the deciding matches are played, `placings` gives each team's place and
 `publish` makes it the event's result (UPG-342): places on the registrations,
@@ -51,6 +64,7 @@ DEFAULT_POINTS = {'win': 3, 'draw': 1, 'loss': 0, 'close_loss': 0, 'close_margin
 # A kabaddi league (UPG-350): 5 a win, 3 a tie, 1 for losing by 7 points or fewer
 KABADDI_POINTS = {'win': 5, 'draw': 3, 'loss': 0, 'close_loss': 1, 'close_margin': 7}
 FORMATS = ('knockout', 'league', 'league_knockout')
+POOLS = ('A', 'B')                       # two pools (UPG-381)
 FORMAT_NAMES = {'knockout': 'Knockout', 'league': 'League', 'league_knockout': 'League then knockout'}
 KNOCKOUT_STAGES = ('semi', 'final', 'third')
 STAGE_NAMES = {'final': 'Final', 'semi': 'Semi-final', 'third': 'Third place'}
@@ -201,13 +215,65 @@ def league(teams: list) -> list:
     return matches
 
 
-def generate(teams: list, fmt: str, points: dict = None, third_place: bool = False, sport: str = '') -> dict:
+def _legs(matches: list, legs: int) -> list:
+    """Leg 2 plays every leg-1 match again with home and away swapped, in
+    rounds after leg 1's (UPG-382)."""
+    if legs != 2:
+        return matches
+    last = max([m['round'] for m in matches] or [0])
+    for m in matches:
+        m['leg'] = 1
+    again = [dict(_match('', m['round'] + last, m['away'], m['home']), leg=2) for m in matches]
+    return matches + again
+
+
+def _number(matches: list) -> list:
+    for i, m in enumerate(matches, start=1):
+        m['id'] = f"m{i}"
+    return matches
+
+
+def _pooled(teams: list, legs: int, cross: bool) -> list:
+    """Each pool's league (pool A's matches first, then pool B's), then the
+    inter-pool round: the same seed from each pool (UPG-381 to UPG-383)."""
+    by_pool = {p: sorted([x for x in teams if x.get('pool') == p], key=lambda x: x.get('seed') or 0) for p in POOLS}
+    for p, members in by_pool.items():
+        if len(members) < 2:
+            raise TournamentError(f"Pool {p} needs at least 2 teams.")
+    matches = []
+    for p in POOLS:
+        for m in _legs(league(by_pool[p]), legs):
+            m.update(pool=p, stage='league')
+            matches.append(m)
+    if cross:
+        rnd = max(m['round'] for m in matches) + 1
+        for a, b in zip(by_pool['A'], by_pool['B']):
+            matches.append(dict(_match('', rnd, a['id'], b['id']), stage='league', cross=True))
+    return _number(matches)
+
+
+def generate(teams: list, fmt: str, points: dict = None, third_place: bool = False, sport: str = '',
+             legs: int = 1, pools: dict = None, cross: bool = False) -> dict:
+    """`pools` maps a team id to ('A' or 'B', seed); only a league then knockout has pools."""
     if fmt not in FORMATS:
         raise TournamentError("Choose knockout, league, or league then knockout.")
-    if fmt == 'knockout':
+    legs = 2 if str(legs) == '2' else 1
+    if pools and fmt != 'league_knockout':
+        raise TournamentError("Pools need the format League then knockout: the pools' top teams play the semi-finals.")
+    if pools:
+        teams = [dict(x, pool=(pools.get(x['id']) or ('', 0))[0], seed=(pools.get(x['id']) or ('', 0))[1])
+                 for x in teams]
+        if any(x['pool'] not in POOLS for x in teams):
+            raise TournamentError("Put every team in pool A or pool B.")
+        for p in POOLS:
+            seeds = [x['seed'] for x in teams if x['pool'] == p]
+            if len(set(seeds)) != len(seeds):
+                raise TournamentError(f"Two teams in pool {p} have the same seed number.")
+        matches = _pooled(teams, legs, cross)
+    elif fmt == 'knockout':
         matches = knockout(teams, third_place)
     else:
-        matches = league(teams)
+        matches = _number(_legs(league(teams), legs))
         if fmt == 'league_knockout':
             if len(teams) < 3:
                 raise TournamentError("A league then knockout needs at least 3 teams.")
@@ -218,6 +284,11 @@ def generate(teams: list, fmt: str, points: dict = None, third_place: bool = Fal
         t['sport'] = sport
     if fmt == 'league_knockout':
         t['third_place'] = bool(third_place)
+    if legs == 2 and fmt != 'knockout':
+        t['legs'] = 2
+    if pools:
+        t['pools'] = list(POOLS)
+        t['cross'] = bool(cross)
     return t
 
 
@@ -268,10 +339,17 @@ def make_playoffs(tournament: dict, size: int = 4, third_place: bool = None) -> 
         raise TournamentError("Finish the league first: every league match needs a result.")
     if size not in (2, 4):
         raise TournamentError("The playoffs take the top 2 or the top 4.")
-    table = standings(t)
-    if len(table) < size:
-        raise TournamentError(f"The top {size} need at least {size} teams.")
-    seeds = [row['id'] for row in table[:size]]
+    if t.get('pools'):                        # 1st A v 2nd B, 1st B v 2nd A (UPG-384)
+        a, b = standings(t, 'A'), standings(t, 'B')
+        need = size // 2
+        if len(a) < need or len(b) < need:
+            raise TournamentError(f"Each pool needs at least {need} teams.")
+        seeds = [a[0]['id'], b[1]['id'], b[0]['id'], a[1]['id']] if size == 4 else [a[0]['id'], b[0]['id']]
+    else:
+        table = standings(t)
+        if len(table) < size:
+            raise TournamentError(f"The top {size} need at least {size} teams.")
+        seeds = [row['id'] for row in table[:size]]
     third_place = t.get('third_place') if third_place is None else third_place
     matches = [dict(m) for m in t.get('matches') or []]
     counter = max(int(str(m['id']).lstrip('m') or 0) for m in matches)
@@ -284,9 +362,13 @@ def make_playoffs(tournament: dict, size: int = 4, third_place: bool = None) -> 
         matches.append(m)
         return m
 
-    if size == 4:
+    if size == 4 and t.get('pools'):
+        semi1 = new('semi', rnd, seeds[0], seeds[1])
+        semi2 = new('semi', rnd, seeds[2], seeds[3])
+    elif size == 4:
         semi1 = new('semi', rnd, seeds[0], seeds[3])
         semi2 = new('semi', rnd, seeds[1], seeds[2])
+    if size == 4:
         final = new('final', rnd + 1)
         semi1.update(next=final['id'], next_side='home')
         semi2.update(next=final['id'], next_side='away')
@@ -304,6 +386,10 @@ def make_playoffs(tournament: dict, size: int = 4, third_place: bool = None) -> 
 def stage_name(m: dict) -> str:
     if m.get('stage') in STAGE_NAMES:
         return STAGE_NAMES[m['stage']]
+    if m.get('cross'):
+        return 'Inter-pool'
+    if m.get('pool'):
+        return f"Pool {m['pool']} · {'Leg ' + str(m['leg']) + ' · ' if m.get('leg') else ''}Round {m.get('round')}"
     return f"{'League round' if m.get('stage') == 'league' else 'Round'} {m.get('round')}"
 
 
@@ -496,7 +582,8 @@ def replace_team(tournament: dict, old_id: str, new_team: dict) -> dict:
         raise TournamentError("That team isn't in the fixtures.")
     if not new_team or any(x['id'] == new_team['id'] for x in t['teams']):
         raise TournamentError("Choose a confirmed team that isn't in the fixtures yet.")
-    t['teams'] = [dict(new_team) if x['id'] == old_id else x for x in t['teams']]
+    keep = lambda old: {k: old[k] for k in ('pool', 'seed') if k in old}   # noqa: E731  its place in its pool
+    t['teams'] = [dict(new_team, **keep(x)) if x['id'] == old_id else x for x in t['teams']]
     for m in matches:
         for key in ('home', 'away', 'winner'):
             if m.get(key) == old_id:
@@ -515,6 +602,9 @@ def add_team(tournament: dict, new_team: dict) -> dict:
         raise TournamentError("A knockout's draw is fixed. Replace a team, or make the fixtures again.")
     if has_playoffs(t):
         raise TournamentError("The playoffs are made. Undo the playoffs first.")
+    if t.get('pools') or t.get('legs') == 2:
+        raise TournamentError("With pools or home-and-away matches, a late team needs the fixtures made again "
+                              "(or Replace a team that pulled out).")
     if not new_team or any(x['id'] == new_team['id'] for x in t['teams']):
         raise TournamentError("Choose a confirmed team that isn't in the fixtures yet.")
     counter = max([int(str(m['id']).lstrip('m') or 0) for m in matches] or [0])
@@ -600,15 +690,131 @@ def update_schedule(tournament: dict, match_id: str, date: str, time: str, venue
     return t
 
 
+SCHEDULE_COLUMNS = ('Match', 'Stage', 'Team 1', 'Team 2', 'Date', 'Time', 'Venue')
+
+
+def schedule_rows(tournament: dict) -> list:
+    """The fixture list as rows for the schedule file (UPG-385)."""
+    n = names(tournament)
+    return [[match_no(m), stage_name(m), n.get(m.get('home'), 'TBD'), n.get(m.get('away'), 'TBD'),
+             m.get('date') or '', m.get('time') or '', m.get('venue') or ''] for m in tournament.get('matches') or []]
+
+
+def _clean_date(value: str) -> str:
+    """2026-11-28, 28-11-2026, 28/11/2026 or 28.11.2026 → 2026-11-28; '' stays ''."""
+    value = str(value or '').strip()
+    if not value:
+        return ''
+    for fmt in ('%Y-%m-%d', '%d-%m-%Y', '%d/%m/%Y', '%d.%m.%Y', '%d-%m-%y', '%d/%m/%y', '%Y/%m/%d'):
+        try:
+            return datetime.datetime.strptime(value, fmt).date().isoformat()
+        except ValueError:
+            continue
+    raise ValueError(f"date \"{value}\" isn't a date like 28-11-2026")
+
+
+def _clean_time(value: str) -> str:
+    """15:30, 15:30:00, 3:30 PM or 3 PM → 15:30; '' stays ''."""
+    value = ' '.join(str(value or '').upper().replace('.', ':').split())
+    if not value:
+        return ''
+    for fmt in ('%H:%M', '%H:%M:%S', '%I:%M %p', '%I:%M%p', '%I %p', '%I%p'):
+        try:
+            return datetime.datetime.strptime(value, fmt).strftime('%H:%M')
+        except ValueError:
+            continue
+    raise ValueError(f"time \"{value}\" isn't a time like 15:30 or 3:30 PM")
+
+
+def apply_schedule(tournament: dict, rows: list) -> tuple:
+    """Every match's date, time and venue from the schedule file's rows
+    ({'Match', 'Date', 'Time', 'Venue'}); all or nothing: one wrong row and
+    nothing changes, every problem listed (UPG-385). Returns (tournament, count)."""
+    t, matches = _copy(tournament)
+    by_no = {match_no(m): m for m in matches}
+    problems, changed = [], 0
+    for line, row in enumerate(rows, start=2):
+        row = {str(k or '').strip().lower(): str(v or '').strip() for k, v in row.items()}
+        key = row.get('match', '').upper().replace(' ', '')
+        if not key:
+            continue
+        if key.isdigit() or (key.startswith('M') and key.lstrip('M-').isdigit()):
+            key = f"M-{int(key.lstrip('M-')):02d}"
+        m = by_no.get(key)
+        if m is None:
+            problems.append(f"Row {line}: there is no match {row.get('match')}.")
+            continue
+        try:
+            date, time_ = _clean_date(row.get('date', '')), _clean_time(row.get('time', ''))
+        except ValueError as exc:
+            problems.append(f"Row {line} ({key}): {exc}.")
+            continue
+        new = {'date': date, 'time': time_, 'venue': row.get('venue', '')[:200]}
+        if any((m.get(k) or '') != v for k, v in new.items()):
+            changed += 1
+        m.update(new)
+    if problems:
+        raise TournamentError("Nothing was changed. " + ' '.join(problems[:8])
+                              + (f" And {len(problems) - 8} more." if len(problems) > 8 else ''))
+    t['matches'] = matches
+    return t, changed
+
+
+def set_logo(tournament: dict, team_id: str, url: str) -> dict:
+    """A team's logo (or none), shown in the fixtures, tables and scoreboard (UPG-386)."""
+    t, _ = _copy(tournament)
+    team = next((x for x in t['teams'] if x['id'] == team_id), None)
+    if team is None:
+        raise TournamentError("That team isn't in the fixtures.")
+    if url:
+        team['logo'] = url
+    else:
+        team.pop('logo', None)
+    return t
+
+
+LOGO_SIZE = 256
+LOGO_MAX_BYTES = 2 * 1024 * 1024
+
+
+def logo_webp(data: bytes) -> bytes:
+    """Check an uploaded logo and return it as a square WebP, transparency kept,
+    the whole logo shown (not cropped), metadata dropped."""
+    import io
+    from PIL import Image, ImageOps, UnidentifiedImageError
+    if len(data) > LOGO_MAX_BYTES:
+        raise TournamentError("That logo is larger than 2 MB.")
+    try:
+        with Image.open(io.BytesIO(data)) as probe:
+            fmt = probe.format
+            probe.verify()
+    except (UnidentifiedImageError, OSError, SyntaxError):
+        raise TournamentError("That file isn't an image we can read. Use a PNG, JPG or WebP logo.")
+    if fmt not in ('JPEG', 'PNG', 'WEBP'):
+        raise TournamentError("Use a PNG, JPG or WebP logo.")
+    with Image.open(io.BytesIO(data)) as img:
+        if img.width > 6000 or img.height > 6000:
+            raise TournamentError("That logo is too large (at most 6000 pixels on a side).")
+        img = ImageOps.exif_transpose(img).convert('RGBA')
+        img = ImageOps.contain(img, (LOGO_SIZE, LOGO_SIZE), Image.Resampling.LANCZOS)
+        canvas = Image.new('RGBA', (LOGO_SIZE, LOGO_SIZE), (0, 0, 0, 0))
+        canvas.paste(img, ((LOGO_SIZE - img.width) // 2, (LOGO_SIZE - img.height) // 2), img)
+        out = io.BytesIO()
+        canvas.save(out, 'WEBP', quality=88)
+        return out.getvalue()
+
+
 def _loss_points(pts: dict, margin: int) -> int:
     """A loss's points: the close-loss point when within the margin (kabaddi: 7)."""
     close = int(pts.get('close_margin') or 0)
     return int(pts.get('close_loss') or 0) if close and margin <= close else int(pts.get('loss') or 0)
 
 
-def standings(tournament: dict) -> list:
+def standings(tournament: dict, pool: str = None) -> list:
     """League table rows, best first: points, score (goal) difference, scored, name.
-    A league then knockout's table counts its league matches only."""
+    A league then knockout's table counts its league matches only. With a
+    pool, that pool's teams only, counting every league match they played,
+    the inter-pool round included (UPG-383)."""
     pts = dict(DEFAULT_POINTS, **(tournament.get('points') or {}))
     rows = {t['id']: {'id': t['id'], 'name': t['name'], 'played': 0, 'won': 0, 'drawn': 0, 'lost': 0,
                       'for': 0, 'against': 0, 'points': 0} for t in tournament.get('teams') or []}
@@ -634,7 +840,25 @@ def standings(tournament: dict) -> list:
             a['won'] += 1; h['lost'] += 1; a['points'] += pts['win']; h['points'] += _loss_points(pts, as_ - hs)  # noqa: E702,E501
         else:
             h['drawn'] += 1; a['drawn'] += 1; h['points'] += pts['draw']; a['points'] += pts['draw']  # noqa: E702
+    if pool:
+        in_pool = {x['id'] for x in tournament.get('teams') or [] if x.get('pool') == pool}
+        rows = {k: v for k, v in rows.items() if k in in_pool}
     return sorted(rows.values(), key=lambda r: (-r['points'], -(r['for'] - r['against']), -r['for'], r['name']))
+
+
+def pool_tables(tournament: dict) -> list:
+    """[(pool, rows)] for a tournament with pools, else [] (UPG-381)."""
+    return [(p, standings(tournament, p)) for p in tournament.get('pools') or []]
+
+
+def match_no(m: dict) -> str:
+    """M-01, M-02, … as on a printed fixture sheet (UPG-385)."""
+    digits = str(m.get('id') or '').lstrip('m')
+    return f"M-{int(digits):02d}" if digits.isdigit() else str(m.get('id') or '').upper()
+
+
+def logos(tournament: dict) -> dict:
+    return {x['id']: x['logo'] for x in tournament.get('teams') or [] if x.get('logo')}
 
 
 def _final(tournament: dict):

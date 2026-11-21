@@ -154,6 +154,12 @@
                     </div>
 
                     <div class="mt-auto d-grid gap-2">
+                        {#- A sports event: the matches, results and live scoring, on every status (UPG-387) -#}
+                        {% if event.get('tournament') or event.get('category') == 'Sports' %}
+                        <a href="/tournament/{{ event.id }}" class="btn btn-success" data-tournament-link>
+                            <i class="fas fa-stopwatch me-1" aria-hidden="true"></i> Matches &amp; live scoring
+                        </a>
+                        {% endif %}
                         {% if event.status == 'active' %}
 
                             {# Only for those who can edit the event; the builder refuses others (UPG-68) #}

@@ -54,6 +54,46 @@
                     <input type="number" min="0" id="points_close_margin" name="points_close_margin" class="form-control" value="{{ defaults.points.close_margin }}">
                     <div class="form-text">0 turns the close-loss point off.</div>
                 </div>
+                {#- A premier league: home and away, two pools, an inter-pool round (UPG-381 to UPG-383) #}
+                <div class="col-6 col-md-3">
+                    <label for="legs" class="form-label mb-1">Each pair plays (league)</label>
+                    <select id="legs" name="legs" class="form-select">
+                        <option value="1" {% if t.legs != 2 %}selected{% endif %}>Once</option>
+                        <option value="2" {% if t.legs == 2 %}selected{% endif %}>Twice: home and away</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label for="pools" class="form-label mb-1">Pools (league then knockout)</label>
+                    <select id="pools" name="pools" class="form-select" data-pools-switch>
+                        <option value="none" {% if not t.pools %}selected{% endif %}>No pools: one table</option>
+                        <option value="two" {% if t.pools %}selected{% endif %}>Two pools, A and B</option>
+                    </select>
+                </div>
+                <div class="col-12" data-pools-fields {% if not t.pools %}hidden{% endif %}>
+                    <fieldset class="border rounded p-2">
+                        <legend class="small fw-semibold float-none w-auto px-1 mb-0">Each team's pool and seed</legend>
+                        <p class="small text-muted mb-2">The seed is the team's number in its pool (A1, A2, …). Seed 1 plays seed 1 of the other pool in the inter-pool round. The fixtures follow the seed order: pool A first, then pool B.</p>
+                        <div class="row g-2">
+                            {% for x in start_pools %}
+                            <div class="col-md-6 d-flex gap-2 align-items-center" data-pool-row>
+                                <span class="flex-grow-1 text-truncate" title="{{ x.name }}">{{ x.name }}</span>
+                                <label class="visually-hidden" for="pool_{{ x.id }}">Pool of {{ x.name }}</label>
+                                <select id="pool_{{ x.id }}" name="pool_{{ x.id }}" class="form-select form-select-sm" style="width:6.5rem">
+                                    <option value="A" {% if x.pool == 'A' %}selected{% endif %}>Pool A</option>
+                                    <option value="B" {% if x.pool == 'B' %}selected{% endif %}>Pool B</option>
+                                </select>
+                                <label class="visually-hidden" for="seed_{{ x.id }}">Seed of {{ x.name }}</label>
+                                <input type="number" min="1" id="seed_{{ x.id }}" name="seed_{{ x.id }}" class="form-control form-control-sm" style="width:5rem" value="{{ x.seed }}">
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="checkbox" name="cross" value="yes" id="cross" {% if not t or t.cross %}checked{% endif %}>
+                            <label class="form-check-label" for="cross">An inter-pool round: A1 v B1, A2 v B2, … (its points count in each team's own pool table)</label>
+                        </div>
+                        <p class="small text-muted mb-0 mt-1">After the league: semi-finals 1st A v 2nd B and 1st B v 2nd A, then the final.</p>
+                    </fieldset>
+                </div>
                 <div class="col-md-12">
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="third_place" value="yes" id="third_place" {% if t.third_place or sports.has_playoffs(t) and t.matches|selectattr('stage', 'equalto', 'third')|list %}checked{% endif %}>
@@ -76,7 +116,39 @@
                     </button>
                 </div>
             </form>
+            <script nonce="{{ csp_nonce() }}">
+            (function () {
+              var sw = document.querySelector('[data-pools-switch]'), box = document.querySelector('[data-pools-fields]'),
+                  fmt = document.getElementById('format');
+              if (!sw || !box) return;
+              function show() {
+                box.hidden = sw.value !== 'two';
+                if (sw.value === 'two' && fmt) fmt.value = 'league_knockout';
+              }
+              sw.addEventListener('change', show);
+            })();
+            </script>
         {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% if t and t.matches and can_generate %}
+{#- The whole schedule from one file (UPG-385) #}
+<div class="card mb-3" id="schedule" data-schedule-file>
+    <div class="card-body">
+        <h2 class="h5">Schedule: every date, time and venue at once</h2>
+        <ol class="small mb-2 ps-3">
+            <li><a href="/tournament/{{ event.id }}/schedule.csv" data-schedule-download><i class="fas fa-download" aria-hidden="true"></i> Download the schedule file</a> (every match, M-01 onwards).</li>
+            <li>Open it in Excel or Google Sheets and fill in Date (28-11-2026), Time (15:30 or 3:30 PM) and Venue. Don't change the Match column.</li>
+            <li>Save it as CSV and upload it here. If a row is wrong, nothing changes and the page lists what to fix.</li>
+        </ol>
+        <form method="POST" action="/tournament/{{ event.id }}/schedule/upload" enctype="multipart/form-data" class="d-flex flex-wrap gap-2 align-items-center">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label class="visually-hidden" for="schedule-file">Schedule file (CSV)</label>
+            <input type="file" id="schedule-file" name="file" accept=".csv,text/csv" class="form-control form-control-sm" style="max-width:320px" required>
+            <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-upload" aria-hidden="true"></i> Upload the schedule</button>
+        </form>
     </div>
 </div>
 {% endif %}
@@ -103,15 +175,20 @@
     <div class="card-body">
         <h2 class="h5">Playoffs</h2>
         {% if not sports.league_done(t) %}
-            <p class="text-muted mb-0">Once every league match has a result, the top teams of the table play off here.</p>
+            <p class="text-muted mb-0">Once every league match has a result, the top teams {% if t.pools %}of each pool{% else %}of the table{% endif %} play off here.</p>
         {% elif can_generate %}
             <form method="POST" action="/tournament/{{ event.id }}/playoffs" class="row g-3 align-items-end">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="col-md-4">
                     <label for="size" class="form-label mb-1">Who plays off</label>
                     <select id="size" name="size" class="form-select">
+                        {% if t.pools %}
+                        <option value="4">Semi-finals: 1st A v 2nd B and 1st B v 2nd A, then the final</option>
+                        <option value="2">The final: 1st A v 1st B</option>
+                        {% else %}
                         {% if table|length >= 4 %}<option value="4">Top 4: semi-finals 1 v 4 and 2 v 3, then the final</option>{% endif %}
                         <option value="2">Top 2: the final</option>
+                        {% endif %}
                     </select>
                 </div>
                 <div class="col-md-4">
@@ -188,6 +265,8 @@
     <div class="card-body">
         <h2 class="h5 mb-3">League standings</h2>
         {% if t.points %}<p class="small text-muted">Win {{ t.points.win }} · {{ 'Tie' if kabaddi else 'Draw' }} {{ t.points.draw }} · Loss {{ t.points.loss }}{% if t.points.close_margin %} ({{ t.points.close_loss }} if lost by {{ t.points.close_margin }} or fewer){% endif %} · ties on points go to the {{ 'score' if kabaddi else 'goal' }} difference, then {{ 'points' if kabaddi else 'goals' }} scored</p>{% endif %}
+        {% for pool, rows in (pool_tables or [(None, table)]) %}
+        {% if pool %}<h3 class="h6 mt-3 mb-2" data-pool-table="{{ pool }}">Pool {{ pool }}</h3>{% endif %}
         <div class="table-responsive">
             <table class="table table-bordered table-hover align-middle mb-0">
                 <thead class="table-light">
@@ -205,10 +284,10 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for row in table %}
+                    {% for row in rows %}
                     <tr>
                         <td><strong>{{ loop.index }}</strong></td>
-                        <td><strong>{{ row.name }}</strong></td>
+                        <td>{% if logos.get(row.id) %}<img src="{{ logos[row.id] }}" alt="" class="team-logo me-1" width="24" height="24">{% endif %}<strong>{{ row.name }}</strong></td>
                         <td>{{ row.played }}</td>
                         <td>{{ row.won }}</td>
                         <td>{{ row.drawn }}</td>
@@ -222,6 +301,8 @@
                 </tbody>
             </table>
         </div>
+        {% endfor %}
+        {% if pool_tables %}<p class="small text-muted mt-2 mb-0">Each pool's table counts its league matches and the inter-pool round.</p>{% endif %}
         {% if can_generate and not sports.has_playoffs(t) %}
         {#- Change the points rule without making the fixtures again (UPG-358) #}
         <details class="mt-3" data-points-rule>
@@ -252,7 +333,7 @@
         <ul class="list-unstyled mb-2">
             {% for team in t.teams %}
             <li class="border rounded p-2 mb-2" data-team-row="{{ team.id }}">
-                <div class="mb-1"><strong>{{ team.name }}</strong>{% if team.id in withdrawn %} <span class="badge bg-secondary">Withdrawn</span>{% endif %}</div>
+                <div class="mb-1">{% if team.logo %}<img src="{{ team.logo }}" alt="" class="team-logo me-1" width="32" height="32">{% endif %}<strong>{{ team.name }}</strong>{% if team.pool %} <span class="badge bg-light text-dark border" data-team-seed>{{ team.pool }}{{ team.seed }}</span>{% endif %}{% if team.id in withdrawn %} <span class="badge bg-secondary">Withdrawn</span>{% endif %}</div>
                 <div class="d-flex flex-wrap gap-2 align-items-center">
                     <form method="POST" action="/tournament/{{ event.id }}/team/{{ team.id }}/rename" class="d-flex gap-1 flex-grow-1" style="min-width: 220px">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -267,6 +348,20 @@
                             {% for spare in spare_teams %}<option value="{{ spare.id }}">{{ spare.name }}</option>{% endfor %}
                         </select>
                         <button type="submit" class="btn btn-sm btn-outline-secondary" data-confirm="Put the chosen team in place of {{ team.name }} everywhere in the fixtures?">Replace</button>
+                    </form>
+                    {% endif %}
+                    {#- The team's logo (UPG-386) #}
+                    <form method="POST" action="/tournament/{{ event.id }}/team/{{ team.id }}/logo" enctype="multipart/form-data" class="d-flex gap-1 flex-grow-1" style="min-width: 220px" data-logo-form>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <label class="visually-hidden" for="logo-{{ team.id }}">Logo for {{ team.name }}</label>
+                        <input type="file" id="logo-{{ team.id }}" name="logo" accept="image/png,image/jpeg,image/webp" class="form-control form-control-sm" required>
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">{{ 'Change logo' if team.logo else 'Add logo' }}</button>
+                    </form>
+                    {% if team.logo %}
+                    <form method="POST" action="/tournament/{{ event.id }}/team/{{ team.id }}/logo">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="action" value="remove">
+                        <button type="submit" class="btn btn-sm btn-link text-danger">Remove logo</button>
                     </form>
                     {% endif %}
                     {% if team.id in withdrawn %}
@@ -284,7 +379,7 @@
             </li>
             {% endfor %}
         </ul>
-        {% if spare_teams and t.format in ('league', 'league_knockout') and not sports.has_playoffs(t) %}
+        {% if spare_teams and t.format in ('league', 'league_knockout') and not sports.has_playoffs(t) and not t.pools and t.legs != 2 %}
         <form method="POST" action="/tournament/{{ event.id }}/teams/add" class="d-flex flex-wrap gap-2 align-items-end" data-add-team>
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <label class="small">Add a late team to the league
@@ -309,7 +404,7 @@
             <div class="col-lg-6 col-12" id="{{ m.id }}">
                 <div class="p-3 border rounded {% if m.winner %}bg-light{% endif %}">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="badge bg-secondary">Match {{ m.id|upper }} · {{ sports.stage_name(m) }}</span>
+                        <span class="badge bg-secondary">{{ sports.match_no(m) }} · {{ sports.stage_name(m) }}</span>
                         <span class="badge {% if m.status == 'played' %}bg-success{% elif m.status == 'bye' %}bg-info text-dark{% else %}bg-warning text-dark{% endif %}">
                             {{ m.status|title }}
                         </span>
@@ -317,11 +412,11 @@
 
                     <div class="mb-3">
                         <div class="d-flex justify-content-between align-items-center py-1 {% if m.winner == m.home %}fw-bold text-success{% endif %}">
-                            <span>{% if m.home %}{{ names.get(m.home, m.home) }}{% else %}<em>TBD</em>{% endif %}</span>
+                            <span>{% if logos.get(m.home) %}<img src="{{ logos[m.home] }}" alt="" class="team-logo me-1" width="24" height="24">{% endif %}{% if m.home %}{{ names.get(m.home, m.home) }}{% else %}<em>TBD</em>{% endif %}</span>
                             <span class="badge bg-dark fs-6" data-score-badge>{{ ('W/O' if m.winner == m.home else '–') if m.walkover else (m.home_score if m.home_score is not none else '-') }}</span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center py-1 {% if m.winner == m.away %}fw-bold text-success{% endif %}">
-                            <span>{% if m.away %}{{ names.get(m.away, m.away) }}{% else %}<em>TBD</em>{% endif %}</span>
+                            <span>{% if logos.get(m.away) %}<img src="{{ logos[m.away] }}" alt="" class="team-logo me-1" width="24" height="24">{% endif %}{% if m.away %}{{ names.get(m.away, m.away) }}{% else %}<em>TBD</em>{% endif %}</span>
                             <span class="badge bg-dark fs-6" data-score-badge>{{ ('W/O' if m.winner == m.away else '–') if m.walkover else (m.away_score if m.away_score is not none else '-') }}</span>
                         </div>
                         {% if m.venue or m.date or m.time %}

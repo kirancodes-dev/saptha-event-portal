@@ -1047,13 +1047,15 @@ def event_details(event_id):
 
         # Tournament data if present (UPG-13)
         t = event.get('tournament') or {}
-        t_names, t_table, t_champ = {}, [], None
+        t_names, t_table, t_champ, t_pools, t_logos = {}, [], None, [], {}
         if t:
             try:
                 import services_sports
                 t_names = services_sports.names(t)
                 t_table = services_sports.standings(t) if t.get('format') == 'league' else []
                 t_champ = services_sports.champion(t)
+                t_pools = services_sports.pool_tables(t)          # UPG-381
+                t_logos = services_sports.logos(t)                # UPG-386
             except Exception:
                 pass
 
@@ -1090,7 +1092,8 @@ def event_details(event_id):
             return render_template('public/event_fragment.html', event=event, spec=spec,
                                    parent_fest=parent_fest, fest_events=fest_events,
                                    is_registered=is_registered, reg_count=reg_count, fragment=True,
-                                   t=t, names=t_names, table=t_table, champion=t_champ, **page_args)
+                                   t=t, names=t_names, table=t_table, champion=t_champ,
+                                   pool_tables=t_pools, logos=t_logos, **page_args)
 
         return render_template('public/event_details.html',
                                fragment=False, **page_args,
@@ -1103,6 +1106,7 @@ def event_details(event_id):
                                t=t,
                                names=t_names,
                                table=t_table,
+                               pool_tables=t_pools, logos=t_logos,
                                champion=t_champ)
     except Exception as exc:
         app.logger.error("Event details error: %s", exc)

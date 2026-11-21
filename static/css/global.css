@@ -2626,3 +2626,6 @@ body.status-page { background: var(--surface-page); min-height: 100vh; }
    flex rows set their own display, so say it once for the live regions. */
 [data-live-action][hidden], [data-live-locked][hidden], [data-live-explanation][hidden],
 [data-live-status][hidden], [data-live-when-known][hidden] { display: none !important; }
+
+/* A team logo beside its name in fixtures, tables and the scoreboard (UPG-386) */
+.team-logo { width: 24px; height: 24px; object-fit: contain; vertical-align: middle; border-radius: 4px; }

@@ -3,6 +3,9 @@
 {% set kabaddi = (t.sport or '')|lower == 'kabaddi' if t else false %}
 {% set stage_names = {'final': 'Final', 'semi': 'Semi-final', 'third': 'Third place'} %}
 {% set format_names = {'knockout': 'Knockout', 'league': 'League', 'league_knockout': 'League then knockout'} %}
+{#- Pools, logos, M-01 numbers (UPG-381, UPG-385, UPG-386) #}
+{% set pool_tables = pool_tables if pool_tables is defined and pool_tables else [] %}
+{% set logos = logos if logos is defined and logos else {} %}
 {% if t %}
 <div class="tournament-section">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
@@ -12,9 +15,10 @@
         {% endif %}
     </div>
 
-    {% if t.format in ('league', 'league_knockout') and table %}
-    <div class="mb-4">
-        <h3 class="eyebrow mb-2">Points table</h3>
+    {% if t.format in ('league', 'league_knockout') and (table or pool_tables) %}
+    {% for pool, rows in (pool_tables or [(None, table)]) %}
+    <div class="mb-4"{% if pool %} data-pool-table="{{ pool }}"{% endif %}>
+        <h3 class="eyebrow mb-2">{% if pool %}Pool {{ pool }}{% else %}Points table{% endif %}</h3>
         <div class="table-responsive">
             <table class="table table-striped align-middle mb-0">
                 <thead>
@@ -30,10 +34,10 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for row in table %}
+                    {% for row in rows %}
                     <tr>
                         <td>{{ loop.index }}</td>
-                        <td><strong>{{ row.name }}</strong></td>
+                        <td>{% if logos.get(row.id) %}<img src="{{ logos[row.id] }}" alt="" class="team-logo me-1" width="24" height="24">{% endif %}<strong>{{ row.name }}</strong></td>
                         <td>{{ row.played }}</td>
                         <td>{{ row.won }}</td>
                         <td>{{ row.drawn }}</td>
@@ -46,6 +50,7 @@
             </table>
         </div>
     </div>
+    {% endfor %}
     {% endif %}
 
     {% if t.matches %}
@@ -60,17 +65,18 @@
                     <a href="/tournament/live/{{ event.id }}/{{ m.id }}" class="d-inline-block mb-1 text-decoration-none" data-live-link><span class="live-dot">LIVE</span> Watch the score</a>
                     {% endif %}
                     <div class="d-flex justify-content-between text-muted mb-1" style="font-size:11px;">
-                        <span>Match {{ m.id|upper }} · {{ stage_names.get(m.stage) or ('League round ' if m.stage == 'league' else 'Round ') ~ m.round }}</span>
+                        {% set digits = m.id[1:] if m.id and m.id[0] == 'm' else '' %}
+                        <span>{{ ('M-%02d'|format(digits|int)) if digits.isdigit() else 'Match ' ~ m.id|upper }} · {{ stage_names.get(m.stage) or ('Inter-pool' if m.cross else ('Pool ' ~ m.pool ~ ' · ' if m.pool else '') ~ ('League round ' if m.stage == 'league' else 'Round ') ~ m.round) }}</span>
                         {% if m.venue or m.date or m.time %}
-                        <span>{{ m.venue }} {% if m.date %}· {{ m.date }}{% endif %}</span>
+                        <span>{{ m.venue }} {% if m.date %}· {{ m.date }}{% endif %}{% if m.time %} {{ m.time }}{% endif %}</span>
                         {% endif %}
                     </div>
                     <div class="d-flex justify-content-between align-items-center {% if m.winner and m.winner == m.home %}fw-bold text-success match-winner{% endif %}">
-                        <span>{{ (names.get(m.home, m.home) if names else m.home) if m.home else 'TBD' }}</span>
+                        <span>{% if logos.get(m.home) %}<img src="{{ logos[m.home] }}" alt="" class="team-logo me-1" width="24" height="24">{% endif %}{{ (names.get(m.home, m.home) if names else m.home) if m.home else 'TBD' }}</span>
                         <span class="match-score">{{ ('W/O' if m.winner == m.home else '–') if m.walkover else (m.home_score if m.home_score is not none else '–') }}</span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center mt-1 {% if m.winner and m.winner == m.away %}fw-bold text-success match-winner{% endif %}">
-                        <span>{{ (names.get(m.away, m.away) if names else m.away) if m.away else 'TBD' }}</span>
+                        <span>{% if logos.get(m.away) %}<img src="{{ logos[m.away] }}" alt="" class="team-logo me-1" width="24" height="24">{% endif %}{{ (names.get(m.away, m.away) if names else m.away) if m.away else 'TBD' }}</span>
                         <span class="match-score">{{ ('W/O' if m.winner == m.away else '–') if m.walkover else (m.away_score if m.away_score is not none else '–') }}</span>
                     </div>
                 </div>

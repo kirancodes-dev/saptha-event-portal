@@ -19,8 +19,8 @@ What is kept on the member, in the registration's `members` list:
   confirmed_at     when the member confirmed; 'confirmed_by' says how
                    ('link', 'sign-in' or 'invite' for the invite code, UPG-08)
 
-Per event, `member_confirm` (on unless set False) switches it; off, members
-get nothing, as before. The email kind `member_confirm` goes out in a
+Per event, `member_confirm` (on unless set False; unset on a sports event
+means off, UPG-389) switches it; off, members get nothing, as before. The email kind `member_confirm` goes out in a
 portal-mode hackathon too (services_hackathon.PORTAL_MODE_EMAILS).
 """
 import datetime
@@ -65,9 +65,23 @@ def _email(member) -> str:
 # ── Who is asked ────────────────────────────────────────────────────────────
 
 def enabled(event: dict) -> bool:
-    """On for a team event unless the organiser switched it off."""
+    """On for a team event unless the organiser switched it off. A sports
+    event starts off: the lead's details confirm the team, the members get no
+    email (UPG-389); the organiser can turn it on."""
     from routes_forms import team_limits
-    return (event or {}).get('member_confirm') is not False and team_limits(event or {})[1] > 1
+    event = event or {}
+    if team_limits(event)[1] <= 1:
+        return False
+    setting = event.get('member_confirm')
+    if setting is None:
+        return not is_sports(event)
+    return setting is not False
+
+
+def is_sports(event: dict) -> bool:
+    """A sports tournament, athletics or e-sports event (as the SPOC's panel decides)."""
+    from services_spoc_panel import kinds
+    return bool(kinds(event or {})['sports'])
 
 
 def is_lead(reg: dict, member: dict) -> bool:

@@ -57,7 +57,8 @@
   <div class="alert alert-light border d-flex flex-wrap align-items-center justify-content-between gap-2" data-member-confirm>
     <div class="small">
       <strong>Team members' confirmation:</strong>
-      {% if not member_confirm %}off. Members the lead lists get no email and no login.
+      {% if not member_confirm and event.get('member_confirm') is none %}<span data-sports-lead-only>off for a sports event: the team is confirmed when the lead registers. Members get no email and no login.</span>
+      {% elif not member_confirm %}off. Members the lead lists get no email and no login.
       {% elif waiting.waiting %}{{ waiting.waiting }} member{{ '' if waiting.waiting == 1 else 's' }} waiting{% if waiting.unsent %}, {{ waiting.unsent }} never sent a link{% if waiting.held %} ({{ waiting.held }} held back by the daily email limit){% endif %}{% endif %}.
       {% else %}every member has confirmed.{% endif %}
     </div>

@@ -31,7 +31,10 @@ because every tap is saved in order, but one scorer avoids confusion.
 - **Real event:** each captain registers the team on the event page with the
   team name and the members' names. The members' names fill the
   "Who scored" list during live scoring, which gives you top raiders and top
-  defenders.
+  defenders. The team is confirmed as soon as the captain registers; the
+  members don't have to confirm anything and get no email. To ask members to
+  confirm, use **Turn on** under "Team members' confirmation" on the
+  registrations page.
 - **Demo (fastest):** the coordinator adds each team as a walk-in
   (Coordinator → Scanner → **Walk-in helpdesk** → choose the event), with the
   team name in **Full name**, then **Confirm & generate ticket**. Use a different email for each, for example `yourname+garuda@gmail.com`

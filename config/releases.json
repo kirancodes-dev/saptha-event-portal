@@ -4,9 +4,9 @@
     {
       "version": "1.17",
       "date": "2026-11-21",
-      "commit": "",
-      "revision": "",
-      "title": "Marking teams present after the event, and pages that fit a phone",
+      "commit": "b228195",
+      "revision": "saptha-b228",
+      "title": "A kabaddi premier league with pools and a button for every score; marking teams present after the event; pages that fit a phone",
       "notes": [
         "After the event the SPOC can mark present a team that wasn't on the entry list or was out after a round, once they confirm it came; the portal records that the list was overridden.",
         "On a phone the admin's events and users lists are cards that fit the screen, the dashboard's numbers take three short rows, the SPOC's console opens with a heading, and coordinators' event cards without a picture start with a thin band.",

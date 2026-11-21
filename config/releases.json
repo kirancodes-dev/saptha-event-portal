@@ -4,8 +4,8 @@
     {
       "version": "1.18",
       "date": "2026-11-21",
-      "commit": "",
-      "revision": "",
+      "commit": "6a46234",
+      "revision": "saptha-6a46",
       "title": "Kabaddi match day",
       "notes": [
         "In a sports event the team is confirmed as soon as the lead registers: the players get no email to confirm. The organiser can still turn member confirmation on.",

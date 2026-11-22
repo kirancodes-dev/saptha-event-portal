@@ -2,6 +2,17 @@
   "_about": "Every version of the portal, newest first (UPG-373). The top entry is the version of this code; shown at /whats-new and in the footer. A new entry starts after each deploy; until then every finished item goes into the top entry. 'revision' is the Cloud Run revision it went live as ('' until deployed).",
   "releases": [
     {
+      "version": "1.20",
+      "date": "2026-11-22",
+      "commit": "",
+      "revision": "",
+      "title": "Jersey numbers up to 999",
+      "notes": [
+        "A player's jersey number can have up to three digits (0 to 999), on the registration form and the Edit page."
+      ],
+      "items": ["UPG-431"]
+    },
+    {
       "version": "1.19",
       "date": "2026-11-22",
       "commit": "d642387",

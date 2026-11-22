@@ -210,8 +210,8 @@ def team_limits(event: dict) -> tuple:
     return max(lo, 1), max(hi, lo, 1)
 
 
-JERSEY_MAX = 99
-JERSEY_FIELD = {'type': 'number', 'min': 0, 'max': JERSEY_MAX, 'pattern': r'^\d{1,2}$',
+JERSEY_MAX = 999   # up to three digits (UPG-431)
+JERSEY_FIELD = {'type': 'number', 'min': 0, 'max': JERSEY_MAX, 'pattern': r'^\d{1,3}$',
                 'pattern_error': f"A jersey number is a whole number from 0 to {JERSEY_MAX}."}
 DOB_FIELD = {'type': 'date', 'birth_date': True}   # checked by birth_date_problem (UPG-423)
 LOGO_MIN_SIDE = 200   # pixels: a logo smaller than this shows blurred on the big screen

@@ -6815,6 +6815,19 @@ Asked by the owner on 22 Nov 2026: the scorer taps each team's players (jersey n
   1. The public tables (fixtures page) and the SPOC's have the key and the order. ✅ `test_the_table_key_says_what_the_letters_mean_and_why_no_rate`, `test_the_public_spoc_and_big_screen_tables_have_the_key`.
   2. The big screen's tables have the key in one line. ✅ `test_the_public_spoc_and_big_screen_tables_have_the_key`.
 
+#### UPG-431 — A jersey number can't have three digits
+- **Status:** DONE
+- **Last verified:** 2026-11-22, on `2724751` [C]
+- **Problem:** Asked by the owner on 22 Nov 2026 with a screenshot: the registration form refused jersey number 997 ("not taking 3 digit"). `JERSEY_FIELD` allowed 0 to 99 only.
+- **What was built:** A jersey number is a whole number from 0 to 999 on the registration form and the registration's Edit page (one rule, `JERSEY_FIELD`). '007' is still 7, and two players still can't share a number.
+- **Evidence:** `routes_forms.py:213-215` (`JERSEY_MAX = 999`, pattern `^\d{1,3}$`); `tests/test_sports_team_details.py` (`test_a_jersey_number_may_have_three_digits`; the refused cases now use 1000).
+- **Acceptance criteria:**
+  1. The form takes a 3-digit jersey number (100, 997) and saves it. `test_a_jersey_number_may_have_three_digits`.
+  2. The Edit page takes 999 and 998. `test_a_jersey_number_may_have_three_digits`.
+  3. 1000 and 7.5 are refused with "A jersey number is a whole number from 0 to 999." `test_a_sports_team_is_refused_without_its_logo_or_a_jersey_number`, `test_a_team_registered_before_adds_its_jersey_numbers_on_the_edit_page`.
+  - Tests: `tests/test_sports_team_details.py` 9 passed; the three certificate files 9 passed. The full suite was stopped part way at the owner's request ("no test direct deploye").
+- **Depends on:** UPG-405.
+
 #### UPG-427 — A player has no jersey name
 - **Status:** DONE
 - **Last verified:** 2026-11-22, uncommitted on `6c85b4f` [C] (no new tests, by the owner's choice)

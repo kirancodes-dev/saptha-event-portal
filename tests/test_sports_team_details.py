@@ -100,8 +100,8 @@ def test_a_sports_team_is_refused_without_its_logo_or_a_jersey_number(team, stor
         (sports_form(2, lead=''), "'Your jersey number' is required."),
         (sports_form(2, numbers={1: '7'}), "You and Mate 1 both have jersey number 7"),
         (sports_form(2, numbers={1: '5', 2: '05'}), "Mate 1 and Mate 2 both have jersey number 5"),
-        (sports_form(2, numbers={1: '120'}), "A jersey number is a whole number from 0 to 99."),
-        (sports_form(2, numbers={1: '7.5'}), "A jersey number is a whole number from 0 to 99."),
+        (sports_form(2, numbers={1: '1000'}), "A jersey number is a whole number from 0 to 999."),
+        (sports_form(2, numbers={1: '7.5'}), "A jersey number is a whole number from 0 to 999."),
         (sports_form(2, logo=_png(120, 120)), "too small to show clearly (120 × 120 pixels)"),
         (sports_form(2, logo=b'not an image'), "isn't an image we can read"),
     ]
@@ -212,8 +212,8 @@ def test_a_team_registered_before_adds_its_jersey_numbers_on_the_edit_page(team,
     page = t['owner'].post(url, data=form(lead_jersey='9', m1_jersey='9')).get_data(as_text=True)
     assert 'The lead already has jersey number 9' in page
     assert not any(m.get('jersey') for m in t['reg'](reg_id)['members'])
-    page = t['owner'].post(url, data=form(m1_jersey='100')).get_data(as_text=True)
-    assert 'A jersey number is a whole number from 0 to 99.' in page
+    page = t['owner'].post(url, data=form(m1_jersey='1000')).get_data(as_text=True)
+    assert 'A jersey number is a whole number from 0 to 999.' in page
 
     resp = t['owner'].post(url, data=form(lead_jersey='09', m1_jersey='3', m2_jersey='12'))
     assert resp.status_code == 302
@@ -227,6 +227,28 @@ def test_a_team_registered_before_adds_its_jersey_numbers_on_the_edit_page(team,
     _, other_reg = t['register'](other, t['mates'](1))
     page = t['owner'].get(f'/coordinator/registrations/{other}/edit/{other_reg}').get_data(as_text=True)
     assert '_jersey"' not in page
+
+
+def test_a_jersey_number_may_have_three_digits(team, stored):  # noqa: F811
+    """UPG-431: 997 is a jersey number, on the form and on the edit page."""
+    t = team
+    event_id = t['event'](**SPORTS)
+    mates = t['mates'](2)
+    lead, reg_id = t['register'](event_id, mates, extra=sports_form(2, lead='100', numbers={1: '997', 2: '007'}))
+    assert {m['email']: m.get('jersey') for m in t['reg'](reg_id)['members']} == \
+        {lead: '100', mates[0]: '997', mates[1]: '7'}
+    field = next(f for f in routes_forms.registration_schema(event_id, t['db'].collection('events').document(
+        event_id).get().to_dict())['fields'] if f['id'] == 'member_1_jersey')
+    assert field['max'] == 999 and field['pattern'] == r'^\d{1,3}$'
+
+    url = f'/coordinator/registrations/{event_id}/edit/{reg_id}'
+    resp = t['owner'].post(url, data={
+        'lead_name': 'Lena Lead', 'lead_usn': '1SN22CS200', 'lead_phone': '9876543210', 'team_name': 'Garuda Sena',
+        'lead_jersey': '999', 'm1_key': mates[0], 'm1_name': 'Mate 1', 'm1_usn': '1SN22CS201', 'm1_jersey': '998',
+        'm2_key': mates[1], 'm2_name': 'Mate 2', 'm2_usn': '1SN22CS202', 'm2_jersey': '0'})
+    assert resp.status_code == 302, resp.get_data(as_text=True)[:500]
+    assert {m['email']: m.get('jersey') for m in t['reg'](reg_id)['members']} == \
+        {lead: '999', mates[0]: '998', mates[1]: '0'}
 
 
 def test_jersey_rules_in_one_place():

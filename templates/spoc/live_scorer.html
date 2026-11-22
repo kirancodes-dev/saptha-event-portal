@@ -42,6 +42,31 @@
 
   <p class="live-message" data-message role="status"></p>
 
+  {#- The steps, on the page: open before the match starts (UPG-408) #}
+  <details class="live-howto" data-howto{% if state.phase == 'not_started' %} open{% endif %}>
+    <summary>How to score this match</summary>
+    {% if state.mode == 'pkl' %}
+    <ol>
+      <li>Choose <strong>who raids first</strong> (the team that won the toss), then press <strong>Start 1st half</strong>.</li>
+      <li>After every raid, pick the raider{% if jerseys is defined %} (by jersey number){% endif %} and, if tackled, the tackler. Then tap <strong>one button</strong> for how the raid ended: the number of touches, <strong>Bonus only</strong>, <strong>Empty raid</strong>, <strong>Tackled</strong> or <strong>Raider out of court</strong>. Tick <strong>+ Bonus</strong> first if the raider also crossed the bonus line.</li>
+      <li>The portal adds the points, all outs, revivals and do-or-die by itself, and passes the raid to the other team.</li>
+      <li>A time-out, technical point or review: open <strong>Calls</strong>. After a time-out press <strong>Resume clock</strong>.</li>
+      <li>A wrong tap: <strong>Undo last</strong>, or <strong>Remove</strong> next to it under <strong>All points</strong>.</li>
+      <li><strong>Half time</strong>, then <strong>Start 2nd half</strong>. At the end, <strong>Full time: save the result</strong>. A level score goes to the tie-breaker: 5 raids each.</li>
+    </ol>
+    {% else %}
+    <ol>
+      <li>Press <strong>Start 1st half</strong>.</li>
+      <li>For every point, tap the button on the side of the team that <strong>got</strong> the points. Pick the player in <strong>Who scored</strong> first if you know who.</li>
+      <li>A raid with touches and the bonus is two taps, for example <strong>Raid +2</strong> then <strong>Bonus +1</strong>. An all out is the raid's points, then <strong>All out +2</strong>.</li>
+      <li>A time-out or review: <strong>Pause clock</strong>, then <strong>Resume clock</strong>.</li>
+      <li>A wrong tap: <strong>Undo last</strong>, or <strong>Remove</strong> next to it under <strong>All points</strong>.</li>
+      <li><strong>Half time</strong>, then <strong>Start 2nd half</strong>. At the end, <strong>Full time: save the result</strong>.</li>
+    </ol>
+    {% endif %}
+    <p class="small text-muted mb-0">Only this event's SPOC and its coordinators can score. Everyone else sees the public scoreboard.</p>
+  </details>
+
   <section class="live-phase" aria-label="Match phase">
     <button type="button" class="btn btn-success" data-phase-action="start">Start 1st half</button>
     <button type="button" class="btn btn-outline-secondary" data-phase-action="pause">Pause clock</button>

@@ -36,6 +36,31 @@
   {% endfor %}
 </div>
 {% endif %}
+{#- Which team is in which pool; pick a pool to see only its table and matches (UPG-407) #}
+{% if pool_teams and t and t.matches %}
+<div class="panel mb-3" data-pool-picker>
+  <h2 class="h5 mb-2">Choose a pool</h2>
+  <nav class="pool-tabs" aria-label="Pools">
+    <a href="/tournament/fixtures/{{ event.id }}" class="btn {{ 'btn-primary' if not pool_view else 'btn-outline-primary' }}"{% if not pool_view %} aria-current="page"{% endif %} data-pool-tab="">All</a>
+    {% for p, _teams in pool_teams %}
+    <a href="/tournament/fixtures/{{ event.id }}?pool={{ p }}" class="btn {{ 'btn-primary' if pool_view == p else 'btn-outline-primary' }}"{% if pool_view == p %} aria-current="page"{% endif %} data-pool-tab="{{ p }}">Pool {{ p }}</a>
+    {% endfor %}
+  </nav>
+  <div class="pool-teams">
+    {% for p, teams in pool_teams if not pool_view or p == pool_view %}
+    <section class="pool-teams__pool" data-pool-teams="{{ p }}">
+      <h3 class="eyebrow mb-2">Pool {{ p }} teams</h3>
+      <ol class="pool-teams__list">
+        {% for x in teams %}
+        <li>{% if x.logo %}<img src="{{ x.logo }}" alt="" class="team-logo me-1" width="24" height="24">{% endif %}<strong>{{ x.name }}</strong>{% if x.seed %} <span class="text-muted small">{{ p }}{{ x.seed }}</span>{% endif %}</li>
+        {% endfor %}
+      </ol>
+    </section>
+    {% endfor %}
+  </div>
+  {% if pool_view %}<p class="small text-muted mb-0">Showing Pool {{ pool_view }}'s table and matches, the inter-pool round and the playoffs.</p>{% endif %}
+</div>
+{% endif %}
 <div class="panel">
   {% if not t or not t.matches %}
   <div class="empty-state border-0">

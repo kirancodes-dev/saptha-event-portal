@@ -155,3 +155,17 @@
   background: var(--brand-navy, #1b2a4a); color: #fff; font-weight: 700; font-size: .85em; text-align: center;
   font-variant-numeric: tabular-nums; }
 .live-scorer .live-board__logo { width: 48px; height: 48px; }
+
+/* The fixtures page's pool chooser and each pool's teams (UPG-407) */
+.pool-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.pool-tabs .btn { min-width: 96px; min-height: 44px; font-weight: 600; }
+.pool-teams { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 24px; margin-bottom: 8px; }
+.pool-teams__list { margin: 0; padding-left: 0; list-style: none; }
+.pool-teams__list li { padding: 6px 0; border-bottom: 1px solid var(--border-color, #e5e7eb); }
+.pool-teams__list li:last-child { border-bottom: 0; }
+
+/* The scorer's steps on the page (UPG-408) */
+.live-howto { margin: 0 0 12px; padding: 10px 14px; border: 1px solid var(--border-color, #e5e7eb); border-radius: 8px; background: #f8fafc; }
+.live-howto summary { font-weight: 700; cursor: pointer; min-height: 32px; }
+.live-howto ol { margin: 8px 0; padding-left: 1.3em; }
+.live-howto li { margin-bottom: 6px; }

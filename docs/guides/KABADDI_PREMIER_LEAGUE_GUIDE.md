@@ -153,10 +153,14 @@ now** undoes it; starting it for live scoring or saving its result does too.
 
 ## 6. Scoring a match: who and how
 
-**Who:** the SPOC, or any coordinator assigned to this event.
+**Who:** the SPOC, or any coordinator assigned to this event. Nobody else
+can score: a volunteer, a judge, a student or a coordinator of another event
+gets "not allowed", and the audience only sees the scoreboard.
 **Where:** coordinators use Dashboard → **Matches & live scoring**; the SPOC
 uses the tournament page. Find the match (M-01 …) and press **Score live**.
-A phone works best.
+A phone works best. The scoring page has **How to score this match** under
+the score: the steps below, for the mode the match uses. It is open before
+the match starts and folds away once it has started (tap it to open it again).
 
 **PKL mode or point by point.** With **PKL mode** on (part 4, or the switch
 under **Big screen and the road to the final** on the tournament page), you
@@ -261,8 +265,14 @@ fails or for a match scored on paper.
   seconds. The college logo is at the top, with a **QR code**: the audience
   scan it and the fixtures page opens on their phones, with the matches being
   played at the top (**Watch the score live**).
-- **Fixtures page:** `/tournament/fixtures/<event id>`. Every match with its
-  M-number, both pool tables, the road to the final, the top raiders and
+- **Fixtures page:** `/tournament/fixtures/<event id>`. At the top, **Choose
+  a pool**: the buttons **All**, **Pool A** and **Pool B**, and each pool's
+  teams with their logos and seeds (A1 … A4, B1 … B4), so everyone can see
+  which team is in which pool. **Pool A** shows only Pool A's table, its
+  matches, the inter-pool round and the playoffs, and only Pool A's players'
+  points; **Pool B** the same for Pool B. The link with the pool chosen
+  (`…?pool=A`) can be shared on its own. **All** shows every match,
+  both pool tables, the road to the final, the top raiders and
   defenders, and **Every player's points** team by team (raid, tackle,
   total, matches, Super 10s, High 5s): this is where players see their own
   progress. Share this link in the WhatsApp group: the preview shows the

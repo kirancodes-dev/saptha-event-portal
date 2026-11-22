@@ -1153,6 +1153,14 @@ def pool_tables(tournament: dict) -> list:
     return [(p, standings(tournament, p)) for p in tournament.get('pools') or []]
 
 
+def pool_teams(tournament: dict) -> list:
+    """[(pool, teams by seed)] for a tournament with pools, else []: which team
+    is in which pool, for the audience (UPG-407)."""
+    teams = tournament.get('teams') or []
+    return [(p, sorted([x for x in teams if x.get('pool') == p], key=lambda x: (x.get('seed') or 99, x['name'].lower())))
+            for p in tournament.get('pools') or []]
+
+
 def match_no(m: dict) -> str:
     """M-01, M-02, … as on a printed fixture sheet (UPG-385)."""
     digits = str(m.get('id') or '').lstrip('m')

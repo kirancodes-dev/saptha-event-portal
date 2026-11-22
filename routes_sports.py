@@ -657,10 +657,20 @@ def fixtures(event_id):
     import services_sports
     event = _event(event_id)
     t = event.get('tournament') or {}
+    # The audience picks a pool: its teams, table and matches (UPG-407)
+    pools = list(t.get('pools') or [])
+    pool = str(request.args.get('pool') or '').strip().upper()
+    pool = pool if pool in pools else ''
+    leaders = _leaders(event_id, t)
+    if pool:
+        in_pool = {x['id'] for x in t.get('teams') or [] if x.get('pool') == pool}
+        leaders['team_players'] = [row for row in leaders.get('team_players') or [] if row[1] in in_pool]
     return render_template(
         'public/tournament_fixtures.html',
         event=event,
         t=t,
+        pool_view=pool,
+        pool_teams=services_sports.pool_teams(t) if t else [],
         names=services_sports.names(t) if t else {},
         table=services_sports.standings(t) if t else [],
         pool_tables=services_sports.pool_tables(t) if t else [],
@@ -669,7 +679,7 @@ def fixtures(event_id):
         bracket=services_sports.bracket(t) if t else {},
         sports=services_sports,
         live=_live(event_id) if t else {},
-        **_leaders(event_id, t),
+        **leaders,
     )
 
 

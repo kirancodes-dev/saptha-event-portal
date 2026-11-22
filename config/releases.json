@@ -12,9 +12,11 @@
         "PKL mode: the scorer taps how each raid ended and the portal works out the points, all outs, revivals, do-or-die raids, super tackles, time-outs and whose raid it is. The organiser can turn it off and score point by point.",
         "The big screen shows the college logo and a QR code; the audience scan it to follow the live scores on their phones. Shared links show the college logo.",
         "Scores show the moment the scorer taps, and the scoreboard and big screen update every one to two seconds.",
-        "A sports team uploads its logo and gives every player's jersey number when it registers. The logo shows beside the team's name on the scoreboard, the big screen and the fixtures; the jersey number beside each player's name."
+        "A sports team uploads its logo and gives every player's jersey number when it registers. The logo shows beside the team's name on the scoreboard, the big screen and the fixtures; the jersey number beside each player's name.",
+        "The fixtures page opens with Choose a pool: All, Pool A or Pool B, with each pool's teams and their logos. A pool shows only its own table, matches and players' points.",
+        "The scoring page shows How to score this match. Only the event's SPOC and its coordinators can score."
       ],
-      "items": ["UPG-396", "UPG-397", "UPG-402", "UPG-403", "UPG-405"]
+      "items": ["UPG-396", "UPG-397", "UPG-402", "UPG-403", "UPG-405", "UPG-407", "UPG-408"]
     },
     {
       "version": "1.18",

@@ -23,6 +23,7 @@
 
   <section class="live-board" aria-live="polite">
     <div class="live-board__team">
+      {% if logos is defined and logos.get(doc.home) %}<img src="{{ logos[doc.home] }}" alt="" class="live-board__logo" width="48" height="48" data-team-logo>{% endif %}
       <div class="live-board__name">{{ state.home.name }}</div>
       <div class="live-board__score" data-score="home">{{ state.home.total }}</div>
       <div class="live-board__halves" data-halves="home">{{ state.home.halves[0] }} · {{ state.home.halves[1] }}</div>
@@ -32,6 +33,7 @@
       <div class="live-board__clock" data-clock-text>{{ '%02d:%02d' % (state.clock // 60, state.clock % 60) }}</div>
     </div>
     <div class="live-board__team">
+      {% if logos is defined and logos.get(doc.away) %}<img src="{{ logos[doc.away] }}" alt="" class="live-board__logo" width="48" height="48" data-team-logo>{% endif %}
       <div class="live-board__name">{{ state.away.name }}</div>
       <div class="live-board__score" data-score="away">{{ state.away.total }}</div>
       <div class="live-board__halves" data-halves="away">{{ state.away.halves[0] }} · {{ state.away.halves[1] }}</div>
@@ -74,7 +76,7 @@
       <label class="live-side__player">Who scored (optional)
         <select class="form-select" data-player="{{ side }}">
           <option value="">Not recorded</option>
-          {% for p in squads[side] %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
+          {% for p in squads[side] %}{% set j = (jerseys[side] if jerseys is defined else {}).get(p) %}<option value="{{ p }}">{% if j %}#{{ j }} {% endif %}{{ p }}</option>{% endfor %}
         </select>
       </label>
       {% endif %}

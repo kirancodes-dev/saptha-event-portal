@@ -34,8 +34,13 @@ TEAM_KEYS = ('team_name', 'team', 'group_name')
 # details (shown once, above), the email (the login) and the registration's type
 NOT_QUESTIONS = export.IDENTITY_KEYS | {'lead_name'}
 CANCELLED = ('cancelled', 'refunded')
-MEMBER_PARTS = (('name', 'Name', 'text'), ('usn', 'USN', 'text'), ('phone', 'Phone', 'tel'))
-LIMITS = {'name': 150, 'usn': 30, 'phone': 20, 'team_name': 100}
+MEMBER_PARTS = (('name', 'Name', 'text'), ('usn', 'USN', 'text'), ('phone', 'Phone', 'tel'),
+                ('jersey', 'Jersey number', 'number'))   # a sports team's players (UPG-405)
+LIMITS = {'name': 150, 'usn': 30, 'phone': 20, 'team_name': 100, 'jersey': 3}
+JERSEY_RULES = ('min', 'max', 'pattern', 'pattern_error')
+# A sports team's logo and the lead's jersey number (UPG-405) aren't questions
+# here: the number is the lead's, above; the logo changes on the tournament page
+SPORTS_TEAM_IDS = ('team_logo', 'lead_jersey')
 
 
 def _email(value) -> str:
@@ -82,7 +87,7 @@ def build(db, event_id: str, event: dict, reg: dict) -> dict:
     """What the edit page shows: {'lead', 'team', 'members', 'questions',
     'values', 'lead_email'}. Each input has a `name` (the form field) and a
     current value in `values`."""
-    from routes_forms import registration_schema, team_limits
+    from routes_forms import JERSEY_FIELD, registration_schema, sports_team_details, team_limits
     import services_team_confirm as confirm
     fields = [f for f in registration_schema(event_id, event).get('fields') or [] if isinstance(f, dict) and _fid(f)]
     by_id = {_fid(f): f for f in fields}
@@ -114,6 +119,14 @@ def build(db, event_id: str, event: dict, reg: dict) -> dict:
         'lead_phone': export._lead(reg, 'phone', phone_ids, profile),
     }
 
+    jersey_rules = {k: JERSEY_FIELD[k] for k in JERSEY_RULES}
+    lead_row = next((m for m in reg.get('members') or [] if isinstance(m, dict)
+                     and confirm.is_lead(reg, m)), {})
+    if sports_team_details(event)['jersey'] or str(lead_row.get('jersey') or '').strip():
+        lead.append(dict(jersey_rules, name='lead_jersey', key='jersey', label='Jersey number', type='number',
+                         required=False, targets=('lead_jersey',)))
+        values['lead_jersey'] = str(lead_row.get('jersey') or answers.get('lead_jersey') or '')
+
     team = None
     if team_limits(event)[1] > 1 or reg.get('team_code'):
         team = {'name': 'team_name', 'label': 'Team name', 'type': 'text', 'required': True}
@@ -128,8 +141,8 @@ def build(db, event_id: str, event: dict, reg: dict) -> dict:
             if key != 'name' and not asked and not str(m.get(key) or '').strip():
                 continue   # a part the event doesn't ask, and the member never gave
             name = f'm{i}_{key}'
-            parts.append({'name': name, 'key': key, 'label': label, 'type': ftype,
-                          'required': key == 'name' or bool((by_id.get(f'member_{i}_{key}') or {}).get('required'))})
+            parts.append(dict(jersey_rules if key == 'jersey' else {}, name=name, key=key, label=label, type=ftype,
+                              required=key == 'name' or bool((by_id.get(f'member_{i}_{key}') or {}).get('required'))))
             values[name] = str(m.get(key) or '')
         st = confirm.status(m) if confirming else None
         members.append({'n': i + 1, 'index': i, 'key': _member_key(m), 'email': _email(m.get('email')),
@@ -142,7 +155,7 @@ def build(db, event_id: str, event: dict, reg: dict) -> dict:
     for f in fields:
         fid = _fid(f)
         if (f.get('type') in export.LAYOUT_TYPES or fid in NOT_QUESTIONS or fid.startswith('member_')
-                or fid in usn_ids or fid in phone_ids):
+                or fid in usn_ids or fid in phone_ids or fid in SPORTS_TEAM_IDS):
             continue
         questions.append(dict(f, name='q_' + fid))
         value = answers.get(fid)
@@ -165,7 +178,7 @@ def apply(db, reg_id: str, event_id: str, event: dict, form, by: str, organiser:
     """Save the corrections a form sent. {'changed': [labels], 'errors':
     {input name: message}, 'values', 'page', 'gone': [members no longer on the
     team], 'certificates': whether any were already issued to this team}."""
-    from routes_forms import _field_errors
+    from routes_forms import _field_errors, jersey_number
     doc = db.collection('registrations').document(reg_id).get()
     reg = (doc.to_dict() or {}) if doc.exists else {}
     page = build(db, event_id, event, reg)
@@ -179,6 +192,8 @@ def apply(db, reg_id: str, event_id: str, event: dict, form, by: str, organiser:
         values[f['name']] = _submitted(form, f)
         if f['name'] == 'lead_usn':
             values[f['name']] = _norm(values[f['name']], upper=True)
+        if f.get('key') == 'jersey':
+            values[f['name']] = jersey_number(values[f['name']])
         if _norm(values[f['name']], f['name'] == 'lead_usn') != _norm(current.get(f['name']), f['name'] == 'lead_usn'):
             changed.append(f)
             pseudo.append(f)
@@ -196,6 +211,8 @@ def apply(db, reg_id: str, event_id: str, event: dict, form, by: str, organiser:
             if sent is None:
                 continue
             value = _norm(sent, part['key'] == 'usn')
+            if part['key'] == 'jersey':
+                value = jersey_number(value)
             values[part['name']] = value
             if value != _norm(current.get(part['name']), part['key'] == 'usn'):
                 member_changes.setdefault(key, {})[part['key']] = value
@@ -221,6 +238,7 @@ def apply(db, reg_id: str, event_id: str, event: dict, form, by: str, organiser:
         errors.setdefault('q_' + fid, msg)
     for fid, msg in _field_errors({'fields': [dict(p, id=p['name']) for p in pseudo]}, values):
         errors.setdefault(fid, msg)
+    _jersey_twice(page, values, {p['name'] for p in pseudo}, errors)
     out['errors'] = errors
     if errors or not changed:
         return out
@@ -298,6 +316,25 @@ def apply(db, reg_id: str, event_id: str, event: dict, form, by: str, organiser:
     except Exception:
         out['certificates'] = False
     return out
+
+
+def _jersey_twice(page: dict, values: dict, changed: set, errors: dict) -> None:
+    """Two players of a team with the same jersey number, one of them just
+    changed (UPG-405): the message goes beside the one changed."""
+    players = [('The lead', f['name']) for f in page['lead'] if f['key'] == 'jersey'] + [
+        (m['name'] or f"Member {m['n']}", p['name']) for m in page['members'] for p in m['parts']
+        if p['key'] == 'jersey']
+    seen: dict = {}
+    for who, name in players:
+        number = str(values.get(name) or '')
+        if not number:
+            continue
+        if number in seen and (name in changed or seen[number][1] in changed):
+            first, first_name = seen[number]
+            at = name if name in changed else first_name
+            errors.setdefault(at, f"{first if at == name else who} already has jersey number {number}: "
+                                  "each player needs their own.")
+        seen.setdefault(number, (who, name))
 
 
 def message(result: dict, organiser: bool) -> str:

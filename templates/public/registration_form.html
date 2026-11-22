@@ -184,6 +184,18 @@
     {% if field_errors.get(field.id) %}<div class="field-error" id="{{ field.id }}-error" role="alert">{{ field_errors[field.id] }}</div>{% endif %}
   </div>
 
+  {# ── A file: a sports team's logo (UPG-405) ── #}
+  {% elif field.type == 'file' %}
+  <div class="form-group wide" data-file-field="{{ field.id }}">
+    <label for="{{ field.id }}">{{ field.label }}{% if field.required %}<span class="req">*</span>{% endif %}</label>
+    {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
+    <input type="file" class="form-control" id="{{ field.id }}" name="{{ field.id }}"
+           {% if field.accept %}accept="{{ field.accept }}"{% endif %}
+           {% if field.required %}required{% endif %} {% if field_errors.get(field.id) %}aria-invalid="true" aria-describedby="{{ field.id }}-error"{% endif %}>
+    {% if values.get(field.id) %}<div class="help-text">Choose the file again: a form sent back doesn't keep it.</div>{% endif %}
+    {% if field_errors.get(field.id) %}<div class="field-error" id="{{ field.id }}-error" role="alert">{{ field_errors[field.id] }}</div>{% endif %}
+  </div>
+
   {# ── All other inputs (text, email, tel, number, date, url) ── #}
   {% else %}
   <div class="form-group">
@@ -276,7 +288,7 @@
         </div>
       {% endif %}
 
-      <form method="POST" action="/forms/submit/{{ event.id }}" id="reg-form" novalidate>
+      <form method="POST" action="/forms/submit/{{ event.id }}" id="reg-form" novalidate enctype="multipart/form-data">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="submission_id" value="{{ submission_id }}">
         {% if organiser %}<input type="hidden" name="add" value="team">{% endif %}
@@ -383,7 +395,7 @@
         {% set step.n = step.n + 1 %}
         <fieldset class="reg-section" data-section="team">
           <legend><span class="reg-step">{{ step.n }}</span> Team</legend>
-          <p class="section-hint">You are the team lead (member 1). Add each member's name and email so they get their own notices.</p>
+          <p class="section-hint">You are the team lead (member 1). Add each member's name and email so they get their own notices.{% if schema.fields|selectattr('id', 'equalto', 'lead_jersey')|list %} Every player gives their jersey number, the one on their shirt: it shows beside their name on the scoreboard.{% endif %}</p>
           <div class="reg-grid">
             {% for field in team_blocks.general %}{{ render_field(field) }}{% endfor %}
           </div>

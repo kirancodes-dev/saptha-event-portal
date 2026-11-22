@@ -149,3 +149,9 @@
 .live-board__mat, .live-board__shootout { text-align: center; font-weight: 600; margin: 6px 0 0; }
 .live-board__mat [data-dod] { color: #dc2626; }
 @media (max-width: 576px) { .pkl-calls__teams, .pkl-mat { grid-template-columns: 1fr; } }
+
+/* A player's jersey number before their name (UPG-405) */
+.jersey-no { display: inline-block; min-width: 2.2em; padding: 0 .35em; margin-right: .25em; border-radius: 4px;
+  background: var(--brand-navy, #1b2a4a); color: #fff; font-weight: 700; font-size: .85em; text-align: center;
+  font-variant-numeric: tabular-nums; }
+.live-scorer .live-board__logo { width: 48px; height: 48px; }

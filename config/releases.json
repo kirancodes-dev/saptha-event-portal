@@ -11,9 +11,10 @@
         "Kabaddi leagues can use PKL Season 12 points: 2 for a win, 0 for a loss, and no ties. A level match goes to a tie-breaker of 5 raids each, then a golden raid, scored on the scorer's phone or typed on the tournament page.",
         "PKL mode: the scorer taps how each raid ended and the portal works out the points, all outs, revivals, do-or-die raids, super tackles, time-outs and whose raid it is. The organiser can turn it off and score point by point.",
         "The big screen shows the college logo and a QR code; the audience scan it to follow the live scores on their phones. Shared links show the college logo.",
-        "Scores show the moment the scorer taps, and the scoreboard and big screen update every one to two seconds."
+        "Scores show the moment the scorer taps, and the scoreboard and big screen update every one to two seconds.",
+        "A sports team uploads its logo and gives every player's jersey number when it registers. The logo shows beside the team's name on the scoreboard, the big screen and the fixtures; the jersey number beside each player's name."
       ],
-      "items": ["UPG-396", "UPG-397", "UPG-402", "UPG-403"]
+      "items": ["UPG-396", "UPG-397", "UPG-402", "UPG-403", "UPG-405"]
     },
     {
       "version": "1.18",

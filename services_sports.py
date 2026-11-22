@@ -142,14 +142,18 @@ def change(db, event_id: str, fn) -> dict:
 
 
 def confirmed_teams(db, event_id: str) -> list:
-    """[{'id', 'name'}] for every registration that isn't cancelled, in registration order."""
+    """[{'id', 'name'}] for every registration that isn't cancelled, in registration order;
+    with 'logo' when the lead uploaded the team's logo at registration (UPG-405)."""
     teams = []
     regs = [(d.id, d.to_dict() or {}) for d in db.collection('registrations').where('event_id', '==', event_id).stream()]
     for rid, r in sorted(regs, key=lambda x: str(x[1].get('registered_at') or '')):
         if str(r.get('status') or '').strip().lower() in ('cancelled', 'refunded', 'waitlisted', 'pending payment'):
             continue
         name = r.get('team_name') if r.get('team_name') not in (None, '', 'Individual') else r.get('lead_name')
-        teams.append({'id': rid, 'name': name or rid})
+        team = {'id': rid, 'name': name or rid}
+        if r.get('team_logo'):
+            team['logo'] = r['team_logo']
+        teams.append(team)
     return teams
 
 
@@ -1055,9 +1059,11 @@ LOGO_SIZE = 256
 LOGO_MAX_BYTES = 2 * 1024 * 1024
 
 
-def logo_webp(data: bytes) -> bytes:
+def logo_webp(data: bytes, min_side: int = 0) -> bytes:
     """Check an uploaded logo and return it as a square WebP, transparency kept,
-    the whole logo shown (not cropped), metadata dropped."""
+    the whole logo shown (not cropped), metadata dropped. `min_side`: a logo
+    smaller than this on its shorter side is refused as too small to show
+    clearly (the registration form's 200, UPG-405)."""
     import io
     from PIL import Image, ImageOps, UnidentifiedImageError
     if len(data) > LOGO_MAX_BYTES:
@@ -1073,6 +1079,9 @@ def logo_webp(data: bytes) -> bytes:
     with Image.open(io.BytesIO(data)) as img:
         if img.width > 6000 or img.height > 6000:
             raise TournamentError("That logo is too large (at most 6000 pixels on a side).")
+        if min_side and min(img.width, img.height) < min_side:
+            raise TournamentError(f"That logo is too small to show clearly ({img.width} × {img.height} pixels): "
+                                  f"use one at least {min_side} pixels on each side.")
         img = ImageOps.exif_transpose(img).convert('RGBA')
         img = ImageOps.contain(img, (LOGO_SIZE, LOGO_SIZE), Image.Resampling.LANCZOS)
         canvas = Image.new('RGBA', (LOGO_SIZE, LOGO_SIZE), (0, 0, 0, 0))
@@ -1080,6 +1089,18 @@ def logo_webp(data: bytes) -> bytes:
         out = io.BytesIO()
         canvas.save(out, 'WEBP', quality=88)
         return out.getvalue()
+
+
+def store_logo(event_id: str, data: bytes, min_side: int = 0) -> str:
+    """Check, convert and save a team's logo; its address (UPG-386, UPG-405).
+    Raises TournamentError when the file isn't a usable logo or can't be saved."""
+    import secrets
+    from utils_storage import upload_file
+    webp = logo_webp(data, min_side)
+    url = upload_file(webp, f'team-logos/{event_id}-{secrets.token_hex(6)}.webp', 'image/webp')
+    if not url:
+        raise TournamentError("The logo couldn't be saved. Please try again.")
+    return url[url.index('/static/uploads/'):] if '/static/uploads/' in url else url
 
 
 def _loss_points(pts: dict, margin: int) -> int:

@@ -59,7 +59,7 @@
         <thead><tr><th>#</th><th>Player</th><th>{{ 'Raid' if key == 'raid' else 'Tackle' }} pts</th><th>Matches</th><th>{{ badge }}</th></tr></thead>
         <tbody>
           {% for r in rows %}
-          <tr><td>{{ loop.index }}</td><td><strong>{{ r.player }}</strong><div class="small text-muted">{{ r.team }}</div></td><td><strong>{{ r[key] }}</strong></td><td>{{ r.matches }}</td><td>{{ r[badge_key] }}</td></tr>
+          <tr><td>{{ loop.index }}</td><td>{% if r.jersey %}<span class="jersey-no" data-jersey>#{{ r.jersey }}</span> {% endif %}<strong>{{ r.player }}</strong><div class="small text-muted">{{ r.team }}</div></td><td><strong>{{ r[key] }}</strong></td><td>{{ r.matches }}</td><td>{{ r[badge_key] }}</td></tr>
           {% endfor %}
         </tbody>
       </table></div>
@@ -81,7 +81,7 @@
       <thead><tr><th>Player</th><th>Raid</th><th>Tackle</th><th>Total</th><th>Matches</th><th>Super 10s</th><th>High 5s</th></tr></thead>
       <tbody>
         {% for r in rows %}
-        <tr><td><strong>{{ r.player }}</strong></td><td>{{ r.raid }}</td><td>{{ r.tackle }}</td><td><strong>{{ r.total }}</strong></td><td>{{ r.matches }}</td><td>{{ r.super_10 }}</td><td>{{ r.high_5 }}</td></tr>
+        <tr><td>{% if r.jersey %}<span class="jersey-no" data-jersey>#{{ r.jersey }}</span> {% endif %}<strong>{{ r.player }}</strong></td><td>{{ r.raid }}</td><td>{{ r.tackle }}</td><td><strong>{{ r.total }}</strong></td><td>{{ r.matches }}</td><td>{{ r.super_10 }}</td><td>{{ r.high_5 }}</td></tr>
         {% endfor %}
       </tbody>
     </table></div>

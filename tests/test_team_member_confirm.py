@@ -56,13 +56,15 @@ def team(real_app, monkeypatch, tmp_path):
                                                                 **fields))
         return event_id
 
-    def register(event_id, mates=(), lead=None, team_name='Byte Force'):
+    def register(event_id, mates=(), lead=None, team_name='Byte Force', extra=None):
+        # `extra`: more of the form, e.g. a sports team's logo and jersey numbers (UPG-405)
         lead = lead or f"{_unique('lead')}@test.edu"
         form = {'privacy_consent': 'yes', 'full_name': 'Lena Lead', 'email': lead, 'phone': '9876543210',
                 'usn': '1SN22CS200', 'team_name': team_name}
         for i, email in enumerate(mates, start=1):
             form.update({f'member_{i}_name': f'Mate {i}', f'member_{i}_email': email,
                          f'member_{i}_usn': f'1SN22CS20{i}'})
+        form.update(extra(len(mates)) if callable(extra) else extra or {})
         resp = flask_app.test_client().post(f'/forms/submit/{event_id}', data=form)
         assert resp.status_code == 302, resp.data[:300]
         [reg_id] = [d.to_dict().get('reg_id') or d.id for d in db.collection('registrations')

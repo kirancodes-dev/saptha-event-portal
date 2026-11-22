@@ -1,6 +1,6 @@
 {#- The scorer's PKL-mode raid panel (UPG-397) and the tie-breaker (UPG-396).
     Rendered with the page and again after every tap. Needs `state`, `squads`
-    and `live` (services_live_match). -#}
+    and `live` (services_live_match); `jerseys` ({side: {name: number}}, UPG-405) optional. -#}
 {% set mat = state.mat %}
 {% set sh = state.shootout %}
 {% set playing = state.phase in ('first_half', 'second_half') %}
@@ -74,7 +74,7 @@
     <label class="pkl-field">Raider (optional)
       <select class="form-select form-select-sm" data-pkl-raider>
         <option value="">Not recorded</option>
-        {% for p in squads[a] %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
+        {% for p in squads[a] %}{% set j = (jerseys[a] if jerseys is defined else {}).get(p) %}<option value="{{ p }}">{% if j %}#{{ j }} {% endif %}{{ p }}</option>{% endfor %}
       </select>
     </label>
     {% endif %}
@@ -91,7 +91,7 @@
   <label class="pkl-field">Tackled by (optional, with Tackled)
     <select class="form-select form-select-sm" data-pkl-tackler>
       <option value="">Not recorded</option>
-      {% for p in squads[d] %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
+      {% for p in squads[d] %}{% set j = (jerseys[d] if jerseys is defined else {}).get(p) %}<option value="{{ p }}">{% if j %}#{{ j }} {% endif %}{{ p }}</option>{% endfor %}
     </select>
   </label>
   {% endif %}

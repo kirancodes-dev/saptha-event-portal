@@ -5,9 +5,19 @@ confirm, and no account is made for them; the registrations page says why. The
 organiser can still turn member confirmation on, and other team events still
 ask each member, as before.
 """
+import pytest
+
+from tests.test_sports_team_details import sports_form
 from tests.test_team_member_confirm import _flashes, team  # noqa: F401
 
 SPORTS = {'category': 'Sports', 'event_type': 'sports_tournament', 'details': {'sport': 'Kabaddi'}}
+
+
+@pytest.fixture(autouse=True)
+def _logos_stored(monkeypatch):
+    """A sports team uploads its logo when it registers (UPG-405): kept out of static/."""
+    import utils_storage
+    monkeypatch.setattr(utils_storage, 'upload_file', lambda data, path, kind: f'https://cdn.example/{path}')
 
 
 def test_a_sports_team_is_confirmed_by_the_lead_alone(team):  # noqa: F811
@@ -15,7 +25,7 @@ def test_a_sports_team_is_confirmed_by_the_lead_alone(team):  # noqa: F811
     event_id = t['event'](**SPORTS)
     mates = t['mates'](3)
     t['sent'].clear()
-    lead, reg_id = t['register'](event_id, mates, team_name='Garuda Sena')
+    lead, reg_id = t['register'](event_id, mates, team_name='Garuda Sena', extra=sports_form)
     assert [m['to'] for m in t['sent']] == [lead]                                  # the lead's ticket, nothing else
     assert t['sent'][0]['subject'].startswith('Registration Confirmed')
     reg = t['reg'](reg_id)
@@ -35,7 +45,7 @@ def test_the_organiser_can_still_ask_a_sports_teams_members(team):  # noqa: F811
     assert resp.status_code == 302 and 'get a link to confirm' in _flashes(t['owner'])
     mates = t['mates']()
     t['sent'].clear()
-    lead, _ = t['register'](event_id, mates)
+    lead, _ = t['register'](event_id, mates, extra=sports_form)
     assert [m['to'] for m in t['sent']] == [lead] + mates
 
 

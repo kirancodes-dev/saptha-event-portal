@@ -477,10 +477,7 @@ def schedule_upload(event_id):
 @sports_bp.route('/<event_id>/team/<team_id>/logo', methods=['POST'])
 @login_required
 def team_logo(event_id, team_id):
-    import secrets
-
     import services_sports
-    from utils_storage import upload_file
     if not _allowed(_event(event_id), 'edit_event'):
         abort(403)
     url = ''
@@ -490,15 +487,10 @@ def team_logo(event_id, team_id):
             flash("Choose a logo to upload.", "warning")
             return _back(event_id, 'teams')
         try:
-            data = services_sports.logo_webp(upload.read(services_sports.LOGO_MAX_BYTES + 1))
+            url = services_sports.store_logo(event_id, upload.read(services_sports.LOGO_MAX_BYTES + 1))
         except services_sports.TournamentError as exc:
             flash(str(exc), "warning")
             return _back(event_id, 'teams')
-        url = upload_file(data, f'team-logos/{event_id}-{secrets.token_hex(6)}.webp', 'image/webp')
-        if not url:
-            flash("The logo couldn't be saved. Please try again.", "warning")
-            return _back(event_id, 'teams')
-        url = url[url.index('/static/uploads/'):] if '/static/uploads/' in url else url
     _save(event_id, lambda cur, _e: services_sports.set_logo(cur, team_id, url),
           "Logo saved." if url else "Logo removed.", 'teams', ("TEAM_LOGO", f"{'set' if url else 'removed'} the logo of {team_id}"))
     return _back(event_id, 'teams')
@@ -543,6 +535,7 @@ def scorer(event_id, match_id):
                            groups=live.button_groups(t),
                            entries=live.entries(doc, names),
                            squads={'home': live.players(full, doc['home']), 'away': live.players(full, doc['away'])},
+                           jerseys=_side_jerseys(event_id, doc), logos=services_sports.logos(t),
                            knockout=services_sports.knockout_match(t, live._match(t, match_id)),
                            stage=services_sports.stage_name(live._match(t, match_id)),
                            max_points=live.MAX_PICKED_POINTS, tiebreak=services_sports.tiebreak_on(t), live=live)
@@ -615,7 +608,14 @@ def _scorer_panel(event, match_id, doc, st, names):
     full = live.with_squads(db, event['id'], event, match_id)
     return render_template('spoc/_pkl_panel.html', event=event, doc=doc, state=st, names=names,
                            squads={'home': live.players(full, doc['home']), 'away': live.players(full, doc['away'])},
-                           live=live)
+                           jerseys=_side_jerseys(event['id'], doc), live=live)
+
+
+def _side_jerseys(event_id, doc):
+    """{'home': {name: jersey number}, 'away': …} for the scorer's player lists (UPG-405)."""
+    import services_live_match as live
+    numbers = live.jerseys(db, event_id, [doc.get('home'), doc.get('away')])
+    return {side: numbers.get(doc.get(side)) or {} for side in ('home', 'away')}
 
 
 @sports_bp.route('/live/<event_id>/<match_id>')
@@ -634,7 +634,9 @@ def live_board(event_id, match_id):
     return render_template('public/live_match.html', event=event, match=m, names=names,
                            logos=services_sports.logos(t),
                            stage=services_sports.stage_name(m), state=live.public_state(db, event_id, match_id),
-                           players=live.player_stats([doc], names) if doc else [])
+                           players=live.with_jerseys(live.player_stats([doc], names),
+                                                     live.jerseys(db, event_id, [m.get('home'), m.get('away')]))
+                           if doc else [])
 
 
 @sports_bp.route('/live/<event_id>/<match_id>/state')
@@ -776,6 +778,7 @@ def _leaders(event_id, t):
         return {'raiders': [], 'defenders': [], 'team_players': []}
     try:
         stats = live.event_stats(db, event_id, services_sports.names(t))
+        stats = live.with_jerseys(stats, live.jerseys(db, event_id, [x['id'] for x in t.get('teams') or []]))
     except Exception:
         stats = []
     return {'raiders': live.top(stats, 'raid'), 'defenders': live.top(stats, 'tackle'),

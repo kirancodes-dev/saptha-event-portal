@@ -96,7 +96,7 @@
       <table class="tv-table">
         <tbody>
           {% for r in rows %}
-          <tr><td>{{ loop.index }}</td><td class="tv-table__team">{{ r.player }} <small>{{ r.team }}</small></td><td><strong>{{ r[key] }}</strong></td></tr>
+          <tr><td>{{ loop.index }}</td><td class="tv-table__team">{% if r.jersey %}<span class="jersey-no" data-jersey>#{{ r.jersey }}</span> {% endif %}{{ r.player }} <small>{{ r.team }}</small></td><td><strong>{{ r[key] }}</strong></td></tr>
           {% endfor %}
         </tbody>
       </table>

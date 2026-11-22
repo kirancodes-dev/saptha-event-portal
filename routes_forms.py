@@ -198,10 +198,35 @@ def team_limits(event: dict) -> tuple:
     return max(lo, 1), max(hi, lo, 1)
 
 
+JERSEY_MAX = 99
+JERSEY_FIELD = {'type': 'number', 'min': 0, 'max': JERSEY_MAX, 'pattern': r'^\d{1,2}$',
+                'pattern_error': f"A jersey number is a whole number from 0 to {JERSEY_MAX}."}
+LOGO_MIN_SIDE = 200   # pixels: a logo smaller than this shows blurred on the big screen
+
+
+def sports_team_details(event: dict) -> dict:
+    """What a sports team gives when it registers (UPG-405): {'logo': the
+    team's logo, 'jersey': each player's jersey number}. Every sports team
+    event asks the logo; e-sports asks no jersey numbers. Other events: neither."""
+    if team_limits(event)[1] <= 1:
+        return {'logo': False, 'jersey': False}
+    from services_team_confirm import is_sports
+    if not is_sports(event):
+        return {'logo': False, 'jersey': False}
+    return {'logo': True, 'jersey': str(event.get('event_type') or '') != 'esports'}
+
+
+def jersey_number(value) -> str:
+    """'07' -> '7'; '' for nothing given. Not checked here (JERSEY_FIELD is)."""
+    text = str(value or '').strip()
+    return str(int(text)) if text.isdigit() else text
+
+
 def team_fields(event: dict, existing_ids=(), member_fields=None) -> list:
     """The team name and one name / email row per possible member, required
     up to the team's minimum, with the USN and phone as the SPOC chose
-    (`member_settings`; USN optional and no phone by default, UPG-212)."""
+    (`member_settings`; USN optional and no phone by default, UPG-212). A
+    sports team also gives its logo and each player's jersey number (UPG-405)."""
     lo, hi = team_limits(event)
     if hi <= 1:
         return []
@@ -209,18 +234,56 @@ def team_fields(event: dict, existing_ids=(), member_fields=None) -> list:
     if 'team_name' not in existing_ids:
         fields.append({'id': 'team_name', 'type': 'text', 'label': 'Team Name', 'placeholder': 'e.g. ByteCraft',
                        'required': True, 'options': [], 'help_text': ''})
+    extra = sports_team_details(event)
+    if extra['logo'] and 'team_logo' not in existing_ids:
+        fields.append({'id': 'team_logo', 'type': 'file', 'label': 'Team logo', 'required': True, 'options': [],
+                       'accept': 'image/png,image/jpeg,image/webp', 'placeholder': '',
+                       'help_text': f"A clear logo: PNG, JPG or WebP, up to 2 MB, at least {LOGO_MIN_SIDE} × "
+                                    f"{LOGO_MIN_SIDE} pixels. It shows beside your team's name on the scoreboard, "
+                                    "the big screen, the fixtures and the tables."})
+    if extra['jersey'] and 'lead_jersey' not in existing_ids:
+        fields.append(dict(JERSEY_FIELD, id='lead_jersey', label='Your jersey number', required=True, options=[],
+                           placeholder='e.g. 7', help_text=''))
     fields.append({'id': 'team_members', 'type': 'heading', 'options': [],
                    'label': f'Team members: {lo}–{hi} people including you'})
     settings = member_settings({'member_fields': member_fields})
     asked = [('name', 'Name', 'text', 'required'), ('email', 'Email', 'email', 'required')] + [
         (key, label, ftype, settings[key]) for key, label, ftype in MEMBER_DETAILS if settings[key] != 'off']
+    if extra['jersey']:
+        asked.append(('jersey', 'Jersey number', 'number', 'required'))
     for i in range(1, hi):
         for key, label, ftype, setting in asked:
             fid = f'member_{i}_{key}'
             if fid not in existing_ids:
-                fields.append({'id': fid, 'type': ftype, 'label': f'Member {i + 1} {label}', 'placeholder': '',
-                               'required': i < lo and setting == 'required', 'options': [], 'help_text': ''})
+                field = {'id': fid, 'type': ftype, 'label': f'Member {i + 1} {label}', 'placeholder': '',
+                         'required': i < lo and setting == 'required', 'options': [], 'help_text': ''}
+                fields.append(dict(JERSEY_FIELD, **field) if key == 'jersey' else field)
     return fields
+
+
+def logo_optional(schema: dict) -> dict:
+    """The form as the hosting SPOC fills it adding a team by hand (UPG-244):
+    the team's logo can be added later on the tournament page (UPG-405)."""
+    schema['fields'] = [dict(f, required=False) if f.get('id') == 'team_logo' else f for f in schema['fields']]
+    return schema
+
+
+def jersey_problem(event: dict, lead_jersey, members: list) -> str:
+    """'' when a sports team's every player has a jersey number and no two
+    are the same, else what to fix (UPG-405); always '' for other events."""
+    if not sports_team_details(event)['jersey']:
+        return ''
+    players = [('You', jersey_number(lead_jersey))] + [
+        (str(m.get('name') or 'A member'), jersey_number(m.get('jersey'))) for m in members]
+    for who, number in players:
+        if not number:
+            return "Give your own jersey number." if who == 'You' else f"Give {who}'s jersey number."
+    seen: dict = {}
+    for who, number in players:
+        if number in seen:
+            return f"{seen[number]} and {who} both have jersey number {number}: each player needs their own."
+        seen[number] = who
+    return ''
 
 
 # The questions that say who someone is; they open the form (UPG-150)
@@ -247,7 +310,7 @@ def form_sections(fields, chosen: bool = False) -> dict:
             pending.append(f)
             continue
         fid = str(f.get('id') or '')
-        if fid == 'team_name' or fid.startswith('member_'):
+        if fid in ('team_name', 'team_logo', 'lead_jersey') or fid.startswith('member_'):
             key = 'team'
         elif fid in IDENTITY_FIELD_IDS and not (chosen and (pending or not leading)):
             key = 'participant'
@@ -321,9 +384,13 @@ def submitted_members(form, lead_email: str, hi: int):
             return [], f"{email} is listed twice; each team member needs their own email."
         if email:
             seen.add(email)
-        members.append({'role': 'Member', 'name': str(form.get(f'member_{i}_name')).strip(), 'email': email,
-                        'usn': str(form.get(f'member_{i}_usn') or '').strip().upper(),
-                        'phone': str(form.get(f'member_{i}_phone') or '').strip()})
+        member = {'role': 'Member', 'name': str(form.get(f'member_{i}_name')).strip(), 'email': email,
+                  'usn': str(form.get(f'member_{i}_usn') or '').strip().upper(),
+                  'phone': str(form.get(f'member_{i}_phone') or '').strip()}
+        jersey = jersey_number(form.get(f'member_{i}_jersey'))
+        if jersey:   # a sports team's player (UPG-405)
+            member['jersey'] = jersey
+        members.append(member)
     return members, ''
 
 
@@ -727,6 +794,8 @@ def registration_page(event_id):
 
     # The event's form, plus team fields from its team limits (UPG-08)
     schema = registration_schema(event_id, event)
+    if organiser:
+        schema = logo_optional(schema)   # the SPOC adds it later on the tournament page (UPG-405)
 
     # A form sent back with errors keeps what was typed, with each message
     # beside its field (UPG-26)
@@ -819,6 +888,8 @@ def submit_form(event_id):
         form_url = f'/forms/register/{event_id}' + (f'?add={ADD_TEAM}' if organiser else '')
 
         schema = registration_schema(event_id, event_data)
+        if organiser:
+            schema = logo_optional(schema)
 
         # Collect all answers — values are str for most fields, list[str] for checkbox_group
         answers: dict = {}
@@ -828,6 +899,9 @@ def submit_form(event_id):
                 continue
             if field.get('type') == 'checkbox_group':
                 answers[fid] = request.form.getlist(fid)
+            elif field.get('type') == 'file':   # the team's logo (UPG-405): its name until it's saved
+                upload = request.files.get(fid)
+                answers[fid] = str(upload.filename or '') if upload else ''
             else:
                 answers[fid] = request.form.get(fid, '').strip()
 
@@ -918,6 +992,12 @@ def submit_form(event_id):
         if team_error:
             flash(team_error, 'danger')
             return redirect(form_url)
+        # A sports team: every player's jersey number, none twice (UPG-405); the form keeps what was typed
+        jersey_error = jersey_problem(event_data, answers.get('lead_jersey'), team_members)
+        if jersey_error:
+            flash(jersey_error, 'danger')
+            session['form_state'] = {'event_id': event_id, 'values': answers, 'errors': {}}
+            return redirect(form_url)
         if organiser and _registration_fee_of(event_data, ptype, ticket_id, 1 + len(team_members)) > 0:
             flash("This event has a fee, so a team can't be added by hand: the team registers and pays online.",
                   'warning')
@@ -955,6 +1035,20 @@ def submit_form(event_id):
                                      'errors': {'privacy_consent': "Tick this box to register."}}
             return redirect(form_url)
 
+        # A sports team's logo (UPG-405): checked and saved before anything else is
+        team_logo = ''
+        upload = request.files.get('team_logo') if sports_team_details(event_data)['logo'] else None
+        if upload and upload.filename:
+            import services_sports
+            try:
+                team_logo = services_sports.store_logo(
+                    event_id, upload.read(services_sports.LOGO_MAX_BYTES + 1), LOGO_MIN_SIDE)
+            except services_sports.TournamentError as exc:
+                flash(str(exc), 'danger')
+                session['form_state'] = {'event_id': event_id, 'values': answers, 'errors': {'team_logo': str(exc)}}
+                return redirect(form_url)
+            answers['team_logo'] = team_logo
+
         # One registration per form, however many times it's sent (UPG-26)
         from services_idempotency import claim_submission, finish_submission, submission_result
         sub_key = (request.form.get('submission_id') or '').strip()[:64]
@@ -991,6 +1085,10 @@ def submit_form(event_id):
         # Members: the lead, then the team's other members (UPG-08)
         members = [{'role': 'Lead', 'name': full_name,
                     'email': email, 'usn': usn, 'phone': phone}] + (team_members if team_max > 1 else [])
+        lead_jersey = jersey_number(answers.get('lead_jersey'))
+        if lead_jersey and team_max > 1:   # a sports team's lead plays too (UPG-405)
+            members[0]['jersey'] = lead_jersey
+            answers['lead_jersey'] = lead_jersey
 
         # Build registration
         reg_id   = generate_reg_id()
@@ -1018,6 +1116,8 @@ def submit_form(event_id):
         }
         if ticket is not None:   # UPG-155
             reg_data.update(ticket_type_id=ticket['id'], ticket_type_name=ticket['name'])
+        if team_logo:   # shown wherever the team is (UPG-405)
+            reg_data['team_logo'] = team_logo
         import services_share
         source = services_share.for_submission(session, event_id, event_data, request.form)
         if source:   # the share link it came from (UPG-162); carried through payment and the waitlist

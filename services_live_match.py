@@ -773,28 +773,45 @@ def players(event: dict, team_id: str) -> list:
     return list((event.get('_squads') or {}).get(team_id) or [])
 
 
+def _squad(db, event_id: str, tid: str) -> tuple:
+    """(names, {name: jersey number}) of a team: the lead, then the members.
+    Kept a minute, so a tap doesn't read the registrations again (UPG-403)."""
+    key = ('squad', event_id, tid)
+    hit = _cache.get(key)
+    if hit and hit[0] > _now():
+        return hit[1]
+    snap = db.collection('registrations').document(tid).get()
+    reg = (snap.to_dict() or {}) if snap.exists else {}
+    rows = [{'name': reg.get('lead_name'), 'jersey': reg.get('lead_jersey')}] + [
+        m for m in reg.get('members') or [] if isinstance(m, dict)]
+    names, numbers = [], {}
+    for row in rows:
+        name = ' '.join(str(row.get('name') or '').split())
+        if not name:
+            continue
+        if name not in names:
+            names.append(name)
+        number = str(row.get('jersey') or '').strip()
+        if number and not numbers.get(name):   # the lead's own row has it (UPG-405)
+            numbers[name] = number
+    value = (tuple(names), dict(numbers))
+    _cache[key] = (_now() + SQUAD_SECONDS, value)
+    return value
+
+
 def squads(db, event_id: str, team_ids) -> dict:
-    """Team id → its players' names: the lead, then the members. Kept a minute,
-    so a tap doesn't read the registrations again (UPG-403)."""
-    out = {}
-    for tid in team_ids:
-        if not tid:
-            continue
-        key = ('squad', event_id, tid)
-        hit = _cache.get(key)
-        if hit and hit[0] > _now():
-            out[tid] = list(hit[1])
-            continue
-        snap = db.collection('registrations').document(tid).get()
-        reg = (snap.to_dict() or {}) if snap.exists else {}
-        names = []
-        for name in [reg.get('lead_name')] + [m.get('name') for m in reg.get('members') or [] if isinstance(m, dict)]:
-            name = ' '.join(str(name or '').split())
-            if name and name not in names:
-                names.append(name)
-        out[tid] = names
-        _cache[key] = (_now() + SQUAD_SECONDS, list(names))
-    return out
+    """Team id → its players' names: the lead, then the members."""
+    return {tid: list(_squad(db, event_id, tid)[0]) for tid in team_ids if tid}
+
+
+def jerseys(db, event_id: str, team_ids) -> dict:
+    """Team id → {player's name: jersey number} (UPG-405), from the same cache as `squads`."""
+    return {tid: dict(_squad(db, event_id, tid)[1]) for tid in team_ids if tid}
+
+
+def with_jerseys(rows: list, numbers: dict) -> list:
+    """Player-stat rows (player_stats) with each player's jersey number, '' when none."""
+    return [dict(r, jersey=(numbers.get(r.get('team_id')) or {}).get(r.get('player'), '')) for r in rows]
 
 
 def with_squads(db, event_id: str, event: dict, match_id: str) -> dict:

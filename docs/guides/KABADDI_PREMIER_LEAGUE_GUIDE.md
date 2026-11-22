@@ -29,7 +29,12 @@ because every tap is saved in order, but one scorer avoids confusion.
 ## 2. Get the 8 teams registered
 
 - **Real event:** each captain registers the team on the event page with the
-  team name and the members' names. The members' names fill the
+  team name, a clear **team logo** (PNG, JPG or WebP, up to 2 MB, at least
+  200 × 200 pixels) and every player's name and **jersey number**, their own
+  included (0 to 99, no two the same). The logo shows beside the team's name
+  on the scoreboard, the big screen, the fixtures and the tables; the jersey
+  number shows beside each player's name in the scorer's lists and the
+  top raiders and defenders. The members' names fill the
   "Who scored" list during live scoring, which gives you top raiders and top
   defenders. The team is confirmed as soon as the captain registers; the
   members don't have to confirm anything and get no email. To ask members to
@@ -110,7 +115,15 @@ picture (PNG, JPG or WebP, up to 2 MB). The portal makes it a square and
 keeps the whole logo. Logos appear in the tables, the fixtures, the
 scoreboard and the big screen. The eight logos from the fixture PDF are in
 the `kpl-team-logos` folder in Downloads, named A1 Garuda Sena … B4
-Gandaberunda Warriors.
+Gandaberunda Warriors. A logo the captain uploaded when registering is
+already there; one you add here replaces it.
+
+**Teams that registered before the logo and jersey numbers were asked.**
+Their players have no jersey number yet. Coordinator → **Registrations** →
+the team → **Edit**: each player, and the captain, has a **Jersey number**
+box. Save, and the numbers show on the scorer's phone and the boards within
+a minute. Give these teams
+their logo with **Add logo** above.
 
 **The fixture sheet: who plays each match, and when (Excel or CSV):**
 

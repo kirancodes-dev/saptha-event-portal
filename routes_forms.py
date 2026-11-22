@@ -201,7 +201,19 @@ def team_limits(event: dict) -> tuple:
 JERSEY_MAX = 99
 JERSEY_FIELD = {'type': 'number', 'min': 0, 'max': JERSEY_MAX, 'pattern': r'^\d{1,2}$',
                 'pattern_error': f"A jersey number is a whole number from 0 to {JERSEY_MAX}."}
+DOB_FIELD = {'type': 'date', 'birth_date': True}   # checked by birth_date_problem (UPG-423)
 LOGO_MIN_SIDE = 200   # pixels: a logo smaller than this shows blurred on the big screen
+
+
+# A player's date of birth and position (UPG-423): a kabaddi player raids,
+# defends or does both; no player is younger than this
+PLAYER_POSITIONS = ('Raider', 'Defender', 'All-rounder')
+MIN_PLAYER_AGE = 10
+
+
+def _kabaddi_event(event: dict) -> bool:
+    details, t = event.get('details') or {}, event.get('tournament') or {}
+    return any('kabaddi' in str(x or '').lower() for x in (details.get('sport'), t.get('sport'), event.get('title')))
 
 
 def sports_team_details(event: dict) -> dict:
@@ -214,6 +226,42 @@ def sports_team_details(event: dict) -> dict:
     if not is_sports(event):
         return {'logo': False, 'jersey': False}
     return {'logo': True, 'jersey': str(event.get('event_type') or '') != 'esports'}
+
+
+def player_details(event: dict) -> dict:
+    """What else a sports team's player gives (UPG-423): {'dob': the date of
+    birth, 'positions': the positions to pick from}. The players of a sports
+    team that wears jerseys (not e-sports) give a date of birth; positions
+    are kabaddi's. Both optional."""
+    players = sports_team_details(event)['jersey']
+    return {'dob': players, 'positions': PLAYER_POSITIONS if players and _kabaddi_event(event) else ()}
+
+
+def age_on(dob, today=None):
+    """Whole years from an ISO date of birth to today, or None for no date."""
+    try:
+        born = datetime.date.fromisoformat(str(dob or '').strip()[:10])
+    except ValueError:
+        return None
+    today = today or datetime.date.today()
+    return today.year - born.year - ((today.month, today.day) < (born.month, born.day))
+
+
+def birth_date_problem(value, today=None) -> str:
+    """'' for no date or a fair one, else what's wrong (UPG-423)."""
+    text = str(value or '').strip()
+    if not text:
+        return ''
+    try:
+        born = datetime.date.fromisoformat(text)
+    except ValueError:
+        return "A date of birth is a date like 2005-08-14."
+    today = today or datetime.date.today()
+    if born > today:
+        return "A date of birth can't be in the future."
+    if age_on(text, today) < MIN_PLAYER_AGE:
+        return f"A player is at least {MIN_PLAYER_AGE} years old: check the date of birth."
+    return ''
 
 
 def jersey_number(value) -> str:
@@ -234,7 +282,7 @@ def team_fields(event: dict, existing_ids=(), member_fields=None) -> list:
     if 'team_name' not in existing_ids:
         fields.append({'id': 'team_name', 'type': 'text', 'label': 'Team Name', 'placeholder': 'e.g. ByteCraft',
                        'required': True, 'options': [], 'help_text': ''})
-    extra = sports_team_details(event)
+    extra = dict(sports_team_details(event), **player_details(event))
     if extra['logo'] and 'team_logo' not in existing_ids:
         fields.append({'id': 'team_logo', 'type': 'file', 'label': 'Team logo', 'required': True, 'options': [],
                        'accept': 'image/png,image/jpeg,image/webp', 'placeholder': '',
@@ -244,6 +292,12 @@ def team_fields(event: dict, existing_ids=(), member_fields=None) -> list:
     if extra['jersey'] and 'lead_jersey' not in existing_ids:
         fields.append(dict(JERSEY_FIELD, id='lead_jersey', label='Your jersey number', required=True, options=[],
                            placeholder='e.g. 7', help_text=''))
+    if extra['dob'] and 'lead_dob' not in existing_ids:
+        fields.append(dict(DOB_FIELD, id='lead_dob', label='Your date of birth', required=False, options=[],
+                           placeholder='', help_text='Optional. Your player profile shows your age, never the date.'))
+    if extra['positions'] and 'lead_position' not in existing_ids:
+        fields.append({'id': 'lead_position', 'type': 'select', 'label': 'Your position', 'required': False,
+                       'options': list(extra['positions']), 'placeholder': 'Optional', 'help_text': ''})
     fields.append({'id': 'team_members', 'type': 'heading', 'options': [],
                    'label': f'Team members: {lo}–{hi} people including you'})
     settings = member_settings({'member_fields': member_fields})
@@ -251,13 +305,20 @@ def team_fields(event: dict, existing_ids=(), member_fields=None) -> list:
         (key, label, ftype, settings[key]) for key, label, ftype in MEMBER_DETAILS if settings[key] != 'off']
     if extra['jersey']:
         asked.append(('jersey', 'Jersey number', 'number', 'required'))
+    if extra['dob']:
+        asked.append(('dob', 'Date of birth', 'date', 'optional'))
+    if extra['positions']:
+        asked.append(('position', 'Position', 'select', 'optional'))
     for i in range(1, hi):
         for key, label, ftype, setting in asked:
             fid = f'member_{i}_{key}'
             if fid not in existing_ids:
                 field = {'id': fid, 'type': ftype, 'label': f'Member {i + 1} {label}', 'placeholder': '',
                          'required': i < lo and setting == 'required', 'options': [], 'help_text': ''}
-                fields.append(dict(JERSEY_FIELD, **field) if key == 'jersey' else field)
+                if key == 'position':
+                    field.update(options=list(extra['positions']), placeholder='Optional')
+                fields.append(dict(JERSEY_FIELD, **field) if key == 'jersey' else
+                              dict(DOB_FIELD, **field) if key == 'dob' else field)
     return fields
 
 
@@ -310,7 +371,7 @@ def form_sections(fields, chosen: bool = False) -> dict:
             pending.append(f)
             continue
         fid = str(f.get('id') or '')
-        if fid in ('team_name', 'team_logo', 'lead_jersey') or fid.startswith('member_'):
+        if fid in ('team_name', 'team_logo', 'lead_jersey', 'lead_dob', 'lead_position') or fid.startswith('member_'):
             key = 'team'
         elif fid in IDENTITY_FIELD_IDS and not (chosen and (pending or not leading)):
             key = 'participant'
@@ -390,6 +451,10 @@ def submitted_members(form, lead_email: str, hi: int):
         jersey = jersey_number(form.get(f'member_{i}_jersey'))
         if jersey:   # a sports team's player (UPG-405)
             member['jersey'] = jersey
+        for key in ('dob', 'position'):   # a sports team's player (UPG-423)
+            value = str(form.get(f'member_{i}_{key}') or '').strip()
+            if value:
+                member[key] = value
         members.append(member)
     return members, ''
 
@@ -471,6 +536,12 @@ def _field_errors(schema: dict, form_data: dict) -> list:
             chosen = value if isinstance(value, list) else [value]
             if any(str(v) not in options for v in chosen):
                 errors.append(f"Choose from the options given for '{label}'.")
+                continue
+
+        if field.get('birth_date') and value:   # a player's date of birth (UPG-423)
+            problem = birth_date_problem(value)
+            if problem:
+                errors.append(problem)
                 continue
 
         if ftype == 'email' and value:
@@ -1089,6 +1160,9 @@ def submit_form(event_id):
         if lead_jersey and team_max > 1:   # a sports team's lead plays too (UPG-405)
             members[0]['jersey'] = lead_jersey
             answers['lead_jersey'] = lead_jersey
+        for key in ('dob', 'position'):   # and gives the same as the others (UPG-423)
+            if team_max > 1 and str(answers.get(f'lead_{key}') or '').strip():
+                members[0][key] = str(answers[f'lead_{key}']).strip()
 
         # Build registration
         reg_id   = generate_reg_id()

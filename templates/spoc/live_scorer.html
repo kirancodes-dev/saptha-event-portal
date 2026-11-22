@@ -47,9 +47,19 @@
     <summary>How to score this match</summary>
     {% if state.mode == 'pkl' %}
     <ol>
+      {% if (state.mat and state.mat.named) or (squads.home|length >= live.MAT and squads.away|length >= live.MAT) %}
+      {#- With line-ups the scorer taps the players (UPG-417, UPG-420) #}
+      <li>Before the start, tap each team's <strong>seven</strong> who start (jersey number and name) and press <strong>Save line-ups</strong>. The others are the substitutes.</li>
+      <li>Choose <strong>who raids first</strong> (the team that won the toss), then press <strong>Start 1st half</strong>.</li>
+      <li>When a raider goes in, <strong>tap the raider</strong>: the public sees who is raiding at once.</li>
+      <li>When the raid ends: for touch points, <strong>tap each defender he touched</strong>, then <strong>Touch points</strong>. If he was tackled, tap the defender who tackled him, then <strong>Tackled</strong>. Or tap <strong>Bonus only</strong>, <strong>Empty raid</strong> or <strong>Raider out of court</strong>. Tick <strong>+ Bonus</strong> first if he also crossed the bonus line.</li>
+      <li>The portal puts the players out, brings them back in the order they went out, works out all outs and do-or-die, and passes the raid to the other team.</li>
+      <li>A substitute comes on: press <strong>Substitution</strong>, tap the player going off, then the substitute.</li>
+      {% else %}
       <li>Choose <strong>who raids first</strong> (the team that won the toss), then press <strong>Start 1st half</strong>.</li>
       <li>After every raid, pick the raider{% if jerseys is defined %} (by jersey number){% endif %} and, if tackled, the tackler. Then tap <strong>one button</strong> for how the raid ended: the number of touches, <strong>Bonus only</strong>, <strong>Empty raid</strong>, <strong>Tackled</strong> or <strong>Raider out of court</strong>. Tick <strong>+ Bonus</strong> first if the raider also crossed the bonus line.</li>
       <li>The portal adds the points, all outs, revivals and do-or-die by itself, and passes the raid to the other team.</li>
+      {% endif %}
       <li>A time-out, technical point or review: open <strong>Calls</strong>. After a time-out press <strong>Resume clock</strong>.</li>
       <li>A wrong tap: <strong>Undo last</strong>, or <strong>Remove</strong> next to it under <strong>All points</strong>.</li>
       <li><strong>Half time</strong>, then <strong>Start 2nd half</strong>. At the end, <strong>Full time: save the result</strong>. A level score goes to the tie-breaker: 5 raids each.</li>
@@ -87,6 +97,8 @@
     <button type="button" class="btn btn-outline-secondary" data-phase-action="back">Back to the 2nd half</button>
     {#- Full time pressed by mistake: take the result back and play on (UPG-355) #}
     <button type="button" class="btn btn-outline-danger" data-reopen>Reopen the match</button>
+    {#- The score sheet (UPG-419): provisional until full time #}
+    <a href="/tournament/live/{{ event.id }}/{{ match.id }}/sheet.pdf" class="btn btn-outline-secondary" data-sheet-link target="_blank" rel="noopener"{% if state.phase == 'not_started' %} hidden{% endif %}><i class="fas fa-file-pdf" aria-hidden="true"></i> Score sheet (PDF)<span data-sheet-provisional{% if state.phase == 'full_time' %} hidden{% endif %}> · provisional</span></a>
   </section>
 
   {#- PKL mode's raid panel and the tie-breaker (UPG-396, UPG-397) #}

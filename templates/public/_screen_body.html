@@ -29,8 +29,10 @@
         {#- PKL mode and the tie-breaker (UPG-396, UPG-397) #}
         {% if st and st.mat_text %}<div class="tv-board__mat{% if st.mat and st.mat.do_or_die %} tv-board__mat--dod{% endif %}" data-screen-mat>{{ st.mat_text }}</div>{% endif %}
         {% if st and st.shootout_text %}<div class="tv-board__shootout" data-screen-shootout>{{ st.shootout_text }}</div>{% endif %}
+        {#- The players in and out by jersey number (UPG-421) #}
+        <div class="mat-host mat-host--tv" data-screen-boxes>{% include "includes/live_mat_boxes.html" %}</div>
         {% if st and st.recent %}
-        <ol class="tv-board__recent">{% for line in st.recent[:3] %}<li>{{ line }}</li>{% endfor %}</ol>
+        <ol class="tv-board__recent">{% for line in (st.feed or st.recent)[:3] %}<li>{{ line }}</li>{% endfor %}</ol>
         {% endif %}
       </div>
       {% endfor %}
@@ -89,6 +91,7 @@
       </table>
     </div>
     {% endfor %}
+    {% if pool_tables or table %}{% set key_compact = true %}{% include "includes/table_key.html" %}{% endif %}
     {% for title, rows, key in (('Top raiders', raiders, 'raid'), ('Top defenders', defenders, 'tackle')) %}
     {% if rows %}
     <div class="tv-panel" data-screen-leaders="{{ key }}">

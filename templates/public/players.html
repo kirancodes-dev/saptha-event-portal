@@ -1,0 +1,36 @@
+{% extends "base_classic.html" %}
+{#- Find a player among the players of the public sports events (UPG-424) -#}
+{% from "includes/players.html" import search_box %}
+{% set app_active = 'events' %}
+{% block robots %}noindex, follow{% endblock %}
+{% block title %}Find a player{% endblock %}
+{% block page_title %}Find a player{% endblock %}
+{% block page_sub %}The players of the sports events: their teams, matches, points and awards.{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="/static/css/live_match.css">{% endblock %}
+{% block content %}
+<div class="panel">
+  {{ search_box(query) }}
+  {% if query and query|replace(' ', '')|length < min_query %}
+  <p class="text-muted mt-3 mb-0" data-player-hint>Type at least {{ min_query }} letters of the name.</p>
+  {% elif query and not results %}
+  <p class="text-muted mt-3 mb-0" data-player-none>No player called “{{ query }}”. Check the spelling, or type part of the name.</p>
+  {% elif results %}
+  <p class="small text-muted mt-3 mb-2">{{ results|length }} player{{ '' if results|length == 1 else 's' }}</p>
+  <ul class="player-results" data-player-results>
+    {% for r in results %}
+    <li>
+      <a href="/players/{{ r.code }}" class="player-result" data-player-result>
+        {% if r.logo %}<img src="{{ r.logo }}" alt="" class="team-logo" width="36" height="36">{% else %}<span class="player-result__dot" aria-hidden="true"><i class="fas fa-user"></i></span>{% endif %}
+        <span class="player-result__main">
+          <strong>{% if r.jersey %}<span class="jersey-no">#{{ r.jersey }}</span> {% endif %}{{ r.name }}</strong>
+          <span class="small text-muted">{{ r.team }}{% if r.position %} · {{ r.position }}{% endif %} · {{ r.events }} event{{ '' if r.events == 1 else 's' }}</span>
+        </span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="text-muted mt-3 mb-0">Type a player's name, or part of it.</p>
+  {% endif %}
+</div>
+{% endblock %}

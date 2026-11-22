@@ -2629,3 +2629,9 @@ body.status-page { background: var(--surface-page); min-height: 100vh; }
 
 /* A team logo beside its name in fixtures, tables and the scoreboard (UPG-386) */
 .team-logo { width: 24px; height: 24px; object-fit: contain; vertical-align: middle; border-radius: 4px; }
+
+/* What the points table's letters mean (UPG-425) */
+.table-key__letters { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.table-key__letters > div { display: flex; gap: 4px; }
+.table-key__letters dt { font-weight: 700; color: var(--bs-body-color, #222); }
+.table-key__letters dd { margin: 0; }

@@ -24,15 +24,35 @@
 {% include "includes/og_sports.html" %}
 {% endblock %}
 {% block content %}
+{% from "includes/players.html" import player_name, search_box %}
 {#- Where the big screen's QR code lands: the matches being played first (UPG-402) #}
 {% set playing = (t.matches or [])|selectattr('id', 'in', live)|list if t and live else [] %}
 {% if playing %}
 <div class="panel mb-3" data-live-now>
   <h2 class="h5 mb-2"><span class="live-dot">LIVE</span> Being played now</h2>
+  {#- The live boards first: the score and each team's players in and out (UPG-421) #}
   {% for m in playing %}
-  <a href="/tournament/live/{{ event.id }}/{{ m.id }}" class="btn btn-primary btn-lg w-100 mb-2 text-start" data-live-now-link>
-    {{ names.get(m.home, 'TBD') }} v {{ names.get(m.away, 'TBD') }} <small class="d-block">Watch the score live</small>
-  </a>
+  {% set st = (live_states or {}).get(m.id) %}
+  <div class="live-mini" data-live-board data-live-mini="{{ m.id }}" data-url="/tournament/live/{{ event.id }}/{{ m.id }}/state"
+       data-clock="{{ st.clock if st else 0 }}" data-running="{{ 'true' if st and st.running else 'false' }}"
+       data-phase="{{ st.phase if st else 'not_started' }}">
+    <div class="live-mini__row">
+      {% for side in ('home', 'away') %}
+      {% if side == 'away' %}
+      <div class="live-mini__middle"><div data-phase-name>{{ st.phase_name if st else '' }}</div><div class="live-mini__clock" data-clock-text>{% if st %}{{ '%02d:%02d' % (st.clock // 60, st.clock % 60) }}{% endif %}</div></div>
+      {% endif %}
+      <div class="live-mini__team">
+        {% if logos.get(m[side]) %}<img src="{{ logos[m[side]] }}" alt="" class="team-logo" width="40" height="40">{% endif %}
+        <div class="live-mini__name">{{ names.get(m[side], 'TBD') }}</div>
+        <div class="live-mini__score" data-score="{{ side }}">{{ st[side].total if st else 0 }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="mat-host" data-mat-boxes-host>{% include "includes/live_mat_boxes.html" %}</div>
+    <a href="/tournament/live/{{ event.id }}/{{ m.id }}" class="btn btn-primary w-100 mt-2" data-live-now-link>
+      {{ names.get(m.home, 'TBD') }} v {{ names.get(m.away, 'TBD') }} · Watch the score live
+    </a>
+  </div>
   {% endfor %}
 </div>
 {% endif %}
@@ -61,7 +81,7 @@
   {% if pool_view %}<p class="small text-muted mb-0">Showing Pool {{ pool_view }}'s table and matches, the inter-pool round and the playoffs.</p>{% endif %}
 </div>
 {% endif %}
-<div class="panel">
+<div class="panel" id="tables">
   {% if not t or not t.matches %}
   <div class="empty-state border-0">
     <i class="fas fa-medal" aria-hidden="true"></i>
@@ -84,7 +104,7 @@
         <thead><tr><th>#</th><th>Player</th><th>{{ 'Raid' if key == 'raid' else 'Tackle' }} pts</th><th>Matches</th><th>{{ badge }}</th></tr></thead>
         <tbody>
           {% for r in rows %}
-          <tr><td>{{ loop.index }}</td><td>{% if r.jersey %}<span class="jersey-no" data-jersey>#{{ r.jersey }}</span> {% endif %}<strong>{{ r.player }}</strong><div class="small text-muted">{{ r.team }}</div></td><td><strong>{{ r[key] }}</strong></td><td>{{ r.matches }}</td><td>{{ r[badge_key] }}</td></tr>
+          <tr><td>{{ loop.index }}</td><td>{% if r.jersey %}<span class="jersey-no" data-jersey>#{{ r.jersey }}</span> {% endif %}<strong>{{ player_name(player_links, r.team_id, r.player) }}</strong><div class="small text-muted">{{ r.team }}</div></td><td><strong>{{ r[key] }}</strong></td><td>{{ r.matches }}</td><td>{{ r[badge_key] }}</td></tr>
           {% endfor %}
         </tbody>
       </table></div>
@@ -106,7 +126,7 @@
       <thead><tr><th>Player</th><th>Raid</th><th>Tackle</th><th>Total</th><th>Matches</th><th>Super 10s</th><th>High 5s</th></tr></thead>
       <tbody>
         {% for r in rows %}
-        <tr><td>{% if r.jersey %}<span class="jersey-no" data-jersey>#{{ r.jersey }}</span> {% endif %}<strong>{{ r.player }}</strong></td><td>{{ r.raid }}</td><td>{{ r.tackle }}</td><td><strong>{{ r.total }}</strong></td><td>{{ r.matches }}</td><td>{{ r.super_10 }}</td><td>{{ r.high_5 }}</td></tr>
+        <tr><td>{% if r.jersey %}<span class="jersey-no" data-jersey>#{{ r.jersey }}</span> {% endif %}<strong>{{ player_name(player_links, team_id, r.player) }}</strong></td><td>{{ r.raid }}</td><td>{{ r.tackle }}</td><td><strong>{{ r.total }}</strong></td><td>{{ r.matches }}</td><td>{{ r.super_10 }}</td><td>{{ r.high_5 }}</td></tr>
         {% endfor %}
       </tbody>
     </table></div>
@@ -114,4 +134,9 @@
   {% endfor %}
 </div>
 {% endif %}
+{#- Look a player up (UPG-424) #}
+<div class="panel mt-3" data-player-search-panel>
+  <h2 class="h6 mb-2">Find a player</h2>
+  {{ search_box('', compact=true) }}
+</div>
 {% endblock %}

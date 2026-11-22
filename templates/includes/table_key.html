@@ -1,0 +1,14 @@
+{#- What the points table's letters mean and how it is ordered (UPG-425).
+    Needs `t` (the tournament). `key_compact` gives the big screen's one line. -#}
+{% set tk = table_key(t) %}
+{% if key_compact is defined and key_compact %}
+<p class="tv-table-key" data-table-key>{{ tk.line }}</p>
+{% else %}
+<div class="table-key small text-muted mt-2" data-table-key>
+    <dl class="table-key__letters mb-1">
+        {% for abbr, meaning in tk.letters[:5] + (tk.extra if key_full is defined and key_full else []) + tk.letters[5:] %}<div><dt>{{ abbr }}</dt><dd>{{ meaning }}</dd></div>{% endfor %}
+    </dl>
+    <p class="mb-1" data-table-order>{{ tk.order }}</p>
+    {% if tk.why %}<p class="mb-0" data-table-why>{{ tk.why }}</p>{% endif %}
+</div>
+{% endif %}

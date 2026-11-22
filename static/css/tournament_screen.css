@@ -70,3 +70,6 @@ body.tv { margin: 0; min-height: 100vh; background: #0b1530; color: #f1f5f9; fon
 .tv-board__mat--dod { color: #f87171; }
 .tv-board__shootout { color: #fcd34d; }
 .match-tiebreak { font-size: .8em; opacity: .85; margin-top: 2px; }
+
+/* The table's letters in one line (UPG-425) */
+.tv-table-key { margin: -4px 0 12px; font-size: clamp(11px, .85vw, 15px); opacity: .7; }

@@ -405,7 +405,10 @@ app.register_blueprint(whatsapp_bp)
 from services_reach import powered_by as _powered_by, share_meta as _share_meta  # noqa: E402  (UPG-146)
 app.jinja_env.globals.update(powered_by=_powered_by, share_meta=_share_meta)
 app.jinja_env.globals.update(app_version=__import__('services_releases').version)  # UPG-373
+app.jinja_env.globals.update(table_key=__import__('services_sports').table_key)  # UPG-425
 app.register_blueprint(sports_bp)
+from routes_players import players_bp  # noqa: E402  (UPG-424)
+app.register_blueprint(players_bp)
 app.register_blueprint(push_bp)
 app.register_blueprint(checkin_bp)
 app.register_blueprint(spoc_bp)

@@ -1148,6 +1148,31 @@ def standings(tournament: dict, pool: str = None) -> list:
     return sorted(rows.values(), key=lambda r: (-r['points'], -(r['for'] - r['against']), -r['for'], r['name']))
 
 
+def table_key(tournament: dict) -> dict:
+    """What the points table's letters mean, how it is ordered, and why kabaddi
+    has no rate like cricket's net run rate (UPG-425)."""
+    kab = is_kabaddi(tournament or {})
+    pts = dict(DEFAULT_POINTS, **((tournament or {}).get('points') or {}))
+    diff, scored = ('SD', 'score difference') if kab else ('GD', 'goal difference')
+    tie = ('T', 'tied') if kab else ('D', 'drawn')
+    against = 'points scored minus points conceded' if kab else 'goals scored minus goals conceded'
+    rule = f"a win {pts['win']}, {'a tie' if kab else 'a draw'} {pts['draw']}, a loss {pts['loss']}"
+    if pts.get('close_margin') and pts.get('close_loss'):
+        rule += f" ({pts['close_loss']} if lost by {pts['close_margin']} or fewer)"
+    if kab and not pts['draw'] and not pts['loss'] and pts['win'] == 2:
+        rule = 'a win 2, a loss 0; a match level at full time goes to the tie-breaker and its winner takes the win'
+    letters = [('P', 'played'), ('W', 'won'), tie, ('L', 'lost'), (diff, f'{scored} ({against})'),
+               ('Pts', f'points: {rule}')]
+    order = (f"Most points first; level on points, the bigger {scored}, then more "
+             f"{'points' if kab else 'goals'} scored, then the team's name.")
+    why = ("Why the score difference and not a rate: every kabaddi match lasts the same 40 minutes, "
+           "so there is nothing to divide by. Cricket works out a net run rate because teams face "
+           "different numbers of overs.") if kab else ''
+    extra = [('PF', 'points scored'), ('PA', 'points conceded')] if kab else [('GF', 'goals for'), ('GA', 'goals against')]
+    return {'letters': letters, 'extra': extra, 'order': order, 'why': why,
+            'line': ' · '.join(f'{a} {b.split(" (")[0].split(":")[0]}' for a, b in letters)}
+
+
 def pool_tables(tournament: dict) -> list:
     """[(pool, rows)] for a tournament with pools, else [] (UPG-381)."""
     return [(p, standings(tournament, p)) for p in tournament.get('pools') or []]

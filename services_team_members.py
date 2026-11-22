@@ -321,7 +321,8 @@ def add(db, reg_id: str, reg: dict, event: dict, form, by: str) -> tuple:
 
 
 def own_details(member: dict, form) -> dict:
-    """The name, USN and phone a member typed on their confirm page (UPG-251):
+    """The name, USN and phone a member typed on their confirm page (UPG-251),
+    and a sports team player's date of birth and position (UPG-423):
     the values that differ from what's saved, or AddError. Blank keeps what
     the lead typed; without the page's details block, nothing changes."""
     if form.get('details') != '1':
@@ -332,6 +333,16 @@ def own_details(member: dict, form) -> dict:
     if phone and not _PHONE.match(phone):
         raise AddError("Enter a valid phone number, or leave it empty.")
     typed = {'name': name, 'usn': usn, 'phone': phone}
+    if 'dob' in form or 'position' in form:   # a sports team's player (UPG-423)
+        from routes_forms import PLAYER_POSITIONS, birth_date_problem
+        dob = str(form.get('dob') or '').strip()
+        position = str(form.get('position') or '').strip()
+        problem = birth_date_problem(dob)
+        if problem:
+            raise AddError(problem)
+        if position and position not in PLAYER_POSITIONS:
+            raise AddError("Choose your position from the list, or leave it empty.")
+        typed.update(dob=dob, position=position)
     return {k: v for k, v in typed.items() if v and v != str(member.get(k) or '')}
 
 

@@ -35,12 +35,13 @@ TEAM_KEYS = ('team_name', 'team', 'group_name')
 NOT_QUESTIONS = export.IDENTITY_KEYS | {'lead_name'}
 CANCELLED = ('cancelled', 'refunded')
 MEMBER_PARTS = (('name', 'Name', 'text'), ('usn', 'USN', 'text'), ('phone', 'Phone', 'tel'),
-                ('jersey', 'Jersey number', 'number'))   # a sports team's players (UPG-405)
-LIMITS = {'name': 150, 'usn': 30, 'phone': 20, 'team_name': 100, 'jersey': 3}
+                ('jersey', 'Jersey number', 'number'),   # a sports team's players (UPG-405)
+                ('dob', 'Date of birth', 'date'), ('position', 'Position', 'select'))   # and UPG-423
+LIMITS = {'name': 150, 'usn': 30, 'phone': 20, 'team_name': 100, 'jersey': 3, 'dob': 10, 'position': 20}
 JERSEY_RULES = ('min', 'max', 'pattern', 'pattern_error')
 # A sports team's logo and the lead's jersey number (UPG-405) aren't questions
 # here: the number is the lead's, above; the logo changes on the tournament page
-SPORTS_TEAM_IDS = ('team_logo', 'lead_jersey')
+SPORTS_TEAM_IDS = ('team_logo', 'lead_jersey', 'lead_dob', 'lead_position')
 
 
 def _email(value) -> str:
@@ -87,7 +88,8 @@ def build(db, event_id: str, event: dict, reg: dict) -> dict:
     """What the edit page shows: {'lead', 'team', 'members', 'questions',
     'values', 'lead_email'}. Each input has a `name` (the form field) and a
     current value in `values`."""
-    from routes_forms import JERSEY_FIELD, registration_schema, sports_team_details, team_limits
+    from routes_forms import (DOB_FIELD, JERSEY_FIELD, player_details, registration_schema, sports_team_details,
+                              team_limits)
     import services_team_confirm as confirm
     fields = [f for f in registration_schema(event_id, event).get('fields') or [] if isinstance(f, dict) and _fid(f)]
     by_id = {_fid(f): f for f in fields}
@@ -126,6 +128,15 @@ def build(db, event_id: str, event: dict, reg: dict) -> dict:
         lead.append(dict(jersey_rules, name='lead_jersey', key='jersey', label='Jersey number', type='number',
                          required=False, targets=('lead_jersey',)))
         values['lead_jersey'] = str(lead_row.get('jersey') or answers.get('lead_jersey') or '')
+    player = player_details(event)   # the lead's date of birth and position (UPG-423)
+    if player['dob'] or str(lead_row.get('dob') or '').strip():
+        lead.append(dict(DOB_FIELD, name='lead_dob', key='dob', label='Date of birth', required=False,
+                         targets=('lead_dob',)))
+        values['lead_dob'] = str(lead_row.get('dob') or answers.get('lead_dob') or '')
+    if player['positions'] or str(lead_row.get('position') or '').strip():
+        lead.append({'name': 'lead_position', 'key': 'position', 'label': 'Position', 'type': 'select',
+                     'options': list(player['positions']), 'required': False, 'targets': ('lead_position',)})
+        values['lead_position'] = str(lead_row.get('position') or answers.get('lead_position') or '')
 
     team = None
     if team_limits(event)[1] > 1 or reg.get('team_code'):
@@ -141,7 +152,10 @@ def build(db, event_id: str, event: dict, reg: dict) -> dict:
             if key != 'name' and not asked and not str(m.get(key) or '').strip():
                 continue   # a part the event doesn't ask, and the member never gave
             name = f'm{i}_{key}'
-            parts.append(dict(jersey_rules if key == 'jersey' else {}, name=name, key=key, label=label, type=ftype,
+            rules = jersey_rules if key == 'jersey' else DOB_FIELD if key == 'dob' else {}
+            if key == 'position':
+                rules = {'options': list(player['positions'] or (asked or {}).get('options') or [])}
+            parts.append(dict(rules, name=name, key=key, label=label, type=ftype,
                               required=key == 'name' or bool((by_id.get(f'member_{i}_{key}') or {}).get('required'))))
             values[name] = str(m.get(key) or '')
         st = confirm.status(m) if confirming else None

@@ -1,0 +1,15 @@
+{#- A player's name linked to their profile, and the "Find a player" box (UPG-424).
+    `links`: {(team id, name): profile code}, from services_players.links. -#}
+{% macro player_name(links, team_id, name) -%}
+{%- set c = (links or {}).get((team_id, name)) -%}
+{%- if c %}<a href="/players/{{ c }}" class="player-link" data-player-link>{{ name }}</a>{% else %}{{ name }}{% endif -%}
+{%- endmacro %}
+
+{% macro search_box(query='', compact=false) -%}
+<form method="GET" action="/players" class="player-search{% if compact %} player-search--compact{% endif %}" role="search" data-player-search>
+  <label class="visually-hidden" for="player-q{{ '-c' if compact else '' }}">Find a player</label>
+  <input type="search" id="player-q{{ '-c' if compact else '' }}" name="q" class="form-control" value="{{ query }}" maxlength="60"
+         placeholder="Find a player by name" autocomplete="off">
+  <button type="submit" class="btn btn-primary"><i class="fas fa-search" aria-hidden="true"></i> Find a player</button>
+</form>
+{%- endmacro %}

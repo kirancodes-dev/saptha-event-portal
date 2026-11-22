@@ -317,6 +317,9 @@ def confirm_member(token):
                      str(getattr(category, 'value', category)), remember_me=False)
         flash(f"Confirmed and your password is set. Next time, log in with {email}.", 'success')
         return redirect(f'/teams/{reg_id}')
+    from routes_forms import player_details   # a sports team's player checks these too (UPG-423)
+    ev_doc = db.collection('events').document(str(reg.get('event_id') or '')).get() if reg.get('event_id') else None
+    player = player_details((ev_doc.to_dict() or {}) if ev_doc is not None and ev_doc.exists else {})
     return render_template('reset_password_token.html', email=email, name=member.get('name') or user.get('name'),
                            heading='Confirm your team place',
                            intro=f"{reg.get('lead_name') or 'Your team lead'} added you to team "
@@ -325,7 +328,10 @@ def confirm_member(token):
                            button='Confirm and set password',
                            details={'name': member.get('name') or user.get('name') or '',
                                     'usn': member.get('usn') or user.get('usn') or '',
-                                    'phone': member.get('phone') or user.get('phone') or ''})
+                                    'phone': member.get('phone') or user.get('phone') or '',
+                                    'dob': member.get('dob') or '', 'position': member.get('position') or '',
+                                    'ask_dob': player['dob'] or bool(member.get('dob')),
+                                    'positions': list(player['positions'])})
 
 
 @teams_bp.route('/<reg_id>/remove', methods=['POST'])

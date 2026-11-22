@@ -1,0 +1,19 @@
+{#- Each team's players on the mat and out, by jersey number, and who is raiding
+    now (UPG-421). Needs `st` (services_live_match.state). The public pages'
+    script draws the same boxes again at each update (live_match.js, matBoxes). -#}
+{% if st and st.mat and st.mat.named and st.mat.players %}
+{% set now = st.raiding_now %}
+<p class="mat-now" data-raiding-line>{% if now %}<span class="mat-now__label">Raiding now</span> <b class="mat-now__no">{{ '#' ~ now.jersey if now.jersey else '' }}</b> <strong>{{ now.name }}</strong> <span class="mat-now__team">{{ now.team_name }}</span>{% else %}<span class="mat-now__label">{{ st[st.mat.raider].name }} to raid</span>{% endif %}{% if st.mat.do_or_die %} <span class="mat-now__dod">Do-or-die</span>{% endif %}</p>
+<div class="mat-boxes">
+  {% for side in ('home', 'away') %}
+  {% set p = st.mat.players[side] %}
+  <section class="mat-box{% if st.mat.raider == side %} mat-box--raiding{% endif %}" data-mat-box="{{ side }}">
+    <h3 class="mat-box__team">{{ st[side].name }}</h3>
+    <div class="mat-box__label">On the mat · <span data-box-count="{{ side }}">{{ p.on|length }}</span></div>
+    <div class="mat-box__chips" data-box-on="{{ side }}">{% for x in p.on %}<span class="mat-chip{% if now and now.team == side and now.name == x.name %} mat-chip--raiding{% endif %}" data-chip="{{ x.name }}"><b>{{ x.jersey or '–' }}</b><small>{{ x.name }}</small></span>{% endfor %}</div>
+    <div class="mat-box__label mat-box__label--out">Out · {{ p.out|length }}</div>
+    <div class="mat-box__chips mat-box__chips--out" data-box-out="{{ side }}">{% for x in p.out %}<span class="mat-chip mat-chip--out" data-chip="{{ x.name }}"><b>{{ x.jersey or '–' }}</b><small>{{ x.name }}</small></span>{% else %}<span class="mat-box__none">Nobody out</span>{% endfor %}</div>
+  </section>
+  {% endfor %}
+</div>
+{% endif %}

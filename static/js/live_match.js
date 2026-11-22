@@ -64,10 +64,95 @@
         list.appendChild(li);
       });
     }
+    var feed = root.querySelector('[data-feed]');
+    if (feed && state.feed) {
+      feed.innerHTML = '';
+      state.feed.forEach(function (line) { feed.appendChild(el('li', '', line)); });
+    }
+    var sheet = root.querySelector('[data-sheet-link]');
+    if (sheet) {
+      sheet.hidden = state.phase === 'not_started';
+      var prov = sheet.querySelector('[data-sheet-provisional]');
+      if (prov) { prov.hidden = state.phase === 'full_time'; }
+    }
+    var potm = root.querySelector('[data-potm-line]');
+    if (potm) {
+      var pm = state.potm;
+      potm.hidden = !pm;
+      if (pm) {
+        potm.querySelector('[data-potm-name]').textContent = pm.tag;
+        potm.querySelector('[data-potm-meta]').textContent = '· ' + pm.team_name + ' · ' + pm.points + ' point' + (pm.points === 1 ? '' : 's');
+      }
+    }
+    var host = root.querySelector('[data-mat-boxes-host]');
+    if (host) { matBoxes(host, state); }
     var waiting = root.querySelector('[data-waiting]');
     if (waiting) { waiting.hidden = true; }
     root.setAttribute('data-phase', state.phase);
     clock.set(state.clock, state.running);
+  }
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) { e.className = cls; }
+    if (text !== undefined && text !== null) { e.textContent = text; }
+    return e;
+  }
+
+  // Each team's players on the mat and out by jersey number, and who is raiding
+  // (UPG-421): the same boxes as includes/live_mat_boxes.html
+  function matBoxes(host, state) {
+    var mat = state.mat;
+    host.innerHTML = '';
+    if (!mat || !mat.named || !mat.players) { return; }
+    var now = state.raiding_now;
+    var line = el('p', 'mat-now');
+    line.setAttribute('data-raiding-line', '');
+    if (now) {
+      line.appendChild(el('span', 'mat-now__label', 'Raiding now'));
+      line.appendChild(document.createTextNode(' '));
+      line.appendChild(el('b', 'mat-now__no', now.jersey ? '#' + now.jersey : ''));
+      line.appendChild(document.createTextNode(' '));
+      line.appendChild(el('strong', '', now.name));
+      line.appendChild(document.createTextNode(' '));
+      line.appendChild(el('span', 'mat-now__team', now.team_name));
+    } else {
+      line.appendChild(el('span', 'mat-now__label', state[mat.raider].name + ' to raid'));
+    }
+    if (mat.do_or_die) {
+      line.appendChild(document.createTextNode(' '));
+      line.appendChild(el('span', 'mat-now__dod', 'Do-or-die'));
+    }
+    host.appendChild(line);
+    var boxes = el('div', 'mat-boxes');
+    ['home', 'away'].forEach(function (side) {
+      var p = mat.players[side];
+      var box = el('section', 'mat-box' + (mat.raider === side ? ' mat-box--raiding' : ''));
+      box.setAttribute('data-mat-box', side);
+      box.appendChild(el('h3', 'mat-box__team', state[side].name));
+      var label = el('div', 'mat-box__label', 'On the mat · ');
+      var count = el('span', '', String(p.on.length));
+      count.setAttribute('data-box-count', side);
+      label.appendChild(count);
+      box.appendChild(label);
+      [['on', p.on, 'mat-box__chips'], ['out', p.out, 'mat-box__chips mat-box__chips--out']].forEach(function (g) {
+        if (g[0] === 'out') { box.appendChild(el('div', 'mat-box__label mat-box__label--out', 'Out · ' + g[1].length)); }
+        var chips = el('div', g[2]);
+        chips.setAttribute(g[0] === 'on' ? 'data-box-on' : 'data-box-out', side);
+        g[1].forEach(function (x) {
+          var raiding = g[0] === 'on' && now && now.team === side && now.name === x.name;
+          var chip = el('span', 'mat-chip' + (g[0] === 'out' ? ' mat-chip--out' : '') + (raiding ? ' mat-chip--raiding' : ''));
+          chip.setAttribute('data-chip', x.name);
+          chip.appendChild(el('b', '', x.jersey || '–'));
+          chip.appendChild(el('small', '', x.name));
+          chips.appendChild(chip);
+        });
+        if (g[0] === 'out' && !g[1].length) { chips.appendChild(el('span', 'mat-box__none', 'Nobody out')); }
+        box.appendChild(chips);
+      });
+      boxes.appendChild(box);
+    });
+    host.appendChild(boxes);
   }
 
   // Which buttons make sense in each phase
@@ -168,7 +253,50 @@
     function renderPanel(html) {
       var panel = root.querySelector('[data-panel]');
       if (panel && typeof html === 'string') { panel.innerHTML = html; }
+      reapply();
     }
+
+    // The players tapped so far (UPG-420): kept across a redraw of the panel
+    var pick = { defenders: [], mode: '', side: '', off: '' };
+    function clearPick() { pick = { defenders: [], mode: '', side: '', off: '' }; reapply(); }
+    function namedPanel() {
+      var panel = root.querySelector('[data-pkl-panel]');
+      return panel && panel.getAttribute('data-named') === 'true' ? panel : null;
+    }
+    function reapply() {
+      var panel = namedPanel();
+      if (!panel) { return; }
+      var still = [];
+      panel.querySelectorAll('[data-mat-player][data-role="defender"]').forEach(function (b) {
+        var on = pick.defenders.indexOf(b.getAttribute('data-name')) >= 0;
+        b.classList.toggle('is-picked', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        if (on) { still.push(b.getAttribute('data-name')); }
+      });
+      pick.defenders = still;
+      panel.querySelectorAll('[data-mat-player]').forEach(function (b) {
+        b.classList.toggle('is-off', pick.mode === 'sub' && pick.side === b.getAttribute('data-side') &&
+                           pick.off === b.getAttribute('data-name'));
+      });
+      panel.querySelectorAll('[data-tool]').forEach(function (b) {
+        b.classList.toggle('active', pick.mode === b.getAttribute('data-tool') && pick.side === b.getAttribute('data-side'));
+      });
+      var touch = panel.querySelector('[data-touch-button]');
+      if (touch) {
+        var n = pick.defenders.length;
+        touch.disabled = !n;
+        touch.textContent = n ? n + ' touch' + (n === 1 ? '' : 'es') + ' +' + n : 'Touch points: tap the defenders';
+      }
+    }
+    function nameOf(b) {
+      var no = b.querySelector('.pkl-player__no');
+      return (no ? no.textContent + ' ' : '') + b.getAttribute('data-name');
+    }
+    var MODE_TEXT = {
+      sub: 'Substitution: tap the player going off, then the substitute coming on.',
+      out_of_bounds: 'Out of bounds: tap the player who stepped out.',
+      mat_off: '−1 on the mat: tap the player who goes off.'
+    };
 
     // A refused tap: show the match as the server has it
     function resync() {
@@ -210,14 +338,106 @@
         if (player) { player.value = ''; }
         return;
       }
+      // Another player of the match, after full time (UPG-422)
+      var potm = e.target.closest('[data-potm-pick]');
+      if (potm) {
+        if (!window.confirm('Make ' + potm.textContent.trim() + ' the player of the match?')) { return; }
+        send({ op: 'potm', team: potm.getAttribute('data-side'), name: potm.getAttribute('data-name') });
+        return;
+      }
+      // Each team's seven before the start (UPG-417)
+      var lp = e.target.closest('[data-lineup-pick]');
+      if (lp) {
+        var lside = lp.getAttribute('data-side');
+        var count = root.querySelectorAll('[data-lineup-pick][data-side="' + lside + '"].is-picked').length;
+        if (!lp.classList.contains('is-picked') && count >= 7) { say('Seven a team: tap a picked player to take him out first.', true); return; }
+        lp.classList.toggle('is-picked');
+        lp.setAttribute('aria-pressed', lp.classList.contains('is-picked') ? 'true' : 'false');
+        var shown = root.querySelector('[data-lineup-count="' + lside + '"]');
+        if (shown) { shown.textContent = root.querySelectorAll('[data-lineup-pick][data-side="' + lside + '"].is-picked').length; }
+        say('');
+        return;
+      }
+      if (e.target.closest('[data-lineup-save]')) {
+        var sides = {};
+        ['home', 'away'].forEach(function (sd) {
+          sides[sd] = Array.prototype.map.call(
+            root.querySelectorAll('[data-lineup-pick][data-side="' + sd + '"].is-picked'),
+            function (b) { return b.getAttribute('data-name'); });
+        });
+        if (sides.home.length !== 7 || sides.away.length !== 7) {
+          say('Pick 7 players for each team (now ' + sides.home.length + ' and ' + sides.away.length + ').', true);
+          return;
+        }
+        send({ op: 'lineup', home: sides.home, away: sides.away });
+        return;
+      }
+      // The players by jersey number (UPG-420): a mode, a player, a substitute
+      var mode = e.target.closest('[data-tool]');
+      if (mode) {
+        var m = mode.getAttribute('data-tool'), ms = mode.getAttribute('data-side');
+        if (pick.mode === m && pick.side === ms) { clearPick(); say(''); return; }
+        pick.mode = m; pick.side = ms; pick.off = '';
+        reapply();
+        say(MODE_TEXT[m] || '');
+        return;
+      }
+      var pl = e.target.closest('[data-mat-player]');
+      if (pl) {
+        var side = pl.getAttribute('data-side'), who = pl.getAttribute('data-name'), role = pl.getAttribute('data-role');
+        if (pick.mode && pick.side === side) {
+          if (pick.mode === 'sub') { pick.off = who; reapply(); say('Now tap the substitute coming on for ' + nameOf(pl) + '.'); return; }
+          if (role === 'out') { say('That player is already out.', true); return; }
+          if (pick.mode === 'out_of_bounds') { send({ op: 'call', kind: 'out_of_bounds', team: side, player: who }); }
+          if (pick.mode === 'mat_off') { send({ op: 'call', kind: 'mat', team: side, change: -1, player: who }); }
+          clearPick();
+          return;
+        }
+        if (role === 'raider') {
+          var again = pl.classList.contains('is-picked');
+          root.querySelectorAll('[data-mat-player][data-role="raider"]').forEach(function (b) { b.classList.remove('is-picked'); });
+          if (!again) { pl.classList.add('is-picked'); }
+          send({ op: 'raider', name: again ? '' : who });
+          return;
+        }
+        if (role === 'defender') {
+          var i = pick.defenders.indexOf(who);
+          if (i >= 0) { pick.defenders.splice(i, 1); } else { pick.defenders.push(who); }
+          reapply();
+        }
+        return;
+      }
+      var bench = e.target.closest('[data-bench]');
+      if (bench) {
+        var bs = bench.getAttribute('data-side');
+        if (pick.mode !== 'sub' || pick.side !== bs || !pick.off) {
+          say('Tap Substitution, then the player going off, then this substitute.', true);
+          return;
+        }
+        var offBtn = root.querySelector('[data-mat-player][data-side="' + bs + '"][data-name="' + pick.off.replace(/"/g, '\\"') + '"]');
+        if (!window.confirm('Bring on ' + nameOf(bench) + ' for ' + (offBtn ? nameOf(offBtn) : pick.off) + '?')) { return; }
+        send({ op: 'call', kind: 'sub', team: bs, off: pick.off, on: bench.getAttribute('data-name') });
+        clearPick();
+        return;
+      }
       // PKL mode: one raid as it ended, or a referee's call (UPG-397)
       var raid = e.target.closest('[data-raid]');
       if (raid) {
         var panel = root.querySelector('[data-pkl-panel]');
-        send({ op: 'raid', team: panel ? panel.getAttribute('data-raider') : '',
-               outcome: raid.getAttribute('data-outcome'), touches: raid.getAttribute('data-touches') || '',
-               bonus: checked('[data-pkl-bonus]'), raider: value('[data-pkl-raider]'),
-               tackler: value('[data-pkl-tackler]') });
+        var body = { op: 'raid', team: panel ? panel.getAttribute('data-raider') : '',
+                     outcome: raid.getAttribute('data-outcome'), touches: raid.getAttribute('data-touches') || '',
+                     bonus: checked('[data-pkl-bonus]'), raider: value('[data-pkl-raider]'),
+                     tackler: value('[data-pkl-tackler]') };
+        if (namedPanel()) {
+          var picked = root.querySelector('[data-mat-player][data-role="raider"].is-picked');
+          body.raider = picked ? picked.getAttribute('data-name') : (panel.getAttribute('data-raiding-now') || '');
+          if (!body.raider) { say('Tap the raider first.', true); return; }
+          body.touched = pick.defenders.slice();
+          body.touches = body.touched.length || '';
+          body.tackler = body.outcome === 'tackled' ? (pick.defenders[0] || '') : '';
+        }
+        send(body);
+        clearPick();
         return;
       }
       var call = e.target.closest('[data-call]');

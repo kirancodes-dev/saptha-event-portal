@@ -573,7 +573,19 @@ def score_tap(event_id, match_id):
                                  'raid' if op == 'raid' else str(data.get('kind') or ''), str(data.get('team') or ''),
                                  str(data.get('outcome') or ''), data.get('touches'), _yes(data.get('bonus')),
                                  str(data.get('raider') or ''), str(data.get('tackler') or ''),
-                                 _yes(data.get('upheld')), _int(data.get('change'), 0), session.get('user_id', ''))
+                                 _yes(data.get('upheld')), _int(data.get('change'), 0), session.get('user_id', ''),
+                                 data.get('touched') if isinstance(data.get('touched'), list) else None,
+                                 str(data.get('player') or ''), str(data.get('off') or ''), str(data.get('on') or ''))
+        elif op == 'lineup':                          # each team's seven, before the start (UPG-417)
+            doc = live.get(db, event_id, match_id) or {}
+            sides = {side: data.get(side) for side in ('home', 'away') if isinstance(data.get(side), list)}
+            doc = live.set_lineup(db, event_id, live.with_squads(db, event_id, event, match_id), match_id, tap,
+                                  sides, _side_jerseys(event_id, doc))
+        elif op == 'raider':                          # the raider tapped: the boards show him at once (UPG-420)
+            doc = live.raiding_now(db, event_id, match_id, tap, str(data.get('name') or ''))
+        elif op == 'potm':                            # another player of the match, after full time (UPG-422)
+            doc = live.set_potm(db, event_id, live.with_squads(db, event_id, event, match_id), match_id, tap,
+                                str(data.get('team') or ''), str(data.get('name') or ''))
         elif op == 'shootout':                        # the tie-breaker (UPG-396)
             doc = live.shootout_raid(db, event_id, match_id, tap, str(data.get('team') or ''),
                                      str(data.get('outcome') or ''), data.get('touches'), _yes(data.get('bonus')))
@@ -581,7 +593,8 @@ def score_tap(event_id, match_id):
             doc = live.shootout_decide(db, event_id, match_id, tap, str(data.get('way') or ''),
                                        str(data.get('winner') or ''))
         elif op == 'phase':
-            doc = live.change_phase(db, event_id, event, match_id, tap, str(data.get('action') or ''),
+            doc = live.change_phase(db, event_id, live.with_squads(db, event_id, event, match_id), match_id, tap,
+                                    str(data.get('action') or ''),
                                     str(data.get('winner') or ''), str(data.get('first') or ''))
             if doc.get('phase') == 'full_time' and data.get('action') == 'full_time':
                 log_action(db, "MATCH_RESULT", f"{session.get('user_id')} ended {match_id} of {event_id} live: "
@@ -636,7 +649,33 @@ def live_board(event_id, match_id):
                            stage=services_sports.stage_name(m), state=live.public_state(db, event_id, match_id),
                            players=live.with_jerseys(live.player_stats([doc], names),
                                                      live.jerseys(db, event_id, [m.get('home'), m.get('away')]))
-                           if doc else [])
+                           if doc else [],
+                           player_links=_player_links(event_id))
+
+
+@sports_bp.route('/live/<event_id>/<match_id>/sheet.pdf')
+def score_sheet(event_id, match_id):
+    """The match's score sheet (UPG-419): anyone, once the match has started;
+    "Provisional" until full time. No login."""
+    import services_live_match as live
+    import services_score_sheet
+    import services_sports
+    event = _event(event_id)
+    t = event.get('tournament') or {}
+    try:
+        m = live._match(t, match_id)
+    except live.LiveMatchError:
+        abort(404)
+    doc = live.get(db, event_id, match_id)
+    if not doc or doc.get('phase') == 'not_started':
+        abort(404)
+    names = services_sports.names(t)
+    data = services_score_sheet.sheet_data(event, m, doc, names, live.jerseys(db, event_id, [doc.get('home'),
+                                                                                         doc.get('away')]))
+    resp = current_app.response_class(services_score_sheet.render(data), mimetype='application/pdf')
+    resp.headers['Content-Disposition'] = (f'inline; filename="score-sheet-{services_sports.match_no(m)}.pdf"')
+    resp.headers['Cache-Control'] = 'no-cache'
+    return resp
 
 
 @sports_bp.route('/live/<event_id>/<match_id>/state')
@@ -662,6 +701,7 @@ def fixtures(event_id):
     pool = str(request.args.get('pool') or '').strip().upper()
     pool = pool if pool in pools else ''
     leaders = _leaders(event_id, t)
+    playing = _live(event_id) if t else {}
     if pool:
         in_pool = {x['id'] for x in t.get('teams') or [] if x.get('pool') == pool}
         leaders['team_players'] = [row for row in leaders.get('team_players') or [] if row[1] in in_pool]
@@ -678,9 +718,21 @@ def fixtures(event_id):
         champion=services_sports.champion(t) if t else None,
         bracket=services_sports.bracket(t) if t else {},
         sports=services_sports,
-        live=_live(event_id) if t else {},
+        live=playing,
+        live_states=_live_states(event_id, playing),
+        player_links=_player_links(event_id),
         **leaders,
     )
+
+
+def _player_links(event_id):
+    """The players' profile codes, so their names link to the profiles (UPG-424)."""
+    import services_players
+    try:
+        return services_players.links(db, event_id)
+    except Exception:   # a page still shows without the links
+        current_app.logger.warning("Player links for %s failed", event_id, exc_info=True)
+        return {}
 
 
 @sports_bp.route('/screen/<event_id>')
@@ -801,3 +853,9 @@ def _live(event_id):
         return services_live_match.live_matches(db, event_id)
     except Exception:
         return {}
+
+
+def _live_states(event_id, playing):
+    """The boards of the matches being played (UPG-421), from the same short cache as the match pages."""
+    import services_live_match
+    return {mid: services_live_match.public_state(db, event_id, mid) for mid in playing or {}}

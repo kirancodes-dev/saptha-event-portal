@@ -23,6 +23,7 @@
 {% endblock %}
 
 {% block content %}
+{% from "includes/players.html" import player_name, search_box %}
 <div class="live-watch" data-live-board data-url="/tournament/live/{{ event.id }}/{{ match.id }}/state"
      data-clock="{{ state.clock if state else 0 }}" data-running="{{ 'true' if state and state.running else 'false' }}"
      data-phase="{{ state.phase if state else 'not_started' }}">
@@ -49,6 +50,19 @@
   <p class="live-board__mat" data-mat-line {% if not (state and state.mat_text) %}hidden{% endif %}>{{ state.mat_text if state else '' }}</p>
   <p class="live-board__shootout" data-shootout-line {% if not (state and state.shootout_text) %}hidden{% endif %}>{{ state.shootout_text if state else '' }}</p>
   {% if match.tiebreak and match.winner %}{% set m = match %}{% include "includes/tiebreak.html" %}{% endif %}
+  {#- The player of the match, at full time (UPG-422) #}
+  {% set pm = state.potm if state else none %}
+  <p class="live-potm" data-potm-line {% if not pm %}hidden{% endif %}><i class="fas fa-star" aria-hidden="true"></i> Player of the match: <strong data-potm-name>{{ pm.tag if pm else '' }}</strong> <span data-potm-meta>{% if pm %}· {{ pm.team_name }} · {{ pm.points }} point{{ '' if pm.points == 1 else 's' }}{% endif %}</span></p>
+  {#- The players in and out by jersey number, who is raiding, raid by raid (UPG-421) #}
+  {% set st = state %}
+  <div class="mat-host" data-mat-boxes-host>{% include "includes/live_mat_boxes.html" %}</div>
+  <section class="live-log live-log--feed">
+    <h2 class="h6">Raid by raid</h2>
+    <ol class="live-log__list" data-feed>
+      {% if state %}{% for line in state.feed %}<li>{{ line }}</li>{% endfor %}{% endif %}
+    </ol>
+    {% if not state %}<p class="text-muted" data-waiting>The score appears here when the match starts.</p>{% endif %}
+  </section>
 
   {% if (event.tournament.sport or '')|lower == 'kabaddi' %}
   {#- Shown from the start, filled in as the points come (the page may open before kick-off) #}
@@ -68,19 +82,38 @@
     <thead><tr><th>Player</th><th>Team</th><th>Raid</th><th>Tackle</th><th>Total</th></tr></thead>
     <tbody>
       {% for p in players %}
-      <tr><td>{% if p.jersey %}<span class="jersey-no" data-jersey>#{{ p.jersey }}</span> {% endif %}{{ p.player }}{% if p.super_10 %} <span class="badge bg-primary">Super 10</span>{% endif %}{% if p.high_5 %} <span class="badge bg-success">High 5</span>{% endif %}</td><td>{{ p.team }}</td><td>{{ p.raid }}</td><td>{{ p.tackle }}</td><td><strong>{{ p.total }}</strong></td></tr>
+      <tr><td>{% if p.jersey %}<span class="jersey-no" data-jersey>#{{ p.jersey }}</span> {% endif %}{{ player_name(player_links, p.team_id, p.player) }}{% if p.super_10 %} <span class="badge bg-primary">Super 10</span>{% endif %}{% if p.high_5 %} <span class="badge bg-success">High 5</span>{% endif %}</td><td>{{ p.team }}</td><td>{{ p.raid }}</td><td>{{ p.tackle }}</td><td><strong>{{ p.total }}</strong></td></tr>
       {% endfor %}
     </tbody>
   </table></div>
   {% endif %}
 
-  <section class="live-log">
-    <h2 class="h6">Latest</h2>
-    <ol class="live-log__list" data-recent>
-      {% if state %}{% for line in state.recent %}<li>{{ line }}</li>{% endfor %}{% endif %}
-    </ol>
-    {% if not state %}<p class="text-muted" data-waiting>The score appears here when the match starts.</p>{% endif %}
+  {#- The line-ups: the seven who started and the substitutes (UPG-417) #}
+  {% if state and state.lineup %}
+  <section class="live-lineups" data-lineups>
+    <h2 class="h6">Line-ups</h2>
+    <div class="live-lineups__row">
+      {% for side in ('home', 'away') %}
+      <div class="live-lineups__team" data-lineup-team="{{ side }}">
+        <h3 class="live-lineups__name">{{ names.get(match[side], 'TBD') }}</h3>
+        <div class="small text-muted">Starting seven</div>
+        <ul class="live-lineups__list" data-lineup-start="{{ side }}">{% for p in state.lineup[side].start %}<li>{% if p.jersey %}<span class="jersey-no">#{{ p.jersey }}</span> {% endif %}{{ player_name(player_links, match[side], p.name) }}</li>{% endfor %}</ul>
+        {% if state.lineup[side].subs %}
+        <div class="small text-muted">Substitutes</div>
+        <ul class="live-lineups__list" data-lineup-subs="{{ side }}">{% for p in state.lineup[side].subs %}<li>{% if p.jersey %}<span class="jersey-no">#{{ p.jersey }}</span> {% endif %}{{ player_name(player_links, match[side], p.name) }}</li>{% endfor %}</ul>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
   </section>
+  {% endif %}
+  <p class="mt-3 d-flex flex-wrap gap-2">
+    <a href="/tournament/fixtures/{{ event.id }}#tables" class="btn btn-outline-primary" data-tables-link><i class="fas fa-table" aria-hidden="true"></i> Points tables and fixtures</a>
+    {#- The score sheet (UPG-419), once the match has started #}
+    <a href="/tournament/live/{{ event.id }}/{{ match.id }}/sheet.pdf" class="btn btn-outline-secondary" data-sheet-link target="_blank" rel="noopener"{% if not state or state.phase == 'not_started' %} hidden{% endif %}><i class="fas fa-file-pdf" aria-hidden="true"></i> Score sheet (PDF)<span data-sheet-provisional{% if state and state.phase == 'full_time' %} hidden{% endif %}> · provisional</span></a>
+  </p>
+  {#- Look a player up (UPG-424) #}
+  <div class="mt-3" data-player-search-panel>{{ search_box('', compact=true) }}</div>
 </div>
 {% endblock %}
 

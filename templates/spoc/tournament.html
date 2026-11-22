@@ -364,6 +364,7 @@
         </div>
         {% endfor %}
         {% if pool_tables %}<p class="small text-muted mt-2 mb-0">Each pool's table counts its league matches and the inter-pool round.</p>{% endif %}
+        {% set key_full = true %}{% include "includes/table_key.html" %}
         {% if can_generate and not sports.has_playoffs(t) %}
         {#- Change the points rule without making the fixtures again (UPG-358) #}
         <details class="mt-3" data-points-rule>

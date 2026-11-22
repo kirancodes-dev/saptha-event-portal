@@ -14,9 +14,17 @@
         "Scores show the moment the scorer taps, and the scoreboard and big screen update every one to two seconds.",
         "A sports team uploads its logo and gives every player's jersey number when it registers. The logo shows beside the team's name on the scoreboard, the big screen and the fixtures; the jersey number beside each player's name.",
         "The fixtures page opens with Choose a pool: All, Pool A or Pool B, with each pool's teams and their logos. A pool shows only its own table, matches and players' points.",
-        "The scoring page shows How to score this match. Only the event's SPOC and its coordinators can score."
+        "The scoring page shows How to score this match. Only the event's SPOC and its coordinators can score.",
+        "Line-ups: before the start the scorer taps each team's seven starters by jersey number and name. The other players are the substitutes.",
+        "The scorer taps players, no lists: the raider, then the defenders he touched or the one who tackled him, then how the raid ended. Substitutions are by tapping too. The portal keeps who is on the mat and who is out, by name.",
+        "The match page leads with the score, then each team's players on the mat and out by jersey number, who is raiding now, and raid by raid with the scorer's name.",
+        "Full time names the player of the match; the scorer can change it.",
+        "Every match has a score sheet (PDF) to download, with the line-ups, each half's points, the result and lines for the officials' signatures.",
+        "Sports players can give their date of birth, and kabaddi players their position (Raider, Defender or All-rounder).",
+        "Find a player: search by name, and see their profile with team, jersey number, position, age, every match's points and their achievements. The date of birth, email and phone are never shown.",
+        "The points table explains P, W, T, L, SD and Pts, and why kabaddi uses the score difference instead of a run rate."
       ],
-      "items": ["UPG-396", "UPG-397", "UPG-402", "UPG-403", "UPG-405", "UPG-407", "UPG-408"]
+      "items": ["UPG-396", "UPG-397", "UPG-402", "UPG-403", "UPG-405", "UPG-407", "UPG-408", "UPG-404", "UPG-417", "UPG-419", "UPG-420", "UPG-421", "UPG-422", "UPG-423", "UPG-424", "UPG-425"]
     },
     {
       "version": "1.18",

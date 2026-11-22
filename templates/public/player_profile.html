@@ -1,0 +1,87 @@
+{% extends "base_classic.html" %}
+{#- A player's profile, like a sports site's (UPG-424): the age, never the date
+    of birth, email, phone or USN. The numbers come from the matches scored live. -#}
+{% from "includes/players.html" import search_box %}
+{% set app_active = 'events' %}
+{% block robots %}noindex, follow{% endblock %}
+{% block title %}{{ p.name }} · Player{% endblock %}
+{% block breadcrumbs %}
+<ol class="crumbs" aria-label="Breadcrumb">
+  <li><a href="/players">Players</a></li>
+  <li><span aria-current="page">{{ p.name }}</span></li>
+</ol>
+{% endblock %}
+{% block page_title %}{{ p.name }}{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="/static/css/live_match.css">{% endblock %}
+{% block content %}
+{% set labels = [('matches', 'Matches'), ('total', 'Total points'), ('raid', 'Raid points'), ('tackle', 'Tackle points'),
+                 ('successful_raids', 'Successful raids'), ('super_raids', 'Super raids'), ('tackles', 'Tackles'),
+                 ('super_tackles', 'Super tackles'), ('do_or_die', 'Do-or-die points'), ('super_10', 'Super 10s'),
+                 ('high_5', 'High 5s'), ('potm', 'Player of the match')] %}
+<section class="panel player-card" data-player-card>
+  {% if p.logo %}<img src="{{ p.logo }}" alt="" class="player-card__logo" width="88" height="88">{% endif %}
+  <div class="player-card__main">
+    <div class="player-card__no" data-player-jersey>{% if p.jersey %}#{{ p.jersey }}{% endif %}</div>
+    <h2 class="player-card__name">{{ p.name }}</h2>
+    <div class="player-card__team">{{ p.team }}</div>
+    <dl class="player-card__facts">
+      {% if p.position %}<div><dt>Position</dt><dd data-player-position>{{ p.position }}</dd></div>{% endif %}
+      {% if p.age is not none %}<div><dt>Age</dt><dd data-player-age>{{ p.age }}</dd></div>{% endif %}
+      {% if p.sport %}<div><dt>Sport</dt><dd>{{ p.sport }}</dd></div>{% endif %}
+      <div><dt>Events</dt><dd>{{ p.events|length }}</dd></div>
+    </dl>
+  </div>
+</section>
+
+<section class="panel mt-3" data-player-career>
+  <h2 class="h5">Career</h2>
+  <div class="player-stats">
+    {% for key, label in labels %}<div class="player-stat" data-stat="{{ key }}"><b>{{ p.career[key] }}</b><span>{{ label }}</span></div>{% endfor %}
+  </div>
+  <p class="small text-muted mt-2 mb-0">From the matches scored live. A Super 10 is 10 raid points in a match; a High 5 is 5 tackle points.</p>
+</section>
+
+{% if p.achievements %}
+<section class="panel mt-3" data-player-achievements>
+  <h2 class="h5">Achievements</h2>
+  <ul class="player-awards">
+    {% for a in p.achievements %}<li class="player-award player-award--{{ a.kind }}" data-award="{{ a.kind }}"><i class="fas {{ 'fa-trophy' if a.kind in ('champion', 'runner_up') else 'fa-star' if a.kind == 'potm' else 'fa-medal' }}" aria-hidden="true"></i> {{ a.text }}</li>{% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+{% for e in p.events %}
+<section class="panel mt-3" data-player-event="{{ e.event_id }}">
+  <div class="d-flex justify-content-between flex-wrap gap-2 align-items-start">
+    <div>
+      <h2 class="h5 mb-0"><a href="{{ e.url }}">{{ e.event }}</a></h2>
+      <div class="small text-muted">{{ e.team }}{% if e.jersey %} · #{{ e.jersey }}{% endif %}{% if e.position %} · {{ e.position }}{% endif %}{% if e.date %} · {{ e.date }}{% endif %}</div>
+    </div>
+    {% if e.logo %}<img src="{{ e.logo }}" alt="" class="team-logo" width="40" height="40">{% endif %}
+  </div>
+  <div class="player-stats player-stats--small mt-2">
+    {% for key, label in labels %}<div class="player-stat" data-event-stat="{{ key }}"><b>{{ e.totals[key] }}</b><span>{{ label }}</span></div>{% endfor %}
+  </div>
+  {% if e.matches %}
+  <div class="table-responsive mt-2"><table class="table table-sm align-middle mb-0" data-player-matches>
+    <thead><tr><th>Match</th><th>Opponent</th><th>Result</th><th>Raid</th><th>Tackle</th><th>Total</th><th></th></tr></thead>
+    <tbody>
+      {% for m in e.matches %}
+      <tr data-player-match="{{ m.id }}">
+        <td><a href="{{ m.url }}">{{ m.no }}</a><div class="small text-muted">{{ m.stage }}</div></td>
+        <td>{{ m.opponent }}</td>
+        <td>{{ m.result }}{% if m.score %} <span class="text-muted">{{ m.score }}</span>{% endif %}</td>
+        <td>{{ m.raid }}</td><td>{{ m.tackle }}</td><td><strong>{{ m.total }}</strong></td>
+        <td>{% if m.potm %}<span class="badge bg-warning text-dark" data-potm-badge>Player of the match</span>{% endif %}{% if m.raid >= 10 %} <span class="badge bg-primary">Super 10</span>{% endif %}{% if m.tackle >= 5 %} <span class="badge bg-success">High 5</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <p class="small text-muted mt-2 mb-0">No matches scored live yet.</p>
+  {% endif %}
+</section>
+{% endfor %}
+
+<div class="panel mt-3">{{ search_box('', compact=true) }}</div>
+{% endblock %}

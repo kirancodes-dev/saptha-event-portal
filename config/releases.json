@@ -3,9 +3,9 @@
   "releases": [
     {
       "version": "1.19",
-      "date": "2026-11-21",
-      "commit": "",
-      "revision": "",
+      "date": "2026-11-22",
+      "commit": "d642387",
+      "revision": "saptha-d642",
       "title": "The kabaddi league by the PKL's rules",
       "notes": [
         "Kabaddi leagues can use PKL Season 12 points: 2 for a win, 0 for a loss, and no ties. A level match goes to a tie-breaker of 5 raids each, then a golden raid, scored on the scorer's phone or typed on the tournament page.",

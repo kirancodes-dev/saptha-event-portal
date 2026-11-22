@@ -336,8 +336,10 @@ Withdraw a team (its remaining matches become walkovers), Bring back,
 
 **The day before**
 
-1. Register the 8 teams (part 2): only the captain's details are needed;
-   the team is confirmed at once and the players get no email.
+1. Register the 8 teams (part 2): the captain gives the team logo and every
+   player's name and jersey number; the team is confirmed at once and the
+   players get no email. Teams that registered earlier: add their jersey
+   numbers on Registrations → Edit and their logos with Add logo (part 5).
 2. Assign the coordinators (part 3).
 3. Make the fixtures (part 4), add the logos, and upload the fixture sheet
    if any match's teams differ from the draw (part 5).

@@ -18,8 +18,10 @@
     <span>{{ event.title }}</span>
   </div>
   <div class="tv-head__right">
-    {#- The audience scan it for the live scores on their phones (UPG-402) #}
-    <a class="tv-qr" href="{{ fixtures_url }}" data-screen-qr>
+    {#- While a match is live: how many watch it, in the QR's place (UPG-435) #}
+    <div class="tv-head__watch" data-screen-watch-slot{% if not (boards and watched) %} hidden{% endif %}>{% if boards and watched %}{% include "public/_screen_watch.html" %}{% endif %}</div>
+    {#- The audience scan it for the live scores on their phones (UPG-402); between matches #}
+    <a class="tv-qr" href="{{ fixtures_url }}" data-screen-qr{% if boards and watched %} hidden{% endif %}>
       <img src="/tournament/screen/{{ event.id }}/qr.svg" alt="QR code: live scores on your phone" width="84" height="84">
       <span>Scan for<br>live scores</span>
     </a>

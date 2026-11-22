@@ -531,6 +531,7 @@ def scorer(event_id, match_id):
     full = live.with_squads(db, event_id, event, match_id)
     names = services_sports.names(t)
     return render_template('spoc/live_scorer.html', event=event, match=live._match(t, match_id), doc=doc,
+                           watched=live.views(db, event_id, match_id),   # UPG-433: seen, not counted
                            state=live.state(doc, names), actions=live.actions(t), names=names,
                            groups=live.button_groups(t),
                            entries=live.entries(doc, names),
@@ -644,13 +645,28 @@ def live_board(event_id, match_id):
         abort(404)
     names = services_sports.names(t)
     doc = live.get(db, event_id, match_id)
-    return render_template('public/live_match.html', event=event, match=m, names=names,
-                           logos=services_sports.logos(t),
-                           stage=services_sports.stage_name(m), state=live.public_state(db, event_id, match_id),
-                           players=live.with_jerseys(live.player_stats([doc], names),
-                                                     live.jerseys(db, event_id, [m.get('home'), m.get('away')]))
-                           if doc else [],
-                           player_links=_player_links(event_id))
+    # How many have watched (UPG-433): every opening adds a view, a new browser a device
+    seen = None
+    try:
+        if live.is_person(request.headers.get('User-Agent', '')):
+            watched, seen = live.count_view(db, event_id, match_id, request.cookies.get(live.SEEN_COOKIE, ''))
+        else:
+            watched = live.views(db, event_id, match_id)
+    except Exception as exc:   # a count never stops the scoreboard
+        current_app.logger.warning("Match view count failed: %s", exc)
+        watched = None
+    resp = current_app.make_response(render_template(
+        'public/live_match.html', event=event, match=m, names=names,
+        logos=services_sports.logos(t),
+        stage=services_sports.stage_name(m), state=live.public_state(db, event_id, match_id),
+        players=live.with_jerseys(live.player_stats([doc], names),
+                                  live.jerseys(db, event_id, [m.get('home'), m.get('away')]))
+        if doc else [],
+        player_links=_player_links(event_id), watched=watched))
+    if seen is not None:
+        resp.set_cookie(live.SEEN_COOKIE, seen, max_age=365 * 24 * 3600, httponly=True, samesite='Lax',
+                        secure=request.is_secure)
+    return resp
 
 
 @sports_bp.route('/live/<event_id>/<match_id>/sheet.pdf')
@@ -823,7 +839,15 @@ def _screen(event):
             except Exception:
                 state = None
             boards.append({'match': m, 'state': state})
-    return dict(t=t, names=services_sports.names(t) if t else {}, logos=services_sports.logos(t) if t else {},
+    watched = None                       # how many watch the live matches' pages (UPG-435)
+    if boards:
+        try:
+            counts = [live_match.views(db, event['id'], b['match']['id']) for b in boards]
+            watched = {k: sum(c.get(k, 0) for c in counts) for k in ('views', 'devices')}
+            watched['short'] = live_match.short_count(watched['views'])
+        except Exception:
+            current_app.logger.warning("View counts for %s failed", event['id'], exc_info=True)
+    return dict(watched=watched,t=t, names=services_sports.names(t) if t else {}, logos=services_sports.logos(t) if t else {},
                 pool_tables=services_sports.pool_tables(t) if t else [],
                 table=services_sports.standings(t) if t and not t.get('pools') else [],
                 bracket=services_sports.bracket(t) if t else {}, champion=services_sports.champion(t) if t else None,

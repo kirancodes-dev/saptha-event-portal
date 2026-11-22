@@ -40,6 +40,8 @@
     </div>
   </section>
 
+  {#- How many have watched the public page (UPG-433), as the page opened #}
+  {% if watched is defined and watched %}<p class="live-views" data-views><i class="fas fa-eye" aria-hidden="true"></i> Public page: <strong>{{ '{:,}'.format(watched.views) }}</strong> view{{ '' if watched.views == 1 else 's' }} · <strong>{{ '{:,}'.format(watched.devices) }}</strong> device{{ '' if watched.devices == 1 else 's' }}</p>{% endif %}
   <p class="live-message" data-message role="status"></p>
 
   {#- The steps, on the page: open before the match starts (UPG-408) #}
@@ -49,12 +51,16 @@
     <ol>
       {% if (state.mat and state.mat.named) or (squads.home|length >= live.MAT and squads.away|length >= live.MAT) %}
       {#- With line-ups the scorer taps the players (UPG-417, UPG-420) #}
-      <li>Before the start, tap each team's <strong>seven</strong> who start (jersey number and name) and press <strong>Save line-ups</strong>. The others are the substitutes.</li>
-      <li>Choose <strong>who raids first</strong> (the team that won the toss), then press <strong>Start 1st half</strong>.</li>
-      <li>When a raider goes in, <strong>tap the raider</strong>: the public sees who is raiding at once.</li>
-      <li>When the raid ends: for touch points, <strong>tap each defender he touched</strong>, then <strong>Touch points</strong>. If he was tackled, tap the defender who tackled him, then <strong>Tackled</strong>. Or tap <strong>Bonus only</strong>, <strong>Empty raid</strong> or <strong>Raider out of court</strong>. Tick <strong>+ Bonus</strong> first if he also crossed the bonus line.</li>
-      <li>The portal puts the players out, brings them back in the order they went out, works out all outs and do-or-die, and passes the raid to the other team.</li>
-      <li>A substitute comes on: press <strong>Substitution</strong>, tap the player going off, then the substitute.</li>
+      <li><strong>Before the start:</strong> tap each team's <strong>seven</strong> who start and press <strong>Save line-ups</strong>. Choose <strong>who raids first</strong> (won the toss), then <strong>Start 1st half</strong>.</li>
+      <li><strong>Every raid is three taps.</strong> The blue box over the players always says which step you're on.
+        <ol type="a">
+          <li><strong>Step 1:</strong> tap the raider, the player who goes in, on the blue (raiding) side. He turns blue and says RAIDER; the public sees him at once.</li>
+          <li><strong>Step 2:</strong> tap each defender he touched (green side), or the one who tackled him. Each turns amber and says TOUCHED. Nobody touched? Skip this step.</li>
+          <li><strong>Step 3:</strong> tap one big button for how the raid ended. <strong>Touch points</strong> (he touched them and got back), <strong>Tackled</strong> (they caught him), <strong>Bonus only</strong>, <strong>Empty raid</strong> or <strong>Raider out of court</strong>. Tick <em>He also crossed the bonus line</em> first if he did.</li>
+        </ol>
+      </li>
+      <li>The page says <strong>Saved:</strong> and the raid. The portal puts players out, brings them back in order, counts all outs and do-or-die, and gives the next raid to the other team.</li>
+      <li><strong>Other</strong> (under each team): <strong>Substitution</strong> (tap it, the player going off, then the substitute), <strong>Out of bounds</strong> (tap it, then the player who stepped out), <strong>−1 on the mat</strong>.</li>
       {% else %}
       <li>Choose <strong>who raids first</strong> (the team that won the toss), then press <strong>Start 1st half</strong>.</li>
       <li>After every raid, pick the raider{% if jerseys is defined %} (by jersey number){% endif %} and, if tackled, the tackler. Then tap <strong>one button</strong> for how the raid ended: the number of touches, <strong>Bonus only</strong>, <strong>Empty raid</strong>, <strong>Tackled</strong> or <strong>Raider out of court</strong>. Tick <strong>+ Bonus</strong> first if the raider also crossed the bonus line.</li>

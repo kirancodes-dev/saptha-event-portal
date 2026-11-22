@@ -46,6 +46,8 @@
       <div class="live-board__halves" data-halves="away">{% if state %}{{ state.away.halves[0] }} · {{ state.away.halves[1] }}{% endif %}</div>
     </div>
   </section>
+  {#- How many have watched (UPG-433): only ever goes up #}
+  {% if watched %}<p class="live-views" data-views><i class="fas fa-eye" aria-hidden="true"></i> <strong>{{ '{:,}'.format(watched.views) }}</strong> view{{ '' if watched.views == 1 else 's' }} · <strong>{{ '{:,}'.format(watched.devices) }}</strong> device{{ '' if watched.devices == 1 else 's' }}</p>{% endif %}
   {#- PKL mode: who raids, do-or-die, the mat; the tie-breaker (UPG-396, UPG-397) #}
   <p class="live-board__mat" data-mat-line {% if not (state and state.mat_text) %}hidden{% endif %}>{{ state.mat_text if state else '' }}</p>
   <p class="live-board__shootout" data-shootout-line {% if not (state and state.shootout_text) %}hidden{% endif %}>{{ state.shootout_text if state else '' }}</p>

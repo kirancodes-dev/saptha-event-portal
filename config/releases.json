@@ -6,11 +6,15 @@
       "date": "2026-11-22",
       "commit": "",
       "revision": "",
-      "title": "Jersey numbers up to 999",
+      "title": "Easier scoring, and how many are watching",
       "notes": [
-        "A player's jersey number can have up to three digits (0 to 999), on the registration form and the Edit page."
+        "A player's jersey number can have up to three digits (0 to 999), on the registration form and the Edit page.",
+        "Scoring a raid is three plain steps: a box over the players says which step you're on and what to tap. The raider is marked RAIDER and the defenders TOUCHED, each button says what it scores, and the page says Saved after each raid.",
+        "The public match page shows how many have watched: every visit adds a view and each phone or computer counts once as a device. The numbers only go up.",
+        "On the big screen a live match fills the whole width; both pool tables sit side by side under it, with every team name in full.",
+        "While a match is live, the big screen shows how many are watching at the top right, like a streaming app (\"1.2K watching\"), where the QR code is between matches."
       ],
-      "items": ["UPG-431"]
+      "items": ["UPG-431", "UPG-432", "UPG-433", "UPG-434", "UPG-435"]
     },
     {
       "version": "1.19",

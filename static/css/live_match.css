@@ -282,3 +282,30 @@
 .player-awards { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
 .player-award { padding: 6px 10px; border-radius: 8px; background: #f6f7f9; }
 .player-award--champion, .player-award--runner_up { background: #fff6dc; }
+
+/* The raid panel, one step at a time (UPG-432) */
+.pkl-guide { border: 2px solid #1d4ed8; border-radius: 10px; background: #eff6ff; padding: 10px 12px; margin: 0 0 10px; }
+.pkl-guide__step { display: inline-block; font-size: .75rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
+  background: #1d4ed8; color: #fff; border-radius: 4px; padding: 2px 8px; margin-bottom: 4px; }
+.pkl-guide__step--end { display: block; margin: 4px 0 6px; padding: 6px 10px; font-size: .8rem; }
+.pkl-guide__text { font-size: 1.05rem; line-height: 1.35; color: #0f172a; }
+.pkl-guide__summary { margin-top: 6px; padding-top: 6px; border-top: 1px dashed #93c5fd; font-size: .9rem; color: #1e293b; }
+.pkl-chips--mat { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.pkl-player { position: relative; }
+.pkl-col--raiding .pkl-player.is-picked { background: #1d4ed8; border-color: #1e3a8a; color: #fff; box-shadow: 0 0 0 3px #93c5fd; }
+.pkl-col--raiding .pkl-player.is-picked .pkl-player__no { background: #fff; color: #1d4ed8; }
+.pkl-col--defending .pkl-player.is-picked { background: #f59e0b; border-color: #b45309; color: #111827; box-shadow: 0 0 0 3px #fcd34d; }
+.pkl-chips--mat .pkl-player.is-picked::after { margin-left: auto; font-size: .65rem; font-weight: 800; letter-spacing: .04em;
+  padding: 2px 5px; border-radius: 4px; background: rgba(255, 255, 255, .85); color: #111827; }
+.pkl-col--raiding .pkl-chips--mat .pkl-player.is-picked::after { content: "RAIDER"; color: #1d4ed8; }
+.pkl-col--defending .pkl-chips--mat .pkl-player.is-picked::after { content: "✓ TOUCHED"; color: #92400e; }
+.pkl-check--bonus { margin: 2px 0 6px; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; }
+.pkl-check--bonus input { width: 20px; height: 20px; }
+.live-btn .pkl-hint { display: block; font-size: .72rem; font-weight: 400; opacity: .9; margin-top: 2px; }
+@media (max-width: 576px) {
+  .pkl-chips--mat { grid-template-columns: 1fr; }
+  .pkl-guide__text { font-size: .95rem; }
+  .pkl-chips--mat .pkl-player.is-picked::after { display: none; }
+}
+.pkl-buttons .live-btn { flex-direction: column; justify-content: center; }
+.live-views { text-align: center; font-size: .9rem; color: #475569; margin: 6px 0 4px; }

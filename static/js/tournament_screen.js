@@ -30,6 +30,18 @@
     }
   }
 
+  // While a match is live, how many watch it, in the QR code's place (UPG-435)
+  var slot = document.querySelector('[data-screen-watch-slot]');
+  var qr = document.querySelector('[data-screen-qr]');
+  function watching() {
+    var src = root.querySelector('template[data-screen-watch]');
+    if (slot) {
+      if (src) { slot.replaceChildren(src.content.cloneNode(true)); } else { slot.replaceChildren(); }
+      slot.hidden = !src;
+    }
+    if (qr) { qr.hidden = !!src; }
+  }
+
   function refresh() {
     fetch(url, { cache: 'no-store', credentials: 'same-origin', headers: etag ? { 'If-None-Match': etag } : {} })
       .then(function (r) {
@@ -45,6 +57,7 @@
           last = html;
           shownAt = Date.now();
           tick();
+          watching();
         }
       })
       .catch(function () { if (offline) { offline.hidden = false; } })

@@ -152,6 +152,54 @@ def get(db, event_id: str, match_id: str) -> Optional[dict]:
     return (snap.to_dict() or {}) if snap.exists else None
 
 
+# ── How many have watched a match (UPG-433) ─────────────────────────────────
+VIEWS = 'match_views'
+SEEN_COOKIE = 'sv_seen'        # the matches this browser has opened, to count each device once
+SEEN_MAX = 80                  # matches remembered per browser (a cookie stays small)
+NOT_PEOPLE = ('bot', 'crawl', 'spider', 'slurp', 'preview', 'facebookexternalhit', 'whatsapp', 'telegram',
+              'discord', 'skype', 'headless', 'curl', 'wget', 'python-requests')
+
+
+def is_person(user_agent: str) -> bool:
+    """A browser, not a link preview or a crawler: only people are counted."""
+    ua = (user_agent or '').lower()
+    return bool(ua) and not any(x in ua for x in NOT_PEOPLE)
+
+
+def views(db, event_id: str, match_id: str) -> dict:
+    snap = db.collection(VIEWS).document(doc_id(event_id, match_id)).get()
+    d = (snap.to_dict() or {}) if snap.exists else {}
+    return {'views': int(d.get('views') or 0), 'devices': int(d.get('devices') or 0)}
+
+
+def short_count(n: int) -> str:
+    """A count as a streaming app shows it (UPG-435): 999, 1.2K, 3.4L, 1.1Cr;
+    rounded down, so it never shows more than there were."""
+    n = max(0, int(n or 0))
+    for size, unit in ((10_000_000, 'Cr'), (100_000, 'L'), (1_000, 'K')):
+        if n >= size:
+            whole, tenth = divmod(n * 10 // size, 10)
+            return f"{whole}{'.' + str(tenth) if tenth and whole < 100 else ''}{unit}"
+    return str(n)
+
+
+def count_view(db, event_id: str, match_id: str, seen: str) -> tuple:
+    """Every opening of the match page adds a view; a browser opening it for
+    the first time adds a device. Nothing is ever taken off. `seen` is the
+    browser's cookie; returns (the counts, the cookie to set)."""
+    from google.cloud.firestore_v1 import Increment
+    import hashlib
+    key = hashlib.sha1(doc_id(event_id, match_id).encode(), usedforsecurity=False).hexdigest()[:10]
+    known = [k for k in (seen or '').split('.') if k.isalnum()][-SEEN_MAX:]
+    first = key not in known
+    change = {'event_id': event_id, 'match_id': match_id, 'views': Increment(1), 'updated_at': _iso()}
+    if first:
+        change['devices'] = Increment(1)
+        known.append(key)
+    db.collection(VIEWS).document(doc_id(event_id, match_id)).set(change, merge=True)
+    return views(db, event_id, match_id), '.'.join(known[-SEEN_MAX:])
+
+
 def _save(db, event_id, match_id, doc):
     doc['updated_at'] = _iso()
     db.collection(COLLECTION).document(doc_id(event_id, match_id)).set(doc, merge=False)

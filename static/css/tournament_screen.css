@@ -18,6 +18,15 @@ body.tv { margin: 0; min-height: 100vh; background: #0b1530; color: #f1f5f9; fon
 .tv-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 20px; }
 @media (max-width: 900px) { .tv-grid { grid-template-columns: 1fr; } }
 .tv-left, .tv-right { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+/* A live match: the score across the whole screen, the tables side by side under it (UPG-434) */
+.tv-grid--live { grid-template-columns: minmax(0, 1fr); }
+.tv-grid--live .tv-right { display: flex; flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
+.tv-grid--live .tv-right > .tv-panel { flex: 1 1 440px; }          /* never narrower than its names: wraps instead */
+.tv-grid--live .tv-table__team { white-space: nowrap; }              /* each name on one line */
+.tv-grid--live .tv-left { display: contents; }                   /* the score, the tables, then the bracket */
+.tv-grid--live .tv-right { order: 1; }
+.tv-grid--live .tv-bracket { order: 2; }
+.tv-grid--live .tv-table-key { flex-basis: 100%; order: 9; margin: 0; }
 
 .tv-board { background: #13254d; border-radius: 18px; padding: 16px 20px; }
 .tv-board__meta { font-size: clamp(14px, 1.3vw, 22px); opacity: .9; margin-bottom: 8px; }
@@ -47,7 +56,7 @@ body.tv { margin: 0; min-height: 100vh; background: #0b1530; color: #f1f5f9; fon
 .tv-table { width: 100%; border-collapse: collapse; font-size: clamp(14px, 1.25vw, 22px); font-variant-numeric: tabular-nums; }
 .tv-table th { text-align: left; font-weight: 600; opacity: .7; padding: 4px 6px; }
 .tv-table td { padding: 5px 6px; border-top: 1px solid rgba(255, 255, 255, .08); }
-.tv-table__team { display: flex; align-items: center; gap: 8px; overflow-wrap: anywhere; }
+.tv-table__team { display: flex; align-items: center; gap: 8px; overflow-wrap: break-word; }   /* whole words (UPG-434) */
 .tv-table__team img { object-fit: contain; }
 .tv-table__team small { opacity: .7; }
 .tv-through td:first-child { box-shadow: inset 4px 0 0 #34d399; }
@@ -65,6 +74,17 @@ body.tv { margin: 0; min-height: 100vh; background: #0b1530; color: #f1f5f9; fon
 .tv-head__logo { height: clamp(32px, 4vw, 56px); width: auto; }
 .tv-qr { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; font-size: clamp(12px, 1.1vw, 18px);
          font-weight: 700; line-height: 1.2; }
+.tv-qr[hidden], .tv-head__watch[hidden] { display: none; }
+.tv-head__title span { text-wrap: balance; }                   /* the whole event name, evenly over two lines if need be */
+.tv-btn { white-space: nowrap; }
+/* How many watch the live match, at the top right, as a streaming app shows it (UPG-435) */
+.tv-watch { display: flex; align-items: center; gap: .45em; background: rgba(0, 0, 0, .35); border-radius: 999px;
+            padding: .3em .9em .3em .35em; white-space: nowrap; font-size: clamp(16px, 1.6vw, 30px); line-height: 1; }
+.tv-watch__live { background: #e11d48; color: #fff; font-weight: 800; font-size: .7em; letter-spacing: .08em;
+                  padding: .35em .6em; border-radius: 999px; }
+.tv-watch .fa-eye { color: #e2e8f0; }
+.tv-watch strong { color: #fff; font-weight: 800; font-variant-numeric: tabular-nums; }
+.tv-watch__label { color: #cbd5e1; font-weight: 600; }
 .tv-qr img { background: #fff; padding: 4px; border-radius: 6px; width: clamp(64px, 6vw, 110px); height: auto; }
 .tv-board__mat, .tv-board__shootout { text-align: center; font-size: clamp(16px, 1.6vw, 28px); font-weight: 700; margin-top: 8px; }
 .tv-board__mat--dod { color: #f87171; }

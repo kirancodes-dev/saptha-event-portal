@@ -345,6 +345,94 @@ def test_the_scorer_taps_players_in_a_phone_browser(league):  # noqa: F811
     assert doc['events'][1] == dict(doc['events'][1], type='sub', team='home', off='Darshan', on='Hemanth')
 
 
+def test_the_raid_panel_says_each_step(league):  # noqa: F811
+    """UPG-432: the step box, the summary, RAIDER and TOUCHED, the hints, Saved:."""
+    d, event_id, ids = league
+    m = _match(d, event_id, ids)
+    path = f"/tournament/{event_id}/match/{m['id']}/score"
+    html = d['coord'].get(path).get_data(as_text=True)
+    p, browser = chromium()
+    dialogs = []
+    try:
+        page = browser.new_context(viewport=PHONE).new_page()
+
+        def answer(dialog):
+            dialogs.append(dialog.message)
+            dialog.dismiss() if 'tackler' in dialog.message else dialog.accept()
+        page.on('dialog', answer)
+        errors = []
+        page.on('pageerror', lambda e: errors.append(str(e)))
+
+        def handle(route):
+            req = route.request
+            if urlparse(req.url).path == path:
+                if req.method == 'POST':
+                    resp = d['coord'].post(path, data=req.post_data, content_type='application/json')
+                    return route.fulfill(status=resp.status_code, body=resp.get_data(),
+                                         headers={'Content-Type': 'application/json'})
+                return route.fulfill(status=200, body=html, headers={'Content-Type': 'text/html; charset=utf-8'})
+            return _serve_static(route)
+        page.route('**/*', handle)
+        page.goto(ORIGIN + path, wait_until='load')
+
+        def tap(sel):
+            page.click(sel)
+            page.wait_for_function("() => document.querySelector('[data-live-scorer]').getAttribute('data-busy') === 'false'")
+
+        for side, names in (('home', HOME[:7]), ('away', AWAY[:7])):
+            for name in names:
+                page.click(f'[data-lineup-pick][data-side="{side}"][data-name="{name}"]')
+        tap('[data-lineup-save]')
+        page.wait_for_selector('[data-lineup-saved]')
+        tap('[data-phase-action="start"]')
+        page.wait_for_selector('[data-guide]')
+        guide = lambda: ' '.join(page.text_content('[data-guide]').split())   # noqa: E731
+
+        # 1. Step 1 before a raider; step 2 after; the summary names who is tapped
+        assert 'Step 1 of 3' in guide() and 'Who is raiding?' in guide() and 'no raider yet' in guide()
+        # 3. Each ending says what it scores
+        for outcome, hint in (('empty', 'no point, nobody out'), ('tackled', 'raider out'), ('line_out', 'raider out')):
+            assert hint in page.text_content(f'[data-raid][data-outcome="{outcome}"] .pkl-hint'), outcome
+        assert 'tap who he touched first' in page.text_content('[data-touch-button]')
+        tap('[data-mat-player][data-role="raider"][data-name="Arjun"]')
+        assert 'Step 2 of 3' in guide() and 'Arjun raiding' in guide()
+        # 2. Tapping the raider again keeps him; RAIDER and TOUCHED marks
+        page.click('[data-mat-player][data-role="raider"][data-name="Arjun"]')
+        assert page.locator('[data-role="raider"].is-picked').count() == 1
+        assert 'is the raider' in page.text_content('[data-message]')
+        raider_mark = page.evaluate("getComputedStyle(document.querySelector('[data-role=raider].is-picked'), '::after').content")
+        assert 'RAIDER' in raider_mark
+        page.click('[data-mat-player][data-role="defender"][data-name="Ganesh"]')
+        assert 'Step 3 of 3' in guide() and 'touched or tackled by' in guide() and 'Ganesh' in guide()
+        touched_mark = page.evaluate("getComputedStyle(document.querySelector('[data-role=defender].is-picked'), '::after').content")
+        assert 'TOUCHED' in touched_mark
+        assert 'they go out' in page.text_content('[data-touch-button]')
+        page.click('[data-mat-player][data-role="defender"][data-name="Ganesh"]')        # off again
+        # 4. Tackled with nobody tapped asks first (dismissed: nothing saved)
+        page.click('[data-raid][data-outcome="tackled"]')
+        assert dialogs and 'tackler' in dialogs[-1]
+        assert not (live.get(d['db'], event_id, m['id']) or {}).get('events')
+        # 5. A saved raid says so
+        page.click('[data-mat-player][data-role="defender"][data-name="Ganesh"]')
+        tap('[data-touch-button]')
+        page.wait_for_selector('[data-pkl-panel][data-raider="away"]')
+        assert page.text_content('[data-message]').startswith('Saved: ')
+        assert 'Ganesh' in page.text_content('[data-message]')
+        assert 'Step 1 of 3' in guide()
+        assert not errors, errors
+    finally:
+        browser.close()
+        p.stop()
+    raid = (live.get(d['db'], event_id, m['id']) or {})['events'][0]
+    assert raid['raider'] == 'Arjun' and raid['touched'] == ['Ganesh']
+
+
+def test_a_tap_on_a_player_who_is_out_says_why():
+    """UPG-432: the script answers a tap on a player who is out (no silent tap)."""
+    js = open('static/js/live_match.js', encoding='utf-8').read()
+    assert "is out. Players come back in this order" in js
+
+
 # ── UPG-421: the public match page leads with the score and the players ──────
 
 def _public(d, path):

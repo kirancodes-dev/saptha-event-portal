@@ -235,7 +235,10 @@
             renderEntries(r.data.entries);
             renderPanel(r.data.panel);
           }
-          if (body.op !== 'state') { say(queue.length ? 'Sending…' : ''); }
+          if (body.op !== 'state') {
+            var first = r.data.state && r.data.state.recent && r.data.state.recent[0];
+            say(queue.length ? 'Sending…' : (body.op === 'raid' || body.op === 'call') && first ? 'Saved: ' + first : '');
+          }
         } else {
           say((r.data && r.data.error) || 'That didn\'t save.', true);
           if (body.op !== 'state') { resync(); }
@@ -282,11 +285,53 @@
         b.classList.toggle('active', pick.mode === b.getAttribute('data-tool') && pick.side === b.getAttribute('data-side'));
       });
       var touch = panel.querySelector('[data-touch-button]');
+      var n = pick.defenders.length;
       if (touch) {
-        var n = pick.defenders.length;
         touch.disabled = !n;
         touch.textContent = n ? n + ' touch' + (n === 1 ? '' : 'es') + ' +' + n : 'Touch points: tap the defenders';
+        var hint = el('small', 'pkl-hint', n ? 'he touched ' + n + ', they go out' : 'tap who he touched first');
+        touch.appendChild(hint);
       }
+      guide(panel);
+    }
+    // The step box over the players (UPG-432): which step, what to tap, what's tapped so far
+    function guide(panel) {
+      var box = panel.querySelector('[data-guide]');
+      if (!box) { return; }
+      var raider = panel.querySelector('[data-mat-player][data-role="raider"].is-picked');
+      var defs = Array.prototype.map.call(
+        panel.querySelectorAll('[data-mat-player][data-role="defender"].is-picked'), nameOf);
+      var step = box.querySelector('[data-guide-step]');
+      var text = box.querySelector('[data-guide-text]');
+      var sum = box.querySelector('[data-raid-summary]');
+      var att = box.getAttribute('data-raiding-team'), def = box.getAttribute('data-defending-team');
+      text.innerHTML = '';
+      if (pick.mode) {
+        step.textContent = 'Other';
+        text.textContent = MODE_TEXT[pick.mode] + ' Tap the same button again to cancel.';
+      } else if (!raider) {
+        step.textContent = 'Step 1 of 3';
+        text.appendChild(document.createTextNode('Who is raiding? Tap the '));
+        text.appendChild(el('strong', '', att));
+        text.appendChild(document.createTextNode(' player who goes in (blue side).'));
+      } else if (!defs.length) {
+        step.textContent = 'Step 2 of 3';
+        text.appendChild(document.createTextNode('Did '));
+        text.appendChild(el('strong', '', nameOf(raider)));
+        text.appendChild(document.createTextNode(' touch anyone? Tap each '));
+        text.appendChild(el('strong', '', def));
+        text.appendChild(document.createTextNode(' player he touched, or the one who tackled him. Nobody? Go straight to the buttons below.'));
+      } else {
+        step.textContent = 'Step 3 of 3';
+        text.appendChild(document.createTextNode('Now tap how the raid ended, below: Touch points (' + defs.length +
+          ') or Tackled. Tap a defender again to take him off.'));
+      }
+      sum.innerHTML = '';
+      sum.appendChild(document.createTextNode('This raid: '));
+      if (!raider) { sum.appendChild(document.createTextNode('no raider yet')); return; }
+      sum.appendChild(el('strong', '', nameOf(raider)));
+      sum.appendChild(document.createTextNode(defs.length ? ' · touched or tackled by ' : ' raiding'));
+      if (defs.length) { sum.appendChild(el('strong', '', defs.join(', '))); }
     }
     function nameOf(b) {
       var no = b.querySelector('.pkl-player__no');
@@ -387,17 +432,22 @@
         var side = pl.getAttribute('data-side'), who = pl.getAttribute('data-name'), role = pl.getAttribute('data-role');
         if (pick.mode && pick.side === side) {
           if (pick.mode === 'sub') { pick.off = who; reapply(); say('Now tap the substitute coming on for ' + nameOf(pl) + '.'); return; }
-          if (role === 'out') { say('That player is already out.', true); return; }
+          if (role === 'out') { say(nameOf(pl) + ' is out already.', true); return; }
           if (pick.mode === 'out_of_bounds') { send({ op: 'call', kind: 'out_of_bounds', team: side, player: who }); }
           if (pick.mode === 'mat_off') { send({ op: 'call', kind: 'mat', team: side, change: -1, player: who }); }
           clearPick();
           return;
         }
         if (role === 'raider') {
-          var again = pl.classList.contains('is-picked');
+          if (pl.classList.contains('is-picked')) { say(nameOf(pl) + ' is the raider. To change, tap another player.'); return; }
           root.querySelectorAll('[data-mat-player][data-role="raider"]').forEach(function (b) { b.classList.remove('is-picked'); });
-          if (!again) { pl.classList.add('is-picked'); }
-          send({ op: 'raider', name: again ? '' : who });
+          pl.classList.add('is-picked');
+          reapply();
+          send({ op: 'raider', name: who });
+          return;
+        }
+        if (role === 'out') {
+          say(nameOf(pl) + ' is out. Players come back in this order when their team scores; or use +1 on the mat under Calls.', true);
           return;
         }
         if (role === 'defender') {
@@ -431,7 +481,9 @@
         if (namedPanel()) {
           var picked = root.querySelector('[data-mat-player][data-role="raider"].is-picked');
           body.raider = picked ? picked.getAttribute('data-name') : (panel.getAttribute('data-raiding-now') || '');
-          if (!body.raider) { say('Tap the raider first.', true); return; }
+          if (!body.raider) { say('Tap the raider first (step 1).', true); return; }
+          if (body.outcome === 'tackled' && !pick.defenders.length &&
+              !window.confirm('Nobody is tapped as the tackler. Save the tackle without his name?')) { return; }
           body.touched = pick.defenders.slice();
           body.touches = body.touched.length || '';
           body.tackler = body.outcome === 'tackled' ? (pick.defenders[0] || '') : '';
@@ -492,6 +544,7 @@
         send({ op: 'phase', action: action, winner: winner ? winner.value : '', first: value('[data-first]') });
       }
     });
+    reapply();
     refreshButtons();
   }
 

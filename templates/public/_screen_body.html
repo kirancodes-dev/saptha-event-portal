@@ -3,7 +3,10 @@
 {% if not t or not t.matches %}
 <div class="tv-empty">The fixtures appear here once the organisers make them.</div>
 {% else %}
-<div class="tv-grid">
+{#- How many watch the live match, for the header's right (UPG-435); the script moves it up #}
+{% if boards and watched %}<template data-screen-watch>{% include "public/_screen_watch.html" %}</template>{% endif %}
+{#- A live match takes the whole width; the tables go under it (UPG-434) #}
+<div class="tv-grid{% if boards %} tv-grid--live{% endif %}">
   <section class="tv-left">
     {% if boards %}
       {% for b in boards %}

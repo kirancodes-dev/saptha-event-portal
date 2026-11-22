@@ -6814,3 +6814,14 @@ Asked by the owner on 22 Nov 2026: the scorer taps each team's players (jersey n
 - **Acceptance criteria:**
   1. The public tables (fixtures page) and the SPOC's have the key and the order. ✅ `test_the_table_key_says_what_the_letters_mean_and_why_no_rate`, `test_the_public_spoc_and_big_screen_tables_have_the_key`.
   2. The big screen's tables have the key in one line. ✅ `test_the_public_spoc_and_big_screen_tables_have_the_key`.
+
+#### UPG-427 — A player has no jersey name
+- **Status:** DONE
+- **Last verified:** 2026-11-22, uncommitted on `6c85b4f` [C] (no new tests, by the owner's choice)
+- **Problem:** Asked by the owner on 22 Nov 2026 ("jersey name also required for each member": the name printed on the jersey is not the full name). Each player gave a jersey number, not a jersey name; a custom question can't do it, since the form builder's questions are asked once for the team, never per member.
+- **What was built:** The owner chose "just add the field": a third member setting beside Member USN and Member phone, **Member jersey name** (Don't ask, Optional, Required), in step 6 of the event wizard and in the form builder; off by default and stored only when asked, so forms saved before keep their settings as they were. When it is asked, the lead gets "Your jersey name" and each member "Member N Jersey name" after the jersey number, up to 20 characters, required for the members the team must have when set to Required. It is saved on each player (`jersey_name`) and the SPOC sees and corrects it on the registration's Edit page; step 6's outline lists it. Showing it on the boards is UPG-429.
+- **Evidence:** `routes_forms.py:119-122` (`MEMBER_DETAILS`, `JERSEY_NAME_MAX`), `:134` (`stored_member_fields`), `:308` (the lead's), `:339`, `:476-477` (`submitted_members`), `:1185` (the lead's row); `routes_spoc.py:222-223` (`_step6_form`); `services_registration_edit.py:40-46`, `:133-137`, `:163`; `templates/spoc/create_event.html:433`; `templates/coordinator/form_builder.html:305`, `:423`; `templates/public/registration_form.html` (`maxlength`).
+- **Acceptance criteria:** (the owner asked for no new tests on 22 Nov 2026; the existing form, wizard, edit, sports team and player details tests pass, 51)
+  1. The SPOC chooses Don't ask, Optional or Required for the member jersey name in step 6 and the form builder. Not tested (owner's choice).
+  2. The form asks the lead's and each member's jersey name and saves it on each player. Checked by hand, not a test (owner's choice).
+  3. The Edit page shows and corrects it. Not tested (owner's choice).

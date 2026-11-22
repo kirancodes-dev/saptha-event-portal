@@ -208,6 +208,7 @@
            placeholder="{{ field.placeholder }}"
            {% if field.min is defined and field.min != '' %}min="{{ field.min }}"{% endif %}
            {% if field.max is defined and field.max != '' %}max="{{ field.max }}"{% endif %}
+           {% if field.maxlength %}maxlength="{{ field.maxlength }}"{% endif %}
            {% if field.required %}required{% endif %}
            autocomplete="{{ 'email' if field.type == 'email' else 'tel' if field.type == 'tel' else 'off' }}"
            inputmode="{{ 'email' if field.type == 'email' else 'numeric' if field.type in ('number','tel') else 'text' }}"

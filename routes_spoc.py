@@ -218,8 +218,9 @@ def _step6_form(form):
     None when the request carries no step-6 list (the API, older scripts)."""
     if form.get('form_step6') != '1':
         return None
-    from routes_forms import FIXED_IDENTITY, chosen_form_fields, member_settings
-    members = member_settings({'member_fields': {'usn': form.get('member_usn'), 'phone': form.get('member_phone')}})
+    from routes_forms import FIXED_IDENTITY, chosen_form_fields, stored_member_fields
+    members = stored_member_fields({'usn': form.get('member_usn'), 'phone': form.get('member_phone'),
+                                    'jersey_name': form.get('member_jersey_name')})
     try:
         raw = json.loads(form.get('form_step6_json') or '[]')
     except json.JSONDecodeError:

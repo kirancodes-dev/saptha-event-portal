@@ -114,18 +114,30 @@ IDENTITY_FIELDS = (
 FIXED_IDENTITY = IDENTITY_FIELDS[:2]
 
 # What each team member is asked besides name and email, as the SPOC chose (UPG-212)
-MEMBER_DETAILS = (('usn', 'USN', 'text'), ('phone', 'Phone', 'tel'))
+# The jersey name (the name printed on a player's jersey, not the full name) is
+# asked of the lead too, off unless the SPOC asks it (UPG-427)
+MEMBER_DETAILS = (('usn', 'USN', 'text'), ('phone', 'Phone', 'tel'), ('jersey_name', 'Jersey name', 'text'))
 MEMBER_CHOICES = ('off', 'optional', 'required')
-DEFAULT_MEMBER_FIELDS = {'usn': 'optional', 'phone': 'off'}
+DEFAULT_MEMBER_FIELDS = {'usn': 'optional', 'phone': 'off', 'jersey_name': 'off'}
+JERSEY_NAME_MAX = 20
 CHOICE_TYPES = ('select', 'radio', 'checkbox_group')
 
 
 def member_settings(schema) -> dict:
-    """{'usn': 'off'|'optional'|'required', 'phone': ...} for a form."""
+    """{'usn': 'off'|'optional'|'required', 'phone': ..., 'jersey_name': ...} for a form."""
     chosen = (schema or {}).get('member_fields') if isinstance(schema, dict) else None
     chosen = chosen if isinstance(chosen, dict) else {}
     return {key: chosen.get(key) if chosen.get(key) in MEMBER_CHOICES else DEFAULT_MEMBER_FIELDS[key]
             for key, _, _ in MEMBER_DETAILS}
+
+
+def stored_member_fields(chosen) -> dict:
+    """The member settings as an event keeps them: the jersey name only when it
+    is asked (UPG-427), so a form saved without it is kept as before."""
+    settings = member_settings({'member_fields': chosen})
+    if settings['jersey_name'] == 'off':
+        settings.pop('jersey_name')
+    return settings
 
 
 def normalise_fields(fields, chosen: bool = False) -> list:
@@ -292,6 +304,11 @@ def team_fields(event: dict, existing_ids=(), member_fields=None) -> list:
     if extra['jersey'] and 'lead_jersey' not in existing_ids:
         fields.append(dict(JERSEY_FIELD, id='lead_jersey', label='Your jersey number', required=True, options=[],
                            placeholder='e.g. 7', help_text=''))
+    settings = member_settings({'member_fields': member_fields})
+    if settings['jersey_name'] != 'off' and 'lead_jersey_name' not in existing_ids:   # UPG-427
+        fields.append({'id': 'lead_jersey_name', 'type': 'text', 'label': 'Your jersey name',
+                       'required': settings['jersey_name'] == 'required', 'options': [], 'maxlength': JERSEY_NAME_MAX,
+                       'placeholder': 'e.g. ARJUN', 'help_text': 'The name printed on your jersey.'})
     if extra['dob'] and 'lead_dob' not in existing_ids:
         fields.append(dict(DOB_FIELD, id='lead_dob', label='Your date of birth', required=False, options=[],
                            placeholder='', help_text='Optional. Your player profile shows your age, never the date.'))
@@ -300,11 +317,13 @@ def team_fields(event: dict, existing_ids=(), member_fields=None) -> list:
                        'options': list(extra['positions']), 'placeholder': 'Optional', 'help_text': ''})
     fields.append({'id': 'team_members', 'type': 'heading', 'options': [],
                    'label': f'Team members: {lo}–{hi} people including you'})
-    settings = member_settings({'member_fields': member_fields})
     asked = [('name', 'Name', 'text', 'required'), ('email', 'Email', 'email', 'required')] + [
-        (key, label, ftype, settings[key]) for key, label, ftype in MEMBER_DETAILS if settings[key] != 'off']
+        (key, label, ftype, settings[key]) for key, label, ftype in MEMBER_DETAILS
+        if settings[key] != 'off' and key != 'jersey_name']
     if extra['jersey']:
         asked.append(('jersey', 'Jersey number', 'number', 'required'))
+    if settings['jersey_name'] != 'off':   # after the number (UPG-427)
+        asked.append(('jersey_name', 'Jersey name', 'text', settings['jersey_name']))
     if extra['dob']:
         asked.append(('dob', 'Date of birth', 'date', 'optional'))
     if extra['positions']:
@@ -317,6 +336,8 @@ def team_fields(event: dict, existing_ids=(), member_fields=None) -> list:
                          'required': i < lo and setting == 'required', 'options': [], 'help_text': ''}
                 if key == 'position':
                     field.update(options=list(extra['positions']), placeholder='Optional')
+                if key == 'jersey_name':
+                    field['maxlength'] = JERSEY_NAME_MAX
                 fields.append(dict(JERSEY_FIELD, **field) if key == 'jersey' else
                               dict(DOB_FIELD, **field) if key == 'dob' else field)
     return fields
@@ -371,7 +392,8 @@ def form_sections(fields, chosen: bool = False) -> dict:
             pending.append(f)
             continue
         fid = str(f.get('id') or '')
-        if fid in ('team_name', 'team_logo', 'lead_jersey', 'lead_dob', 'lead_position') or fid.startswith('member_'):
+        if fid in ('team_name', 'team_logo', 'lead_jersey', 'lead_jersey_name', 'lead_dob', 'lead_position') \
+                or fid.startswith('member_'):
             key = 'team'
         elif fid in IDENTITY_FIELD_IDS and not (chosen and (pending or not leading)):
             key = 'participant'
@@ -451,8 +473,8 @@ def submitted_members(form, lead_email: str, hi: int):
         jersey = jersey_number(form.get(f'member_{i}_jersey'))
         if jersey:   # a sports team's player (UPG-405)
             member['jersey'] = jersey
-        for key in ('dob', 'position'):   # a sports team's player (UPG-423)
-            value = str(form.get(f'member_{i}_{key}') or '').strip()
+        for key in ('dob', 'position', 'jersey_name'):   # a sports team's player (UPG-423, UPG-427)
+            value = ' '.join(str(form.get(f'member_{i}_{key}') or '').split())[:JERSEY_NAME_MAX if key == 'jersey_name' else None]
             if value:
                 member[key] = value
         members.append(member)
@@ -788,7 +810,7 @@ def save_form(event_id):
             'form_type':       form_type,
             # UPG-212: built in the builder (only name and email fixed) and the members' questions
             'form_chosen':     chosen,
-            'form_member_fields': member_settings({'member_fields': payload.get('member_fields')}),
+            'form_member_fields': stored_member_fields(payload.get('member_fields')),
             # UPG-216: the title and description, which the SQL store drops from the form
             'form_title':      form_title[:200] or 'Registration Form',
             'form_desc':       form_desc[:1000],
@@ -1160,9 +1182,9 @@ def submit_form(event_id):
         if lead_jersey and team_max > 1:   # a sports team's lead plays too (UPG-405)
             members[0]['jersey'] = lead_jersey
             answers['lead_jersey'] = lead_jersey
-        for key in ('dob', 'position'):   # and gives the same as the others (UPG-423)
+        for key in ('dob', 'position', 'jersey_name'):   # and gives the same as the others (UPG-423, UPG-427)
             if team_max > 1 and str(answers.get(f'lead_{key}') or '').strip():
-                members[0][key] = str(answers[f'lead_{key}']).strip()
+                members[0][key] = ' '.join(str(answers[f'lead_{key}']).split())[:JERSEY_NAME_MAX]
 
         # Build registration
         reg_id   = generate_reg_id()

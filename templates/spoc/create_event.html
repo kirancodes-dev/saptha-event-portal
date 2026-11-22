@@ -430,7 +430,7 @@
           <fieldset class="mb-3" id="member-fields">
             <legend class="form-label">Team members <span class="text-muted fw-normal">(each member gives their name and email)</span></legend>
             <div class="wz-row">
-              {% for key, label in [('usn', 'Member USN'), ('phone', 'Member phone')] %}
+              {% for key, label in [('usn', 'Member USN'), ('phone', 'Member phone'), ('jersey_name', 'Member jersey name')] %}
               {% set chosen = v.get('member_' ~ key) or ('optional' if key == 'usn' else 'off') %}
               <div><label class="form-label" for="f-member-{{ key }}">{{ label }}</label>
                 <select class="form-select" id="f-member-{{ key }}" name="member_{{ key }}">

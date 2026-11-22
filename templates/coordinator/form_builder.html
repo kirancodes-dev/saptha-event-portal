@@ -301,6 +301,11 @@ h1,h2,h3,h4,h5{font-family: var(--font-heading);}
                 <option value="off">Don't ask</option><option value="optional">Optional</option><option value="required">Required</option>
               </select>
             </label>
+            <label class="small" title="The name printed on the jersey, not the full name (UPG-427)">Member jersey name
+              <select id="member-jersey-name" class="prop-input" data-member-field="jersey_name">
+                <option value="off">Don't ask</option><option value="optional">Optional</option><option value="required">Required</option>
+              </select>
+            </label>
           </div>
           <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Required applies to the members the team must have ({{ team[0] - 1 }} besides the lead); extra members are optional.</div>
         </div>
@@ -415,7 +420,7 @@ function withIdentity(list) {
     top.push({ id:'email', type:'email', label:'Email Address', placeholder:'you@example.com', required:true, options:[], help_text:'' });
   return top.concat(kept);
 }
-let memberFields = Object.assign({usn: 'optional', phone: 'off'}, (existingForm && existingForm.member_fields) || {});
+let memberFields = Object.assign({usn: 'optional', phone: 'off', jersey_name: 'off'}, (existingForm && existingForm.member_fields) || {});
 
 // ── INIT ───────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {

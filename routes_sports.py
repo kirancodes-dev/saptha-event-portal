@@ -545,6 +545,34 @@ def jerseys(event_id):
                            values=values, errors=errors)
 
 
+@sports_bp.route('/<event_id>/match/<match_id>/final', methods=['POST'])
+@login_required
+def final_score(event_id, match_id):
+    """The final score typed in when the raids couldn't be scored (UPG-463):
+    the match ends with it and every board shows it."""
+    import secrets
+    import services_live_match as live
+    event = _event(event_id)
+    if not _allowed(event, 'edit_event', 'manage_registrations'):
+        abort(403)
+    page = f'/tournament/{event_id}/match/{match_id}/score'
+    try:
+        live.open_match(db, event_id, event, match_id)
+        doc = live.final_score(db, event_id, match_id, 'final-' + secrets.token_hex(6),
+                               request.form.get('home'), request.form.get('away'),
+                               str(request.form.get('winner') or ''))
+    except live.LiveMatchError as exc:
+        flash(str(exc), "warning")
+        return redirect(page)
+    _fresh(event_id)
+    live._cache.pop(('state', event_id, match_id), None)
+    log_action(db, "MATCH_RESULT", f"{session.get('user_id')} typed the final score of {match_id} of {event_id}: "
+               f"{doc['result']['home']}-{doc['result']['away']}")
+    flash(f"Final score saved: {doc['result']['home']}–{doc['result']['away']}. The match is over; "
+          "the big screen and the public pages show it.", "success")
+    return redirect(page)
+
+
 def _start_pools(t, teams):
     """The generate form's pools: as the fixtures have them, else the first half
     in pool A and the rest in pool B, seeded in registration order."""

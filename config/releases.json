@@ -6,11 +6,12 @@
       "date": "2026-11-23",
       "commit": "",
       "revision": "",
-      "title": "A steadier Watch live box",
+      "title": "Type the final score",
       "notes": [
-        "The home page's Watch live box no longer disappears because of one event with unusual details: that event is skipped and the others still show."
+        "The home page's Watch live box no longer disappears because of one event with unusual details: that event is skipped and the others still show.",
+        "Missed raids? On the scorer's page, Type the final score: each team's points, press Enter. The match ends with that score and the winner, and the big screen and public pages show it."
       ],
-      "items": ["UPG-462"]
+      "items": ["UPG-462", "UPG-463"]
     },
     {
       "version": "1.21",

@@ -111,6 +111,31 @@
     <a href="/tournament/live/{{ event.id }}/{{ match.id }}/sheet.pdf" class="btn btn-outline-secondary" data-sheet-link target="_blank" rel="noopener"{% if state.phase == 'not_started' %} hidden{% endif %}><i class="fas fa-file-pdf" aria-hidden="true"></i> Score sheet (PDF)<span data-sheet-provisional{% if state.phase == 'full_time' %} hidden{% endif %}> · provisional</span></a>
   </section>
 
+  {#- Couldn't keep up with the raids: type the final score, press Enter (UPG-463) #}
+  <details class="card mb-3" data-final-score{% if state.phase == 'full_time' %} open{% endif %}>
+    <summary class="card-body py-2 fw-semibold">Type the final score</summary>
+    <form method="POST" action="/tournament/{{ event.id }}/match/{{ match.id }}/final" class="card-body pt-0">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <p class="small text-muted mb-2">Missed raids? Type each team's final points and press Enter. The match ends with this score, the winner is set, and the big screen and public pages show it. A finished match is corrected the same way.</p>
+      <div class="d-flex flex-wrap gap-2 align-items-end">
+        <label class="small mb-0">{{ state.home.name }}
+          <input type="number" name="home" min="0" max="999" inputmode="numeric" class="form-control form-control-lg" style="width:7rem" value="{{ state.home.total }}" required>
+        </label>
+        <label class="small mb-0">{{ state.away.name }}
+          <input type="number" name="away" min="0" max="999" inputmode="numeric" class="form-control form-control-lg" style="width:7rem" value="{{ state.away.total }}" required>
+        </label>
+        <label class="small mb-0">If level, who won
+          <select name="winner" class="form-select">
+            <option value="">No one (a tie)</option>
+            <option value="home">{{ state.home.name }}</option>
+            <option value="away">{{ state.away.name }}</option>
+          </select>
+        </label>
+        <button type="submit" class="btn btn-danger btn-lg" data-confirm="End the match with this score?">Save final score</button>
+      </div>
+    </form>
+  </details>
+
   {#- PKL mode's raid panel and the tie-breaker (UPG-396, UPG-397) #}
   <div data-panel>{% include "spoc/_pkl_panel.html" %}</div>
 

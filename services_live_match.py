@@ -1096,6 +1096,10 @@ def score(doc: dict) -> dict:
         side['total'] += e['points']
         side['halves'][int(e.get('half') or 1) - 1] += e['points']
         side[e.get('counts', 'score')] = side.get(e.get('counts', 'score'), 0) + e['points']
+    final = doc.get('final')
+    if isinstance(final, dict):          # the final score typed in by the scorer (UPG-463)
+        for side in ('home', 'away'):
+            out[side]['total'] = int(final.get(side) or 0)
     return out
 
 
@@ -1325,7 +1329,42 @@ def _potm(doc: dict, names: dict) -> Optional[dict]:
 def _reopen(doc):
     doc['phase'] = 'second_half'
     doc['result'] = None
+    doc.pop('final', None)                # back to the raids' own score (UPG-463)
     _stop_clock(doc)
+
+
+def final_score(db, event_id: str, match_id: str, tap: str, home, away, winner: str = '') -> dict:
+    """The scorer couldn't keep up (the owner, UPG-463): each team's final
+    points typed in. The match ends with that score at once, in any phase (a
+    finished one is corrected): the fixtures and tables take the result, and
+    the boards, the public pages and the big screen show it. `winner`
+    ('home', 'away' or a team id) only for a level score that needs one."""
+    try:
+        home, away = int(str(home).strip()), int(str(away).strip())
+    except (TypeError, ValueError):
+        raise LiveMatchError("Type each team's points as a number.")
+    if not (0 <= home <= 999 and 0 <= away <= 999):
+        raise LiveMatchError("Points are 0 to 999.")
+
+    def apply(doc):
+        win = doc.get(winner) if winner in ('home', 'away') else winner
+        win = win if win in (doc.get('home'), doc.get('away')) else ''
+        try:
+            nt = services_sports.change(db, event_id, lambda cur, _e: services_sports.record_result(
+                cur, match_id, home, away, win))
+        except services_sports.TournamentError as exc:
+            raise LiveMatchError(str(exc))
+        played = _match(nt, match_id)
+        doc['final'] = {'home': home, 'away': away}
+        doc['phase'] = 'full_time'
+        for key in ('raiding_now', 'raid_clock', 'break', 'shootout'):
+            doc.pop(key, None)
+        _stop_clock(doc)
+        doc['result'] = {'home': home, 'away': away, 'winner': played.get('winner'),
+                         'tiebreak': played.get('tiebreak'), 'ts': _now(), 'typed': True}
+        if not (doc.get('potm') or {}).get('chosen'):
+            doc['potm'] = player_of_the_match(doc)
+    return _change(db, event_id, match_id, tap, apply)
 
 
 def reopen(db, event_id: str, match_id: str, tap: str) -> dict:

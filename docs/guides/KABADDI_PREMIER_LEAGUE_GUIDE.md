@@ -31,7 +31,7 @@ because every tap is saved in order, but one scorer avoids confusion.
 - **Real event:** each captain registers the team on the event page with the
   team name, a clear **team logo** (PNG, JPG or WebP, up to 2 MB, at least
   200 × 200 pixels) and every player's name and **jersey number**, their own
-  included (0 to 99, no two the same). The logo shows beside the team's name
+  included (0 to 999; two players may share one). The logo shows beside the team's name
   on the scoreboard, the big screen, the fixtures and the tables; the jersey
   number shows beside each player's name in the scorer's lists and the
   top raiders and defenders. The members' names fill the
@@ -119,10 +119,13 @@ Gandaberunda Warriors. A logo the captain uploaded when registering is
 already there; one you add here replaces it.
 
 **Teams that registered before the logo and jersey numbers were asked.**
-Their players have no jersey number yet. Coordinator → **Registrations** →
-the team → **Edit**: each player, and the captain, has a **Jersey number**
-box. Save, and the numbers show on the scorer's phone and the boards within
-a minute. Give these teams
+Their players have no jersey number yet. On the tournament page, **Jersey
+numbers** lists every team and player on one page: type the numbers and
+**Save jersey numbers** once. A number two players of a team share is marked
+"same number" but saved. The numbers show on the scorer's phone and the
+boards at once, and in the line-ups of matches not yet over (a finished match
+keeps the numbers it was played in). One team at a time works too:
+Coordinator → **Registrations** → the team → **Edit**. Give these teams
 their logo with **Add logo** above.
 
 **The fixture sheet: who plays each match, and when (Excel or CSV):**

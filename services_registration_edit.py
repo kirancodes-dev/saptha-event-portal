@@ -196,21 +196,27 @@ def _submitted(form, field) -> object:
     return str(form.get(field['name']) or '').strip()
 
 
-def apply(db, reg_id: str, event_id: str, event: dict, form, by: str, organiser: bool) -> dict:
+def apply(db, reg_id: str, event_id: str, event: dict, form, by: str, organiser: bool, only=None) -> dict:
     """Save the corrections a form sent. {'changed': [labels], 'errors':
     {input name: message}, 'values', 'page', 'gone': [members no longer on the
-    team], 'certificates': whether any were already issued to this team}."""
+    team], 'certificates': whether any were already issued to this team,
+    'shared': notes on players now sharing a jersey number (UPG-460)}.
+    `only`: the input names the form sends (the Jersey numbers page, UPG-461);
+    every other detail keeps its value."""
     from routes_forms import _field_errors, jersey_number
     doc = db.collection('registrations').document(reg_id).get()
     reg = (doc.to_dict() or {}) if doc.exists else {}
     page = build(db, event_id, event, reg)
     current = dict(page['values'])
     values = dict(current)
-    out = {'changed': [], 'errors': {}, 'values': values, 'page': page, 'gone': [], 'certificates': False}
+    out = {'changed': [], 'errors': {}, 'values': values, 'page': page, 'gone': [], 'certificates': False,
+           'shared': []}
 
     # What was sent, in the inputs of the page as it is now
     changed, pseudo = [], []
     for f in page['lead'] + ([page['team']] if page['team'] else []):
+        if only is not None and f['name'] not in only:
+            continue
         values[f['name']] = _submitted(form, f)
         if f['name'] == 'lead_usn':
             values[f['name']] = _norm(values[f['name']], upper=True)
@@ -246,6 +252,8 @@ def apply(db, reg_id: str, event_id: str, event: dict, form, by: str, organiser:
     new_answers = dict(answers)
     changed_q = []
     for q in page['questions']:
+        if only is not None and q['name'] not in only:
+            continue
         value = _submitted(form, q)
         values[q['name']] = value
         if _norm(value) != _norm(current.get(q['name'])):
@@ -260,7 +268,7 @@ def apply(db, reg_id: str, event_id: str, event: dict, form, by: str, organiser:
         errors.setdefault('q_' + fid, msg)
     for fid, msg in _field_errors({'fields': [dict(p, id=p['name']) for p in pseudo]}, values):
         errors.setdefault(fid, msg)
-    _jersey_twice(page, values, {p['name'] for p in pseudo}, errors)
+    out['shared'] = _jersey_twice(page, values, {p['name'] for p in pseudo})
     out['errors'] = errors
     if errors or not changed:
         return out
@@ -340,28 +348,29 @@ def apply(db, reg_id: str, event_id: str, event: dict, form, by: str, organiser:
     return out
 
 
-def _jersey_twice(page: dict, values: dict, changed: set, errors: dict) -> None:
+def _jersey_twice(page: dict, values: dict, changed: set) -> list:
     """Two players of a team with the same jersey number, one of them just
-    changed (UPG-405): the message goes beside the one changed."""
+    changed: a note, not a refusal (the owner, UPG-460; refused before, UPG-405)."""
     players = [('The lead', f['name']) for f in page['lead'] if f['key'] == 'jersey'] + [
         (m['name'] or f"Member {m['n']}", p['name']) for m in page['members'] for p in m['parts']
         if p['key'] == 'jersey']
     seen: dict = {}
+    notes = []
     for who, name in players:
         number = str(values.get(name) or '')
         if not number:
             continue
         if number in seen and (name in changed or seen[number][1] in changed):
-            first, first_name = seen[number]
-            at = name if name in changed else first_name
-            errors.setdefault(at, f"{first if at == name else who} already has jersey number {number}: "
-                                  "each player needs their own.")
+            notes.append(f"{seen[number][0]} and {who} both wear {number}")
         seen.setdefault(number, (who, name))
+    return notes
 
 
 def message(result: dict, organiser: bool) -> str:
     """The note after saving."""
     text = "Saved: " + ', '.join(result['changed']) + '.'
+    if result.get('shared'):
+        text += f" Note: {'; '.join(result['shared'])}."
     if result['gone']:
         text += f" Not changed: {', '.join(result['gone'])}, no longer on the team."
     if result['certificates']:

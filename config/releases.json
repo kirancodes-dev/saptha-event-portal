@@ -10,9 +10,11 @@
       "notes": [
         "The home page starts with a Watch live box: pick Men or Women and tap Watch live scoring. A match being played shows Live now with a red dot.",
         "The live scoreboard page fits a phone: the header no longer runs off the screen, and the scores and cards are sized for it.",
-        "An uploaded fixture sheet decides each match's pool: a match between two Pool B teams says Pool B, in the order the sheet lists them."
+        "An uploaded fixture sheet decides each match's pool: a match between two Pool B teams says Pool B, in the order the sheet lists them.",
+        "Two players of a team may wear the same jersey number.",
+        "Jersey numbers: one page from the tournament page lists every team's players; change any number and save once. Matches not yet over show the new numbers."
       ],
-      "items": ["UPG-457", "UPG-459"]
+      "items": ["UPG-457", "UPG-459", "UPG-460", "UPG-461"]
     },
     {
       "version": "1.20",

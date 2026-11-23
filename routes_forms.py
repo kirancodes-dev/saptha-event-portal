@@ -351,8 +351,9 @@ def logo_optional(schema: dict) -> dict:
 
 
 def jersey_problem(event: dict, lead_jersey, members: list) -> str:
-    """'' when a sports team's every player has a jersey number and no two
-    are the same, else what to fix (UPG-405); always '' for other events."""
+    """'' when a sports team's every player has a jersey number, else what to
+    fix (UPG-405); always '' for other events. Two players may share a number
+    (the owner, UPG-460): the SPOC sets the real ones on the Jersey numbers page."""
     if not sports_team_details(event)['jersey']:
         return ''
     players = [('You', jersey_number(lead_jersey))] + [
@@ -360,11 +361,6 @@ def jersey_problem(event: dict, lead_jersey, members: list) -> str:
     for who, number in players:
         if not number:
             return "Give your own jersey number." if who == 'You' else f"Give {who}'s jersey number."
-    seen: dict = {}
-    for who, number in players:
-        if number in seen:
-            return f"{seen[number]} and {who} both have jersey number {number}: each player needs their own."
-        seen[number] = who
     return ''
 
 
@@ -1085,7 +1081,7 @@ def submit_form(event_id):
         if team_error:
             flash(team_error, 'danger')
             return redirect(form_url)
-        # A sports team: every player's jersey number, none twice (UPG-405); the form keeps what was typed
+        # A sports team: every player's jersey number (UPG-405; a number may repeat, UPG-460); the form keeps what was typed
         jersey_error = jersey_problem(event_data, answers.get('lead_jersey'), team_members)
         if jersey_error:
             flash(jersey_error, 'danger')

@@ -8,6 +8,7 @@
 {% block page_actions %}
 <a href="/spoc/dashboard" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Console</a>
 <a href="/tournament/fixtures/{{ event.id }}" class="btn btn-outline-primary" target="_blank" rel="noopener"><i class="fas fa-external-link-alt" aria-hidden="true"></i> Public fixtures page</a>
+{% if teams %}<a href="/tournament/{{ event.id }}/jerseys" class="btn btn-outline-primary" data-jerseys-link><i class="fas fa-tshirt" aria-hidden="true"></i> Jersey numbers</a>{% endif %}
 {% endblock %}
 
 {% block extra_css %}
@@ -425,7 +426,7 @@
 <div class="card mb-3" id="teams" data-teams>
     <div class="card-body">
         <h2 class="h5 mb-1">Teams in the fixtures</h2>
-        <p class="small text-muted">Fix a team here without making the fixtures again. Withdraw gives its opponents walkovers in the matches it has still to play; Replace puts another confirmed team in its place everywhere, results included.</p>
+        <p class="small text-muted"><a href="/tournament/{{ event.id }}/jerseys"><i class="fas fa-tshirt" aria-hidden="true"></i> Jersey numbers</a>: every team's players on one page. Fix a team here without making the fixtures again. Withdraw gives its opponents walkovers in the matches it has still to play; Replace puts another confirmed team in its place everywhere, results included.</p>
         {#- One block per team, its tools wrapping under the name: fits a phone #}
         <ul class="list-unstyled mb-2">
             {% for team in t.teams %}

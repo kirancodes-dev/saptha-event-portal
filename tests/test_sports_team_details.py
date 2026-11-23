@@ -98,8 +98,6 @@ def test_a_sports_team_is_refused_without_its_logo_or_a_jersey_number(team, stor
     cases = [
         (sports_form(2, numbers={2: ''}), "Give Mate 2's jersey number."),      # the optional member listed
         (sports_form(2, lead=''), "'Your jersey number' is required."),
-        (sports_form(2, numbers={1: '7'}), "You and Mate 1 both have jersey number 7"),
-        (sports_form(2, numbers={1: '5', 2: '05'}), "Mate 1 and Mate 2 both have jersey number 5"),
         (sports_form(2, numbers={1: '1000'}), "A jersey number is a whole number from 0 to 999."),
         (sports_form(2, numbers={1: '7.5'}), "A jersey number is a whole number from 0 to 999."),
         (sports_form(2, logo=_png(120, 120)), "too small to show clearly (120 × 120 pixels)"),
@@ -110,8 +108,8 @@ def test_a_sports_team_is_refused_without_its_logo_or_a_jersey_number(team, stor
         assert resp.status_code == 302 and message in _flashes(client), (message, _flashes(client))
     assert _regs(t, event_id) == [] and stored == []                             # nothing registered or kept
 
-    # A jersey number twice: the form comes back with what was typed
-    client, _ = _send(t, event_id, mates, team_name='Vajra Raiders', **sports_form(2, numbers={1: '7'}))
+    # A jersey number missing: the form comes back with what was typed
+    client, _ = _send(t, event_id, mates, team_name='Vajra Raiders', **sports_form(2, numbers={2: ''}))
     page = client.get(f'/forms/register/{event_id}').get_data(as_text=True)
     assert 'value="Vajra Raiders"' in page and 'value="Mate 2"' in page
     assert "Choose the file again" in page
@@ -209,9 +207,10 @@ def test_a_team_registered_before_adds_its_jersey_numbers_on_the_edit_page(team,
         data.update(changes)
         return data
 
-    page = t['owner'].post(url, data=form(lead_jersey='9', m1_jersey='9')).get_data(as_text=True)
-    assert 'The lead already has jersey number 9' in page
-    assert not any(m.get('jersey') for m in t['reg'](reg_id)['members'])
+    # Two players may share a number (the owner, UPG-460): saved, with a note
+    resp = t['owner'].post(url, data=form(lead_jersey='9', m1_jersey='9'), follow_redirects=True)
+    assert 'Note: The lead and Mate 1 both wear 9.' in resp.get_data(as_text=True)
+    assert {m['email']: m.get('jersey') for m in t['reg'](reg_id)['members']}[mates[0]] == '9'
     page = t['owner'].post(url, data=form(m1_jersey='1000')).get_data(as_text=True)
     assert 'A jersey number is a whole number from 0 to 999.' in page
 
@@ -256,6 +255,7 @@ def test_jersey_rules_in_one_place():
     event = dict(SPORTS, limits={'team_min': 2, 'team_max': 4})
     assert routes_forms.sports_team_details(event) == {'logo': True, 'jersey': True}
     assert routes_forms.sports_team_details(dict(event, limits={'team_max': 1})) == {'logo': False, 'jersey': False}
-    assert routes_forms.jersey_problem(event, '1', [{'name': 'A', 'jersey': '01'}]) == \
-        "You and A both have jersey number 1: each player needs their own."
+    # Two players may share a number (UPG-460); a missing one is still refused
+    assert routes_forms.jersey_problem(event, '1', [{'name': 'A', 'jersey': '01'}]) == ''
+    assert routes_forms.jersey_problem(event, '1', [{'name': 'A', 'jersey': ''}]) == "Give A's jersey number."
     assert routes_forms.jersey_problem({'category': 'Technical', 'limits': {'team_max': 4}}, '', [{}]) == ''

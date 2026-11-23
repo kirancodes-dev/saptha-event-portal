@@ -1466,6 +1466,40 @@ def jerseys(db, event_id: str, team_ids) -> dict:
     return {tid: dict(_squad(db, event_id, tid)[1]) for tid in team_ids if tid}
 
 
+def refresh_jerseys(db, event_id: str, team_ids) -> int:
+    """After the SPOC changes jersey numbers (UPG-461): the teams' squads are
+    read again, and each line-up saved for a match not yet over takes the new
+    numbers (a finished match keeps the ones it was played in). How many
+    matches changed."""
+    team_ids = {t for t in team_ids if t}
+    for key in [k for k in list(_cache) if isinstance(k, tuple) and len(k) == 3
+                and k[0] in ('squad', 'roster') and k[1] == event_id and k[2] in team_ids]:
+        _cache.pop(key, None)
+    _cache.pop(('screen', event_id), None)
+    changed = 0
+    for snap in list(db.collection(COLLECTION).where('event_id', '==', event_id).stream()):
+        d = snap.to_dict() or {}
+        match_id = d.get('match_id')
+        if not match_id or d.get('phase') == 'full_time' or not any(
+                d.get(side) in team_ids and squad_of(d, side) for side in ('home', 'away')):
+            continue
+        with _lock(doc_id(event_id, match_id)):
+            doc = get(db, event_id, match_id) or {}
+            moved = False
+            for side in ('home', 'away'):
+                if doc.get(side) not in team_ids:
+                    continue
+                numbers = _squad(db, event_id, doc[side])[1]
+                for p in squad_of(doc, side):
+                    number = str(numbers.get(p.get('name')) or '')
+                    if str(p.get('jersey') or '') != number:
+                        p['jersey'], moved = number, True
+            if moved:
+                _save(db, event_id, match_id, doc)
+                changed += 1
+    return changed
+
+
 def with_jerseys(rows: list, numbers: dict) -> list:
     """Player-stat rows (player_stats) with each player's jersey number, '' when none."""
     return [dict(r, jersey=(numbers.get(r.get('team_id')) or {}).get(r.get('player'), '')) for r in rows]

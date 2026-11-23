@@ -1,0 +1,54 @@
+{% extends "base_classic.html" %}
+
+{% block title %}Jersey numbers — {{ event.title }}{% endblock %}
+{#- Every team's jersey numbers on one page (UPG-461) -#}
+{% block page_title %}Jersey numbers{% endblock %}
+{% block page_sub %}{{ event.title }} · change any player's number and save once{% endblock %}
+{% block page_actions %}
+<a href="/tournament/{{ event.id }}#teams" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Tournament</a>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .jersey-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: .75rem; }
+  .jersey-row { display: flex; align-items: center; gap: .5rem; padding: .3rem 0; border-bottom: 1px solid var(--bs-border-color, #e5e7eb); }
+  .jersey-row:last-child { border-bottom: 0; }
+  .jersey-row__name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+  .jersey-row input { width: 5.5rem; flex: 0 0 auto; min-height: 44px; font-size: 1.05rem; text-align: center; }
+  .jersey-save { position: sticky; bottom: 0; background: var(--bs-body-bg, #fff); padding: .75rem 0; z-index: 2; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if not teams %}
+<div class="alert alert-info">No confirmed teams yet: their players' numbers show here once teams register.</div>
+{% else %}
+<p class="text-muted small mb-3">Two players of a team may wear the same number; it is marked <span class="badge bg-warning text-dark">same number</span> so you can check it. The new numbers show on the scorer's page, the public match pages and the big screen, and in the line-ups of matches not yet over. The team's lead gets a portal notice.</p>
+<form method="POST" action="/tournament/{{ event.id }}/jerseys" data-jersey-form>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="jersey-grid">
+    {% for team in teams %}
+    <section class="card" data-jersey-team="{{ team.id }}">
+      <div class="card-body py-2">
+        <h2 class="h6 mb-2">{% if team.logo %}<img src="{{ team.logo }}" alt="" class="team-logo me-1" width="28" height="28">{% endif %}{{ team.name }}{% if team.pool %} <span class="badge bg-light text-dark border">Pool {{ team.pool }}</span>{% endif %}</h2>
+        {% if not team.players %}
+        <p class="small text-muted mb-0">This team's registration asks no jersey numbers.</p>
+        {% endif %}
+        {% for p in team.players %}
+        {% set err = errors.get(p.input) %}
+        <div class="jersey-row" data-jersey-player>
+          <label class="jersey-row__name small mb-0" for="j-{{ loop.index }}-{{ team.id }}">{{ p.name }}{% if p.lead %} <span class="text-muted">(lead)</span>{% endif %}{% if p.shared %} <span class="badge bg-warning text-dark" data-jersey-shared>same number</span>{% endif %}
+            {% if err %}<span class="d-block text-danger" data-jersey-error>{{ err }}</span>{% endif %}</label>
+          <input type="text" inputmode="numeric" pattern="\d{0,3}" maxlength="3" id="j-{{ loop.index }}-{{ team.id }}" name="{{ p.input }}" value="{{ values.get(p.input, p.number) }}" class="form-control{% if err %} is-invalid{% endif %}" aria-label="Jersey number of {{ p.name }}, {{ team.name }}">
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+  </div>
+  <div class="jersey-save">
+    <button type="submit" class="btn btn-primary w-100"><i class="fas fa-save" aria-hidden="true"></i> Save jersey numbers</button>
+  </div>
+</form>
+{% endif %}
+{% endblock %}

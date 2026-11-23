@@ -514,6 +514,37 @@ def team_logo(event_id, team_id):
     return _back(event_id, 'teams')
 
 
+@sports_bp.route('/<event_id>/jerseys', methods=['GET', 'POST'])
+@login_required
+def jerseys(event_id):
+    """Every team's jersey numbers on one page, saved at once (UPG-461)."""
+    import services_jerseys
+    event = _event(event_id)
+    if not _allowed(event, 'edit_event', 'manage_registrations'):
+        abort(403)
+    values, errors = {}, {}
+    if request.method == 'POST':
+        done = services_jerseys.save(db, event_id, event, request.form, session.get('user_id', ''))
+        if not done['errors']:
+            if done['players']:
+                log_action(db, "JERSEYS_EDITED", f"{session.get('user_id')} changed {done['players']} jersey "
+                                                 f"number(s) of {', '.join(done['teams'])} ({event_id})")
+                text = (f"Saved {done['players']} jersey number{'s' if done['players'] != 1 else ''}: "
+                        f"{', '.join(done['teams'])}.")
+                if done['lineups']:
+                    text += f" {done['lineups']} match line-up{'s' if done['lineups'] != 1 else ''} updated too."
+                if done['shared']:
+                    text += f" Note: {'; '.join(done['shared'])}."
+                flash(text, 'success')
+            else:
+                flash("Nothing was changed.", 'info')
+            return redirect(f'/tournament/{event_id}/jerseys')
+        flash("A jersey number is a whole number from 0 to 999; nothing was saved.", 'danger')
+        values, errors = done['values'], done['errors']
+    return render_template('spoc/jerseys.html', event=event, teams=services_jerseys.sheet(db, event_id, event),
+                           values=values, errors=errors)
+
+
 def _start_pools(t, teams):
     """The generate form's pools: as the fixtures have them, else the first half
     in pool A and the rest in pool B, seeded in registration order."""

@@ -3,9 +3,9 @@
   "releases": [
     {
       "version": "1.20",
-      "date": "2026-11-22",
-      "commit": "",
-      "revision": "",
+      "date": "2026-11-23",
+      "commit": "1874508",
+      "revision": "saptha-1874",
       "title": "Match day: the toss, the raid clock and who is watching",
       "notes": [
         "A player's jersey number can have up to three digits (0 to 999), on the registration form and the Edit page.",

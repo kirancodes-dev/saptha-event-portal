@@ -4,6 +4,7 @@ league on match day: the big screen for a monitor (UPG-392), the road to the
 final as a map (UPG-393), a match postponed and back on (UPG-394), and every
 player's points team by team (UPG-395).
 """
+import re
 import time
 from urllib.parse import urlparse
 
@@ -57,18 +58,23 @@ def test_the_road_to_the_final_before_and_after_the_playoffs(league):  # noqa: F
     assert sf1['home'] is None                                    # nothing played: no names guessed
 
     page = d['owner'].get(f'/tournament/{event_id}').get_data(as_text=True)
-    assert 'data-bracket' in page and 'If the league ended now' in page and 'Road to the final' in page
+    assert 'data-bracket' in page and 'when every league match is over' in page and 'Road to the final' in page
     assert f'/tournament/screen/{event_id}' in page
     public = _anon(d).get(f'/tournament/fixtures/{event_id}').get_data(as_text=True)
     assert 'data-bracket' in public and public.count('pool-row--through') == 4   # the top two of each pool
 
     _play(d['owner'], event_id, t['matches'][0], 30, 22)          # Garuda Sena beat Vajra
     sf1 = sports.bracket(_t(d, event_id))['columns'][0]['slots'][0]
-    assert sf1['home'] == ids['Garuda Sena'] and sf1['projected']
-    assert sf1['away'] is None                                    # pool B hasn't played: nobody named
+    # UPG-467 (the owner, 23 Nov 2026): no team named until every league match is over
+    assert sf1['projected'] and sf1['home'] is None and sf1['away'] is None
+    assert sf1['home_label'] == '1st Pool A'
+    page = d['owner'].get(f'/tournament/{event_id}').get_data(as_text=True)
+    board = re.search(r'data-bracket.*?data-bracket-champion', page, re.S).group(0)
+    assert 'Garuda Sena' not in board
 
     _finish_league(d, event_id)
-    assert sports.bracket(_t(d, event_id))['settled']
+    b = sports.bracket(_t(d, event_id))
+    assert b['settled'] and b['columns'][0]['slots'][0]['home']   # now the semi-finals are named
     d['owner'].post(f'/tournament/{event_id}/playoffs', data={'size': '4'})
     t = _t(d, event_id)
     b = sports.bracket(t)

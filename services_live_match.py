@@ -515,6 +515,9 @@ def replay(doc: dict, clock: Optional[int] = None) -> dict:
             'super_tackle_on': on[d] <= SUPER_TACKLE_DEFENDERS, 'raid_no': raids['home'] + raids['away'] + 1,
             'raids': raids, 'half': half, 'first_raid': first,
             'timeouts_left': {x: max(0, TIMEOUTS_PER_HALF - timeouts[half][x]) for x in ('home', 'away')},
+            # Each half's time-outs taken, for the boxes beside each team (UPG-469)
+            'timeouts_used': {x: [timeouts[1][x], timeouts[2][x]] for x in ('home', 'away')},
+            'timeouts_per_half': TIMEOUTS_PER_HALF,
             'reviews': reviews, 'all_outs': all_outs, 'mat_size': MAT,
             'named': by_name, 'players': players, 'subs': subs}
 
@@ -732,7 +735,7 @@ def raiding_now(db, event_id: str, match_id: str, tap: str, name: str) -> dict:
             raise LiveMatchError("The raider must be a player on the mat of the raiding team.")
         if name:
             doc['raiding_now'] = {'team': side, 'name': name}
-            if not raid_running(doc):              # the raider goes: his 30 seconds start (UPG-413)
+            if not raid_running(doc) and not doc.get('raid_clock_off'):   # his 30 seconds start (UPG-413)
                 _start_raid(doc, side)
         else:
             doc.pop('raiding_now', None)
@@ -763,10 +766,21 @@ def raid_seconds(doc: dict, now: Optional[float] = None) -> Optional[int]:
 
 
 def raid_clock(db, event_id: str, match_id: str, tap: str, action: str) -> dict:
-    """start (again from 0) or stop the raid clock of the team whose raid it is."""
+    """start (again from 0) or stop the raid clock of the team whose raid it is;
+    off and on (UPG-464): a scorer who doesn't time the raids turns it off, and
+    neither the scorer's page nor the boards show it until it is on again."""
     def apply(doc):
+        if is_pkl(doc) and action in ('off', 'on'):
+            if action == 'off':
+                doc['raid_clock_off'] = True
+                doc.pop('raid_clock', None)
+            else:
+                doc.pop('raid_clock_off', None)
+            return
         if not is_pkl(doc) or doc.get('phase') not in ('first_half', 'second_half'):
             raise LiveMatchError("Start the half first.")
+        if doc.get('raid_clock_off'):
+            raise LiveMatchError("The raid clock is off: turn it on first.")
         if action == 'start':
             mat = replay(doc)
             doc.pop('_log', None)
@@ -782,7 +796,7 @@ def raid_clock(db, event_id: str, match_id: str, tap: str, action: str) -> dict:
 
 
 def _raid_state(doc: dict) -> Optional[dict]:
-    if doc.get('phase') not in ('first_half', 'second_half'):
+    if doc.get('phase') not in ('first_half', 'second_half') or doc.get('raid_clock_off'):
         return None
     secs = raid_seconds(doc)
     if secs is None:
@@ -1586,6 +1600,7 @@ def state(doc: dict, names: dict, last: int = 8) -> dict:
             'break_left': _break_left(doc),
             'raid_clock': _raid_state(doc) if is_pkl(doc) else None,
             'raid_seconds': RAID_SECONDS,
+            'raid_clock_on': not doc.get('raid_clock_off'),
             'toss': _toss_state(doc, names),
             'stopped_for': _stopped_for(doc, names),
             'result_text': _result_text(doc, names),

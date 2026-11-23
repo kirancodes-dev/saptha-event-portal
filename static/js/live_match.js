@@ -258,8 +258,9 @@
       var phase = root.getAttribute('data-phase');
       var scoring = phase === 'first_half' || phase === 'second_half';
       root.querySelectorAll('[data-point]').forEach(function (b) { b.disabled = !scoring; });
-      var undo = root.querySelector('[data-undo]');
-      if (undo) { undo.disabled = phase === 'full_time' || phase === 'not_started'; }
+      root.querySelectorAll('[data-undo]').forEach(function (undo) {   // below, and up top in full screen (UPG-470)
+        undo.disabled = phase === 'full_time' || phase === 'not_started';
+      });
       root.setAttribute('data-busy', queue.length ? 'true' : 'false');
       var reopen = root.querySelector('[data-reopen]');
       if (reopen) { reopen.hidden = phase !== 'full_time'; }
@@ -342,6 +343,7 @@
     function renderPanel(html) {
       var panel = root.querySelector('[data-panel]');
       if (panel && typeof html === 'string') { panel.innerHTML = html; rcAt = Date.now(); }
+      bonusApply();
       reapply();
       raidTick();
     }
@@ -409,6 +411,43 @@
       if (isSpace(e) && !typing(e.target) && raidBox()) { e.preventDefault(); }
     });
 
+    // Full screen scoring (UPG-470): the score, the clock and the match's buttons
+    // stay at the top, the rest of the site goes; kept on this device until turned off
+    var FOCUS_KEY = 'saptha.scorerFocus';
+    function focusSet(on, fromTap) {
+      root.classList.toggle('is-focus', on);
+      document.documentElement.classList.toggle('live-focus-on', on);
+      var btn = root.querySelector('[data-focus-toggle]');
+      if (btn) {
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        var label = btn.querySelector('[data-focus-label]');
+        if (label) { label.textContent = on ? 'Exit full screen' : 'Full screen scoring'; }
+        var icon = btn.querySelector('i');
+        if (icon) { icon.className = 'fas ' + (on ? 'fa-compress' : 'fa-expand'); }
+      }
+      try { if (on) { window.localStorage.setItem(FOCUS_KEY, '1'); } else { window.localStorage.removeItem(FOCUS_KEY); } } catch (err) { /* private mode */ }
+      if (!fromTap) { return; }
+      var d = document;
+      if (on && d.documentElement.requestFullscreen && !d.fullscreenElement) {
+        d.documentElement.requestFullscreen().catch(function () {});
+      } else if (!on && d.fullscreenElement && d.exitFullscreen) {
+        d.exitFullscreen().catch(function () {});
+      }
+    }
+    try { if (window.localStorage.getItem(FOCUS_KEY)) { focusSet(true, false); } } catch (err) { /* private mode */ }
+
+    // The bonus as buttons (UPG-465): '' | 'given' | 'missed', kept across a redraw until the raid is saved
+    var bonus = '';
+    function bonusApply() {
+      root.querySelectorAll('[data-bonus-toggle]').forEach(function (b) {
+        if (b.disabled) { return; }
+        var on = bonus === b.getAttribute('data-bonus-toggle');
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      if (bonus && !root.querySelector('[data-bonus-toggle]:not([disabled])')) { bonus = ''; }
+    }
+
     // The players tapped so far (UPG-420): kept across a redraw of the panel
     var pick = { defenders: [], mode: '', side: '', off: '' };
     function clearPick() { pick = { defenders: [], mode: '', side: '', off: '' }; reapply(); }
@@ -434,14 +473,13 @@
       panel.querySelectorAll('[data-tool]').forEach(function (b) {
         b.classList.toggle('active', pick.mode === b.getAttribute('data-tool') && pick.side === b.getAttribute('data-side'));
       });
-      var touch = panel.querySelector('[data-touch-button]');
       var n = pick.defenders.length;
-      if (touch) {
+      panel.querySelectorAll('[data-touch-button]').forEach(function (touch) {   // under the team and below (UPG-466)
         touch.disabled = !n;
         touch.textContent = n ? n + ' touch' + (n === 1 ? '' : 'es') + ' +' + n : 'Touch points: tap the defenders';
         var hint = el('small', 'pkl-hint', n ? 'he touched ' + n + ', they go out' : 'tap who he touched first');
         touch.appendChild(hint);
-      }
+      });
       guide(panel);
     }
     // The step box over the players (UPG-432): which step, what to tap, what's tapped so far
@@ -470,10 +508,10 @@
         text.appendChild(el('strong', '', nameOf(raider)));
         text.appendChild(document.createTextNode(' touch anyone? Tap each '));
         text.appendChild(el('strong', '', def));
-        text.appendChild(document.createTextNode(' player he touched, or the one who tackled him. Nobody? Go straight to the buttons below.'));
+        text.appendChild(document.createTextNode(' player he touched, or the one who tackled him. Nobody? Tap Empty raid under the raiding team.'));
       } else {
         step.textContent = 'Step 3 of 3';
-        text.appendChild(document.createTextNode('Now tap how the raid ended, below: Touch points (' + defs.length +
+        text.appendChild(document.createTextNode('Now tap how the raid ended, under the teams: Touch points (' + defs.length +
           ') or Tackled. Tap a defender again to take him off.'));
       }
       sum.innerHTML = '';
@@ -529,6 +567,17 @@
 
     root.addEventListener('click', function (e) {
       if (e.target.closest('[data-raid-clock-btn]')) { raidToggle(); return; }
+      if (e.target.closest('[data-focus-toggle]')) { focusSet(!root.classList.contains('is-focus'), true); return; }
+      var sw = e.target.closest('[data-raid-clock-switch]');             // the raid clock on or off (UPG-464)
+      if (sw) { send({ op: 'raid_clock', action: sw.getAttribute('data-raid-clock-switch') }); return; }
+      var bt = e.target.closest('[data-bonus-toggle]');                  // the bonus buttons (UPG-465)
+      if (bt) {
+        var bk = bt.getAttribute('data-bonus-toggle');
+        bonus = bonus === bk ? '' : bk;
+        bonusApply();
+        say(bonus === 'given' ? 'Bonus +1 goes with this raid.' : bonus === 'missed' ? 'Bonus tried, not given: goes with this raid.' : '');
+        return;
+      }
       // The toss (UPG-438): the winner and their choice, then Save
       var tossBtn = e.target.closest('[data-toss-pick], [data-toss-choice]');
       if (tossBtn) {
@@ -681,9 +730,8 @@
         var panel = root.querySelector('[data-pkl-panel]');
         var body = { op: 'raid', team: panel ? panel.getAttribute('data-raider') : '',
                      outcome: raid.getAttribute('data-outcome'), touches: raid.getAttribute('data-touches') || '',
-                     bonus: checked('[data-pkl-bonus]'), raider: value('[data-pkl-raider]'),
-                     tackler: value('[data-pkl-tackler]'), bonus_missed: checked('[data-pkl-bonus-missed]') };
-        if (body.bonus && body.bonus_missed) { say('Tick the bonus as given or as not given, not both.', true); return; }
+                     bonus: bonus === 'given', raider: value('[data-pkl-raider]'),
+                     tackler: value('[data-pkl-tackler]'), bonus_missed: bonus === 'missed' };
         if (namedPanel()) {
           var picked = root.querySelector('[data-mat-player][data-role="raider"].is-picked');
           body.raider = picked ? picked.getAttribute('data-name') : (panel.getAttribute('data-raiding-now') || '');
@@ -695,7 +743,9 @@
           body.tackler = body.outcome === 'tackled' ? (pick.defenders[0] || '') : '';
         }
         send(body);
+        bonus = '';
         clearPick();
+        bonusApply();
         return;
       }
       var call = e.target.closest('[data-call]');

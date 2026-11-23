@@ -183,14 +183,32 @@ mode feels slow for your scorers, turn it off: point by point always works.
    | Button | When | What the portal does |
    |---|---|---|
    | **1 touch … 7 touches** | The raider touched that many and got back | Raid points; those defenders out; as many of the raider's team revived; the last defender out is an **all out** (+2, the team back to 7) |
-   | **+ Bonus** (tick first) | The raider also crossed the bonus line | +1 more; only with 6 or more defenders |
+   | **+ Bonus** (a button: tap it before or after the raider; it stays on until the raid is saved) | The raider also crossed the bonus line | +1 more; only with 6 or more defenders |
    | **Bonus only +1** | Bonus line, no touch | +1 |
    | **Empty raid** | Nothing happened | Counted; a team's third raid after two empty ones is **do-or-die**: empty then means the raider is out and +1 to the defence |
    | **Tackled +1 / Super tackle +2** | The defenders caught the raider | +1, or +2 with 3 or fewer defenders; the raider out |
    | **Raider out of court** | The raider stepped out | Raider out, +1 to the defence |
 
    Pick the raider (and the tackler) in the lists first if you want player
-   stats. The turn passes to the other team by itself; in the 2nd half the
+   stats. With line-ups, the most-used buttons are right under each team's
+   players: the raiding team's **Touch points**, **+ Bonus**, **Bonus only**
+   and **Empty raid**; the defending team's **Tackled** and **Raider out of
+   court**, **Raid time over**; **Technical +1** for both.
+
+   **Time-outs** are boxes beside each team's name: two for the 1st half,
+   two for the 2nd, a tick on each one taken and how many are left. Tap a
+   free box to take one (the clock stops; **Resume clock** starts it).
+
+   **Full screen scoring** (top right of the scorer's page): both scores,
+   the clock, **Pause / Resume clock**, **Half time** and **Undo last** stay
+   at the top while you tap the raids below; the rest of the page and the
+   site's menus are hidden. It stays on for that phone or laptop until
+   **Exit full screen**.
+
+   **The 30-second raid clock** starts when you tap the raider (or press
+   Space). Not timing raids? Tap **Clock on · turn off**: nothing starts it
+   and the big screen shows no raid clock. **Turn the 30 s clock on** brings
+   it back. The turn passes to the other team by itself; in the 2nd half the
    other team raids first.
 4. **Calls** (open the line under the buttons), for each team: **Technical
    point +1**, **Their player out of bounds** (the other team +1, the player
@@ -300,8 +318,9 @@ fails or for a match scored on paper.
 
 **The road to the final** is on the tournament page, the fixtures page and
 the big screen: SF1 (1st Pool A v 2nd Pool B), SF2 (1st Pool B v 2nd Pool A),
-the final and the champion. Until the playoffs are made it shows who would
-meet if the league ended now (dashed boxes), changing with every result.
+the final and the champion. Until every league match is over it shows only
+the places (1st Pool A, 2nd Pool B …), no team names; then the teams who
+finished there go in (dashed boxes until the playoffs are made).
 
 ## 8. Semi-finals, final, results and certificates (SPOC)
 

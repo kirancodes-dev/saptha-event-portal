@@ -427,3 +427,103 @@
 .live-result { text-align: center; font-size: 1.15rem; font-weight: 800; margin: 8px auto 0; padding: 6px 16px;
   border-radius: 999px; background: #dcfce7; color: #14532d; width: fit-content; max-width: 100%; }
 .live-result .fa-trophy { color: #ca8a04; }
+
+/* The raid clock's switch (UPG-464), the bonus buttons (UPG-465), the quick row beside each team (UPG-466) */
+.pkl-raidclock .pkl-raidclock__switch { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.7); min-height: 40px; font-weight: 600; }
+.pkl-raidclock .pkl-raidclock__switch:hover { background: rgba(255,255,255,.15); color: #fff; }
+.pkl-raidclock.pkl-raidclock--off .pkl-raidclock__switch { background: #fff; color: #0f172a; border: 1px solid #334155; }
+.pkl-raidclock--off { background: #f1f5f9; color: #334155; border: 1px dashed #94a3b8; }
+.pkl-bonus { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 8px; }
+.pkl-bonus-btn { min-height: 44px; font-weight: 700; border: 2px solid #ca8a04; color: #854d0e; background: #fff; border-radius: 10px; }
+.pkl-bonus-btn--missed { border-color: #94a3b8; color: #475569; font-weight: 600; }
+.pkl-bonus-btn.active { background: #ca8a04; color: #fff; }
+.pkl-bonus-btn--missed.active { background: #475569; border-color: #475569; color: #fff; }
+.pkl-bonus-btn:disabled { opacity: .45; }
+.pkl-quick { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; padding: 8px; border-radius: 10px; background: #f8fafc; border: 1px solid #e2e8f0; }
+.pkl-quick__btn { min-height: 48px; flex: 1 1 auto; font-weight: 700; }
+.pkl-quick .pkl-hint { display: block; font-size: .72rem; font-weight: 500; opacity: .85; }
+
+/* Each team's time-outs as boxes beside its name (UPG-469) */
+.pkl-timeouts { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 4px 0 6px; font-size: .85rem; font-weight: 600; color: #475569; }
+.pkl-timeouts__label { text-transform: uppercase; letter-spacing: .05em; font-size: .72rem; }
+.pkl-timeouts__half { display: inline-flex; align-items: center; gap: 4px; opacity: .6; }
+.pkl-timeouts__half.is-now { opacity: 1; }
+.pkl-to-box { width: 40px; height: 40px; border: 2px solid #64748b; border-radius: 6px; background: #fff; display: inline-flex; align-items: center; justify-content: center; padding: 0; font-size: .85rem; color: #fff; }
+button.pkl-to-box { cursor: pointer; border-color: #1d4ed8; }
+button.pkl-to-box:hover { background: #dbeafe; }
+.pkl-to-box.is-used { background: #475569; border-color: #475569; }
+.pkl-to-box.is-later { border-style: dashed; }
+.pkl-timeouts__left { margin-left: auto; color: #0f172a; }
+
+/* Full screen scoring (UPG-470): the score, the clock and the match's buttons at the
+   top; the raids below; nothing else of the site */
+.live-top__bar { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+.live-top__focus { min-height: 44px; font-weight: 700; }
+.live-focus-only { display: none; }
+html.live-focus-on, html.live-focus-on body { overflow: hidden; }
+.live-scorer.is-focus { position: fixed; inset: 0; z-index: 5000; overflow-y: auto; background: #f8fafc;
+  padding: 0 12px 24px; -webkit-overflow-scrolling: touch; }
+.live-scorer.is-focus .live-top { position: sticky; top: 0; z-index: 5; background: #f8fafc; padding: 8px 0 2px;
+  box-shadow: 0 6px 12px -8px rgba(15, 23, 42, .35); margin-bottom: 10px; }
+.live-scorer.is-focus .live-top__bar { position: absolute; top: 12px; right: 8px; z-index: 2; margin: 0; }
+.live-scorer.is-focus .live-top__focus { min-height: 36px; padding: 4px 10px; font-size: .8rem; background: rgba(255,255,255,.15); border-color: rgba(255,255,255,.5); }
+.live-scorer.is-focus .live-board { padding: 8px 140px 8px 16px; gap: 8px; }
+.live-scorer.is-focus .live-board__score { font-size: 56px; }
+.live-scorer.is-focus .live-board__name { font-size: 18px; }
+.live-scorer.is-focus .live-board__clock { font-size: 34px; }
+.live-scorer.is-focus .live-board__logo { width: 36px; height: 36px; }
+.live-scorer.is-focus .live-message { margin: 4px 0; min-height: 1.2em; }
+.live-scorer.is-focus .live-phase { margin: 4px 0 6px; }
+.live-scorer.is-focus .live-phase .btn { min-height: 44px; font-weight: 700; }
+.live-scorer.is-focus .live-focus-only { display: inline-block; }
+.live-scorer.is-focus [data-views], .live-scorer.is-focus [data-howto], .live-scorer.is-focus [data-final-score],
+.live-scorer.is-focus [data-sheet-link], .live-scorer.is-focus .live-all { display: none !important; }
+@media (max-width: 640px) {
+  .live-scorer.is-focus .live-board { padding: 8px 8px 8px; }
+  .live-scorer.is-focus .live-top__bar { position: static; justify-content: flex-end; margin-bottom: 4px; }
+  .live-scorer.is-focus .live-top__focus { background: #0f172a; border-color: #0f172a; }
+  .live-scorer.is-focus .live-phase { gap: 6px; }
+  .live-scorer.is-focus .live-phase .btn { min-height: 40px; padding: 4px 10px; font-size: .82rem; }
+  .live-scorer.is-focus .live-board__score { font-size: 44px; }
+  .live-scorer.is-focus .live-board__clock { font-size: 26px; }
+}
+html.live-focus-on .mobile-nav-bar, html.live-focus-on .chat-fab { display: none !important; }
+@media (max-width: 640px) {
+  .pkl-quick { padding: 6px; gap: 5px; }
+  .pkl-quick__btn { flex: 1 1 100%; min-height: 46px; font-size: .9rem; padding: 6px 8px; }
+  .pkl-quick .pkl-hint { display: none; }
+}
+
+/* The time-outs beside the team's name, not a row of their own (UPG-471) */
+.pkl-col__head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 4px 10px; margin-bottom: 6px; }
+.pkl-col__head .pkl-col__name { margin-bottom: 0; }
+.pkl-col__head .pkl-timeouts { margin: 0; gap: 6px; font-size: .78rem; }
+.pkl-col__head .pkl-timeouts__label { font-size: .66rem; }
+.pkl-col__head .pkl-to-box { width: 32px; height: 32px; border-radius: 5px; }
+.pkl-col__head .pkl-timeouts__left { margin-left: 2px; }
+
+/* Full screen: the score and the clock smaller, always at the top; the teams under them (UPG-471) */
+.live-scorer.is-focus .live-top { padding: 4px 0 0; margin-bottom: 6px; }
+.live-scorer.is-focus .live-board { padding: 4px 130px 4px 12px; gap: 6px; border-radius: 10px; }
+.live-scorer.is-focus .live-board__score { font-size: 34px; line-height: 1; }
+.live-scorer.is-focus .live-board__name { font-size: 15px; }
+.live-scorer.is-focus .live-board__clock { font-size: 24px; line-height: 1.1; }
+.live-scorer.is-focus .live-board__phase { font-size: 11px; }
+.live-scorer.is-focus .live-board__halves, .live-scorer.is-focus .live-board__logo { display: none; }
+.live-scorer.is-focus .live-top__bar { top: 8px; }
+.live-scorer.is-focus .live-message { margin: 2px 0; font-size: 13px; }
+.live-scorer.is-focus .live-phase { margin: 2px 0 4px; gap: 6px; }
+.live-scorer.is-focus .live-phase .btn { min-height: 38px; padding: 4px 12px; font-size: .85rem; }
+@media (max-width: 640px) {
+  .live-scorer.is-focus .live-board { padding: 4px 6px; }
+  .live-scorer.is-focus .live-board__score { font-size: 30px; }
+  .live-scorer.is-focus .live-board__clock { font-size: 20px; }
+  .live-scorer.is-focus .live-top__bar { margin-bottom: 2px; }
+  .live-scorer.is-focus .live-top__focus { min-height: 32px; font-size: .75rem; }
+}
+@media (max-width: 640px) {
+  .pkl-col__head .pkl-timeouts { gap: 3px; flex-wrap: nowrap; }
+  .pkl-col__head .pkl-timeouts__label, .pkl-col__head .pkl-timeouts__left { display: none; }
+  .pkl-col__head .pkl-timeouts__half { gap: 2px; font-size: .7rem; }
+  .pkl-col__head .pkl-to-box { width: 26px; height: 26px; }
+}

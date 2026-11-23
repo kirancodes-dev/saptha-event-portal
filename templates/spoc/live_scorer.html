@@ -22,31 +22,63 @@
      data-half-seconds="{{ state.half_seconds }}" data-break-left="{{ state.break_left if state.break_left is not none else '' }}"
      data-tiebreak="{{ 'true' if tiebreak else 'false' }}">
 
-  <section class="live-board" aria-live="polite">
-    <div class="live-board__team">
-      {% if logos is defined and logos.get(doc.home) %}<img src="{{ logos[doc.home] }}" alt="" class="live-board__logo" width="48" height="48" data-team-logo>{% endif %}
-      <div class="live-board__name">{{ state.home.name }}</div>
-      <div class="live-board__score" data-score="home">{{ state.home.total }}</div>
-      <div class="live-board__halves" data-halves="home">{{ state.home.halves[0] }} · {{ state.home.halves[1] }}</div>
+  {#- The score, the clock and the match's buttons together (UPG-470): in full
+      screen they stay at the top while the scorer taps the raids below -#}
+  <div class="live-top" data-live-top>
+    <div class="live-top__bar">
+      <button type="button" class="btn btn-dark live-top__focus" data-focus-toggle aria-pressed="false"><i class="fas fa-expand" aria-hidden="true"></i> <span data-focus-label>Full screen scoring</span></button>
     </div>
-    <div class="live-board__middle">
-      <div class="live-board__phase" data-phase-name>{{ state.phase_name }}</div>
-      <div class="live-board__clock" data-clock-text>{{ '%02d:%02d' % (state.clock // 60, state.clock % 60) }}</div>
-      {% include "includes/live_clock_left.html" %}
-    </div>
-    <div class="live-board__team">
-      {% if logos is defined and logos.get(doc.away) %}<img src="{{ logos[doc.away] }}" alt="" class="live-board__logo" width="48" height="48" data-team-logo>{% endif %}
-      <div class="live-board__name">{{ state.away.name }}</div>
-      <div class="live-board__score" data-score="away">{{ state.away.total }}</div>
-      <div class="live-board__halves" data-halves="away">{{ state.away.halves[0] }} · {{ state.away.halves[1] }}</div>
-    </div>
-  </section>
-  {#- Who won, at full time (UPG-456) #}
-  <p class="live-result" data-result-line {% if not state.result_text %}hidden{% endif %}><i class="fas fa-trophy" aria-hidden="true"></i> <span data-result-text>{{ state.result_text }}</span></p>
+    <section class="live-board" aria-live="polite">
+      <div class="live-board__team">
+        {% if logos is defined and logos.get(doc.home) %}<img src="{{ logos[doc.home] }}" alt="" class="live-board__logo" width="48" height="48" data-team-logo>{% endif %}
+        <div class="live-board__name">{{ state.home.name }}</div>
+        <div class="live-board__score" data-score="home">{{ state.home.total }}</div>
+        <div class="live-board__halves" data-halves="home">{{ state.home.halves[0] }} · {{ state.home.halves[1] }}</div>
+      </div>
+      <div class="live-board__middle">
+        <div class="live-board__phase" data-phase-name>{{ state.phase_name }}</div>
+        <div class="live-board__clock" data-clock-text>{{ '%02d:%02d' % (state.clock // 60, state.clock % 60) }}</div>
+        {% include "includes/live_clock_left.html" %}
+      </div>
+      <div class="live-board__team">
+        {% if logos is defined and logos.get(doc.away) %}<img src="{{ logos[doc.away] }}" alt="" class="live-board__logo" width="48" height="48" data-team-logo>{% endif %}
+        <div class="live-board__name">{{ state.away.name }}</div>
+        <div class="live-board__score" data-score="away">{{ state.away.total }}</div>
+        <div class="live-board__halves" data-halves="away">{{ state.away.halves[0] }} · {{ state.away.halves[1] }}</div>
+      </div>
+    </section>
+    {#- Who won, at full time (UPG-456) #}
+    <p class="live-result" data-result-line {% if not state.result_text %}hidden{% endif %}><i class="fas fa-trophy" aria-hidden="true"></i> <span data-result-text>{{ state.result_text }}</span></p>
+    <p class="live-message" data-message role="status"></p>
+    <section class="live-phase" aria-label="Match phase">
+      <button type="button" class="btn btn-success" data-phase-action="start">Start 1st half</button>
+      <button type="button" class="btn btn-outline-secondary" data-phase-action="pause">Pause clock</button>
+      <button type="button" class="btn btn-outline-secondary" data-phase-action="resume">Resume clock</button>
+      <button type="button" class="btn btn-warning" data-phase-action="half_time">Half time</button>
+      {#- In full screen the scorer's undo is up here too (UPG-470) #}
+      <button type="button" class="btn btn-outline-danger live-focus-only" data-undo><i class="fas fa-undo" aria-hidden="true"></i> Undo last</button>
+      <button type="button" class="btn btn-success" data-phase-action="second_half">Start 2nd half</button>
+      {% if knockout and not tiebreak %}
+      <label class="live-phase__winner">If it's a tie, who goes through
+        <select class="form-select form-select-sm" data-winner>
+          <option value="">Choose at a tie</option>
+          <option value="{{ doc.home }}">{{ state.home.name }}</option>
+          <option value="{{ doc.away }}">{{ state.away.name }}</option>
+        </select>
+      </label>
+      {% endif %}
+      <button type="button" class="btn btn-danger" data-phase-action="full_time">Full time: save the result</button>
+      {#- The tie-breaker started by mistake (UPG-396) #}
+      <button type="button" class="btn btn-outline-secondary" data-phase-action="back">Back to the 2nd half</button>
+      {#- Full time pressed by mistake: take the result back and play on (UPG-355) #}
+      <button type="button" class="btn btn-outline-danger" data-reopen>Reopen the match</button>
+      {#- The score sheet (UPG-419): provisional until full time #}
+      <a href="/tournament/live/{{ event.id }}/{{ match.id }}/sheet.pdf" class="btn btn-outline-secondary" data-sheet-link target="_blank" rel="noopener"{% if state.phase == 'not_started' %} hidden{% endif %}><i class="fas fa-file-pdf" aria-hidden="true"></i> Score sheet (PDF)<span data-sheet-provisional{% if state.phase == 'full_time' %} hidden{% endif %}> · provisional</span></a>
+    </section>
+  </div>
 
   {#- How many have watched the public page (UPG-433), as the page opened #}
   {% if watched is defined and watched %}<p class="live-views" data-views><i class="fas fa-eye" aria-hidden="true"></i> Public page: <strong>{{ '{:,}'.format(watched.views) }}</strong> view{{ '' if watched.views == 1 else 's' }} · <strong>{{ '{:,}'.format(watched.devices) }}</strong> device{{ '' if watched.devices == 1 else 's' }}</p>{% endif %}
-  <p class="live-message" data-message role="status"></p>
 
   {#- The steps, on the page: open before the match starts (UPG-408) #}
   <details class="live-howto" data-howto{% if state.phase == 'not_started' %} open{% endif %}>
@@ -60,17 +92,18 @@
         <ol type="a">
           <li><strong>Step 1:</strong> tap the raider, the player who goes in, on the blue (raiding) side. He turns blue and says RAIDER; the public sees him at once.</li>
           <li><strong>Step 2:</strong> tap each defender he touched (green side), or the one who tackled him. Each turns amber and says TOUCHED. Nobody touched? Skip this step.</li>
-          <li><strong>Step 3:</strong> tap one big button for how the raid ended. <strong>Touch points</strong> (he touched them and got back), <strong>Tackled</strong> (they caught him), <strong>Bonus only</strong>, <strong>Empty raid</strong> or <strong>Raider out of court</strong>. Tick <em>He also crossed the bonus line</em> first if he did.</li>
+          <li><strong>Step 3:</strong> tap one big button for how the raid ended. <strong>Touch points</strong> (he touched them and got back), <strong>Tackled</strong> (they caught him), <strong>Bonus only</strong>, <strong>Empty raid</strong> or <strong>Raider out of court</strong>. Tap <strong>+ Bonus</strong> too if he also crossed the bonus line. The buttons are under each team.</li>
         </ol>
       </li>
       <li>The page says <strong>Saved:</strong> and the raid. The portal puts players out, brings them back in order, counts all outs and do-or-die, and gives the next raid to the other team.</li>
       <li><strong>Other</strong> (under each team): <strong>Substitution</strong> (tap it, the player going off, then the substitute), <strong>Out of bounds</strong> (tap it, then the player who stepped out), <strong>−1 on the mat</strong>.</li>
       {% else %}
       <li>Choose <strong>who raids first</strong> (the team that won the toss), then press <strong>Start 1st half</strong>.</li>
-      <li>After every raid, pick the raider{% if jerseys is defined %} (by jersey number){% endif %} and, if tackled, the tackler. Then tap <strong>one button</strong> for how the raid ended: the number of touches, <strong>Bonus only</strong>, <strong>Empty raid</strong>, <strong>Tackled</strong> or <strong>Raider out of court</strong>. Tick <strong>+ Bonus</strong> first if the raider also crossed the bonus line.</li>
+      <li>After every raid, pick the raider{% if jerseys is defined %} (by jersey number){% endif %} and, if tackled, the tackler. Then tap <strong>one button</strong> for how the raid ended: the number of touches, <strong>Bonus only</strong>, <strong>Empty raid</strong>, <strong>Tackled</strong> or <strong>Raider out of court</strong>. Tap <strong>+ Bonus</strong> first if the raider also crossed the bonus line.</li>
       <li>The portal adds the points, all outs, revivals and do-or-die by itself, and passes the raid to the other team.</li>
       {% endif %}
-      <li>A time-out, technical point or review: open <strong>Calls</strong>. After a time-out press <strong>Resume clock</strong>.</li>
+      <li>A time-out: tap a box beside the team's name. A technical point or review: open <strong>Calls</strong>. After a time-out press <strong>Resume clock</strong>.</li>
+      <li><strong>Full screen scoring</strong> keeps the score, the clock and these buttons at the top and hides the rest.</li>
       <li>A wrong tap: <strong>Undo last</strong>, or <strong>Remove</strong> next to it under <strong>All points</strong>.</li>
       <li><strong>Half time</strong>, then <strong>Start 2nd half</strong>. At the end, <strong>Full time: save the result</strong>. A level score goes to the tie-breaker: 5 raids each.</li>
     </ol>
@@ -87,29 +120,6 @@
     <p class="small text-muted mb-0">Only this event's SPOC and its coordinators can score. Everyone else sees the public scoreboard.</p>
   </details>
 
-  <section class="live-phase" aria-label="Match phase">
-    <button type="button" class="btn btn-success" data-phase-action="start">Start 1st half</button>
-    <button type="button" class="btn btn-outline-secondary" data-phase-action="pause">Pause clock</button>
-    <button type="button" class="btn btn-outline-secondary" data-phase-action="resume">Resume clock</button>
-    <button type="button" class="btn btn-warning" data-phase-action="half_time">Half time</button>
-    <button type="button" class="btn btn-success" data-phase-action="second_half">Start 2nd half</button>
-    {% if knockout and not tiebreak %}
-    <label class="live-phase__winner">If it's a tie, who goes through
-      <select class="form-select form-select-sm" data-winner>
-        <option value="">Choose at a tie</option>
-        <option value="{{ doc.home }}">{{ state.home.name }}</option>
-        <option value="{{ doc.away }}">{{ state.away.name }}</option>
-      </select>
-    </label>
-    {% endif %}
-    <button type="button" class="btn btn-danger" data-phase-action="full_time">Full time: save the result</button>
-    {#- The tie-breaker started by mistake (UPG-396) #}
-    <button type="button" class="btn btn-outline-secondary" data-phase-action="back">Back to the 2nd half</button>
-    {#- Full time pressed by mistake: take the result back and play on (UPG-355) #}
-    <button type="button" class="btn btn-outline-danger" data-reopen>Reopen the match</button>
-    {#- The score sheet (UPG-419): provisional until full time #}
-    <a href="/tournament/live/{{ event.id }}/{{ match.id }}/sheet.pdf" class="btn btn-outline-secondary" data-sheet-link target="_blank" rel="noopener"{% if state.phase == 'not_started' %} hidden{% endif %}><i class="fas fa-file-pdf" aria-hidden="true"></i> Score sheet (PDF)<span data-sheet-provisional{% if state.phase == 'full_time' %} hidden{% endif %}> · provisional</span></a>
-  </section>
 
   {#- Couldn't keep up with the raids: type the final score, press Enter (UPG-463) #}
   <details class="card mb-3" data-final-score{% if state.phase == 'full_time' %} open{% endif %}>

@@ -1,6 +1,13 @@
 {#- The 30-second raid clock on the scorer's page (UPG-413): a stopwatch. Space
-    (or the button) when the raider goes, Space again when the raider is back. -#}
+    (or the button) when the raider goes, Space again when the raider is back.
+    Its switch (UPG-464): off, nothing starts it and no board shows it. -#}
 {% set rc = state.raid_clock %}
+{% if state.raid_clock_on is defined and not state.raid_clock_on %}
+<div class="pkl-raidclock pkl-raidclock--off" data-raid-clock-off>
+  <span class="pkl-raidclock__label">Raid clock off</span>
+  <button type="button" class="btn btn-sm btn-outline-dark pkl-raidclock__switch" data-raid-clock-switch="on" aria-pressed="false">Turn the 30 s clock on</button>
+</div>
+{% else %}
 <div class="pkl-raidclock{% if rc and rc.over %} is-over{% endif %}" data-raid-clock-box
      data-secs="{{ rc.secs if rc else '' }}" data-running="{{ 'true' if rc and rc.running else 'false' }}"
      data-limit="{{ state.raid_seconds }}">
@@ -9,4 +16,6 @@
     <strong class="pkl-raidclock__time" data-raid-clock-text>{% if not rc %}{{ state.raid_seconds }} s{% elif rc.running and not rc.over %}{{ rc.left }} s left{% elif rc.running %}Time over · {{ rc.secs }} s{% else %}Back in {{ rc.secs }} s{% endif %}</strong>
   </div>
   <button type="button" class="btn btn-dark pkl-raidclock__btn" data-raid-clock-btn>{% if rc and rc.running %}Stop: raider back{% else %}Start: raider goes{% endif %} <kbd>Space</kbd></button>
+  <button type="button" class="btn btn-sm btn-outline-secondary pkl-raidclock__switch" data-raid-clock-switch="off" aria-pressed="true" title="Stop timing raids: nothing starts the clock and the boards don't show it">Clock on · turn off</button>
 </div>
+{% endif %}

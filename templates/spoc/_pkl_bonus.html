@@ -1,0 +1,7 @@
+{#- The bonus as two buttons, not ticks (UPG-465): tap before or after the raider;
+    kept until the raid is saved. Only when the bonus line is live. -#}
+<div class="pkl-bonus" data-bonus-row>
+  <button type="button" class="btn pkl-bonus-btn" data-bonus-toggle="given" data-pkl-bonus aria-pressed="false"{% if not mat.bonus_live %} disabled{% endif %}>+ Bonus{% if bonus_hint %} <small class="pkl-hint">he also crossed the bonus line (+1)</small>{% endif %}</button>
+  <button type="button" class="btn pkl-bonus-btn pkl-bonus-btn--missed" data-bonus-toggle="missed" data-pkl-bonus-missed aria-pressed="false"{% if not mat.bonus_live %} disabled{% endif %}>Bonus tried, not given</button>
+  {% if not mat.bonus_live %}<span class="small text-muted">Bonus not live: under 6 defenders</span>{% endif %}
+</div>

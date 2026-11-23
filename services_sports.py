@@ -810,7 +810,8 @@ def bracket(tournament: dict) -> dict:
     and the big screen (UPG-393): {'columns': [{'title', 'slots'}], 'champion',
     'projected'}. In a league then knockout, before the playoffs are made the
     semi-finals show who would play if the league ended now (1st A v 2nd B,
-    1st B v 2nd A with pools; 1 v 4, 2 v 3 without). {} for a plain league."""
+    1st B v 2nd A with pools; 1 v 4, 2 v 3 without), with the teams named
+    only once the league is over (UPG-467). {} for a plain league."""
     t = tournament or {}
     matches = t.get('matches') or []
     fmt = t.get('format')
@@ -858,8 +859,13 @@ def bracket(tournament: dict) -> dict:
         pick = {label: table[i:i + 1] for i, label in enumerate(('1st', '2nd', '3rd', '4th'))}
         pairs = (('1st', '4th'), ('2nd', '3rd')) if size == 4 else (('1st', '2nd'),)
 
+    settled = league_done(t)
+
     def team(label):
-        rows = pick.get(label) or []
+        # Only once every league match is over (UPG-467): a team shown early
+        # in a semi-final it may not reach caused confusion; until then the
+        # slots say "1st Pool A", "2nd Pool B"
+        rows = (pick.get(label) or []) if settled else []
         return rows[0]['id'] if rows else None
 
     def projected(h, a_, title):
@@ -870,7 +876,7 @@ def bracket(tournament: dict) -> dict:
                 {'title': 'Final', 'slots': [dict(_slot(None, 'Winner SF1', 'Winner SF2', title='Final'), projected=True)]}]
     else:
         cols = [{'title': 'Final', 'slots': [projected(*pairs[0], 'Final')]}]
-    return {'columns': cols, 'champion': None, 'projected': True, 'settled': league_done(t)}
+    return {'columns': cols, 'champion': None, 'projected': True, 'settled': settled}
 
 
 def update_schedule(tournament: dict, match_id: str, date: str, time: str, venue: str) -> dict:

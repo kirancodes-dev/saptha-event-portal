@@ -356,7 +356,7 @@ def test_the_scorer_taps_cards_the_lobby_an_injury_and_a_reason_in_the_browser(l
         # A raid with the bonus tried, not given
         page.click('[data-mat-player][data-role="raider"][data-name="Arjun"]')
         page.click('[data-mat-player][data-role="defender"][data-name="Harish"]')
-        page.check('[data-pkl-bonus-missed]')
+        page.click('[data-pkl-bonus-missed]')                   # a button now (UPG-465)
         page.click('[data-touch-button]')
         wait_for(3)
         # A technical point with its reason

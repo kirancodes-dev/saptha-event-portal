@@ -3,15 +3,20 @@
   "releases": [
     {
       "version": "1.22",
-      "date": "2026-11-23",
+      "date": "2026-11-24",
       "commit": "",
       "revision": "",
-      "title": "Type the final score",
+      "title": "Type the final score, and faster scoring",
       "notes": [
         "The home page's Watch live box no longer disappears because of one event with unusual details: that event is skipped and the others still show.",
-        "Missed raids? On the scorer's page, Type the final score: each team's points, press Enter. The match ends with that score and the winner, and the big screen and public pages show it."
+        "Missed raids? On the scorer's page, Type the final score: each team's points, press Enter. The match ends with that score and the winner, and the big screen and public pages show it.",
+        "Faster scoring: the 30-second raid clock has an off switch; + Bonus is a button, not a tick box; and every way a raid ends (touch points, bonus, empty raid, tackle, raider out, raid time over, technical point) sits right under its team's players. The list under both teams is gone.",
+        "Each team's time-outs are small boxes right beside its name: two for each half, ticked when taken, and how many are left. Tap a free box to take one.",
+        "Full screen scoring: one button on the scorer's page keeps both scores, the clock and Pause, Resume, Half time and Undo in a small bar at the top while you tap the raids right below it. Everything else is hidden until Exit full screen.",
+        "The road to the final shows \"1st Pool A\", \"2nd Pool B\" until every league match is over; then the teams go in.",
+        "The match score sheet (PDF) has the college logo, each team's logo, the score in a clear box, and each team's players in its own table. A team with a logo no longer stops the sheet from opening."
       ],
-      "items": ["UPG-462", "UPG-463"]
+      "items": ["UPG-462", "UPG-463", "UPG-464", "UPG-465", "UPG-466", "UPG-467", "UPG-468", "UPG-469", "UPG-470", "UPG-471", "UPG-472"]
     },
     {
       "version": "1.21",

@@ -1,0 +1,18 @@
+{#- Each team's time-outs as boxes (UPG-469): two a half; tap a free box of
+    this half to take one (the clock stops; Resume clock starts it). -#}
+{% set per = mat.timeouts_per_half or 2 %}
+{% set used = mat.timeouts_used[side] if mat.timeouts_used is defined else [0, 0] %}
+{% set left_match = (per - used[0] if mat.half == 1 else 0) + per - used[1] %}
+<div class="pkl-timeouts" data-timeouts="{{ side }}">
+  <span class="pkl-timeouts__label">Time-outs</span>
+  {% for h in (1, 2) %}
+  <span class="pkl-timeouts__half{% if h == mat.half %} is-now{% endif %}">{{ '1st' if h == 1 else '2nd' }}
+    {% for i in range(per) %}
+    {% if i < used[h - 1] %}<span class="pkl-to-box is-used" title="Taken">✓</span>
+    {% elif h == mat.half %}<button type="button" class="pkl-to-box" data-call data-kind="timeout" data-team="{{ side }}" title="Take a time-out for {{ state[side].name }}" aria-label="Time-out for {{ state[side].name }}"></button>
+    {% else %}<span class="pkl-to-box is-later"></span>{% endif %}
+    {% endfor %}
+  </span>
+  {% endfor %}
+  <span class="pkl-timeouts__left" data-timeouts-left="{{ side }}">{{ left_match }} left</span>
+</div>

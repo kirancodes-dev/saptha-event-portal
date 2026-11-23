@@ -399,3 +399,31 @@
 .team-details__jname { font-size: .72rem; font-weight: 700; letter-spacing: .05em; color: #475569; background: #f1f5f9; border-radius: 4px; padding: 0 5px; }
 .team-details__table td, .team-details__table th { white-space: normal; overflow-wrap: anywhere; }
 @media (max-width: 420px) { .team-details__count { display: none; } }
+
+/* Cards, the lobby, injury breaks (UPG-447 to UPG-452) */
+.live-stop { text-align: center; font-weight: 700; margin: 6px auto 0; padding: 4px 12px; border-radius: 999px;
+  background: #fef3c7; color: #92400e; width: fit-content; max-width: 100%; }
+.mat-box__label--card { color: #92400e; }
+.mat-chip--card { position: relative; }
+.mat-chip--yellow { background: #fef9c3; border-color: #facc15; }
+.mat-chip--red { background: #fecaca; border-color: #ef4444; }
+.mat-chip--red b { color: #991b1b; }
+.mat-chip__left { display: block; font-style: normal; font-size: 11px; font-weight: 700; color: #92400e; }
+.pkl-player--card { min-height: 40px; flex-direction: column; }
+.pkl-player--yellow { background: #fef9c3; border-color: #facc15; }
+.pkl-player--red { background: #fecaca; border-color: #ef4444; }
+.pkl-player__left { font-size: 11px; font-weight: 700; color: #92400e; }
+.pkl-col__tools--cards { margin-top: 4px; }
+.pkl-card-btn { border: 1px solid #cbd5e1; font-weight: 600; }
+.pkl-card-btn--green { background: #dcfce7; border-color: #22c55e; color: #14532d; }
+.pkl-card-btn--yellow { background: #fef9c3; border-color: #eab308; color: #713f12; }
+.pkl-card-btn--red { background: #fee2e2; border-color: #ef4444; color: #7f1d1d; }
+.pkl-card-btn.active { outline: 3px solid #1e293b; }
+.pkl-tech { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+.pkl-tech__label { font-size: 12px; font-weight: 600; color: #475569; }
+.pkl-cards select { width: auto; max-width: 100%; }
+
+/* Who won, at full time (UPG-456) */
+.live-result { text-align: center; font-size: 1.15rem; font-weight: 800; margin: 8px auto 0; padding: 6px 16px;
+  border-radius: 999px; background: #dcfce7; color: #14532d; width: fit-content; max-width: 100%; }
+.live-result .fa-trophy { color: #ca8a04; }

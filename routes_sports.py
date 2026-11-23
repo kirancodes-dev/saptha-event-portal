@@ -594,7 +594,9 @@ def score_tap(event_id, match_id):
                                  str(data.get('raider') or ''), str(data.get('tackler') or ''),
                                  _yes(data.get('upheld')), _int(data.get('change'), 0), session.get('user_id', ''),
                                  data.get('touched') if isinstance(data.get('touched'), list) else None,
-                                 str(data.get('player') or ''), str(data.get('off') or ''), str(data.get('on') or ''))
+                                 str(data.get('player') or ''), str(data.get('off') or ''), str(data.get('on') or ''),
+                                 reason=str(data.get('reason') or ''), card=str(data.get('card') or ''),
+                                 where=str(data.get('where') or ''), bonus_missed=_yes(data.get('bonus_missed')))
         elif op == 'lineup':                          # each team's seven, before the start (UPG-417)
             doc = live.get(db, event_id, match_id) or {}
             sides = {side: data.get(side) for side in ('home', 'away') if isinstance(data.get(side), list)}
@@ -851,6 +853,14 @@ def _match_when(m):
 sports_bp.add_app_template_filter(_match_when, 'match_when')   # UPG-443: "Sat 28 Nov · 4:30 PM"
 
 
+def _match_result(m, names, t=None):
+    import services_sports
+    return services_sports.result_text(m or {}, names or {}, services_sports.is_kabaddi(t) if t else True)
+
+
+sports_bp.add_app_template_filter(_match_result, 'match_result')   # UPG-456: "Garuda Sena won by 4 points (24–20)"
+
+
 @sports_bp.route('/screen/<event_id>/qr.svg')
 def screen_qr(event_id):
     """The QR code on the big screen (UPG-402): the audience scan it to open
@@ -875,14 +885,20 @@ def _screen(event):
     import services_sports
     t = event.get('tournament') or {}
     live = _live(event['id']) if t else {}
+    try:
+        done = live_match.just_finished(db, event['id']) if t else {}
+    except Exception:
+        done = {}
     boards = []
     for m in t.get('matches') or []:
-        if m['id'] in live:
+        if m['id'] in live or m['id'] in done:          # a match just over stays up with who won (UPG-456)
             try:
                 state = live_match.public_state(db, event['id'], m['id'])
             except Exception:
                 state = None
             boards.append({'match': m, 'state': state})
+    if any(b['match']['id'] in live for b in boards):   # a finished match only while no other is live
+        boards = [b for b in boards if b['match']['id'] in live]
     watched = None                       # how many watch the live matches' pages (UPG-435)
     if boards:
         try:

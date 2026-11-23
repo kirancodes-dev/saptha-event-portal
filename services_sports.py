@@ -326,6 +326,25 @@ def tiebreak_text(m: dict, names: dict) -> str:
     return f"{names.get(m['winner'], '')} won the {way}{score}"
 
 
+def result_text(m: dict, names: dict, kabaddi: bool = True) -> str:
+    """Who won a played match, in words for the boards (UPG-456): 'Garuda Sena
+    won by 4 points (24–20)', 'Vajra won the shootout 4–3 (20–20 at full
+    time)', 'Vajra won by walkover', 'Match tied 18–18'; '' until it is played."""
+    if (m or {}).get('status') != 'played':
+        return ''
+    win, home, away = m.get('winner'), m.get('home_score'), m.get('away_score')
+    if m.get('walkover') and win:
+        return f"{names.get(win, '')} won by walkover"
+    if home is None or away is None:
+        return f"{names.get(win, '')} won" if win else ''
+    if win and m.get('tiebreak'):
+        return f"{tiebreak_text(m, names)} ({home}–{away} at full time)"
+    if win and home != away:
+        diff, unit = abs(home - away), 'point' if kabaddi else 'goal'
+        return f"{names.get(win, '')} won by {diff} {unit}{'' if diff == 1 else 's'} ({max(home, away)}–{min(home, away)})"
+    return f"Match {'tied' if kabaddi else 'drawn'} {home}–{away}"
+
+
 def preset_points(sport: str) -> dict:
     """The points a sport's league uses by default (UPG-350)."""
     return dict(KABADDI_POINTS if str(sport or '').strip().lower() == 'kabaddi' else DEFAULT_POINTS)

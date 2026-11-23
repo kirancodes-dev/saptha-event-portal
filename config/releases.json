@@ -21,9 +21,16 @@
         "A team without a logo shows its initials, and team names wrap between words.",
         "The SPOC's registration details show each player's jersey number and name, date of birth with the age, and position, and the team logo as a picture.",
         "After the fixture sheet, the SPOC sets every match's date, time and venue in one table; the public fixtures show them as \"Sat 28 Nov · 4:30 PM\".",
-        "On a laptop or a screen in the hall, the match page opens at the score instead of jumping down to the player search."
+        "On a laptop or a screen in the hall, the match page opens at the score instead of jumping down to the player search.",
+        "Cards for the scorer: green is a warning; yellow takes the player off for 2 minutes of play, then he comes back; red is off for the match. The boards show who is off and the time left.",
+        "When two or more defenders catch the raider, the scorer taps them all: the first gets the point, and the others count as tackle assists on their profile. The feed says \"caught by #1 Bharat with #3 Chetan\".",
+        "An injury break or an official time-out stops the clock without using a team's time-out, and the public page and the big screen say why the clock is stopped.",
+        "A technical point can say why (late substitution, coach on the court, delaying, conduct, a raid rule).",
+        "A Lobby call: a player who goes into the lobby before a struggle is out, and the other team gets a point.",
+        "The scorer can tick \"tried the bonus, not given\"; the feed says so.",
+        "After the second half, the public match page, the scorer's page, the big screen and the fixtures say who won: \"Garuda Sena won by 4 points (24–20)\". The big screen keeps the finished match up for 10 minutes."
       ],
-      "items": ["UPG-431", "UPG-432", "UPG-433", "UPG-434", "UPG-435", "UPG-413", "UPG-436", "UPG-437", "UPG-438", "UPG-439", "UPG-440", "UPG-441", "UPG-442", "UPG-443", "UPG-444"]
+      "items": ["UPG-431", "UPG-432", "UPG-433", "UPG-434", "UPG-435", "UPG-413", "UPG-436", "UPG-437", "UPG-438", "UPG-439", "UPG-440", "UPG-441", "UPG-442", "UPG-443", "UPG-444", "UPG-447", "UPG-448", "UPG-449", "UPG-450", "UPG-451", "UPG-452", "UPG-453", "UPG-456"]
     },
     {
       "version": "1.19",

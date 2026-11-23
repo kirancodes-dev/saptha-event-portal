@@ -484,7 +484,7 @@ def test_the_match_page_says_who_is_raiding_and_each_raid_by_jersey(league):  # 
     _raid(d, event_id, m, team='away', outcome='tackled', touched=['Bharat'])
     live._cache.clear()
     state = d['app'].test_client().get(f"{path}/state").get_json()['state']
-    assert state['feed'][0] == 'Vajra · #7 Chandan · tackled · tackle by #1 Bharat +1'
+    assert state['feed'][0] == 'Vajra · #7 Chandan · tackled · caught by #1 Bharat +1'  # UPG-453: "caught by", the owner's wording
     assert state['raiding_now'] is None
 
 
@@ -883,7 +883,7 @@ def test_a_player_is_one_person_across_events_with_the_achievements(league):  # 
     stats = dict(re.findall(r'data-event-stat="(\w+)"><b>(\d+)</b>', cup))
     assert stats == {'matches': '1', 'total': '15', 'raid': '10', 'tackle': '5', 'successful_raids': '5',
                      'super_raids': '1', 'tackles': '4', 'super_tackles': '1', 'do_or_die': '3', 'super_10': '1',
-                     'high_5': '1', 'potm': '1'}
+                     'high_5': '1', 'potm': '1', 'assists': '0'}                    # tackle assists (UPG-448)
     career = dict(re.findall(r'data-stat="(\w+)"><b>(\d+)</b>', page))
     assert career['raid'] == '11' and career['matches'] == '2'
     awards = re.findall(r'data-award="(\w+)"', page)

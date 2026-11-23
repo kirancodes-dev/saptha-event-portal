@@ -2469,6 +2469,8 @@ button, a.btn, .nav-link, .form-check-label { touch-action: manipulation; }
    -------------------------------------------------------------------------- */
 .match-card { padding: 0.65rem 0.8rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-card); font-size: var(--fs-sm); }
 .match-card--done { background: var(--surface-sunken); }
+.match-result { margin-top: 4px; font-size: var(--fs-xs); font-weight: 700; color: #15803d; }  /* who won (UPG-456) */
+.match-result .fa-trophy { color: #ca8a04; }
 .match-card .text-muted { font-size: var(--fs-xs); }
 .match-score { min-width: 28px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; background: var(--surface-muted); color: var(--text-strong); border-radius: var(--radius-xs); padding: 1px 6px; }
 

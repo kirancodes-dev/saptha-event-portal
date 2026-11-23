@@ -4,6 +4,7 @@ league on match day: the big screen for a monitor (UPG-392), the road to the
 final as a map (UPG-393), a match postponed and back on (UPG-394), and every
 player's points team by team (UPG-395).
 """
+import time
 from urllib.parse import urlparse
 
 import services_live_match as live
@@ -11,6 +12,7 @@ import services_sports as sports
 from tests.headless import ORIGIN, _serve_static, chromium
 from tests.test_kabaddi_premier_league import _generate, league  # noqa: F401
 from tests.test_live_match import _tap
+from tests.test_match_day_scoring import Clock
 from tests.test_sports_tournament import _play, _t, cup  # noqa: F401
 from tests.test_tap_targets import PHONE
 
@@ -123,7 +125,7 @@ def test_a_match_is_postponed_and_comes_back(league):  # noqa: F811
 
 # ── UPG-392: the big screen ─────────────────────────────────────────────────
 
-def test_the_big_screen_follows_the_live_match_with_tables_and_leaders(league):  # noqa: F811
+def test_the_big_screen_follows_the_live_match_with_tables_and_leaders(league, monkeypatch):  # noqa: F811
     d, event_id, ids = league
     t = _generate(d, event_id, ids)
     m1 = t['matches'][0]
@@ -143,9 +145,14 @@ def test_the_big_screen_follows_the_live_match_with_tables_and_leaders(league): 
     assert 'data-screen-score="home">4<' in html and 'Raid 4' in html   # a bonus is a raid point
     assert 'data-screen-leaders="raid"' in html and raider in html
 
+    clock = Clock(monkeypatch, start=time.time())
     assert _tap(d['coord'], event_id, m1['id'], op='phase', action='half_time')[0] == 200
     _tap(d['coord'], event_id, m1['id'], op='phase', action='second_half')
     _tap(d['coord'], event_id, m1['id'], op='phase', action='full_time')
+    live._cache.clear()
+    html = _anon(d).get(f'/tournament/screen/{event_id}/body').get_data(as_text=True)
+    assert f'data-screen-board="{m1["id"]}"' in html and 'data-screen-ft>FULL TIME<' in html   # stays with who won (UPG-456)
+    clock.wait(live.RESULT_SHOW_SECONDS + 1)
     live._cache.clear()
     html = _anon(d).get(f'/tournament/screen/{event_id}/body').get_data(as_text=True)
     assert 'data-screen-board' not in html and 'data-screen-last' in html and 'data-screen-next' in html

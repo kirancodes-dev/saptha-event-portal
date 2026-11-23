@@ -50,6 +50,9 @@
       <div class="live-board__halves" data-halves="away">{% if state %}{{ state.away.halves[0] }} · {{ state.away.halves[1] }}{% endif %}</div>
     </div>
   </section>
+  {#- Who won, once the match is over (UPG-456); kept up to date by the script #}
+  {% set result_said = state.result_text if state else (match|match_result(names, event.tournament)) %}
+  <p class="live-result" data-result-line {% if not result_said %}hidden{% endif %}><i class="fas fa-trophy" aria-hidden="true"></i> <span data-result-text>{{ result_said }}</span></p>
   {#- How many watch (UPG-440): each phone or computer once, never going down; short like a streaming app #}
   {% if watched %}<p class="live-views" data-views title="Each phone or computer that opened this match, once"><span class="live-views__live">LIVE</span> <i class="fas fa-eye" aria-hidden="true"></i> <strong data-watch-count>{{ watching }}</strong> watching</p>{% endif %}
   {#- The toss, before the start (UPG-438) #}
@@ -57,6 +60,8 @@
   <p class="live-toss" data-toss-line {% if not (toss and state.phase == 'not_started') %}hidden{% endif %}><span aria-hidden="true">🪙</span> <span data-toss-text>{{ toss.text if toss else '' }}</span></p>
   {#- PKL mode: who raids, do-or-die, the mat; the tie-breaker (UPG-396, UPG-397) #}
   <p class="live-board__mat" data-mat-line {% if not (state and state.mat_text) %}hidden{% endif %}>{{ state.mat_text if state else '' }}</p>
+  {#- Why the clock is stopped: an injury break, an official time-out, a team's time-out (UPG-449) #}
+  <p class="live-stop" data-stop-line {% if not (state and state.stopped_for) %}hidden{% endif %}>{{ state.stopped_for if state else '' }}</p>
   <p class="live-board__shootout" data-shootout-line {% if not (state and state.shootout_text) %}hidden{% endif %}>{{ state.shootout_text if state else '' }}</p>
   {% if match.tiebreak and match.winner %}{% set m = match %}{% include "includes/tiebreak.html" %}{% endif %}
   {#- The player of the match, at full time (UPG-422) #}

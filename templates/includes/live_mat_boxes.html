@@ -14,6 +14,11 @@
     <div class="mat-box__chips" data-box-on="{{ side }}">{% for x in p.on %}<span class="mat-chip{% if now and now.team == side and now.name == x.name %} mat-chip--raiding{% endif %}" data-chip="{{ x.name }}"><b>{{ x.jersey or '–' }}</b><small>{{ x.name }}</small></span>{% endfor %}</div>
     <div class="mat-box__label mat-box__label--out">Out · {{ p.out|length }}</div>
     <div class="mat-box__chips mat-box__chips--out" data-box-out="{{ side }}">{% for x in p.out %}<span class="mat-chip mat-chip--out" data-chip="{{ x.name }}"><b>{{ x.jersey or '–' }}</b><small>{{ x.name }}</small></span>{% else %}<span class="mat-box__none">Nobody out</span>{% endfor %}</div>
+    {#- Off for a card (UPG-447): a yellow card's time left, or a red card #}
+    {% if p.carded %}
+    <div class="mat-box__label mat-box__label--card">Off · card · {{ p.carded|length }}</div>
+    <div class="mat-box__chips mat-box__chips--card" data-box-card="{{ side }}">{% for x in p.carded %}<span class="mat-chip mat-chip--card mat-chip--{{ x.card }}" data-chip="{{ x.name }}"><b>{{ x.jersey or '–' }}</b><small>{{ x.name }}</small><em class="mat-chip__left">{% if x.left is not none %}{{ '%02d:%02d' % (x.left // 60, x.left % 60) }} left{% else %}Red card{% endif %}</em></span>{% endfor %}</div>
+    {% endif %}
   </section>
   {% endfor %}
 </div>

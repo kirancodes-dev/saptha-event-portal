@@ -94,7 +94,20 @@ RAID_OUTCOMES = ('touch', 'bonus', 'empty', 'tackled', 'line_out', 'time_over')
 # The raid clock (UPG-413): a raid lasts 30 seconds; a raider not back by then is out, +1 to the defence
 RAID_SECONDS = 30
 TOSS_FRESH_SECONDS = 600     # a toss is played on screens opening this long after it (UPG-438)
-PKL_EVENTS = ('raid', 'technical', 'out_of_bounds', 'timeout', 'review', 'mat', 'turn', 'sub')
+RESULT_SHOW_SECONDS = 600    # the big screen keeps a finished match's board, with who won, this long (UPG-456)
+PKL_EVENTS = ('raid', 'technical', 'out_of_bounds', 'timeout', 'review', 'mat', 'turn', 'sub', 'card', 'stoppage')
+# Cards (UPG-447): green a warning; yellow off the mat for 2 minutes of play; red
+# off for the rest of the match. A card gives no point by itself: the referee
+# gives a technical point when one is due.
+CARDS = {'green': 'Green card', 'yellow': 'Yellow card', 'red': 'Red card'}
+CARD_EFFECT = {'green': 'warning', 'yellow': 'off for 2 min', 'red': 'off for the match'}
+YELLOW_SECONDS = 120
+# The clock stopped without a team's time-out (UPG-449)
+STOPPAGES = {'injury': 'Injury break', 'official': 'Official time-out'}
+# Why the referee gave a technical point (UPG-450)
+TECH_REASONS = {'late_sub': 'late or wrong substitution', 'coach': 'coach or official on the court',
+                'delay': 'delaying the game', 'conduct': 'bad conduct', 'raid_rule': 'a raid rule broken',
+                'other': 'another rule'}
 # Line-ups (UPG-417): each team's seven starters, tapped before the start; the
 # rest of the squad are the substitutes. With both line-ups the players on the
 # mat and out are kept by name, revived first out, first in (UPG-404).
@@ -215,6 +228,7 @@ def _save(db, event_id, match_id, doc):
     _cache.pop(('state', event_id, match_id), None)
     _cache.pop(('live', event_id), None)
     _cache.pop(('toss', event_id), None)
+    _cache.pop(('done', event_id), None)
     _cache.pop(('stats', event_id), None)
 
 
@@ -288,18 +302,38 @@ def tag(doc: dict, side: str, name: str) -> str:
     return f"#{number} {name}" if number else name
 
 
-def replay(doc: dict) -> dict:
+def replay(doc: dict, clock: Optional[int] = None) -> dict:
     """Play a PKL-mode match's events from the start (UPG-397). Returns the mat:
     players on it, who raids next, do-or-die, the bonus line, time-outs, reviews
     and all outs; and puts the points the events earned in `doc['_log']`.
     With both line-ups (UPG-417) the players on the mat and out are kept by
-    name, in the order they went out (UPG-404)."""
+    name, in the order they went out (UPG-404). A yellow or red card takes a
+    player off (UPG-447); a yellow card's player comes back after
+    YELLOW_SECONDS of play, by the events' clock and, when given, `clock` (the
+    match clock now)."""
     on = {'home': MAT, 'away': MAT}
     by_name = named(doc)
     lineup = doc.get('lineup') or {}
     on_n = {s: list(lineup[s]['start']) for s in ('home', 'away')} if by_name else {'home': [], 'away': []}
     out_n = {'home': [], 'away': []}
+    carded = {'home': [], 'away': []}       # off for a card: {name, card, from, half, clock}
+    half_len = int(doc.get('half_minutes') or DEFAULT_HALF_MINUTES) * 60
     subs = []
+
+    def served(c, at_half, at_clock):
+        """Seconds of play since the card, across half time too."""
+        if at_half == c['half']:
+            return max(0, at_clock - c['clock'])
+        return max(0, half_len - c['clock']) + max(0, at_clock)
+
+    def release(at_half, at_clock):
+        """Yellow cards whose 2 minutes are over: the player comes back where he was."""
+        for side in ('home', 'away'):
+            for c in [c for c in carded[side] if c['card'] == 'yellow'
+                      and served(c, at_half, at_clock) >= YELLOW_SECONDS]:
+                carded[side].remove(c)
+                (on_n if c['from'] == 'on' and len(on_n[side]) < MAT else out_n)[side].append(c['name'])
+                on[side] = len(on_n[side])
     empty = {'home': 0, 'away': 0}
     first = doc.get('first_raid') if doc.get('first_raid') in ('home', 'away') else 'home'
     raider, half = first, 1
@@ -343,7 +377,9 @@ def replay(doc: dict) -> dict:
         if by_name:
             on_n[side] += out_n[side]
             out_n[side] = []
-        on[side] = MAT
+            on[side] = len(on_n[side])      # a carded player stays off (UPG-447)
+        else:
+            on[side] = MAT
 
     def out(ev, side, who=''):
         """One player of `side` is out: the other team revives one; the last one out is an all out."""
@@ -355,6 +391,8 @@ def replay(doc: dict) -> dict:
             all_back(side)
 
     for ev in doc.get('events') or []:
+        if by_name:
+            release(int(ev.get('half') or 1), int(ev.get('clock') or 0))
         if int(ev.get('half') or 1) == 2 and half == 1:
             half, raider = 2, _other(first)     # the other team raids first after half time
             empty = {'home': 0, 'away': 0}
@@ -398,6 +436,8 @@ def replay(doc: dict) -> dict:
                     add(ev, a, 'bonus', 1, 'raid', 'Bonus', who, dod)
                 add(ev, d, 'super_tackle' if super_on else 'tackle', 2 if super_on else 1, 'tackle',
                     'Super tackle' if super_on else 'Tackle', ev.get('tackler') or '')
+                if ev.get('assists'):            # the others who caught him (UPG-448)
+                    log[-1]['assists'] = list(ev['assists'])
                 empty[a] = 0
                 out(ev, a, who)
             elif outcome == 'line_out':
@@ -432,8 +472,22 @@ def replay(doc: dict) -> dict:
                     group[group.index(off)] = new
                     subs.append({'team': side, 'off': off, 'on': new, 'half': ev.get('half') or 1})
                     break
+        elif kind == 'card' and by_name and ev.get('card') in ('yellow', 'red'):   # UPG-447
+            who = ev.get('player') or ''
+            already = next((c for c in carded[side] if c['name'] == who), None)
+            if already:                          # a yellow, then a red: off for the match
+                already['card'] = 'red' if ev['card'] == 'red' else already['card']
+            elif who in on_n[side] or who in out_n[side]:
+                where = 'on' if who in on_n[side] else 'out'
+                (on_n if where == 'on' else out_n)[side].remove(who)
+                on[side] = len(on_n[side])
+                carded[side].append({'name': who, 'card': ev['card'], 'from': where,
+                                     'half': int(ev.get('half') or 1), 'clock': int(ev.get('clock') or 0)})
         elif kind == 'turn':
             raider = _other(raider)
+    now_half = _half(doc)
+    if by_name and clock is not None:
+        release(now_half, int(clock))
     if half == 1 and doc.get('phase') in ('half_time', 'second_half', 'tiebreak', 'full_time'):
         half, raider = 2, _other(first)
         empty = {'home': 0, 'away': 0}
@@ -443,10 +497,18 @@ def replay(doc: dict) -> dict:
     if by_name:
         def row(side, name):
             return {'name': name, 'jersey': jersey_of(doc, side, name)}
+
+        def card_row(side, c):
+            left = None
+            if c['card'] == 'yellow':
+                at = int(clock) if clock is not None else c['clock']
+                left = max(0, YELLOW_SECONDS - served(c, now_half, at))
+            return dict(row(side, c['name']), card=c['card'], left=left)
         players = {}
         for side in ('home', 'away'):
-            seven = set(on_n[side] + out_n[side])
+            seven = set(on_n[side] + out_n[side] + [c['name'] for c in carded[side]])
             players[side] = {'on': [row(side, x) for x in on_n[side]], 'out': [row(side, x) for x in out_n[side]],
+                             'carded': [card_row(side, c) for c in carded[side]],
                              'bench': [row(side, p['name']) for p in squad_of(doc, side) if p['name'] not in seven]}
     return {'on': on, 'raider': raider, 'do_or_die': empty[raider] >= DO_OR_DIE_AFTER,
             'empty': empty, 'bonus_live': on[d] >= BONUS_DEFENDERS,
@@ -459,37 +521,53 @@ def replay(doc: dict) -> dict:
 
 def _replay_into(doc: dict) -> None:
     """Work the match out again from its events: its points log and its mat."""
-    doc['mat'] = replay(doc)
+    doc['mat'] = replay(doc, clock_seconds(doc))
     doc['log'] = doc.pop('_log', [])
+
+
+def _cards_running(mat: Optional[dict]) -> bool:
+    """A yellow card is still counting down: the mat must be worked out at the clock now."""
+    return bool(mat and mat.get('players') and any(
+        c.get('left') is not None for side in ('home', 'away') for c in (mat['players'][side].get('carded') or [])))
 
 
 def add_event(db, event_id: str, event: dict, match_id: str, tap: str, kind: str, team: str = '',
               outcome: str = '', touches=None, bonus=False, raider: str = '', tackler: str = '',
               upheld=False, change=0, by: str = '', touched=None, player: str = '', off: str = '',
-              on: str = '') -> dict:
+              on: str = '', reason: str = '', card: str = '', where: str = '', bonus_missed=False) -> dict:
     """One raid or call in a PKL-mode match (UPG-397), checked against the mat
     as it stands: the team whose raid it is, touches no more than the defenders
     on the mat, the bonus line only with 6 or more defenders, two time-outs a
     team in each half. With line-ups (UPG-417) a raid names its raider and the
     defenders touched, out of bounds and −1 on the mat name the player, and a
-    substitution (`off`, `on`) is a call too (UPG-404)."""
+    substitution (`off`, `on`) is a call too (UPG-404). Also: cards (UPG-447),
+    every defender in a tackle (UPG-448), an injury break or official time-out
+    (`stoppage`, UPG-449), a technical point's `reason` (UPG-450), the lobby
+    (`where='lobby'`, UPG-451) and a bonus tried and not given (UPG-452)."""
     if kind not in PKL_EVENTS:
         raise LiveMatchError("That isn't a call here.")
-    if kind != 'turn' and team not in ('home', 'away'):
+    if kind not in ('turn', 'stoppage') and team not in ('home', 'away'):
         raise LiveMatchError("Choose the team.")
+    if kind == 'stoppage' and (reason not in STOPPAGES or (team and team not in ('home', 'away'))):
+        raise LiveMatchError("Choose an injury break or an official time-out.")
+    if kind == 'card' and card not in CARDS:
+        raise LiveMatchError("Choose a green, yellow or red card.")
+    if kind == 'technical' and reason and reason not in TECH_REASONS:
+        raise LiveMatchError("Choose the reason from the list.")
     touched = [str(x) for x in touched] if isinstance(touched, (list, tuple)) else []
 
     def apply(doc):
         if not is_pkl(doc):
             raise LiveMatchError("This match is scored point by point, not in PKL mode.")
-        allowed = ('first_half', 'half_time', 'second_half') if kind == 'sub' else ('first_half', 'second_half')
+        allowed = (('first_half', 'half_time', 'second_half') if kind in ('sub', 'card')
+                   else ('first_half', 'second_half'))
         if doc.get('phase') not in allowed:
             raise LiveMatchError("Start the half first.")
-        mat = replay(doc)
+        mat = replay(doc, clock_seconds(doc))
         doc.pop('_log', None)
         by_name = mat['named']
         ev = {'id': tap, 'type': kind, 'half': _half(doc), 'clock': clock_seconds(doc), 'at': _iso(), 'by': by}
-        if kind != 'turn':
+        if kind not in ('turn', 'stoppage') or team in ('home', 'away'):
             ev['team'] = team
         on_mat = ({s: [p['name'] for p in mat['players'][s]['on']] for s in ('home', 'away')} if by_name
                   else {'home': [], 'away': []})
@@ -525,11 +603,20 @@ def add_event(db, event_id: str, event: dict, match_id: str, tap: str, kind: str
             if wants_bonus and not mat['bonus_live']:
                 raise LiveMatchError(f"The bonus line counts only with {BONUS_DEFENDERS} or more defenders on the mat.")
             ev['bonus'] = outcome in ('touch', 'tackled') and bool(bonus)
+            if bonus_missed:                       # tried the bonus, the referee didn't give it (UPG-452)
+                if wants_bonus:
+                    raise LiveMatchError("Tick the bonus as given or as not given, not both.")
+                if not mat['bonus_live']:
+                    raise LiveMatchError(f"The bonus line counts only with {BONUS_DEFENDERS} or more defenders on the mat.")
+                ev['bonus_missed'] = True
             if by_name:
                 ev['raider'] = who
-                if outcome == 'tackled' and not tk and len(touched) == 1:
-                    tk = touched[0]
-                ev['tackler'] = tk if outcome == 'tackled' and tk in on_mat[_other(team)] else ''
+                caught = []
+                if outcome == 'tackled':           # every defender in the tackle; the first made the catch (UPG-448)
+                    caught = [x for x in dict.fromkeys(([tk] if tk else []) + touched) if x in on_mat[_other(team)]]
+                ev['tackler'] = caught[0] if caught else ''
+                if len(caught) > 1:
+                    ev['assists'] = caught[1:]
             else:
                 squad_a, squad_d = players(event, doc[team]), players(event, doc[_other(team)])
                 ev['raider'] = who if who in squad_a else ''
@@ -557,8 +644,28 @@ def add_event(db, event_id: str, event: dict, match_id: str, tap: str, kind: str
                 ev['player'] = player
         elif kind == 'out_of_bounds' and by_name:
             if player not in on_mat[team]:
-                raise LiveMatchError("Tap the player who stepped out.")
+                raise LiveMatchError("Tap the player who went into the lobby." if where == 'lobby'
+                                     else "Tap the player who stepped out.")
             ev['player'] = player
+        elif kind == 'technical' and reason:
+            ev['reason'] = reason
+        elif kind == 'stoppage':                   # the clock stops; no team's time-out is used (UPG-449)
+            ev['reason'] = reason
+            if team in ('home', 'away') and player and player in players(event, doc[team]):
+                ev['player'] = player
+            _stop_clock(doc)
+            doc.pop('raid_clock', None)
+        elif kind == 'card':
+            if by_name:
+                seven = (on_mat[team] + [p['name'] for p in mat['players'][team]['out']])
+                yellow = [c['name'] for c in mat['players'][team].get('carded') or [] if c['card'] == 'yellow']
+                if player not in seven and not (card == 'red' and player in yellow):
+                    raise LiveMatchError("Tap a player of the seven for the card.")
+            elif player and player not in players(event, doc[team]):
+                raise LiveMatchError("Choose a player of that team.")
+            ev.update(card=card, player=player)
+            if card in ('yellow', 'red') and (doc.get('raiding_now') or {}).get('name') == player:
+                doc.pop('raiding_now', None)
         elif kind == 'sub':
             if not by_name:
                 raise LiveMatchError("Substitutions need both teams' line-ups.")
@@ -571,6 +678,8 @@ def add_event(db, event_id: str, event: dict, match_id: str, tap: str, kind: str
             ev.update(off=off, on=on)
             if (doc.get('raiding_now') or {}).get('name') == off:
                 doc.pop('raiding_now', None)
+        if kind == 'out_of_bounds' and where == 'lobby':   # into the lobby before a struggle (UPG-451)
+            ev['where'] = 'lobby'
         if kind == 'turn':
             doc.pop('raiding_now', None)
             doc.pop('raid_clock', None)
@@ -773,11 +882,13 @@ def event_text(ev: dict, names: dict, doc: dict) -> str:
         how = OUTCOME_TEXT.get(ev.get('outcome'), '').format(n=n, es='' if n == 1 else 'es')
         if ev.get('bonus'):
             how += ' + bonus'
+        if ev.get('bonus_missed'):
+            how += ', bonus not given'
         pts = sum(e['points'] for e in doc.get('log') or [] if e.get('event') == ev.get('id') and e['team'] == ev['team'])
         given = sum(e['points'] for e in doc.get('log') or [] if e.get('event') == ev.get('id') and e['team'] != ev['team'])
         side, d = ev.get('team'), _other(ev.get('team') or 'home')
         who = f" ({tag(doc, side, ev['raider'])})" if ev.get('raider') else ''
-        tackler = f" by {tag(doc, d, ev['tackler'])}" if ev.get('tackler') else ''
+        tackler = f" by {_caught_by(doc, d, ev)}" if ev.get('tackler') else ''
         parts = [f"Raid · {team}{who}: {how}{tackler}"]
         if pts:
             parts.append(f"+{pts}")
@@ -803,6 +914,8 @@ def feed_text(ev: dict, names: dict, doc: dict) -> str:
     how = OUTCOME_TEXT.get(ev.get('outcome'), '').format(n=n, es='' if n == 1 else 'es')
     if ev.get('bonus'):
         how += ' + bonus'
+    if ev.get('bonus_missed'):
+        how += ', bonus not given'
     mine = sum(e['points'] for e in doc.get('log') or [] if e.get('event') == ev.get('id') and e['team'] == side)
     given = sum(e['points'] for e in doc.get('log') or [] if e.get('event') == ev.get('id') and e['team'] != side)
     parts = [names.get(doc.get(side), '')]
@@ -811,8 +924,8 @@ def feed_text(ev: dict, names: dict, doc: dict) -> str:
     parts.append(f"{how} +{mine}" if mine else how)
     if ev.get('touched'):
         parts.append('out ' + ', '.join(_number_or_name(doc, d, x) for x in ev['touched']))
-    if ev.get('outcome') == 'tackled' and ev.get('tackler'):
-        parts.append(f"tackle by {tag(doc, d, ev['tackler'])} +{given}")
+    if ev.get('outcome') == 'tackled' and ev.get('tackler'):     # "caught by" (UPG-453)
+        parts.append(f"caught by {_caught_by(doc, d, ev)} +{given}")
     elif given:
         parts.append(f"+{given} to {names.get(doc.get(d), '')}")
     parts += [e['label'] for e in doc.get('log') or []
@@ -825,9 +938,35 @@ def _number_or_name(doc, side, name):
     return f"#{number}" if number else name
 
 
+def _caught_by(doc, side, ev):
+    """'#1 Bharat', or '#1 Bharat with #5 Kiran' when more caught him (UPG-448)."""
+    text = tag(doc, side, ev['tackler'])
+    if ev.get('assists'):
+        text += ' with ' + ', '.join(tag(doc, side, x) for x in ev['assists'])
+    return text
+
+
+def stop_text(ev: dict, team: str, doc: dict) -> str:
+    """An injury break or official time-out (UPG-449): 'Injury break · #4 Arjun (Garuda Sena)'."""
+    label = STOPPAGES.get(ev.get('reason'), 'Clock stopped')
+    if ev.get('player'):
+        return f"{label} · {tag(doc, ev.get('team'), ev['player'])} ({team})"
+    return f"{label} · {team}" if team else label
+
+
 def _call_text(ev: dict, team: str, kind: str, doc: dict) -> str:
     if kind == 'technical':
-        return f"Technical point +1 · {team}"
+        why = TECH_REASONS.get(ev.get('reason') or '')
+        return f"Technical point +1 · {team}" + (f" · {why}" if why else '')
+    if kind == 'card':                            # UPG-447
+        who = tag(doc, ev.get('team'), ev['player']) + f" ({team})" if ev.get('player') else f"a {team} player"
+        return f"{CARDS.get(ev.get('card'), 'Card')} · {who} · {CARD_EFFECT.get(ev.get('card'), '')}"
+    if kind == 'stoppage':
+        return stop_text(ev, team, doc) + ' · clock stopped'
+    if kind == 'out_of_bounds' and ev.get('where') == 'lobby':     # UPG-451
+        if ev.get('player'):
+            return f"Lobby · {tag(doc, ev.get('team'), ev['player'])} ({team}) went into the lobby before a struggle: out"
+        return f"Lobby · a {team} player went into the lobby before a struggle: out"
     if kind == 'out_of_bounds':
         if ev.get('player'):
             return f"Out of bounds · {tag(doc, ev.get('team'), ev['player'])} ({team}) is out"
@@ -1077,9 +1216,9 @@ def change_phase(db, event_id: str, event: dict, match_id: str, tap: str, action
         elif action == 'second_half' and phase == 'half_time':
             doc['phase'] = 'second_half'
             doc.pop('break', None)
+            _start_clock(doc, reset=True)  # first: a yellow card counts the 2nd half from 0 (UPG-447)
             if is_pkl(doc):
                 _replay_into(doc)
-            _start_clock(doc, reset=True)
         elif action == 'full_time' and phase == 'second_half':
             doc.pop('raiding_now', None)
             doc.pop('raid_clock', None)
@@ -1116,7 +1255,7 @@ def change_phase(db, event_id: str, event: dict, match_id: str, tap: str, action
         doc['phase'] = 'full_time'
         _stop_clock(doc)
         doc['result'] = {'home': home, 'away': away, 'winner': played.get('winner'),
-                         'tiebreak': played.get('tiebreak')}
+                         'tiebreak': played.get('tiebreak'), 'ts': _now()}
         if not (doc.get('potm') or {}).get('chosen'):     # the scorer's own choice stays (UPG-422)
             doc['potm'] = player_of_the_match(doc)
     return _change(db, event_id, match_id, tap, apply)
@@ -1349,6 +1488,9 @@ def state(doc: dict, names: dict, last: int = 8) -> dict:
     last actions; in PKL mode the mat too, and the tie-breaker when there is one."""
     s = score(doc)
     mat = (doc.get('mat') or replay(doc)) if is_pkl(doc) else None
+    if _cards_running(mat):                  # a yellow card's 2 minutes count down (UPG-447)
+        mat = replay(doc, clock_seconds(doc))
+        doc.pop('_log', None)
     sh = shootout_state(doc, names) if doc.get('shootout') else None
     if is_pkl(doc):
         recent = [event_text(e, names, doc) for e in reversed((doc.get('events') or [])[-last:])]
@@ -1372,6 +1514,8 @@ def state(doc: dict, names: dict, last: int = 8) -> dict:
             'raid_clock': _raid_state(doc) if is_pkl(doc) else None,
             'raid_seconds': RAID_SECONDS,
             'toss': _toss_state(doc, names),
+            'stopped_for': _stopped_for(doc, names),
+            'result_text': _result_text(doc, names),
             'recent_secs': recent_secs,
             'feed_secs': feed_secs,
             'home': {'id': doc.get('home'), 'name': names.get(doc.get('home'), ''), **s['home']},
@@ -1389,6 +1533,30 @@ def state(doc: dict, names: dict, last: int = 8) -> dict:
             'feed': ([feed_text(e, names, doc) for e in reversed((doc.get('events') or [])[-FEED:])]
                      if is_pkl(doc) else recent),
             'updated_at': doc.get('updated_at')}
+
+
+def _result_text(doc: dict, names: dict) -> str:
+    """Who won, once the match is over (UPG-456): 'Garuda Sena won by 4 points (24–20)'."""
+    r = doc.get('result') or {}
+    if doc.get('phase') != 'full_time' or not r:
+        return ''
+    return services_sports.result_text({'status': 'played', 'home': doc.get('home'), 'away': doc.get('away'),
+                                        'home_score': r.get('home'), 'away_score': r.get('away'),
+                                        'winner': r.get('winner'), 'tiebreak': r.get('tiebreak')}, names)
+
+
+def _stopped_for(doc: dict, names: dict) -> str:
+    """Why the clock is stopped, for the boards (UPG-449): 'Injury break · #4
+    Arjun (Garuda Sena)' or 'Time-out · Vajra'; '' while it runs."""
+    if doc.get('phase') not in ('first_half', 'second_half') or (doc.get('clock') or {}).get('running'):
+        return ''
+    last = (doc.get('events') or [{}])[-1] if is_pkl(doc) else {}
+    team = names.get(doc.get(last.get('team')), '') if last.get('team') else ''
+    if last.get('type') == 'stoppage':
+        return stop_text(last, team, doc)
+    if last.get('type') == 'timeout':
+        return f"Time-out · {team}"
+    return ''
 
 
 def _raiding_now(doc: dict, names: dict) -> Optional[dict]:
@@ -1464,11 +1632,15 @@ def live_matches(db, event_id: str) -> dict:
     hit = _cache.get(key)
     if hit and hit[0] > _now():
         return hit[1]
-    value, toss = {}, None
+    value, toss, done = {}, None, {}
     for snap in db.collection(COLLECTION).where('event_id', '==', event_id).stream():
         d = snap.to_dict() or {}
         if d.get('phase') in IN_PLAY:
             value[d.get('match_id')] = d['phase']
+        # Just finished: the big screen keeps its board with who won (UPG-456)
+        ts = (d.get('result') or {}).get('ts')
+        if d.get('phase') == 'full_time' and ts and _now() - float(ts) <= RESULT_SHOW_SECONDS:
+            done[d.get('match_id')] = float(ts)
         # The newest toss of a match about to start, for the big screen (UPG-438)
         t = d.get('toss') or {}
         if d.get('phase') == 'not_started' and t.get('ts') and _now() - float(t['ts']) <= TOSS_FRESH_SECONDS:
@@ -1476,7 +1648,18 @@ def live_matches(db, event_id: str) -> dict:
                 toss = {'match_id': d.get('match_id'), 'home': d.get('home'), 'away': d.get('away'), 'toss': t}
     _cache[key] = (_now() + CACHE_SECONDS, value)
     _cache[('toss', event_id)] = (_now() + CACHE_SECONDS, toss)
+    _cache[('done', event_id)] = (_now() + CACHE_SECONDS, done)
     return value
+
+
+def just_finished(db, event_id: str) -> dict:
+    """Match id → when it ended, for the matches over in the last RESULT_SHOW_SECONDS (UPG-456)."""
+    hit = _cache.get(('done', event_id))
+    if not (hit and hit[0] > _now()):
+        _cache.pop(('live', event_id), None)
+        live_matches(db, event_id)
+        hit = _cache.get(('done', event_id))
+    return dict(hit[1]) if hit else {}
 
 
 def toss_show(db, event_id: str, names: dict) -> Optional[dict]:

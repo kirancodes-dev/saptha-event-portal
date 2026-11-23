@@ -124,13 +124,15 @@ def search(db, query: str) -> list:
 
 def _blank() -> dict:
     return {'raid': 0, 'tackle': 0, 'successful_raids': 0, 'super_raids': 0, 'tackles': 0, 'super_tackles': 0,
-            'do_or_die': 0}
+            'do_or_die': 0, 'assists': 0}
 
 
 def _in_match(doc: dict, side: str, name: str) -> dict:
     """The player's numbers in a match scored live."""
     row, raids = _blank(), set()
     for e in doc.get('log') or []:
+        if e.get('team') == side and name in [_clean(x) for x in e.get('assists') or []]:
+            row['assists'] += 1               # helped catch the raider (UPG-448)
         if e.get('team') != side or _clean(e.get('player')) != name:
             continue
         if e.get('counts') == 'raid':
@@ -153,7 +155,7 @@ def _played(doc: dict, side: str, name: str, row: dict) -> bool:
         return True
     if any(s.get('team') == side and _clean(s.get('on')) == name for s in (doc.get('mat') or {}).get('subs') or []):
         return True
-    return bool(row['raid'] or row['tackle'] or row['tackles'])
+    return bool(row['raid'] or row['tackle'] or row['tackles'] or row['assists'])
 
 
 def _result(m: dict, side_id: str, doc: dict) -> tuple:
@@ -173,7 +175,7 @@ def _result(m: dict, side_id: str, doc: dict) -> tuple:
 # ── The profile ─────────────────────────────────────────────────────────────
 
 TOTALS = ('matches', 'raid', 'tackle', 'total', 'successful_raids', 'super_raids', 'tackles', 'super_tackles',
-          'do_or_die', 'super_10', 'high_5', 'potm')
+          'do_or_die', 'super_10', 'high_5', 'potm', 'assists')
 
 
 def _event_part(db, entry: dict) -> dict:

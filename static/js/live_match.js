@@ -114,10 +114,16 @@
     var dot = root.querySelector('[data-live-dot]');
     if (dot) { dot.hidden = ['first_half', 'half_time', 'second_half', 'tiebreak'].indexOf(state.phase) < 0; }
     // PKL mode: who raids, do-or-die, the mat; and the tie-breaker (UPG-396, UPG-397)
-    [['[data-mat-line]', state.mat_text], ['[data-shootout-line]', state.shootout_text]].forEach(function (x) {
+    [['[data-mat-line]', state.mat_text], ['[data-shootout-line]', state.shootout_text],
+     ['[data-stop-line]', state.stopped_for]].forEach(function (x) {
       var el = root.querySelector(x[0]);
       if (el) { el.textContent = x[1] || ''; el.hidden = !x[1]; }
     });
+    var result = root.querySelector('[data-result-line]');     // who won, at full time (UPG-456)
+    if (result) {
+      result.hidden = !state.result_text;
+      result.querySelector('[data-result-text]').textContent = state.result_text || '';
+    }
     var list = root.querySelector('[data-recent]');
     if (list) { fillList(list, state.recent, state.recent_secs); }
     var feed = root.querySelector('[data-feed]');
@@ -210,6 +216,22 @@
         if (g[0] === 'out' && !g[1].length) { chips.appendChild(el('span', 'mat-box__none', 'Nobody out')); }
         box.appendChild(chips);
       });
+      // Off for a card (UPG-447): a yellow card's time left, or a red card
+      var carded = p.carded || [];
+      if (carded.length) {
+        box.appendChild(el('div', 'mat-box__label mat-box__label--card', 'Off · card · ' + carded.length));
+        var cc = el('div', 'mat-box__chips mat-box__chips--card');
+        cc.setAttribute('data-box-card', side);
+        carded.forEach(function (x) {
+          var chip = el('span', 'mat-chip mat-chip--card mat-chip--' + x.card);
+          chip.setAttribute('data-chip', x.name);
+          chip.appendChild(el('b', '', x.jersey || '–'));
+          chip.appendChild(el('small', '', x.name));
+          chip.appendChild(el('em', 'mat-chip__left', x.left === null || x.left === undefined ? 'Red card' : clockText(x.left) + ' left'));
+          cc.appendChild(chip);
+        });
+        box.appendChild(cc);
+      }
       boxes.appendChild(box);
     });
     host.appendChild(boxes);
@@ -468,7 +490,12 @@
     var MODE_TEXT = {
       sub: 'Substitution: tap the player going off, then the substitute coming on.',
       out_of_bounds: 'Out of bounds: tap the player who stepped out.',
-      mat_off: '−1 on the mat: tap the player who goes off.'
+      mat_off: '−1 on the mat: tap the player who goes off.',
+      lobby: 'Lobby: tap the player who went into the lobby before a struggle.',
+      injury: 'Injury break: tap the injured player. The clock stops; no time-out is used.',
+      card_green: 'Green card (a warning): tap the player.',
+      card_yellow: 'Yellow card (off for 2 minutes of play): tap the player.',
+      card_red: 'Red card (off for the match): tap the player.'
     };
 
     // A refused tap: show the match as the server has it
@@ -582,7 +609,24 @@
         var side = pl.getAttribute('data-side'), who = pl.getAttribute('data-name'), role = pl.getAttribute('data-role');
         if (pick.mode && pick.side === side) {
           if (pick.mode === 'sub') { pick.off = who; reapply(); say('Now tap the substitute coming on for ' + nameOf(pl) + '.'); return; }
-          if (role === 'out') { say(nameOf(pl) + ' is out already.', true); return; }
+          // Cards (UPG-447) and an injury break (UPG-449): any of the seven, out ones too
+          if (pick.mode.indexOf('card_') === 0) {
+            var card = pick.mode.slice(5);
+            if (role === 'carded' && !(card === 'red' && pl.getAttribute('data-card') === 'yellow')) {
+              say(nameOf(pl) + ' is off for a card already.', true); return;
+            }
+            if (!window.confirm(card.charAt(0).toUpperCase() + card.slice(1) + ' card for ' + nameOf(pl) + '?')) { return; }
+            send({ op: 'call', kind: 'card', card: card, team: side, player: who });
+            clearPick();
+            return;
+          }
+          if (pick.mode === 'injury') {
+            send({ op: 'call', kind: 'stoppage', reason: 'injury', team: side, player: who });
+            clearPick();
+            return;
+          }
+          if (role === 'out' || role === 'carded') { say(nameOf(pl) + ' is out already.', true); return; }
+          if (pick.mode === 'lobby') { send({ op: 'call', kind: 'out_of_bounds', where: 'lobby', team: side, player: who }); }
           if (pick.mode === 'out_of_bounds') { send({ op: 'call', kind: 'out_of_bounds', team: side, player: who }); }
           if (pick.mode === 'mat_off') { send({ op: 'call', kind: 'mat', team: side, change: -1, player: who }); }
           clearPick();
@@ -601,6 +645,10 @@
             raidTick();
           }
           send({ op: 'raider', name: who });
+          return;
+        }
+        if (role === 'carded') {
+          say(nameOf(pl) + ' is off for a card. A yellow card comes back after 2 minutes of play; a red card is off for the match.', true);
           return;
         }
         if (role === 'out') {
@@ -634,7 +682,8 @@
         var body = { op: 'raid', team: panel ? panel.getAttribute('data-raider') : '',
                      outcome: raid.getAttribute('data-outcome'), touches: raid.getAttribute('data-touches') || '',
                      bonus: checked('[data-pkl-bonus]'), raider: value('[data-pkl-raider]'),
-                     tackler: value('[data-pkl-tackler]') };
+                     tackler: value('[data-pkl-tackler]'), bonus_missed: checked('[data-pkl-bonus-missed]') };
+        if (body.bonus && body.bonus_missed) { say('Tick the bonus as given or as not given, not both.', true); return; }
         if (namedPanel()) {
           var picked = root.querySelector('[data-mat-player][data-role="raider"].is-picked');
           body.raider = picked ? picked.getAttribute('data-name') : (panel.getAttribute('data-raiding-now') || '');
@@ -652,9 +701,18 @@
       var call = e.target.closest('[data-call]');
       if (call) {
         var kind = call.getAttribute('data-kind');
+        var cteam = call.getAttribute('data-team') || '';
         if (kind === 'turn' && !window.confirm('Give the next raid to the other team?')) { return; }
-        send({ op: 'call', kind: kind, team: call.getAttribute('data-team') || '',
-               upheld: call.getAttribute('data-upheld') === '1', change: call.getAttribute('data-change') || 0 });
+        var cbody = { op: 'call', kind: kind, team: cteam,
+                      upheld: call.getAttribute('data-upheld') === '1', change: call.getAttribute('data-change') || 0,
+                      reason: call.getAttribute('data-reason') || '',
+                      where: call.getAttribute('data-where') || '' };
+        if (kind === 'card') {                          // without line-ups: the card by its button (UPG-447)
+          cbody.card = call.getAttribute('data-card');
+          cbody.player = value('[data-card-player="' + cteam + '"]');
+          if (!window.confirm(call.textContent.trim() + (cbody.player ? ' for ' + cbody.player : '') + '?')) { return; }
+        }
+        send(cbody);
         return;
       }
       // The tie-breaker (UPG-396)

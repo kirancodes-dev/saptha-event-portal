@@ -89,6 +89,9 @@
                         <span class="match-score">{{ ('W/O' if m.winner == m.away else '–') if m.walkover else (m.away_score if m.away_score is not none else '–') }}</span>
                     </div>
                     {% include "includes/tiebreak.html" %}
+                    {#- Who won, in words (UPG-456); a tie-breaker says it above #}
+                    {% set said = m|match_result(names, t) if m.status == 'played' and not m.tiebreak else '' %}
+                    {% if said %}<div class="match-result" data-match-result><i class="fas fa-trophy" aria-hidden="true"></i> {{ said }}</div>{% endif %}
                 </div>
             </div>
             {% endfor %}

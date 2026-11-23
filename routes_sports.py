@@ -20,7 +20,7 @@ once or twice (home and away), an inter-pool round, 1st A v 2nd B and 1st B v
 2nd A in the semi-finals; the schedule as a file to download, fill in and
 upload; a logo for each team.
 """
-from flask import Blueprint, abort, current_app, flash, jsonify, redirect, render_template, request, session
+from flask import Blueprint, abort, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 
 from models import db
 from utils import log_action, login_required
@@ -787,6 +787,17 @@ def _player_links(event_id):
     except Exception:   # a page still shows without the links
         current_app.logger.warning("Player links for %s failed", event_id, exc_info=True)
         return {}
+
+
+@sports_bp.route('/watch')
+def watch():
+    """The home page's Watch live picker (UPG-457): to the chosen tournament's
+    big screen, which also fits a phone."""
+    import re
+    event_id = (request.args.get('event') or '').strip()
+    if not re.fullmatch(r'[A-Za-z0-9_-]{1,64}', event_id):
+        return redirect('/')
+    return redirect(url_for('sports.screen', event_id=event_id))
 
 
 @sports_bp.route('/screen/<event_id>')

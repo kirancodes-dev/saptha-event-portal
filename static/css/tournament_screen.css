@@ -116,3 +116,23 @@ body.tv { margin: 0; min-height: 100vh; background: #0b1530; color: #f1f5f9; fon
 .tv-board__ft { display: inline-block; padding: 2px 10px; border-radius: 6px; background: #facc15; color: #1e1b4b;
   font-weight: 800; letter-spacing: .05em; font-size: .8em; }
 .tv-board__result { text-align: center; font-size: clamp(22px, 2.6vw, 44px); font-weight: 800; color: #facc15; margin-top: 10px; }
+
+/* On a phone (UPG-457): the header fits, the QR (for other phones) and Full screen go, the cards wrap */
+@media (max-width: 640px) {
+  .tv-head { flex-wrap: wrap; gap: 8px; padding: 10px 14px; }
+  .tv-head__title { flex: 1 1 100%; min-width: 0; gap: 8px; font-size: 17px; line-height: 1.2; }
+  .tv-head__logo { height: 28px; }
+  .tv-head__right { flex: 1 1 100%; justify-content: space-between; gap: 8px; }
+  .tv-qr, .tv-btn[data-fullscreen] { display: none; }
+  .tv-head__time { font-size: 14px; }
+  .tv-main { padding: 12px; }
+  .tv-card__big { font-size: 21px; gap: 8px; }
+  .tv-card__big img { display: none; }                         /* the names wrap cleanly without them */
+  .tv-board__row { gap: 8px; }
+  .tv-board__logo { width: 48px; height: 48px; }
+  .tv-board__name { font-size: 16px; }
+  .tv-board__score { font-size: 56px; }
+  .tv-board__split { font-size: 11px; }
+  .tv-board__clock { font-size: 30px; }
+}
+

@@ -794,7 +794,15 @@ def home():
     upcoming = [d for d in events if d['reg_state']['key'] in ('open', 'waitlist', 'not_open', 'programme')]
     open_events = [d for d in upcoming if d['reg_state']['registerable']]
     month = current_date[:7]
+    # Live scoring to watch, at the top of the page (UPG-457)
+    try:
+        import services_live_match
+        watch_live = services_live_match.watchable(db, events) if db is not None else []
+    except Exception as exc:
+        app.logger.warning("Watch live list failed: %s", exc)
+        watch_live = []
     _ctx = {
+        'watch_live': watch_live,
         'university': UNIVERSITY,
         'university_source': SOURCE_URL,
         'coming_up': (open_events or upcoming)[:3],

@@ -2,6 +2,18 @@
   "_about": "Every version of the portal, newest first (UPG-373). The top entry is the version of this code; shown at /whats-new and in the footer. A new entry starts after each deploy; until then every finished item goes into the top entry. 'revision' is the Cloud Run revision it went live as ('' until deployed).",
   "releases": [
     {
+      "version": "1.21",
+      "date": "2026-11-23",
+      "commit": "",
+      "revision": "",
+      "title": "Watch live from the home page",
+      "notes": [
+        "The home page starts with a Watch live box: pick Men or Women and tap Watch live scoring. A match being played shows Live now with a red dot.",
+        "The live scoreboard page fits a phone: the header no longer runs off the screen, and the scores and cards are sized for it."
+      ],
+      "items": ["UPG-457"]
+    },
+    {
       "version": "1.20",
       "date": "2026-11-23",
       "commit": "1874508",

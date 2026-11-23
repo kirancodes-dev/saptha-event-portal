@@ -1662,6 +1662,38 @@ def just_finished(db, event_id: str) -> dict:
     return dict(hit[1]) if hit else {}
 
 
+GENDER_LABELS = ('Men', 'Women', 'Mixed')
+
+
+def watchable(db, events: list) -> list:
+    """The tournaments a visitor can watch from the home page (UPG-457): listed
+    events with fixtures and a match still to play (or being played), live ones
+    first. Each is {id, label, title, live}; the label is the gender category
+    ("Men", "Women") when that tells them apart, else the event's title."""
+    found = []
+    for ev in events or []:
+        t = ev.get('tournament') or {}
+        matches = t.get('matches') or []
+        if not matches or not ev.get('id'):
+            continue
+        try:
+            playing = live_matches(db, ev['id'])
+        except Exception:
+            playing = {}
+        playing = [m for m in matches if m.get('id') in playing]   # this sheet's matches only
+        if not playing and all(m.get('status') == 'played' for m in matches):
+            continue                                    # the season is over
+        gender = str((ev.get('details') or {}).get('gender') or '').strip()
+        found.append({'id': ev['id'], 'title': str(ev.get('title') or 'Tournament'),
+                      'gender': gender if gender in GENDER_LABELS else '', 'live': bool(playing)})
+    genders = [w['gender'] for w in found]
+    for w in found:
+        unique = w['gender'] and genders.count(w['gender']) == 1
+        w['label'] = w.pop('gender') if unique else w['title']
+    found.sort(key=lambda w: (not w['live'], w['label']))
+    return found
+
+
 def toss_show(db, event_id: str, names: dict) -> Optional[dict]:
     """The toss just made in this event (the last TOSS_FRESH_SECONDS), for the
     big screen to play once: {key, home, away, toss (as _toss_state)}; else None."""

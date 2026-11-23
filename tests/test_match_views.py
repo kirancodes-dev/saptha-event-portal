@@ -15,9 +15,18 @@ PHONE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/6
 
 
 def _counts(page: str):
+    """The scorer's line: (views, devices)."""
     line = re.search(r'data-views>(.*?)</p>', page, re.S).group(1)
     nums = [int(n.replace(',', '')) for n in re.findall(r'<strong>([\d,]+)</strong>', line)]
     return tuple(nums)
+
+
+def _watching(page: str) -> str:
+    """The public page's line (UPG-440): one number, each phone once."""
+    line = re.search(r'data-views[^>]*>(.*?)</p>', page, re.S).group(1)
+    text = re.sub(r'<[^>]+>', '', line)
+    assert 'watching' in text and 'view' not in text and 'device' not in text
+    return re.search(r'<strong data-watch-count>([^<]+)</strong> watching', line).group(1)
 
 
 def test_every_visit_adds_a_view_and_each_browser_one_device(league):  # noqa: F811
@@ -26,15 +35,17 @@ def test_every_visit_adds_a_view_and_each_browser_one_device(league):  # noqa: F
     url = f"/tournament/live/{event_id}/{m['id']}"
     phone, laptop = d['app'].test_client(), d['app'].test_client()
 
-    # 1. The first visit: 1 view, 1 device
-    assert _counts(phone.get(url, headers={'User-Agent': PHONE_UA}).get_data(as_text=True)) == (1, 1)
-    # 2. The same phone again, twice: views go up, the device isn't counted again
+    # 1. The first visit: 1 view, 1 device; the public page says "1 watching"
+    assert _watching(phone.get(url, headers={'User-Agent': PHONE_UA}).get_data(as_text=True)) == '1'
+    assert live.views(d['db'], event_id, m['id']) == {'views': 1, 'devices': 1}
+    # 2. The same phone again, twice: views go up, the phone isn't counted again (UPG-440)
     phone.get(url, headers={'User-Agent': PHONE_UA})
-    assert _counts(phone.get(url, headers={'User-Agent': PHONE_UA}).get_data(as_text=True)) == (3, 1)
-    # 3. Another browser: a second device
+    assert _watching(phone.get(url, headers={'User-Agent': PHONE_UA}).get_data(as_text=True)) == '1'
+    assert live.views(d['db'], event_id, m['id']) == {'views': 3, 'devices': 1}
+    # 3. Another browser: a second device, "2 watching"
     page = laptop.get(url, headers={'User-Agent': PHONE_UA}).get_data(as_text=True)
-    assert _counts(page) == (4, 2)
-    assert '4</strong> views' in page and '2</strong> devices' in page
+    assert _watching(page) == '2' and live.views(d['db'], event_id, m['id']) == {'views': 4, 'devices': 2}
+    assert '4</strong> views' not in page                # the public sees people, not openings
 
     # 4. Link previews and crawlers aren't counted, but see the numbers
     for ua in ('WhatsApp/2.23.20.0', 'facebookexternalhit/1.1', 'Googlebot/2.1', ''):
@@ -50,8 +61,8 @@ def test_every_visit_adds_a_view_and_each_browser_one_device(league):  # noqa: F
     # 6. Another match counts on its own; the phone is a new device there
     other = next(x for x in d['db'].collection('events').document(event_id).get().to_dict()['tournament']['matches']
                  if x['id'] != m['id'])
-    assert _counts(phone.get(f"/tournament/live/{event_id}/{other['id']}",
-                             headers={'User-Agent': PHONE_UA}).get_data(as_text=True)) == (1, 1)
+    assert _watching(phone.get(f"/tournament/live/{event_id}/{other['id']}",
+                               headers={'User-Agent': PHONE_UA}).get_data(as_text=True)) == '1'
     assert live.views(d['db'], event_id, m['id']) == {'views': 4, 'devices': 2}
 
 
@@ -121,17 +132,17 @@ def test_the_big_screen_shows_how_many_watch_the_live_match_instead_of_the_qr(le
     page = d['app'].test_client().get(screen, headers={'User-Agent': PHONE_UA}).get_data(as_text=True)
     assert 'data-screen-watch-slot>' in page and 'data-screen-qr hidden' in page
     head = page[page.index('data-screen-watch-slot'):page.index('data-screen-qr')]
-    assert 'watching' in head and _counts_in(head) == 3 and '>3</strong>' in head
+    assert 'watching' in head and _counts_in(head) == 2 and '>2</strong>' in head   # two phones (UPG-440)
     assert 'device' not in head                                    # one number, as a streaming app shows it
     # the refreshed body carries the count too, for the script to move up
     body = d['app'].test_client().get(f'{screen}/body').get_data(as_text=True)
-    assert '<template data-screen-watch>' in body and _counts_in(body.split('<template data-screen-watch>')[1]) == 3
+    assert '<template data-screen-watch>' in body and _counts_in(body.split('<template data-screen-watch>')[1]) == 2
     # the big screen itself isn't a viewer
     assert live.views(d['db'], event_id, m['id']) == {'views': 3, 'devices': 2}
 
 
 def _counts_in(html):
-    return int(re.search(r'data-watch-views="(\d+)"', html).group(1))
+    return int(re.search(r'data-watch-count="(\d+)"', html).group(1))
 
 
 def test_the_big_screen_count_goes_up_by_itself(league):  # noqa: F811
@@ -158,11 +169,11 @@ def test_the_big_screen_count_goes_up_by_itself(league):  # noqa: F811
             return _serve_static(route)
         page.route('**/*', handle)
         page.goto(ORIGIN + path, wait_until='load')
-        assert page.text_content('[data-watch-views]') == '1' and not page.is_visible('[data-screen-qr]')
+        assert page.text_content('[data-watch-count]') == '1' and not page.is_visible('[data-screen-qr]')
         assert 'watching' in page.text_content('[data-screen-watch-slot]')
         for _ in range(4):                                       # four more phones open the match
             d['app'].test_client().get(match_page, headers={'User-Agent': PHONE_UA})
-        page.wait_for_function("document.querySelector('[data-watch-views]').textContent === '5'", timeout=8000)
+        page.wait_for_function("document.querySelector('[data-watch-count]').textContent === '5'", timeout=8000)
         box = page.locator('[data-screen-watch-slot]').bounding_box()
         assert box['x'] + box['width'] <= 1366 and box['y'] < 140                 # at the top right, on the screen
     finally:

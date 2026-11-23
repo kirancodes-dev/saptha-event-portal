@@ -1,0 +1,14 @@
+{#- Under the match clock (UPG-439): the half's time left, "Time up", or the break's
+    countdown at half time; and the raid clock (UPG-413). The scripts tick them. Needs `state`. -#}
+{% set st_ = state %}
+{% if st_ and st_.left is not none %}
+<div class="live-board__left{% if st_.time_up %} is-up{% endif %}" data-clock-left>{% if st_.time_up %}Time up{% else %}{{ '%02d:%02d' % (st_.left // 60, st_.left % 60) }} left{% endif %}</div>
+{% elif st_ and st_.break_left is not none %}
+<div class="live-board__left" data-clock-left>Break · {{ '%02d:%02d' % (st_.break_left // 60, st_.break_left % 60) }} left</div>
+{% else %}
+<div class="live-board__left" data-clock-left hidden></div>
+{% endif %}
+{% set rc_ = st_.raid_clock if st_ else none %}
+<div class="live-board__raid{% if rc_ and rc_.over and rc_.running %} is-over{% endif %}" data-raid-clock
+     data-secs="{{ rc_.secs if rc_ else '' }}" data-running="{{ 'true' if rc_ and rc_.running else 'false' }}"
+     data-limit="{{ st_.raid_seconds if st_ else 30 }}"{% if not rc_ %} hidden{% endif %}>{% if rc_ %}{% if rc_.running and not rc_.over %}Raid · {{ rc_.left }} s{% elif rc_.running %}Raid time over{% else %}Back in {{ rc_.secs }} s{% endif %}{% endif %}</div>

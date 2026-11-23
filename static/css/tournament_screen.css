@@ -93,3 +93,13 @@ body.tv { margin: 0; min-height: 100vh; background: #0b1530; color: #f1f5f9; fon
 
 /* The table's letters in one line (UPG-425) */
 .tv-table-key { margin: -4px 0 12px; font-size: clamp(11px, .85vw, 15px); opacity: .7; }
+
+/* Under the clock: the time left (UPG-439) and the raid clock (UPG-413); no logo: initials */
+.tv-board__left { font-size: clamp(16px, 1.6vw, 30px); font-weight: 700; font-variant-numeric: tabular-nums; color: #fde68a; opacity: .9; }
+.tv-board__left.is-up { color: #fca5a5; }
+.tv-board__raid { display: inline-block; margin-top: 8px; padding: 4px 16px; border-radius: 999px; background: #1d4ed8; color: #fff;
+  font-size: clamp(18px, 2vw, 38px); font-weight: 800; font-variant-numeric: tabular-nums; }
+.tv-board__raid.is-over { background: #dc2626; }
+.tv-board__initials { display: flex; align-items: center; justify-content: center; border-radius: 50%;
+  background: linear-gradient(135deg, #1d4ed8, #0ea5e9); color: #fff; font-weight: 800; font-size: clamp(24px, 3vw, 56px); }
+.tv-board__name { overflow-wrap: break-word; hyphens: auto; }

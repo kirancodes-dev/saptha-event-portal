@@ -5,6 +5,10 @@
 {% else %}
 {#- How many watch the live match, for the header's right (UPG-435); the script moves it up #}
 {% if boards and watched %}<template data-screen-watch>{% include "public/_screen_watch.html" %}</template>{% endif %}
+{#- A toss just made (UPG-438): the script plays it once on this screen #}
+{% if toss_show %}{% set ts = toss_show %}<template data-screen-toss data-key="{{ ts.key }}" data-winner="{{ ts.toss.winner }}"
+  data-team="{{ ts.toss.team_name }}" data-chose="{{ ts.toss.chose }}" data-logo-home="{{ logos.get(ts.home, '') }}" data-logo-away="{{ logos.get(ts.away, '') }}"
+  data-name-home="{{ names.get(ts.home, '') }}" data-name-away="{{ names.get(ts.away, '') }}"></template>{% endif %}
 {#- A live match takes the whole width; the tables go under it (UPG-434) #}
 <div class="tv-grid{% if boards %} tv-grid--live{% endif %}">
   <section class="tv-left">
@@ -19,10 +23,15 @@
           <div class="tv-board__middle">
             <div class="tv-board__phase">{{ st.phase_name if st else 'Starting' }}</div>
             <div class="tv-board__clock" data-screen-clock="{{ st.clock if st else 0 }}" data-running="{{ 'true' if st and st.running else 'false' }}">{% if st %}{{ '%02d:%02d' % (st.clock // 60, st.clock % 60) }}{% else %}00:00{% endif %}</div>
+            {#- The half's time left or the break's (UPG-439), the raid clock (UPG-413); ticked by the script #}
+            {% if st and st.left is not none %}<div class="tv-board__left{% if st.time_up %} is-up{% endif %}" data-screen-left="{{ st.left }}" data-running="{{ 'true' if st.running else 'false' }}" data-prefix="">{% if st.time_up %}Time up{% else %}{{ '%02d:%02d' % (st.left // 60, st.left % 60) }} left{% endif %}</div>
+            {% elif st and st.break_left is not none %}<div class="tv-board__left" data-screen-left="{{ st.break_left }}" data-running="true" data-prefix="Break · ">Break · {{ '%02d:%02d' % (st.break_left // 60, st.break_left % 60) }} left</div>{% endif %}
+            {% set rc = st.raid_clock if st else none %}
+            {% if rc %}<div class="tv-board__raid{% if rc.running and rc.over %} is-over{% endif %}" data-screen-raid="{{ rc.secs }}" data-running="{{ 'true' if rc.running else 'false' }}" data-limit="{{ st.raid_seconds }}">{% if rc.running and not rc.over %}Raid · {{ rc.left }} s{% elif rc.running %}Raid time over{% else %}Back in {{ rc.secs }} s{% endif %}</div>{% endif %}
           </div>
           {% endif %}
           <div class="tv-board__team">
-            {% if logos.get(m[side]) %}<img src="{{ logos[m[side]] }}" alt="" class="tv-board__logo" width="120" height="120">{% endif %}
+            {% if logos.get(m[side]) %}<img src="{{ logos[m[side]] }}" alt="" class="tv-board__logo" width="120" height="120">{% else %}<span class="tv-board__logo tv-board__initials" aria-hidden="true">{% for w in names.get(m[side], 'TBD').split()[:2] %}{{ w[0]|upper }}{% endfor %}</span>{% endif %}
             <div class="tv-board__name">{{ names.get(m[side], 'TBD') }}</div>
             <div class="tv-board__score" data-screen-score="{{ side }}">{{ st[side].total if st else 0 }}</div>
             {% if st and kabaddi %}<div class="tv-board__split">Raid {{ st[side].raid }} · Tackle {{ st[side].tackle }} · Extra {{ st[side].extra }}</div>{% endif %}

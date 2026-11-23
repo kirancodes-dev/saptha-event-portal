@@ -3,7 +3,8 @@
     script draws the same boxes again at each update (live_match.js, matBoxes). -#}
 {% if st and st.mat and st.mat.named and st.mat.players %}
 {% set now = st.raiding_now %}
-<p class="mat-now" data-raiding-line>{% if now %}<span class="mat-now__label">Raiding now</span> <b class="mat-now__no">{{ '#' ~ now.jersey if now.jersey else '' }}</b> <strong>{{ now.name }}</strong> <span class="mat-now__team">{{ now.team_name }}</span>{% else %}<span class="mat-now__label">{{ st[st.mat.raider].name }} to raid</span>{% endif %}{% if st.mat.do_or_die %} <span class="mat-now__dod">Do-or-die</span>{% endif %}</p>
+{#- Who raids is in the mat line; this line names the raider once he's tapped (UPG-436) #}
+{% if now %}<p class="mat-now" data-raiding-line><span class="mat-now__label">Raiding now</span> <b class="mat-now__no">{{ '#' ~ now.jersey if now.jersey else '' }}</b> <strong>{{ now.name }}</strong> <span class="mat-now__team">{{ now.team_name }}</span>{% if st.mat.do_or_die %} <span class="mat-now__dod">Do-or-die</span>{% endif %}</p>{% endif %}
 <div class="mat-boxes">
   {% for side in ('home', 'away') %}
   {% set p = st.mat.players[side] %}

@@ -863,6 +863,42 @@ def update_schedule(tournament: dict, match_id: str, date: str, time: str, venue
     return t
 
 
+def when(m: dict) -> str:
+    """A match's date and time as people read it (UPG-443): "Sat 28 Nov · 4:30 PM";
+    whatever was typed if it isn't a date; '' when there's neither."""
+    date, time = str(m.get('date') or '').strip(), str(m.get('time') or '').strip()
+    try:
+        d = datetime.date.fromisoformat(date)
+        date = f"{d:%a} {d.day} {d:%b}"
+    except ValueError:
+        pass
+    try:
+        hh, mm = (int(x) for x in time.split(':')[:2])
+        time = f"{(hh % 12) or 12}:{mm:02d} {'AM' if hh < 12 else 'PM'}"
+    except ValueError:
+        pass
+    return ' · '.join(x for x in (date, time) if x)
+
+
+def update_schedules(tournament: dict, rows: dict) -> dict:
+    """Every match's date, time and venue at once (UPG-443): rows is match id →
+    (date, time, venue). Matches not in rows stay as they are. A wrong date
+    changes nothing and says which match."""
+    t = dict(tournament)
+    matches = [dict(m) for m in t.get('matches') or []]
+    for m in matches:
+        if m['id'] not in rows:
+            continue
+        date, time, venue = (str(x or '') for x in rows[m['id']])
+        try:
+            date = _clean_date(date)
+        except ValueError as exc:
+            raise TournamentError(f"{match_no(m)}: {exc}.")
+        m.update(date=date[:20], time=time.strip()[:10], venue=venue.strip()[:200])
+    t['matches'] = matches
+    return t
+
+
 SCHEDULE_COLUMNS = ('Match', 'Stage', 'Team 1', 'Team 2', 'Date', 'Time', 'Venue')
 
 

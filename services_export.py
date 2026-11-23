@@ -181,6 +181,46 @@ def _others(reg):
             and not (lead and str(m.get('email') or '').strip().lower() == lead)]
 
 
+# A sports team's player details (UPG-437): asked by the team section, not by a question the SPOC added
+SPORTS_PARTS = (('jersey', 'Jersey number'), ('jersey_name', 'Jersey name'), ('dob', 'Date of birth'),
+                ('position', 'Position'))
+SPORTS_ANSWERS = {'team_logo': 'Team logo', 'lead_jersey': 'Lead jersey number',
+                  'lead_jersey_name': 'Lead jersey name', 'lead_dob': 'Lead date of birth',
+                  'lead_position': 'Lead position'}
+
+
+def _age(dob, today=None):
+    """Whole years from an ISO date of birth (routes_forms.age_on), None for none."""
+    try:
+        born = datetime.date.fromisoformat(str(dob or '').strip()[:10])
+    except ValueError:
+        return None
+    today = today or datetime.date.today()
+    return today.year - born.year - ((today.month, today.day) < (born.month, born.day))
+
+
+def _sports_rows(row, answers=None):
+    """[(label, value)] of a player's jersey number, jersey name, date of birth
+    (with the age) and position; the lead's from their own row, else the form's
+    lead_* answers. Only what was given."""
+    out = []
+    for key, label in SPORTS_PARTS:
+        value = _text(row.get(key)) or (_text(answers.get(f'lead_{key}')) if answers is not None else '')
+        if not value:
+            continue
+        if key == 'dob' and _age(value) is not None:
+            value = f"{value} (age {_age(value)})"
+        out.append((label, value))
+    return out
+
+
+def _lead_row(reg):
+    lead = str(reg.get('lead_email') or '').strip().lower()
+    return next((m for m in reg.get('members') or [] if isinstance(m, dict) and (
+        str(m.get('role') or '').strip().lower() in ('lead', 'team leader')   # services_team_confirm.LEAD_ROLES
+        or (lead and str(m.get('email') or '').strip().lower() == lead))), {})
+
+
 def _unique_header(name, used):
     name = str(name or '').strip() or 'Question'
     candidate, n = name, 1
@@ -198,7 +238,7 @@ def _event_columns(fields, regs, confirming, taken, shown=()):
     for each question on the form, then for answers to questions since
     taken off it."""
     slots = max((len(_others(r)) for _, r in regs), default=0)
-    parts = [(key, label) for key, label in MEMBER_PARTS
+    parts = [(key, label) for key, label in MEMBER_PARTS + SPORTS_PARTS
              if key == 'name' or any(str(m.get(key) or '').strip() for _, r in regs for m in _others(r))]
     used = set(taken)
     member_headers = []
@@ -217,7 +257,8 @@ def _event_columns(fields, regs, confirming, taken, shown=()):
         for fid in _answers(r):
             if fid not in seen and not fid.startswith('member_'):
                 seen.add(fid)
-                questions.append((fid, _unique_header(f"{fid} (no longer on the form)", used)))
+                label = SPORTS_ANSWERS.get(fid) or f"{fid} (no longer on the form)"   # UPG-437
+                questions.append((fid, _unique_header(label, used)))
     return slots, parts, member_headers, questions
 
 
@@ -247,10 +288,13 @@ class FormDetails:
         lead += [(label, _text(reg.get(key))) for key, label in (
             ('designation', 'Designation'), ('institution', 'Institution'),
             ('ticket_type_name', 'Ticket type'), ('team_code', 'Team code')) if _text(reg.get(key))]
+        given = _answers(reg)
+        lead += _sports_rows(_lead_row(reg), given)            # UPG-437: the lead's jersey, DOB, position
         members = [[(label, _text(m.get(key))) for key, label in MEMBER_PARTS if _text(m.get(key))]
-                   for m in _others(reg)]
-        answers, given = [], _answers(reg)
-        seen = set(IDENTITY_KEYS) | set(self.usn_ids) | set(self.phone_ids)
+                   + _sports_rows(m) for m in _others(reg)]
+        logo = _text(given.get('team_logo')) or _text(reg.get('team_logo'))
+        answers = []
+        seen = set(IDENTITY_KEYS) | set(self.usn_ids) | set(self.phone_ids) | set(SPORTS_ANSWERS)
         for f in self.fields:
             fid = _fid(f)
             if fid in seen or f.get('type') in LAYOUT_TYPES or fid.startswith('member_'):
@@ -261,7 +305,10 @@ class FormDetails:
             if fid not in seen and not fid.startswith('member_') and _text(value):
                 seen.add(fid)
                 answers.append((f"{fid} (no longer on the form)", _text(value)))
-        return {'lead': lead, 'members': members, 'answers': answers}
+        is_url = logo.startswith(('/', 'https://', 'http://'))
+        if logo and not is_url:                                 # not a picture: shown as typed
+            answers.append(('Team logo', logo))
+        return {'lead': lead, 'members': members, 'answers': answers, 'logo': logo if is_url else ''}
 
 
 def registration_table(db, event_id, sessions=True, only=None):

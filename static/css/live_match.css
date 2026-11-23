@@ -309,3 +309,93 @@
 }
 .pkl-buttons .live-btn { flex-direction: column; justify-content: center; }
 .live-views { text-align: center; font-size: .9rem; color: #475569; margin: 6px 0 4px; }
+
+/* Under the match clock: the half's time left, the break's (UPG-439); the raid clock (UPG-413) */
+.live-board__left { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; color: #fde68a; margin-top: 2px; }
+.live-board__left.is-up { color: #fca5a5; }
+.live-board__left[hidden], .live-board__raid[hidden] { display: none; }
+.live-board__raid { display: inline-block; margin-top: 6px; padding: 3px 10px; border-radius: 999px; background: #1d4ed8;
+  font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.live-board__raid.is-over { background: #dc2626; animation: pkl-pulse .6s ease-in-out infinite alternate; }
+.live-board--big .live-board__left { font-size: 15px; }
+.live-board--big .live-board__raid { font-size: 18px; }
+.live-scorer .live-board__raid { display: none; }
+.live-board__initials { display: flex; align-items: center; justify-content: center; border-radius: 50%;
+  background: linear-gradient(135deg, #1d4ed8, #0ea5e9); color: #fff; font-weight: 800; font-size: 26px; letter-spacing: .02em; }
+.live-scorer .live-board__initials { font-size: 18px; }
+.live-board__name { overflow-wrap: break-word; hyphens: auto; }
+
+/* The scorer's raid clock: Space when the raider goes, Space when the raider is back */
+.pkl-raidclock { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px;
+  margin: 0 0 10px; padding: 8px 12px; border-radius: 10px; background: #0f1d3d; color: #fff; }
+.pkl-raidclock__main { display: flex; align-items: baseline; gap: 10px; }
+.pkl-raidclock__label { font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; opacity: .8; }
+.pkl-raidclock__time { font-size: 1.6rem; font-variant-numeric: tabular-nums; }
+.pkl-raidclock.is-running { background: #1d4ed8; }
+.pkl-raidclock.is-over { background: #dc2626; }
+.pkl-raidclock__btn { min-height: 48px; font-weight: 700; background: #fff; color: #0f172a; border: 0; }
+.pkl-raidclock__btn kbd { margin-left: 6px; font-size: .7rem; background: #e2e8f0; color: #0f172a; }
+
+/* Before the start: the toss and the timings (UPG-438, UPG-439) */
+.pkl-before { background: #fffbeb; border-color: #fcd34d; }
+.pkl-before__step + .pkl-before__step { margin-top: 12px; padding-top: 10px; border-top: 1px dashed #fcd34d; }
+.pkl-before__title { font-size: .95rem; font-weight: 700; margin: 0 0 6px; }
+.pkl-buttons--two .btn { min-height: 52px; font-weight: 700; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.pkl-buttons--two .btn .pkl-hint { display: block; font-size: .72rem; font-weight: 400; }
+.raid-secs { color: #64748b; font-size: .9em; font-variant-numeric: tabular-nums; }
+.live-toss { text-align: center; font-weight: 700; margin: 8px 0 0; font-size: 1rem; }
+.live-toss[hidden] { display: none; }
+.live-views__live { display: inline-block; padding: 0 6px; border-radius: 4px; background: #dc2626; color: #fff;
+  font-size: .7rem; font-weight: 800; letter-spacing: .06em; vertical-align: 1px; }
+.live-views strong { font-size: 1.05rem; color: #0f172a; }
+
+/* The toss, played once: a coin flips, the winner's logo, then what they chose */
+.toss-show { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center;
+  background: rgba(15, 29, 61, .92); color: #fff; cursor: pointer; animation: toss-fade .3s ease-out; }
+.toss-show__card { text-align: center; padding: 24px; max-width: 92vw; }
+.toss-show__eyebrow { font-size: clamp(14px, 2vw, 22px); text-transform: uppercase; letter-spacing: .2em; color: #fde68a; margin-bottom: 18px; }
+.toss-show__coin { position: relative; width: clamp(120px, 22vw, 240px); height: clamp(120px, 22vw, 240px); margin: 0 auto;
+  transform-style: preserve-3d; }
+.toss-show__face { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; object-fit: contain;
+  background: #fde68a; border: 6px solid #d4a017; box-shadow: 0 10px 30px rgba(0, 0, 0, .4); backface-visibility: hidden; }
+.toss-show__face--back { transform: rotateY(180deg); }
+.toss-show__initials { display: flex; align-items: center; justify-content: center; font-weight: 800; color: #0f1d3d;
+  font-size: clamp(32px, 6vw, 72px); }
+.toss-show.is-flip .toss-show__coin { animation: toss-flip 1.8s cubic-bezier(.3, .6, .4, 1) forwards; }
+.toss-show__won, .toss-show__chose { opacity: 0; transform: translateY(16px); transition: opacity .5s, transform .5s; }
+.toss-show__won { display: none; }
+.toss-show.is-won .toss-show__coin { display: none; }
+.toss-show.is-won .toss-show__won { display: flex; flex-direction: column; align-items: center; gap: 8px; opacity: 1; transform: none;
+  animation: toss-pop .6s ease-out; }
+.toss-show__logo { width: clamp(120px, 22vw, 260px); height: clamp(120px, 22vw, 260px); object-fit: contain; border-radius: 50%;
+  background: #fff; border: 6px solid #fde68a; }
+.toss-show__logo.toss-show__initials { background: #fde68a; }
+.toss-show__team { font-size: clamp(26px, 5vw, 64px); line-height: 1.1; overflow-wrap: break-word; }
+.toss-show__line { font-size: clamp(18px, 3vw, 36px); color: #fde68a; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; }
+.toss-show.is-chose .toss-show__chose { opacity: 1; transform: none; }
+.toss-show__chose { margin-top: 14px; font-size: clamp(18px, 3.2vw, 40px); font-weight: 700; }
+@keyframes toss-flip { 0% { transform: translateY(0) rotateY(0); } 50% { transform: translateY(-60px) rotateY(900deg); }
+  100% { transform: translateY(0) rotateY(1800deg); } }
+@keyframes toss-pop { 0% { transform: scale(.6); opacity: 0; } 70% { transform: scale(1.06); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes toss-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .toss-show, .toss-show.is-flip .toss-show__coin, .toss-show.is-won .toss-show__won { animation: none; }
+  .live-board__raid.is-over { animation: none; }
+}
+
+/* Each team's players, in a drop-down (UPG-441) */
+.team-details { margin-top: 16px; }
+.team-details__team { border: 1px solid var(--border, #e2e8f0); border-radius: 12px; margin-bottom: 8px; background: var(--surface, #fff); }
+.team-details__team > summary { display: flex; align-items: center; gap: 10px; padding: 10px 12px; cursor: pointer; list-style: none; }
+.team-details__team > summary::-webkit-details-marker { display: none; }
+.team-details__logo { width: 36px; height: 36px; object-fit: contain; border-radius: 50%; flex: none; font-size: 13px; }
+.team-details__name { font-weight: 700; overflow-wrap: break-word; min-width: 0; }
+.team-details__count { color: #64748b; font-size: .85rem; white-space: nowrap; }
+.team-details__open { margin-left: auto; color: #1d4ed8; font-size: .85rem; font-weight: 600; white-space: nowrap; }
+.team-details__team[open] .fa-chevron-down { transform: rotate(180deg); }
+.team-details__team > :not(summary) { margin: 0 12px 10px; }
+.team-details__roles { display: flex; flex-wrap: wrap; gap: 6px; }
+.team-details__role { background: #eff6ff; color: #1e3a8a; border-radius: 999px; padding: 1px 10px; font-size: .8rem; font-weight: 600; }
+.team-details__jname { font-size: .72rem; font-weight: 700; letter-spacing: .05em; color: #475569; background: #f1f5f9; border-radius: 4px; padding: 0 5px; }
+.team-details__table td, .team-details__table th { white-space: normal; overflow-wrap: anywhere; }
+@media (max-width: 420px) { .team-details__count { display: none; } }

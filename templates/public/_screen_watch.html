@@ -1,2 +1,2 @@
 {#- How many watch the live match on their phones (UPG-435): one number, as a streaming app shows it -#}
-<div class="tv-watch" title="{{ '{:,}'.format(watched.views) }} views"><span class="tv-watch__live">LIVE</span><i class="fas fa-eye" aria-hidden="true"></i><strong data-watch-views="{{ watched.views }}">{{ watched.short }}</strong><span class="tv-watch__label">watching</span></div>
+<div class="tv-watch" title="{{ '{:,}'.format(watched.devices) }} watching: each phone or computer once"><span class="tv-watch__live">LIVE</span><i class="fas fa-eye" aria-hidden="true"></i><strong data-watch-count="{{ watched.devices }}">{{ watched.short }}</strong><span class="tv-watch__label">watching</span></div>

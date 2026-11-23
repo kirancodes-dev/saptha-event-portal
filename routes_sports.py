@@ -186,6 +186,24 @@ def schedule(event_id, match_id):
     return _back(event_id, match_id)
 
 
+@sports_bp.route('/<event_id>/schedule/all', methods=['POST'])
+@login_required
+def schedule_all(event_id):
+    """Every match's date, time and venue from one table, one Save (UPG-443)."""
+    import services_sports
+    event = _event(event_id)
+    if not _allowed(event, 'edit_event'):
+        abort(403)
+    ids = {m['id'] for m in (event.get('tournament') or {}).get('matches') or []}
+    rows = {mid: (request.form.get(f'date-{mid}', ''), request.form.get(f'time-{mid}', ''),
+                  request.form.get(f'venue-{mid}', ''))
+            for mid in ids if f'date-{mid}' in request.form}
+    if _save(event_id, lambda cur, _e: services_sports.update_schedules(cur, rows),
+             f"Dates saved for {len(rows)} match{'' if len(rows) == 1 else 'es'}.") is not None:
+        log_action(db, "TOURNAMENT_SCHEDULE", f"{session.get('user_id')} set the dates of {len(rows)} matches of {event_id}")
+    return _back(event_id, 'match-dates')
+
+
 @sports_bp.route('/<event_id>/playoffs', methods=['POST'])
 @login_required
 def playoffs(event_id):
@@ -584,6 +602,13 @@ def score_tap(event_id, match_id):
                                   sides, _side_jerseys(event_id, doc))
         elif op == 'raider':                          # the raider tapped: the boards show him at once (UPG-420)
             doc = live.raiding_now(db, event_id, match_id, tap, str(data.get('name') or ''))
+        elif op == 'raid_clock':                      # the 30-second raid clock: Space (UPG-413)
+            doc = live.raid_clock(db, event_id, match_id, tap, str(data.get('action') or ''))
+        elif op == 'toss':                            # who won the toss and chose what (UPG-438)
+            doc = live.set_toss(db, event_id, match_id, tap, str(data.get('winner') or ''),
+                                str(data.get('choice') or ''))
+        elif op == 'timings':                         # the half's and the break's minutes (UPG-439)
+            doc = live.set_timings(db, event_id, match_id, tap, data.get('half_minutes'), data.get('break_minutes'))
         elif op == 'potm':                            # another player of the match, after full time (UPG-422)
             doc = live.set_potm(db, event_id, live.with_squads(db, event_id, event, match_id), match_id, tap,
                                 str(data.get('team') or ''), str(data.get('name') or ''))
@@ -655,14 +680,25 @@ def live_board(event_id, match_id):
     except Exception as exc:   # a count never stops the scoreboard
         current_app.logger.warning("Match view count failed: %s", exc)
         watched = None
+    # Each team's players, for its Team details drop-down (UPG-441)
+    teams = []
+    for side in ('home', 'away'):
+        if m.get(side):
+            try:
+                players_of = live.roster(db, event_id, m[side])
+            except Exception:
+                current_app.logger.warning("Team details for %s failed", m[side], exc_info=True)
+                players_of = []
+            teams.append({'side': side, 'id': m[side], 'name': names.get(m[side], 'TBD'), 'players': players_of})
     resp = current_app.make_response(render_template(
-        'public/live_match.html', event=event, match=m, names=names,
+        'public/live_match.html', event=event, match=m, names=names, teams=teams,
         logos=services_sports.logos(t),
         stage=services_sports.stage_name(m), state=live.public_state(db, event_id, match_id),
         players=live.with_jerseys(live.player_stats([doc], names),
                                   live.jerseys(db, event_id, [m.get('home'), m.get('away')]))
         if doc else [],
-        player_links=_player_links(event_id), watched=watched))
+        player_links=_player_links(event_id), watched=watched,
+        watching=live.short_count(watched.get('devices', 0)) if watched else ''))   # UPG-440: each phone once
     if seen is not None:
         resp.set_cookie(live.SEEN_COOKIE, seen, max_age=365 * 24 * 3600, httponly=True, samesite='Lax',
                         secure=request.is_secure)
@@ -807,6 +843,14 @@ def public_base() -> str:
 sports_bp.add_app_template_global(public_base, 'sports_public_base')
 
 
+def _match_when(m):
+    import services_sports
+    return services_sports.when(m or {})
+
+
+sports_bp.add_app_template_filter(_match_when, 'match_when')   # UPG-443: "Sat 28 Nov · 4:30 PM"
+
+
 @sports_bp.route('/screen/<event_id>/qr.svg')
 def screen_qr(event_id):
     """The QR code on the big screen (UPG-402): the audience scan it to open
@@ -844,10 +888,16 @@ def _screen(event):
         try:
             counts = [live_match.views(db, event['id'], b['match']['id']) for b in boards]
             watched = {k: sum(c.get(k, 0) for c in counts) for k in ('views', 'devices')}
-            watched['short'] = live_match.short_count(watched['views'])
+            watched['short'] = live_match.short_count(watched['devices'])   # UPG-440: each phone once
         except Exception:
             current_app.logger.warning("View counts for %s failed", event['id'], exc_info=True)
-    return dict(watched=watched,t=t, names=services_sports.names(t) if t else {}, logos=services_sports.logos(t) if t else {},
+    toss_show = None                     # a toss just made, played once on the screen (UPG-438)
+    if t:
+        try:
+            toss_show = live_match.toss_show(db, event['id'], services_sports.names(t))
+        except Exception:
+            current_app.logger.warning("Toss for %s failed", event['id'], exc_info=True)
+    return dict(watched=watched, toss_show=toss_show, t=t, names=services_sports.names(t) if t else {}, logos=services_sports.logos(t) if t else {},
                 pool_tables=services_sports.pool_tables(t) if t else [],
                 table=services_sports.standings(t) if t and not t.get('pools') else [],
                 bracket=services_sports.bracket(t) if t else {}, champion=services_sports.champion(t) if t else None,

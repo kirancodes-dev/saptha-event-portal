@@ -1,0 +1,33 @@
+{#- Before the start, on the scorer's page: the toss (UPG-438) and the match's
+    timings (UPG-439). Part of the panel, so it's drawn again after each tap. -#}
+{% set toss = state.toss %}
+<section class="pkl-panel pkl-before" data-before-start data-toss-saved="{{ 'true' if toss else 'false' }}">
+  <h2 class="pkl-panel__title">Before the start</h2>
+  <div class="pkl-before__step" data-toss>
+    <h3 class="pkl-before__title">1. The toss</h3>
+    <p class="mb-1" data-toss-now>{% if toss %}<i class="fas fa-circle-check text-success" aria-hidden="true"></i> <strong>{{ toss.text }}.</strong> To change it, tap again and save.{% else %}Who won the toss?{% endif %}</p>
+    <div class="pkl-buttons pkl-buttons--two">
+      {% for side in ('home', 'away') %}<button type="button" class="btn btn-outline-primary{% if toss and toss.winner == side %} active{% endif %}" data-toss-pick="{{ side }}" aria-pressed="{{ 'true' if toss and toss.winner == side else 'false' }}">{{ state[side].name }}</button>{% endfor %}
+    </div>
+    <p class="mb-1 mt-2">and chose</p>
+    <div class="pkl-buttons pkl-buttons--two">
+      {% for key, label, hint in (('raid', 'To raid first', 'they raid first'), ('court', 'The court', 'the other team raids first')) %}<button type="button" class="btn btn-outline-primary{% if toss and toss.choice == key %} active{% endif %}" data-toss-choice="{{ key }}" aria-pressed="{{ 'true' if toss and toss.choice == key else 'false' }}">{{ label }}<small class="pkl-hint">{{ hint }}</small></button>{% endfor %}
+    </div>
+    <button type="button" class="btn btn-primary mt-2" data-toss-save>Save the toss</button>
+    <p class="small text-muted mb-0 mt-1">The public page and the big screen show the toss as it's saved.</p>
+  </div>
+  <div class="pkl-before__step" data-timings>
+    <h3 class="pkl-before__title">2. Match timings</h3>
+    <div class="pkl-row">
+      <label class="pkl-field">Each half (minutes)
+        <input type="number" class="form-control form-control-sm" min="1" max="60" inputmode="numeric" value="{{ state.half_minutes }}" data-half-minutes>
+      </label>
+      <label class="pkl-field">Break (minutes)
+        <input type="number" class="form-control form-control-sm" min="0" max="30" inputmode="numeric" value="{{ state.break_minutes }}" data-break-minutes>
+      </label>
+      <button type="button" class="btn btn-outline-primary btn-sm" data-timings-save>Save timings</button>
+    </div>
+    <p class="small text-muted mb-0" data-timings-now>Now: {{ state.half_minutes }}-minute halves, a {{ state.break_minutes }}-minute break. The boards show the time left.</p>
+  </div>
+  {% if state.mode == 'pkl' %}<p class="small mb-0"><strong>3.</strong> {% if squads.home|length >= live.MAT and squads.away|length >= live.MAT %}Save the line-ups below, then{% else %}Then{% endif %} press <strong>Start 1st half</strong>.</p>{% endif %}
+</section>

@@ -3,6 +3,8 @@
 {% macro details_panel(d) %}
 <div class="row g-3 small" data-details>
   <div class="col-md-4">
+    {#- The team's logo as a picture, not its address (UPG-437) #}
+    {% if d.logo %}<img src="{{ d.logo }}" alt="Team logo" width="72" height="72" class="rounded border mb-2" style="object-fit:contain" data-detail-logo>{% endif %}
     <h3 class="h6 fw-bold mb-2">Lead</h3>
     <dl class="row mb-0">
       {% for label, value in d.lead %}

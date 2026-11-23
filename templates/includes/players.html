@@ -6,7 +6,7 @@
 {%- endmacro %}
 
 {% macro search_box(query='', compact=false) -%}
-<form method="GET" action="/players" class="player-search{% if compact %} player-search--compact{% endif %}" role="search" data-player-search>
+<form method="GET" action="/players" class="player-search{% if compact %} player-search--compact{% endif %}" role="search" data-player-search{% if compact %} data-no-autofocus{% endif %}>
   <label class="visually-hidden" for="player-q{{ '-c' if compact else '' }}">Find a player</label>
   <input type="search" id="player-q{{ '-c' if compact else '' }}" name="q" class="form-control" value="{{ query }}" maxlength="60"
          placeholder="Find a player by name" autocomplete="off">

@@ -6,15 +6,24 @@
       "date": "2026-11-22",
       "commit": "",
       "revision": "",
-      "title": "Easier scoring, and how many are watching",
+      "title": "Match day: the toss, the raid clock and who is watching",
       "notes": [
         "A player's jersey number can have up to three digits (0 to 999), on the registration form and the Edit page.",
         "Scoring a raid is three plain steps: a box over the players says which step you're on and what to tap. The raider is marked RAIDER and the defenders TOUCHED, each button says what it scores, and the page says Saved after each raid.",
         "The public match page shows how many have watched: every visit adds a view and each phone or computer counts once as a device. The numbers only go up.",
         "On the big screen a live match fills the whole width; both pool tables sit side by side under it, with every team name in full.",
-        "While a match is live, the big screen shows how many are watching at the top right, like a streaming app (\"1.2K watching\"), where the QR code is between matches."
+        "While a match is live, the big screen shows how many are watching at the top right, like a streaming app (\"1.2K watching\"), where the QR code is between matches.",
+        "A 30-second raid clock for the scorer: press Space (or the button) when the raider goes and again when the raider is back. Each raid shows how long it took (\"back in 12 s\"), and Raid time over puts the raider out and gives the defence a point.",
+        "The toss before the start: the scorer taps who won and what they chose, which sets who raids first. Phones and the big screen play it once: a coin, the winner's logo with \"won the toss\", then their choice.",
+        "The scorer sets how long each half and the break are before the start. The boards show the time left, Time up and the break's countdown.",
+        "\"Watching\" on the public page and the big screen counts each phone or computer once and never goes down.",
+        "Each team on the match page has a Team details drop-down: every player's jersey number and name, position and age (never their contact details).",
+        "A team without a logo shows its initials, and team names wrap between words.",
+        "The SPOC's registration details show each player's jersey number and name, date of birth with the age, and position, and the team logo as a picture.",
+        "After the fixture sheet, the SPOC sets every match's date, time and venue in one table; the public fixtures show them as \"Sat 28 Nov · 4:30 PM\".",
+        "On a laptop or a screen in the hall, the match page opens at the score instead of jumping down to the player search."
       ],
-      "items": ["UPG-431", "UPG-432", "UPG-433", "UPG-434", "UPG-435"]
+      "items": ["UPG-431", "UPG-432", "UPG-433", "UPG-434", "UPG-435", "UPG-413", "UPG-436", "UPG-437", "UPG-438", "UPG-439", "UPG-440", "UPG-441", "UPG-442", "UPG-443", "UPG-444"]
     },
     {
       "version": "1.19",

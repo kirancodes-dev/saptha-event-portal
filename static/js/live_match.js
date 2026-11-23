@@ -19,20 +19,83 @@
   }
   function csrf() { return (document.querySelector('meta[name="csrf-token"]') || {}).content || ''; }
 
+  function num(v) { return v === '' || v === null || v === undefined ? null : (parseInt(v, 10) || 0); }
+
+  // The raid clock's words (UPG-413): the seconds left, "time over", or how long he took
+  function raidText(secs, running, limit, scorer) {
+    if (secs === null) { return scorer ? limit + ' s' : ''; }
+    if (running && secs < limit) { return scorer ? (limit - secs) + ' s left' : 'Raid · ' + (limit - secs) + ' s'; }
+    if (running) { return scorer ? 'Time over · ' + secs + ' s' : 'Raid time over'; }
+    return 'Back in ' + secs + ' s';
+  }
+
+  // The match clock, the half's time left or the break's (UPG-439) and the raid clock, ticked between updates
   function Clock(root) {
-    var base = parseInt(root.getAttribute('data-clock') || '0', 10) || 0;
-    var running = root.getAttribute('data-running') === 'true';
+    var raidEl = root.querySelector('[data-raid-clock]');
+    var s0 = {
+      clock: num(root.getAttribute('data-clock')) || 0,
+      running: root.getAttribute('data-running') === 'true',
+      half: num(root.getAttribute('data-half-seconds')) || 0,
+      phase: root.getAttribute('data-phase'),
+      breakLeft: num(root.getAttribute('data-break-left')),
+      raid: raidEl && raidEl.getAttribute('data-secs') !== '' ?
+        { secs: num(raidEl.getAttribute('data-secs')), running: raidEl.getAttribute('data-running') === 'true' } : null,
+      limit: raidEl ? (num(raidEl.getAttribute('data-limit')) || 30) : 30
+    };
     var at = Date.now();
     var el = root.querySelector('[data-clock-text]');
     function show() {
-      if (!el) { return; }
-      var s = base + (running ? (Date.now() - at) / 1000 : 0);
-      el.textContent = clockText(s);
+      var gone = (Date.now() - at) / 1000;
+      var s = Math.floor(s0.clock + (s0.running ? gone : 0));
+      if (el) { el.textContent = clockText(s); }
+      var left = root.querySelector('[data-clock-left]');
+      if (left) {
+        if ((s0.phase === 'first_half' || s0.phase === 'second_half') && s0.half) {
+          var l = s0.half - s;
+          left.hidden = false;
+          left.classList.toggle('is-up', l <= 0);
+          left.textContent = l > 0 ? clockText(l) + ' left' : 'Time up';
+        } else if (s0.phase === 'half_time' && s0.breakLeft !== null) {
+          var b = s0.breakLeft - Math.floor(gone);
+          left.hidden = false;
+          left.classList.remove('is-up');
+          left.textContent = b > 0 ? 'Break · ' + clockText(b) + ' left' : 'Break over';
+        } else {
+          left.hidden = true;
+        }
+      }
+      var r = root.querySelector('[data-raid-clock]');
+      if (r) {
+        var rc = s0.raid;
+        r.hidden = !rc;
+        if (rc) {
+          var secs = rc.secs + (rc.running ? Math.floor(gone) : 0);
+          r.textContent = raidText(secs, rc.running, s0.limit, false);
+          r.classList.toggle('is-over', rc.running && secs >= s0.limit);
+        }
+      }
     }
-    setInterval(show, 1000);
+    setInterval(show, 250);
+    show();
     return {
-      set: function (seconds, isRunning) { base = seconds; running = isRunning; at = Date.now(); show(); }
+      set: function (state) {
+        s0 = { clock: state.clock, running: state.running, half: state.half_seconds || 0, phase: state.phase,
+               breakLeft: state.break_left === null || state.break_left === undefined ? null : state.break_left,
+               raid: state.raid_clock || null, limit: state.raid_seconds || 30 };
+        at = Date.now();
+        show();
+      }
     };
+  }
+
+  // A list of raids, each with how long it took when the raid clock ran (UPG-413)
+  function fillList(list, lines, secs) {
+    list.innerHTML = '';
+    lines.forEach(function (line, i) {
+      var li = el('li', '', line);
+      if (secs && secs[i]) { li.appendChild(document.createTextNode(' ')); li.appendChild(el('span', 'raid-secs', '· ' + secs[i])); }
+      list.appendChild(li);
+    });
   }
 
   function render(root, state, clock) {
@@ -56,19 +119,17 @@
       if (el) { el.textContent = x[1] || ''; el.hidden = !x[1]; }
     });
     var list = root.querySelector('[data-recent]');
-    if (list) {
-      list.innerHTML = '';
-      state.recent.forEach(function (line) {
-        var li = document.createElement('li');
-        li.textContent = line;
-        list.appendChild(li);
-      });
-    }
+    if (list) { fillList(list, state.recent, state.recent_secs); }
     var feed = root.querySelector('[data-feed]');
-    if (feed && state.feed) {
-      feed.innerHTML = '';
-      state.feed.forEach(function (line) { feed.appendChild(el('li', '', line)); });
+    if (feed && state.feed) { fillList(feed, state.feed, state.feed_secs); }
+    var tossLine = root.querySelector('[data-toss-line]');
+    if (tossLine) {
+      var showToss = state.toss && state.phase === 'not_started';
+      tossLine.hidden = !showToss;
+      if (showToss) { tossLine.querySelector('[data-toss-text]').textContent = state.toss.text; }
     }
+    var watch = root.querySelector('[data-watch-count]');
+    if (watch && state.watching) { watch.textContent = state.watching; }
     var sheet = root.querySelector('[data-sheet-link]');
     if (sheet) {
       sheet.hidden = state.phase === 'not_started';
@@ -89,7 +150,7 @@
     var waiting = root.querySelector('[data-waiting]');
     if (waiting) { waiting.hidden = true; }
     root.setAttribute('data-phase', state.phase);
-    clock.set(state.clock, state.running);
+    clock.set(state);
   }
 
   function el(tag, cls, text) {
@@ -106,9 +167,10 @@
     host.innerHTML = '';
     if (!mat || !mat.named || !mat.players) { return; }
     var now = state.raiding_now;
-    var line = el('p', 'mat-now');
-    line.setAttribute('data-raiding-line', '');
+    // Who raids is in the mat line; this line names the raider once he's tapped (UPG-436)
     if (now) {
+      var line = el('p', 'mat-now');
+      line.setAttribute('data-raiding-line', '');
       line.appendChild(el('span', 'mat-now__label', 'Raiding now'));
       line.appendChild(document.createTextNode(' '));
       line.appendChild(el('b', 'mat-now__no', now.jersey ? '#' + now.jersey : ''));
@@ -116,14 +178,12 @@
       line.appendChild(el('strong', '', now.name));
       line.appendChild(document.createTextNode(' '));
       line.appendChild(el('span', 'mat-now__team', now.team_name));
-    } else {
-      line.appendChild(el('span', 'mat-now__label', state[mat.raider].name + ' to raid'));
+      if (mat.do_or_die) {
+        line.appendChild(document.createTextNode(' '));
+        line.appendChild(el('span', 'mat-now__dod', 'Do-or-die'));
+      }
+      host.appendChild(line);
     }
-    if (mat.do_or_die) {
-      line.appendChild(document.createTextNode(' '));
-      line.appendChild(el('span', 'mat-now__dod', 'Do-or-die'));
-    }
-    host.appendChild(line);
     var boxes = el('div', 'mat-boxes');
     ['home', 'away'].forEach(function (side) {
       var p = mat.players[side];
@@ -236,8 +296,12 @@
             renderPanel(r.data.panel);
           }
           if (body.op !== 'state') {
-            var first = r.data.state && r.data.state.recent && r.data.state.recent[0];
-            say(queue.length ? 'Sending…' : (body.op === 'raid' || body.op === 'call') && first ? 'Saved: ' + first : '');
+            var st = r.data.state || {};
+            var first = st.recent && st.recent[0];
+            var saved = (body.op === 'raid' || body.op === 'call') && first ? 'Saved: ' + first + (st.recent_secs && st.recent_secs[0] ? ' · ' + st.recent_secs[0] : '') :
+              body.op === 'toss' && st.toss ? 'Saved: ' + st.toss.text + '.' :
+              body.op === 'timings' ? 'Saved: ' + st.half_minutes + '-minute halves, a ' + st.break_minutes + '-minute break.' : '';
+            say(queue.length ? 'Sending…' : saved);
           }
         } else {
           say((r.data && r.data.error) || 'That didn\'t save.', true);
@@ -255,9 +319,73 @@
 
     function renderPanel(html) {
       var panel = root.querySelector('[data-panel]');
-      if (panel && typeof html === 'string') { panel.innerHTML = html; }
+      if (panel && typeof html === 'string') { panel.innerHTML = html; rcAt = Date.now(); }
       reapply();
+      raidTick();
     }
+
+    // The raid clock (UPG-413): a stopwatch, Space or its button; ticked here between taps
+    var rcAt = Date.now();
+    var buzzed = false;
+    function raidBox() { return root.querySelector('[data-raid-clock-box]'); }
+    function raidNow(box) {
+      var s = box.getAttribute('data-secs');
+      if (s === '' || s === null) { return null; }
+      var running = box.getAttribute('data-running') === 'true';
+      return { secs: (parseInt(s, 10) || 0) + (running ? Math.floor((Date.now() - rcAt) / 1000) : 0), running: running };
+    }
+    function raidTick() {
+      var box = raidBox();
+      if (!box) { return; }
+      var limit = parseInt(box.getAttribute('data-limit'), 10) || 30;
+      var rc = raidNow(box);
+      var running = !!(rc && rc.running);
+      box.querySelector('[data-raid-clock-text]').textContent = raidText(rc ? rc.secs : null, running, limit, true);
+      var over = running && rc.secs >= limit;
+      box.classList.toggle('is-over', over);
+      box.classList.toggle('is-running', running);
+      var btn = box.querySelector('[data-raid-clock-btn]');
+      if (btn && btn.firstChild) { btn.firstChild.textContent = running ? 'Stop: raider back ' : 'Start: raider goes '; }
+      if (!over) { buzzed = false; return; }
+      if (!buzzed) {
+        buzzed = true;
+        if (navigator.vibrate) { navigator.vibrate([200, 100, 200]); }
+        say('Raid time over (' + limit + ' s). If the raider isn\'t back, tap Raid time over.', true);
+      }
+    }
+    setInterval(raidTick, 250);
+    function raidToggle() {
+      var box = raidBox();
+      if (!box) { return false; }
+      var rc = raidNow(box);
+      if (rc && rc.running) {
+        box.setAttribute('data-secs', String(rc.secs));
+        box.setAttribute('data-running', 'false');
+        send({ op: 'raid_clock', action: 'stop' });
+      } else {
+        box.setAttribute('data-secs', '0');
+        box.setAttribute('data-running', 'true');
+        send({ op: 'raid_clock', action: 'start' });
+      }
+      rcAt = Date.now();
+      raidTick();
+      return true;
+    }
+    function typing(t) {
+      if (!t || !t.tagName) { return false; }
+      if (t.isContentEditable || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT') { return true; }
+      return t.tagName === 'INPUT' && !/^(checkbox|radio|button|submit)$/i.test(t.type || '');
+    }
+    function isSpace(e) { return e.key === ' ' || e.code === 'Space' || e.key === 'Spacebar'; }
+    // Space starts and stops the raid clock; it never presses the button that has the focus
+    document.addEventListener('keydown', function (e) {
+      if (!isSpace(e) || typing(e.target) || !raidBox()) { return; }
+      e.preventDefault();
+      if (!e.repeat) { raidToggle(); }
+    });
+    document.addEventListener('keyup', function (e) {
+      if (isSpace(e) && !typing(e.target) && raidBox()) { e.preventDefault(); }
+    });
 
     // The players tapped so far (UPG-420): kept across a redraw of the panel
     var pick = { defenders: [], mode: '', side: '', off: '' };
@@ -373,6 +501,28 @@
     }
 
     root.addEventListener('click', function (e) {
+      if (e.target.closest('[data-raid-clock-btn]')) { raidToggle(); return; }
+      // The toss (UPG-438): the winner and their choice, then Save
+      var tossBtn = e.target.closest('[data-toss-pick], [data-toss-choice]');
+      if (tossBtn) {
+        var attr = tossBtn.hasAttribute('data-toss-pick') ? 'data-toss-pick' : 'data-toss-choice';
+        root.querySelectorAll('[' + attr + ']').forEach(function (b) {
+          b.classList.toggle('active', b === tossBtn);
+          b.setAttribute('aria-pressed', b === tossBtn ? 'true' : 'false');
+        });
+        return;
+      }
+      if (e.target.closest('[data-toss-save]')) {
+        var won = root.querySelector('[data-toss-pick].active'), chose = root.querySelector('[data-toss-choice].active');
+        if (!won || !chose) { say('Tap the team that won the toss and what they chose.', true); return; }
+        send({ op: 'toss', winner: won.getAttribute('data-toss-pick'), choice: chose.getAttribute('data-toss-choice') });
+        return;
+      }
+      // The half's and the break's minutes (UPG-439)
+      if (e.target.closest('[data-timings-save]')) {
+        send({ op: 'timings', half_minutes: value('[data-half-minutes]'), break_minutes: value('[data-break-minutes]') });
+        return;
+      }
       var point = e.target.closest('[data-point]');
       if (point) {
         var team = point.getAttribute('data-team');
@@ -443,6 +593,13 @@
           root.querySelectorAll('[data-mat-player][data-role="raider"]').forEach(function (b) { b.classList.remove('is-picked'); });
           pl.classList.add('is-picked');
           reapply();
+          var rbox = raidBox();                           // his 30 seconds start (UPG-413)
+          if (rbox && !(raidNow(rbox) || {}).running) {
+            rbox.setAttribute('data-secs', '0');
+            rbox.setAttribute('data-running', 'true');
+            rcAt = Date.now();
+            raidTick();
+          }
           send({ op: 'raider', name: who });
           return;
         }
@@ -548,14 +705,70 @@
     refreshButtons();
   }
 
+  // The toss, played once on each screen (UPG-438): a coin, the winner's logo
+  // and "won the toss", then what they chose
+  var TOSS_FRESH = 600;      // seconds after the toss that a page opening still plays it
+  function initials(name) {
+    return String(name || '').split(/\s+/).filter(Boolean).slice(0, 2).map(function (w) { return w[0]; }).join('').toUpperCase();
+  }
+  function badge(logo, name, cls) {
+    if (logo) { var img = el('img', cls); img.src = logo; img.alt = ''; return img; }
+    return el('span', cls + ' toss-show__initials', initials(name));
+  }
+  function playToss(toss, logos, names) {
+    var show = el('div', 'toss-show');
+    show.setAttribute('data-toss-show', '');
+    show.setAttribute('role', 'status');
+    var card = el('div', 'toss-show__card');
+    var coin = el('div', 'toss-show__coin');
+    coin.appendChild(badge(logos.home, names.home, 'toss-show__face toss-show__face--front'));
+    coin.appendChild(badge(logos.away, names.away, 'toss-show__face toss-show__face--back'));
+    card.appendChild(el('div', 'toss-show__eyebrow', 'The toss'));
+    card.appendChild(coin);
+    var won = el('div', 'toss-show__won');
+    won.appendChild(badge(logos[toss.winner], toss.team_name, 'toss-show__logo'));
+    won.appendChild(el('strong', 'toss-show__team', toss.team_name));
+    won.appendChild(el('span', 'toss-show__line', 'won the toss'));
+    card.appendChild(won);
+    card.appendChild(el('div', 'toss-show__chose', 'and ' + toss.chose));
+    show.appendChild(card);
+    document.body.appendChild(show);
+    function close() { if (show.parentNode) { show.parentNode.removeChild(show); } }
+    show.addEventListener('click', close);
+    show.classList.add('is-flip');
+    setTimeout(function () { show.classList.add('is-won'); }, 1800);
+    setTimeout(function () { show.classList.add('is-chose'); }, 4300);
+    setTimeout(close, 8000);
+  }
+  function tossOnce(root, state) {
+    var toss = state && state.toss;
+    if (!toss || !toss.at || state.phase === 'full_time') { return; }
+    if (typeof toss.age === 'number' && toss.age > TOSS_FRESH) { return; }
+    var key = 'sv-toss:' + root.getAttribute('data-url') + ':' + toss.at;
+    try {
+      if (window.localStorage.getItem(key)) { return; }
+      window.localStorage.setItem(key, '1');
+    } catch (e) { /* private mode: play it anyway */ }
+    playToss(toss, { home: root.getAttribute('data-logo-home') || '', away: root.getAttribute('data-logo-away') || '' },
+             { home: state.home.name, away: state.away.name });
+  }
+
   function board(root) {
     var url = root.getAttribute('data-url');
     var clock = Clock(root);
+    // Keep a screen showing the match awake where the browser allows it
+    var lock = null;
+    function wake() {
+      if (!('wakeLock' in navigator) || document.visibilityState !== 'visible') { return; }
+      navigator.wakeLock.request('screen').then(function (l) { lock = l; }).catch(function () {});
+    }
+    document.addEventListener('visibilitychange', function () { if (!lock || lock.released) { wake(); } });
+    wake();
     function poll() {
       fetch(url, { credentials: 'same-origin' }).then(function (resp) {
         return resp.ok ? resp.json() : null;
       }).then(function (data) {
-        if (data && data.ok) { render(root, data.state, clock); }
+        if (data && data.ok) { render(root, data.state, clock); tossOnce(root, data.state); }
         // After full time it still looks now and then: a match reopened by mistake goes on
         setTimeout(poll, data && data.ok && data.state.phase === 'full_time' ? POLL_MS * 10 : POLL_MS);
       }).catch(function () { setTimeout(poll, POLL_MS * 2); });

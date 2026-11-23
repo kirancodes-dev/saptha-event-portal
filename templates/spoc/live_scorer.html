@@ -19,6 +19,7 @@
      data-home-id="{{ doc.home }}" data-away-id="{{ doc.away }}"
      data-clock="{{ state.clock }}" data-running="{{ 'true' if state.running else 'false' }}"
      data-phase="{{ state.phase }}" data-mode="{{ state.mode }}"
+     data-half-seconds="{{ state.half_seconds }}" data-break-left="{{ state.break_left if state.break_left is not none else '' }}"
      data-tiebreak="{{ 'true' if tiebreak else 'false' }}">
 
   <section class="live-board" aria-live="polite">
@@ -31,6 +32,7 @@
     <div class="live-board__middle">
       <div class="live-board__phase" data-phase-name>{{ state.phase_name }}</div>
       <div class="live-board__clock" data-clock-text>{{ '%02d:%02d' % (state.clock // 60, state.clock % 60) }}</div>
+      {% include "includes/live_clock_left.html" %}
     </div>
     <div class="live-board__team">
       {% if logos is defined and logos.get(doc.away) %}<img src="{{ logos[doc.away] }}" alt="" class="live-board__logo" width="48" height="48" data-team-logo>{% endif %}

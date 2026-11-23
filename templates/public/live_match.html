@@ -11,7 +11,7 @@
 </ol>
 {% endblock %}
 {% block page_title %}{{ event.title }}{% endblock %}
-{% block page_sub %}{{ stage }}{% if match.venue %} · {{ match.venue }}{% endif %}{% if match.date %} · {{ match.date }} {{ match.time }}{% endif %}{% endblock %}
+{% block page_sub %}{{ stage }}{% if match.venue %} · {{ match.venue }}{% endif %}{% if match.date or match.time %} · {{ match|match_when }}{% endif %}{% endblock %}
 {% block page_actions %}
 <a href="/tournament/fixtures/{{ event.id }}" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> All fixtures</a>
 {% endblock %}
@@ -24,13 +24,16 @@
 
 {% block content %}
 {% from "includes/players.html" import player_name, search_box %}
+{% macro initials(name) %}{% for w in (name or '').split()[:2] %}{{ w[0]|upper }}{% endfor %}{% endmacro %}
 <div class="live-watch" data-live-board data-url="/tournament/live/{{ event.id }}/{{ match.id }}/state"
      data-clock="{{ state.clock if state else 0 }}" data-running="{{ 'true' if state and state.running else 'false' }}"
-     data-phase="{{ state.phase if state else 'not_started' }}">
+     data-phase="{{ state.phase if state else 'not_started' }}"
+     data-half-seconds="{{ state.half_seconds if state else '' }}" data-break-left="{{ state.break_left if state and state.break_left is not none else '' }}"
+     data-logo-home="{{ logos.get(match.home, '') if logos is defined else '' }}" data-logo-away="{{ logos.get(match.away, '') if logos is defined else '' }}">
   <section class="live-board live-board--big" aria-live="polite">
     <div class="live-board__team">
-      {% if logos is defined and logos.get(match.home) %}<img src="{{ logos[match.home] }}" alt="" class="live-board__logo" width="72" height="72" data-team-logo>{% endif %}
-      <div class="live-board__name">{{ names.get(match.home, 'TBD') }}</div>
+      {% if logos is defined and logos.get(match.home) %}<img src="{{ logos[match.home] }}" alt="" class="live-board__logo" width="72" height="72" data-team-logo>{% else %}<span class="live-board__logo live-board__initials" aria-hidden="true" data-team-initials>{{ initials(names.get(match.home, 'TBD')) }}</span>{% endif %}
+      <div class="live-board__name" title="{{ names.get(match.home, 'TBD') }}">{{ names.get(match.home, 'TBD') }}</div>
       <div class="live-board__score" data-score="home">{{ state.home.total if state else (match.home_score if match.home_score is not none else 0) }}</div>
       <div class="live-board__halves" data-halves="home">{% if state %}{{ state.home.halves[0] }} · {{ state.home.halves[1] }}{% endif %}</div>
     </div>
@@ -38,16 +41,20 @@
       <span class="live-dot" data-live-dot {% if not (state and state.phase in ('first_half', 'half_time', 'second_half', 'tiebreak')) %}hidden{% endif %}>LIVE</span>
       <div class="live-board__phase" data-phase-name>{{ state.phase_name if state else ('Full time' if match.status == 'played' else 'Not started') }}</div>
       <div class="live-board__clock" data-clock-text>{% if state %}{{ '%02d:%02d' % (state.clock // 60, state.clock % 60) }}{% endif %}</div>
+      {% include "includes/live_clock_left.html" %}
     </div>
     <div class="live-board__team">
-      {% if logos is defined and logos.get(match.away) %}<img src="{{ logos[match.away] }}" alt="" class="live-board__logo" width="72" height="72" data-team-logo>{% endif %}
-      <div class="live-board__name">{{ names.get(match.away, 'TBD') }}</div>
+      {% if logos is defined and logos.get(match.away) %}<img src="{{ logos[match.away] }}" alt="" class="live-board__logo" width="72" height="72" data-team-logo>{% else %}<span class="live-board__logo live-board__initials" aria-hidden="true" data-team-initials>{{ initials(names.get(match.away, 'TBD')) }}</span>{% endif %}
+      <div class="live-board__name" title="{{ names.get(match.away, 'TBD') }}">{{ names.get(match.away, 'TBD') }}</div>
       <div class="live-board__score" data-score="away">{{ state.away.total if state else (match.away_score if match.away_score is not none else 0) }}</div>
       <div class="live-board__halves" data-halves="away">{% if state %}{{ state.away.halves[0] }} · {{ state.away.halves[1] }}{% endif %}</div>
     </div>
   </section>
-  {#- How many have watched (UPG-433): only ever goes up #}
-  {% if watched %}<p class="live-views" data-views><i class="fas fa-eye" aria-hidden="true"></i> <strong>{{ '{:,}'.format(watched.views) }}</strong> view{{ '' if watched.views == 1 else 's' }} · <strong>{{ '{:,}'.format(watched.devices) }}</strong> device{{ '' if watched.devices == 1 else 's' }}</p>{% endif %}
+  {#- How many watch (UPG-440): each phone or computer once, never going down; short like a streaming app #}
+  {% if watched %}<p class="live-views" data-views title="Each phone or computer that opened this match, once"><span class="live-views__live">LIVE</span> <i class="fas fa-eye" aria-hidden="true"></i> <strong data-watch-count>{{ watching }}</strong> watching</p>{% endif %}
+  {#- The toss, before the start (UPG-438) #}
+  {% set toss = state.toss if state else none %}
+  <p class="live-toss" data-toss-line {% if not (toss and state.phase == 'not_started') %}hidden{% endif %}><span aria-hidden="true">🪙</span> <span data-toss-text>{{ toss.text if toss else '' }}</span></p>
   {#- PKL mode: who raids, do-or-die, the mat; the tie-breaker (UPG-396, UPG-397) #}
   <p class="live-board__mat" data-mat-line {% if not (state and state.mat_text) %}hidden{% endif %}>{{ state.mat_text if state else '' }}</p>
   <p class="live-board__shootout" data-shootout-line {% if not (state and state.shootout_text) %}hidden{% endif %}>{{ state.shootout_text if state else '' }}</p>
@@ -61,7 +68,7 @@
   <section class="live-log live-log--feed">
     <h2 class="h6">Raid by raid</h2>
     <ol class="live-log__list" data-feed>
-      {% if state %}{% for line in state.feed %}<li>{{ line }}</li>{% endfor %}{% endif %}
+      {% if state %}{% set fs = state.feed_secs or [] %}{% for line in state.feed %}{% set secs = fs[loop.index0] if fs|length > loop.index0 else '' %}<li>{{ line }}{% if secs %}<span class="raid-secs"> · {{ secs }}</span>{% endif %}</li>{% endfor %}{% endif %}
     </ol>
     {% if not state %}<p class="text-muted" data-waiting>The score appears here when the match starts.</p>{% endif %}
   </section>
@@ -109,7 +116,38 @@
     </div>
   </section>
   {% endif %}
+  {#- Each team's players: jersey, position, age (UPG-441); never contact details #}
+  {% if teams %}
+  <section class="team-details" data-team-details>
+    <h2 class="h6">The teams</h2>
+    {% for team in teams %}
+    <details class="team-details__team" data-team-detail="{{ team.side }}">
+      <summary>
+        {% if logos is defined and logos.get(team.id) %}<img src="{{ logos[team.id] }}" alt="" width="36" height="36" class="team-details__logo">{% else %}<span class="team-details__logo live-board__initials" aria-hidden="true">{{ initials(team.name) }}</span>{% endif %}
+        <span class="team-details__name">{{ team.name }}</span>
+        <span class="team-details__count">{{ team.players|length }} player{{ '' if team.players|length == 1 else 's' }}</span>
+        <span class="team-details__open">Team details <i class="fas fa-chevron-down" aria-hidden="true"></i></span>
+      </summary>
+      {% if team.players %}
+      {% set roles = {} %}{% for p in team.players if p.position %}{% set _ = roles.update({p.position: roles.get(p.position, 0) + 1}) %}{% endfor %}
+      {% if roles %}<p class="team-details__roles">{% for r, n in roles|dictsort %}<span class="team-details__role">{{ r }} · {{ n }}</span> {% endfor %}</p>{% endif %}
+      <div class="table-responsive"><table class="table table-sm team-details__table">
+        <thead><tr><th scope="col">#</th><th scope="col">Player</th><th scope="col">Position</th><th scope="col">Age</th></tr></thead>
+        <tbody>
+          {% for p in team.players %}
+          <tr data-roster-player><td>{% if p.jersey %}<span class="jersey-no">#{{ p.jersey }}</span>{% else %}–{% endif %}</td>
+            <td>{{ player_name(player_links, team.id, p.name) }}{% if p.jersey_name %} <span class="team-details__jname">{{ p.jersey_name }}</span>{% endif %}{% if p.lead %} <span class="badge bg-primary">Captain</span>{% endif %}</td>
+            <td>{{ p.position or '–' }}</td><td>{{ p.age if p.age is not none else '–' }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table></div>
+      {% else %}<p class="text-muted small mb-0">The players appear here once the team registers them.</p>{% endif %}
+    </details>
+    {% endfor %}
+  </section>
+  {% endif %}
   <p class="mt-3 d-flex flex-wrap gap-2">
+    <a href="/tournament/screen/{{ event.id }}" class="btn btn-outline-secondary" data-screen-link target="_blank" rel="noopener"><i class="fas fa-tv" aria-hidden="true"></i> Big screen</a>
     <a href="/tournament/fixtures/{{ event.id }}#tables" class="btn btn-outline-primary" data-tables-link><i class="fas fa-table" aria-hidden="true"></i> Points tables and fixtures</a>
     {#- The score sheet (UPG-419), once the match has started #}
     <a href="/tournament/live/{{ event.id }}/{{ match.id }}/sheet.pdf" class="btn btn-outline-secondary" data-sheet-link target="_blank" rel="noopener"{% if not state or state.phase == 'not_started' %} hidden{% endif %}><i class="fas fa-file-pdf" aria-hidden="true"></i> Score sheet (PDF)<span data-sheet-provisional{% if state and state.phase == 'full_time' %} hidden{% endif %}> · provisional</span></a>

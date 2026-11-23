@@ -212,6 +212,31 @@
         </form>
     </div>
 </div>
+
+{#- Every match's date beside M1, M2 … in one table, one Save (UPG-443); the public fixtures show them #}
+{% set undated = t.matches|rejectattr('date')|list %}
+<details class="card mb-3" id="match-dates" data-match-dates {% if undated %}open{% endif %}>
+    <summary class="card-body py-2 fw-semibold">Match dates, times and venues{% if undated %} <span class="badge bg-warning text-dark">{{ undated|length }} without a date</span>{% endif %}</summary>
+    <form method="POST" action="/tournament/{{ event.id }}/schedule/all" class="card-body pt-0" data-no-autofocus>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <p class="small text-muted mb-2">Fill in what you know and save once; empty is fine. The public fixtures and match pages show them, so everyone knows which match is when.</p>
+        <div class="table-responsive"><table class="table table-sm align-middle mb-2">
+            <thead><tr><th scope="col">Match</th><th scope="col">Teams</th><th scope="col">Date</th><th scope="col">Time</th><th scope="col">Venue</th></tr></thead>
+            <tbody>
+            {% for m in t.matches %}
+            <tr data-date-row="{{ m.id }}">
+                <th scope="row" class="text-nowrap">{{ sports.match_no(m) }}<div class="small text-muted fw-normal">{{ sports.stage_name(m) }}</div></th>
+                <td class="small">{{ names.get(m.home, 'TBD') }} v {{ names.get(m.away, 'TBD') }}</td>
+                <td><input type="date" name="date-{{ m.id }}" value="{{ m.date or '' }}" class="form-control form-control-sm" aria-label="Date of {{ sports.match_no(m) }}" style="min-width:140px"></td>
+                <td><input type="time" name="time-{{ m.id }}" value="{{ m.time or '' }}" class="form-control form-control-sm" aria-label="Time of {{ sports.match_no(m) }}" style="min-width:100px"></td>
+                <td><input type="text" name="venue-{{ m.id }}" value="{{ m.venue or '' }}" maxlength="200" class="form-control form-control-sm" aria-label="Venue of {{ sports.match_no(m) }}" placeholder="Court" style="min-width:110px"></td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table></div>
+        <button type="submit" class="btn btn-sm btn-primary" data-dates-save><i class="fas fa-calendar-check" aria-hidden="true"></i> Save all dates</button>
+    </form>
+</details>
 {% endif %}
 
 {% if t and t.matches %}

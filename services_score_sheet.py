@@ -136,13 +136,13 @@ def render(data: dict) -> bytes:
     normal = ParagraphStyle('n', parent=styles['Normal'], fontSize=9.5, leading=13)
     small = ParagraphStyle('small', parent=normal, fontSize=8.5, leading=11)
     centre = ParagraphStyle('c', parent=small, alignment=1)
-    head = ParagraphStyle('head', parent=styles['Heading3'], fontSize=11.5, leading=14, spaceBefore=8, spaceAfter=4,
+    head = ParagraphStyle('head', parent=styles['Heading3'], fontSize=11, leading=13, spaceBefore=6, spaceAfter=3,
                           textColor=colors.HexColor(NAVY))
     event_style = ParagraphStyle('ev', parent=normal, fontName='Helvetica-Bold', fontSize=14, leading=17, alignment=2)
     sub_style = ParagraphStyle('sub', parent=normal, fontSize=9, leading=12, alignment=2,
                                textColor=colors.HexColor('#475569'))
     team_style = ParagraphStyle('team', parent=normal, fontName='Helvetica-Bold', fontSize=13, leading=16, alignment=1)
-    score_style = ParagraphStyle('score', parent=normal, fontName='Helvetica-Bold', fontSize=34, leading=40,
+    score_style = ParagraphStyle('score', parent=normal, fontName='Helvetica-Bold', fontSize=30, leading=34,
                                  alignment=1)
     home, away = data['teams']['home'], data['teams']['away']
     navy, line, shade = colors.HexColor(NAVY), colors.HexColor(LINE), colors.HexColor(SHADE)
@@ -151,7 +151,8 @@ def render(data: dict) -> bytes:
     # The top: the college's logo on the left, the event and the match on the right
     college = _college_logo()
     logo = Image(io.BytesIO(college[0]), width=52 * mm, height=52 * mm * college[1]) if college else ''
-    where = ' · '.join(x for x in (data['match_no'], data['stage'], f"Pool {data['pool']}" if data['pool'] else '',
+    pool = f"Pool {data['pool']}" if data['pool'] else ''
+    where = ' · '.join(x for x in (data['match_no'], data['stage'], '' if pool and pool in data['stage'] else pool,
                                    f"{data['date']} {data['time']}".strip(), data['venue']) if x)
     top = Table([[logo, [Paragraph(f"{_x(data['event'])}", event_style),
                          Paragraph('<b>Score sheet</b>', ParagraphStyle('ss', parent=sub_style, fontSize=11,
@@ -175,11 +176,11 @@ def render(data: dict) -> bytes:
     def badge(side):
         img = _logo(data['logos'][side])
         if img:
-            return Image(io.BytesIO(img), width=20 * mm, height=20 * mm, kind='proportional')
+            return Image(io.BytesIO(img), width=16 * mm, height=16 * mm, kind='proportional')
         from reportlab.graphics.shapes import Circle, Drawing, String
-        d = Drawing(20 * mm, 20 * mm)
-        d.add(Circle(10 * mm, 10 * mm, 9.5 * mm, fillColor=navy, strokeColor=None))
-        d.add(String(10 * mm, 7.6 * mm, _initials(data['teams'][side]), fontName='Helvetica-Bold', fontSize=18,
+        d = Drawing(16 * mm, 16 * mm)
+        d.add(Circle(8 * mm, 8 * mm, 7.5 * mm, fillColor=navy, strokeColor=None))
+        d.add(String(8 * mm, 6 * mm, _initials(data['teams'][side]), fontName='Helvetica-Bold', fontSize=15,
                      fillColor=colors.white, textAnchor='middle'))
         return d
 
@@ -194,7 +195,7 @@ def render(data: dict) -> bytes:
     ], colWidths=[side_w, mid_w, side_w])
     look = [('BOX', (0, 0), (-1, -1), 1, navy), ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor(SOFT)),
-            ('TOPPADDING', (0, 0), (-1, 0), 8), ('BOTTOMPADDING', (0, -1), (-1, -1), 8)]
+            ('TOPPADDING', (0, 0), (-1, 0), 6), ('BOTTOMPADDING', (0, -1), (-1, -1), 6)]
     for col, s in ((0, 'home'), (2, 'away')):
         if won[s]:
             look.append(('BACKGROUND', (col, 0), (col, -1), colors.HexColor('#ecfdf5')))
@@ -215,13 +216,13 @@ def render(data: dict) -> bytes:
     if lines:
         facts = Table([[Paragraph(x, normal)] for x in lines], colWidths=[width])
         facts.setStyle(TableStyle([('BOX', (0, 0), (-1, -1), 0.5, line), ('LINEBELOW', (0, 0), (-1, -2), 0.25, line),
-                                   ('TOPPADDING', (0, 0), (-1, -1), 4), ('BOTTOMPADDING', (0, 0), (-1, -1), 4)]))
-        story += [Spacer(1, 3 * mm), facts]
+                                   ('TOPPADDING', (0, 0), (-1, -1), 3), ('BOTTOMPADDING', (0, 0), (-1, -1), 3)]))
+        story += [Spacer(1, 2 * mm), facts]
 
     def grid(table, header_rows=1, bold_rows=()):
         look = [('GRID', (0, 0), (-1, -1), 0.5, line), ('BACKGROUND', (0, 0), (-1, header_rows - 1), shade),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), ('TOPPADDING', (0, 0), (-1, -1), 3),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 3)]
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), ('TOPPADDING', (0, 0), (-1, -1), 2),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 2)]
         for r in range(header_rows, len(table._cellvalues)):
             if (r - header_rows) % 2:
                 look.append(('BACKGROUND', (0, r), (-1, r), colors.HexColor(SOFT)))
@@ -321,7 +322,7 @@ def render(data: dict) -> bytes:
         blank.append('')
         names_row.append(who)
         widths.append(each)
-    signs = Table([blank, names_row], colWidths=widths, rowHeights=[14 * mm, None])
+    signs = Table([blank, names_row], colWidths=widths, rowHeights=[11 * mm, None])
     signs.setStyle(TableStyle([('FONTSIZE', (0, 0), (-1, -1), 9), ('ALIGN', (0, 0), (-1, -1), 'CENTER')] +
                               [('LINEBELOW', (c, 0), (c, 0), 0.8, colors.HexColor('#334155'))
                                for c in range(0, len(widths), 2)]))

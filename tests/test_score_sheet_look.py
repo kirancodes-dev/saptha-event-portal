@@ -25,12 +25,16 @@ def _get(d, event_id, m):
     return resp.data
 
 
+pages = []
+
+
 def _read(data):
-    """(the text, the number of pictures on page 1)."""
+    """(the text, the number of pictures on page 1); `pages` holds the page count."""
     doc = pdfium.PdfDocument(data)
     try:
         text = ' '.join('\n'.join(doc[i].get_textpage().get_text_range() for i in range(len(doc))).split())
         pictures = len(list(doc[0].get_objects(filter=[pdfium_c.FPDF_PAGEOBJ_IMAGE], max_depth=5)))
+        pages.append(len(doc))
         return text, pictures
     finally:
         doc.close()
@@ -50,6 +54,8 @@ def test_the_sheet_has_the_college_logo_and_a_clear_layout(league):  # noqa: F81
     _to_full_time(d, event_id, m)
     text, pictures = _read(_get(d, event_id, m))
     assert pictures == 1                                         # the college's logo (no team logos yet)
+    assert pages[-1] == 1                                        # a match's sheet fits on one page
+    assert text.count('Pool A') == 1                             # the stage already says the pool
     title = d['db'].collection('events').document(event_id).get().to_dict()['title']
     # The order a reader meets it: the event, the score, the result, the halves, line-ups, players, signatures
     body = text[text.index(title):]                              # the footer comes first in the text

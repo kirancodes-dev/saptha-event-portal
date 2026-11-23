@@ -1706,18 +1706,24 @@ def watchable(db, events: list) -> list:
     ("Men", "Women") when that tells them apart, else the event's title."""
     found = []
     for ev in events or []:
-        t = ev.get('tournament') or {}
-        matches = t.get('matches') or []
-        if not matches or not ev.get('id'):
+        # An event whose fields aren't what a tournament keeps is skipped, not
+        # the whole box (UPG-462)
+        if not isinstance(ev, dict) or not ev.get('id'):
+            continue
+        t = ev.get('tournament') if isinstance(ev.get('tournament'), dict) else {}
+        raw = t.get('matches')
+        matches = [m for m in raw if isinstance(m, dict)] if isinstance(raw, list) else []
+        if not matches:
             continue
         try:
             playing = live_matches(db, ev['id'])
         except Exception:
             playing = {}
-        playing = [m for m in matches if m.get('id') in playing]   # this sheet's matches only
+        playing = [m for m in matches if m.get('id') in (playing or {})]   # this sheet's matches only
         if not playing and all(m.get('status') == 'played' for m in matches):
             continue                                    # the season is over
-        gender = str((ev.get('details') or {}).get('gender') or '').strip()
+        details = ev.get('details') if isinstance(ev.get('details'), dict) else {}
+        gender = str(details.get('gender') or '').strip()
         found.append({'id': ev['id'], 'title': str(ev.get('title') or 'Tournament'),
                       'gender': gender if gender in GENDER_LABELS else '', 'live': bool(playing)})
     genders = [w['gender'] for w in found]

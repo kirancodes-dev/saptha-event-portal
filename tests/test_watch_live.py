@@ -129,3 +129,18 @@ def test_the_box_is_at_the_top_of_a_phone_and_the_big_screen_fits_a_phone(league
     finally:
         browser.close()
         p.stop()
+
+
+def test_an_event_with_odd_fields_is_skipped_and_the_others_still_show(league):  # noqa: F811
+    """UPG-462: one event whose tournament, details or matches aren't what a
+    tournament keeps (found in the full test run) hid the whole box."""
+    d, men, ids = league
+    _generate(d, men, ids)
+    good = dict(d['db'].collection('events').document(men).get().to_dict(), id=men)
+    odd = [True, {'id': 'e1', 'tournament': True}, {'id': 'e2', 'tournament': {'matches': True}},
+           {'id': 'e3', 'tournament': {'matches': [True, 'x']}},
+           {'id': 'e4', 'details': True, 'title': 'Odd Cup', 'tournament': {'matches': [{'id': 'm1'}]}}]
+    found = live.watchable(d['db'], odd + [good])
+    assert [w['id'] for w in found if w['id'] == men] == [men]
+    assert [w['label'] for w in found if w['id'] == 'e4'] == ['Odd Cup']
+    assert not {'e1', 'e2', 'e3'} & {w['id'] for w in found}

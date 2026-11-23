@@ -9,9 +9,10 @@
       "title": "Watch live from the home page",
       "notes": [
         "The home page starts with a Watch live box: pick Men or Women and tap Watch live scoring. A match being played shows Live now with a red dot.",
-        "The live scoreboard page fits a phone: the header no longer runs off the screen, and the scores and cards are sized for it."
+        "The live scoreboard page fits a phone: the header no longer runs off the screen, and the scores and cards are sized for it.",
+        "An uploaded fixture sheet decides each match's pool: a match between two Pool B teams says Pool B, in the order the sheet lists them."
       ],
-      "items": ["UPG-457"]
+      "items": ["UPG-457", "UPG-459"]
     },
     {
       "version": "1.20",

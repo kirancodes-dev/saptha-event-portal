@@ -992,8 +992,10 @@ def apply_schedule(tournament: dict, rows: list, skipped: 'list | None' = None) 
     t, matches = _copy(tournament)
     by_no = {match_no(m): m for m in matches}
     by_name = {_team_key(x['name']): x['id'] for x in t.get('teams') or []}
+    pool_of = {x['id']: x.get('pool') for x in t.get('teams') or [] if x.get('pool')}
+    team_name = names(t)
     out = withdrawn(t)
-    problems, changed = [], 0
+    problems, changed, moved = [], 0, False
     for line, row in enumerate(rows, start=2):
         line = row.get('_row') or line                 # the sheet's own row number
         row = {_column(k): str(v if v is not None else '').strip() for k, v in row.items() if k != '_row'}
@@ -1041,14 +1043,46 @@ def apply_schedule(tournament: dict, rows: list, skipped: 'list | None' = None) 
                 problems.append(f"Row {line} ({key}): a team can't play itself.")
                 continue
             new.update(sides)
+        # A pool match is in the pool its two teams are in, as the sheet orders them (UPG-459)
+        if pool_of and m.get('stage') == 'league':
+            home, away = new.get('home', m.get('home')), new.get('away', m.get('away'))
+            ph, pa = pool_of.get(home), pool_of.get(away)
+            if m.get('cross') and ph and ph == pa:
+                problems.append(f"Row {line} ({key}): it is an inter-pool match, but {team_name.get(home)} and "
+                                f"{team_name.get(away)} are both in pool {ph}.")
+                continue
+            if not m.get('cross') and ph and pa and ph != pa:
+                problems.append(f"Row {line} ({key}): {team_name.get(home)} is in pool {ph} and {team_name.get(away)} "
+                                f"in pool {pa}; only the inter-pool round mixes the pools.")
+                continue
+            if not m.get('cross') and ph and ph == pa and m.get('pool') != ph:
+                new['pool'] = ph
+                moved = True
         if any((m.get(k) or '') != v for k, v in new.items()):
             changed += 1
         m.update(new)
     if problems:
         raise TournamentError("Nothing was changed. " + ' '.join(problems[:8])
                               + (f" And {len(problems) - 8} more." if len(problems) > 8 else ''))
+    if moved and t.get('legs') != 2:
+        _pool_rounds(matches)
     t['matches'] = matches
     return t, changed
+
+
+def _pool_rounds(matches: list) -> None:
+    """Each pool's league rounds again, in match-number order: a new round
+    starts when a team would play twice in one (UPG-459)."""
+    for p in POOLS:
+        rnd, busy = 1, set()
+        for m in matches:
+            if m.get('pool') != p or m.get('stage') != 'league' or m.get('cross'):
+                continue
+            pair = {m.get('home'), m.get('away')} - {None}
+            if pair & busy:
+                rnd, busy = rnd + 1, set()
+            busy |= pair
+            m['round'] = rnd
 
 
 def read_sheet(raw: bytes, filename: str) -> list:

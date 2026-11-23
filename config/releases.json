@@ -4,9 +4,9 @@
     {
       "version": "1.21",
       "date": "2026-11-23",
-      "commit": "",
-      "revision": "",
-      "title": "Watch live from the home page",
+      "commit": "08078bd",
+      "revision": "saptha-0807",
+      "title": "Watch live from the home page, and jersey numbers",
       "notes": [
         "The home page starts with a Watch live box: pick Men or Women and tap Watch live scoring. A match being played shows Live now with a red dot.",
         "The live scoreboard page fits a phone: the header no longer runs off the screen, and the scores and cards are sized for it.",

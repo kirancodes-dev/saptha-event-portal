@@ -4,8 +4,8 @@
     {
       "version": "1.23",
       "date": "2026-11-24",
-      "commit": "",
-      "revision": "",
+      "commit": "4bd523b",
+      "revision": "saptha-4bd5",
       "title": "A triangular series for 3 teams",
       "notes": [
         "Only 3 teams? Choose Triangular series when making the fixtures: each team plays the other two, then 1st and 2nd play the final. The team that misses the final is third and gets the third-place certificate."

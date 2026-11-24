@@ -269,7 +269,22 @@ def open_match(db, event_id: str, event: dict, match_id: str) -> dict:
             if get(db, event_id, match_id) is None:
                 _save(db, event_id, match_id, doc)
             doc = get(db, event_id, match_id)
+    elif pkl_mode(t) and not is_pkl(doc) and _untouched(doc):
+        # Opened while PKL mode was off, PKL mode on since, nothing played yet:
+        # it is scored raid by raid like the rest (UPG-478)
+        with _lock(doc_id(event_id, match_id)):
+            doc = get(db, event_id, match_id)
+            if not is_pkl(doc) and _untouched(doc):
+                doc.update(mode='pkl', events=[], first_raid=doc.get('first_raid') or 'home')
+                doc['mat'] = replay(doc)
+                _save(db, event_id, match_id, doc)
     return doc
+
+
+def _untouched(doc: dict) -> bool:
+    """Not started and not a point, tap or raid recorded (UPG-478)."""
+    return (doc.get('phase') == 'not_started' and not doc.get('log') and not doc.get('taps')
+            and not doc.get('events') and not doc.get('result'))
 
 
 def _other(side: str) -> str:

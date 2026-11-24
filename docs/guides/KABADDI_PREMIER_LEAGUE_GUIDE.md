@@ -108,6 +108,25 @@ two tables, Pool A and Pool B.
 > added, because every match number would change. If a team pulls out, use
 > **Replace** or **Withdraw** in the Teams card instead.
 
+### Only 3 teams (the women's event): a triangular series
+
+With exactly 3 confirmed teams, the Format list starts with **Triangular
+series: each team plays the other two, then 1st v 2nd in the final**, already
+chosen. Keep it, choose the PKL Season 12 points rule and PKL mode as above,
+and leave **Pools** at **No pools**.
+
+| Step | What happens |
+|---|---|
+| Generate fixtures | 3 matches: every pair once (M-01 to M-03). Pick **Twice: home and away** for 6. |
+| The league | One table of 3 teams. Score each match as in part 6. |
+| Playoffs card | Once the 3 matches are played, choose **Top 2: the final** and press **Make the playoffs**. |
+| The final | M-04: 1st v 2nd. A level final goes to the tie-breaker. |
+| Places | The final's winner is 1st, its loser 2nd, and the team that missed the final is **3rd** (it gets the third-place certificate). |
+
+With 3 teams, some team always plays two matches in a row (it can't be
+avoided): leave a rest break between M-01, M-02 and M-03. The road to the final
+shows "1st v 2nd" until the 3 league matches are over.
+
 ## 5. Logos and the schedule (SPOC)
 
 **Logos.** In the Teams card, press **Add logo** next to a team and choose a

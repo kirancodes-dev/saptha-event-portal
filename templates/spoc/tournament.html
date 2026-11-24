@@ -4,7 +4,7 @@
 {#- On the app layout and portal design system (UPG-63). -#}
 {% block page_title %}Sports tournament{% endblock %}
 
-{% block page_sub %}{{ event.title }} · {% if defaults.sport %}Sport: <strong>{{ defaults.sport }}</strong> · {% endif %}Format: <strong>{{ sports.FORMAT_NAMES.get(t.format, 'Not generated') }}</strong> · Confirmed teams: <strong>{{ teams|length }}</strong>{% if champion %} · <span class="se-badge se-badge--gold"><i class="fas fa-trophy" aria-hidden="true"></i> Champion: {{ names.get(champion, champion) }}</span>{% endif %}{% endblock %}
+{% block page_sub %}{{ event.title }} · {% if defaults.sport %}Sport: <strong>{{ defaults.sport }}</strong> · {% endif %}Format: <strong>{{ sports.format_name(t) }}</strong> · Confirmed teams: <strong>{{ teams|length }}</strong>{% if champion %} · <span class="se-badge se-badge--gold"><i class="fas fa-trophy" aria-hidden="true"></i> Champion: {{ names.get(champion, champion) }}</span>{% endif %}{% endblock %}
 {% block page_actions %}
 <a href="/spoc/dashboard" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Console</a>
 <a href="/tournament/fixtures/{{ event.id }}" class="btn btn-outline-primary" target="_blank" rel="noopener"><i class="fas fa-external-link-alt" aria-hidden="true"></i> Public fixtures page</a>
@@ -28,9 +28,14 @@
                 <div class="col-md-3">
                     <label for="format" class="form-label mb-1">Format</label>
                     <select id="format" name="format" class="form-select">
-                        <option value="knockout" {% if defaults.format == 'knockout' %}selected{% endif %}>Knockout (single elimination)</option>
-                        <option value="league" {% if defaults.format == 'league' %}selected{% endif %}>League (round robin)</option>
-                        <option value="league_knockout" {% if defaults.format == 'league_knockout' %}selected{% endif %}>League then knockout (playoffs)</option>
+                        {% set three = teams|length == 3 %}
+                        {% if three %}
+                        {#- 3 teams (UPG-473): each plays the other two, then 1st v 2nd #}
+                        <option value="triangular" {% if not t or t.triangular %}selected{% endif %} data-triangular>Triangular series: each team plays the other two, then 1st v 2nd in the final</option>
+                        {% endif %}
+                        <option value="knockout" {% if defaults.format == 'knockout' and not (three and (not t or t.triangular)) %}selected{% endif %}>Knockout (single elimination)</option>
+                        <option value="league" {% if defaults.format == 'league' and not (three and (not t or t.triangular)) %}selected{% endif %}>League (round robin)</option>
+                        <option value="league_knockout" {% if defaults.format == 'league_knockout' and not (three and (not t or t.triangular)) %}selected{% endif %}>League then knockout (playoffs)</option>
                     </select>
                 </div>
                 {% if defaults.sport|lower == 'kabaddi' %}
@@ -274,7 +279,7 @@
                         <option value="2">The final: 1st A v 1st B</option>
                         {% else %}
                         {% if table|length >= 4 %}<option value="4">Top 4: semi-finals 1 v 4 and 2 v 3, then the final</option>{% endif %}
-                        <option value="2">Top 2: the final</option>
+                        <option value="2">Top 2: the final{% if t.triangular %} (the 3rd team in the table is third){% endif %}</option>
                         {% endif %}
                     </select>
                 </div>

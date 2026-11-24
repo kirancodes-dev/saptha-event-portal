@@ -73,6 +73,16 @@ TIEBREAK_WAYS = {'shootout': 'shootout', 'golden': 'golden raid', 'toss': 'coin 
 FORMATS = ('knockout', 'league', 'league_knockout')
 POOLS = ('A', 'B')                       # two pools (UPG-381)
 FORMAT_NAMES = {'knockout': 'Knockout', 'league': 'League', 'league_knockout': 'League then knockout'}
+TRIANGULAR = 'triangular'                # 3 teams: each plays the other two, then 1st v 2nd (UPG-473)
+
+
+def format_name(tournament: 'dict | None', empty: str = 'Not generated') -> str:
+    """'Triangular series', 'League then knockout', …; `empty` before the fixtures."""
+    if not tournament:
+        return empty
+    if tournament.get('triangular'):
+        return 'Triangular series'
+    return FORMAT_NAMES.get(tournament.get('format'), str(tournament.get('format') or '').title())
 KNOCKOUT_STAGES = ('semi', 'final', 'third')
 STAGE_NAMES = {'final': 'Final', 'semi': 'Semi-final', 'third': 'Third place'}
 
@@ -266,7 +276,17 @@ def _pooled(teams: list, legs: int, cross: bool) -> list:
 def generate(teams: list, fmt: str, points: dict = None, third_place: bool = False, sport: str = '',
              legs: int = 1, pools: dict = None, cross: bool = False, tiebreak: bool = False) -> dict:
     """`pools` maps a team id to ('A' or 'B', seed); only a league then knockout has pools.
-    `tiebreak`: a match level at full time is decided by a tie-breaker (PKL Season 12, UPG-396)."""
+    `tiebreak`: a match level at full time is decided by a tie-breaker (PKL Season 12, UPG-396).
+    `fmt` 'triangular' (UPG-473): exactly 3 teams, each plays the other two
+    (twice with `legs` 2), then the top 2 play the final; a league then knockout
+    underneath, so everything else works as for one."""
+    triangular = fmt == TRIANGULAR
+    if triangular:
+        if len(teams) != 3:
+            raise TournamentError(f"A triangular series is for exactly 3 teams; there are {len(teams)} confirmed.")
+        if pools:
+            raise TournamentError("A triangular series has no pools: choose No pools.")
+        fmt = 'league_knockout'
     if fmt not in FORMATS:
         raise TournamentError("Choose knockout, league, or league then knockout.")
     legs = 2 if str(legs) == '2' else 1
@@ -303,6 +323,9 @@ def generate(teams: list, fmt: str, points: dict = None, third_place: bool = Fal
         t['cross'] = bool(cross)
     if tiebreak:
         t['tiebreak'] = True
+    if triangular:
+        t['triangular'] = True
+        t['third_place'] = False
     return t
 
 
@@ -1330,6 +1353,11 @@ def placings(tournament: dict) -> dict:
         for m in matches:
             if m.get('next') == final['id'] and _loser(m):
                 places[_loser(m)] = 3
+        if tournament.get('triangular') and (tournament.get('playoffs') or {}).get('size') == 2:
+            # A triangular series (UPG-473): the team that missed the final is third
+            rest = [row['id'] for row in standings(tournament) if row['id'] not in places]
+            if rest:
+                places[rest[0]] = 3
     return {team: place for team, place in places.items() if team}
 
 

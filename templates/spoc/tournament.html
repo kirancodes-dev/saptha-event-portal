@@ -263,9 +263,26 @@
 
 {% if t and t.format == 'league_knockout' and not sports.has_playoffs(t) %}
 {#- After the league, its top 4 (or 2) play off (UPG-350) #}
-<div class="card mb-3" data-playoffs>
+<div class="card mb-3" data-playoffs id="playoffs">
     <div class="card-body">
         <h2 class="h5">Playoffs</h2>
+        {% set ipl = t.playoff_style == sports.IPL %}
+        {% if can_generate and not t.triangular %}
+        {#- Semi-finals or IPL style (UPG-479): changes no match or result #}
+        <form method="POST" action="/tournament/{{ event.id }}/playoff_style" class="row g-2 align-items-end mb-3" data-playoff-style>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="col-md-8">
+                <label for="playoff_style" class="form-label mb-1">Playoff format (top 4)</label>
+                <select id="playoff_style" name="style" class="form-select">
+                    <option value="semis" {% if not ipl %}selected{% endif %}>Semi-finals: {% if t.pools %}1st A v 2nd B and 1st B v 2nd A{% else %}1 v 4 and 2 v 3{% endif %}, then the final</option>
+                    <option value="ipl" {% if ipl %}selected{% endif %}>IPL style: Qualifier 1 ({% if t.pools %}1st A v 1st B{% else %}1st v 2nd{% endif %}), Eliminator ({% if t.pools %}2nd A v 2nd B{% else %}3rd v 4th{% endif %}), Qualifier 2 (loser Q1 v winner Eliminator), final: 4 matches</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-outline-primary w-100">Save the format</button>
+            </div>
+        </form>
+        {% endif %}
         {% if not sports.league_done(t) %}
             <p class="text-muted mb-0">Once every league match has a result, the top teams {% if t.pools %}of each pool{% else %}of the table{% endif %} play off here.</p>
         {% elif can_generate %}
@@ -275,19 +292,23 @@
                     <label for="size" class="form-label mb-1">Who plays off</label>
                     <select id="size" name="size" class="form-select">
                         {% if t.pools %}
-                        <option value="4">Semi-finals: 1st A v 2nd B and 1st B v 2nd A, then the final</option>
+                        <option value="4">{% if ipl %}IPL style: Qualifier 1 (1st A v 1st B), Eliminator (2nd A v 2nd B), Qualifier 2, then the final{% else %}Semi-finals: 1st A v 2nd B and 1st B v 2nd A, then the final{% endif %}</option>
                         <option value="2">The final: 1st A v 1st B</option>
                         {% else %}
-                        {% if table|length >= 4 %}<option value="4">Top 4: semi-finals 1 v 4 and 2 v 3, then the final</option>{% endif %}
+                        {% if table|length >= 4 %}<option value="4">{% if ipl %}Top 4, IPL style: Qualifier 1 (1 v 2), Eliminator (3 v 4), Qualifier 2, then the final{% else %}Top 4: semi-finals 1 v 4 and 2 v 3, then the final{% endif %}</option>{% endif %}
                         <option value="2">Top 2: the final{% if t.triangular %} (the 3rd team in the table is third){% endif %}</option>
                         {% endif %}
                     </select>
                 </div>
                 <div class="col-md-4">
+                    {% if ipl %}
+                    <p class="small text-muted mb-0">Qualifier 2's loser is third.</p>
+                    {% else %}
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="third_place" value="yes" id="playoff_third" {% if t.third_place %}checked{% endif %}>
                         <label class="form-check-label" for="playoff_third">A third-place match (top 4)</label>
                     </div>
+                    {% endif %}
                 </div>
                 <div class="col-md-4">
                     <button type="submit" class="btn btn-primary w-100"><i class="fas fa-sitemap" aria-hidden="true"></i> Make the playoffs</button>

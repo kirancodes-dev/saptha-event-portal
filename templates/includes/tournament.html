@@ -1,7 +1,7 @@
 {% set t = event.get('tournament') if event else t %}
 {#- Kabaddi words: a tie, score difference, points scored (UPG-350) #}
 {% set kabaddi = (t.sport or '')|lower == 'kabaddi' if t else false %}
-{% set stage_names = {'final': 'Final', 'semi': 'Semi-final', 'third': 'Third place'} %}
+{% set stage_names = {'final': 'Final', 'semi': 'Semi-final', 'third': 'Third place', 'qualifier1': 'Qualifier 1', 'eliminator': 'Eliminator', 'qualifier2': 'Qualifier 2'} %}
 {% set format_names = {'knockout': 'Knockout', 'league': 'League', 'league_knockout': 'League then knockout'} %}
 {#- Pools, logos, M-01 numbers (UPG-381, UPG-385, UPG-386) #}
 {% set pool_tables = pool_tables if pool_tables is defined and pool_tables else [] %}

@@ -218,9 +218,29 @@ def playoffs(event_id):
         return _back(event_id)
     log_action(db, "TOURNAMENT_PLAYOFFS", f"{session.get('user_id')} made the top-{t['playoffs']['size']} "
                f"playoffs of {event_id}")
-    flash("Semi-finals made: 1st A v 2nd B and 1st B v 2nd A." if t.get('pools') and t['playoffs']['size'] == 4
-          else f"Playoffs made: the top {t['playoffs']['size']} play off.", "success")
+    if services_sports.ipl_style(t) and t['playoffs']['size'] == 4:
+        flash("Playoffs made, IPL style: Qualifier 1 (" + ("1st A v 1st B" if t.get('pools') else "1st v 2nd")
+              + "), the Eliminator (" + ("2nd A v 2nd B" if t.get('pools') else "3rd v 4th")
+              + "), then Qualifier 2 and the final.", "success")
+    else:
+        flash("Semi-finals made: 1st A v 2nd B and 1st B v 2nd A." if t.get('pools') and t['playoffs']['size'] == 4
+              else f"Playoffs made: the top {t['playoffs']['size']} play off.", "success")
     return redirect(f'/tournament/{event_id}')
+
+
+@sports_bp.route('/<event_id>/playoff_style', methods=['POST'])
+@login_required
+def playoff_style(event_id):
+    """Semi-finals or IPL style for the top 4 (UPG-479); changes no match or result."""
+    import services_sports
+    if not _allowed(_event(event_id), 'edit_event'):
+        abort(403)
+    style = request.form.get('style', '')
+    _save(event_id, lambda cur, _e: services_sports.set_playoff_style(cur, style),
+          "Playoff format: IPL style (Qualifier 1, Eliminator, Qualifier 2, final)." if style == services_sports.IPL
+          else "Playoff format: semi-finals and the final.", '',
+          ("TOURNAMENT_PLAYOFF_STYLE", f"set the playoff format to {style or 'semis'}"))
+    return _back(event_id, 'playoffs')
 
 
 # ── Fixing mistakes from the page (UPG-355 to UPG-358) ───────────────────

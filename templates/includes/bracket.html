@@ -7,7 +7,7 @@
   <div class="bracket-map__head">
     <h3 class="eyebrow mb-0">Road to the final</h3>
     {% if bracket.projected %}
-    <span class="bracket-map__note" data-bracket-projected>{% if bracket.settled %}The league is over: make the playoffs to start the semi-finals.{% else %}The teams go in when every league match is over.{% endif %}</span>
+    <span class="bracket-map__note" data-bracket-projected>{% if bracket.settled %}The league is over: make the playoffs to start the {% if bracket.ipl %}Qualifier 1 and the Eliminator{% else %}semi-finals{% endif %}.{% else %}The teams go in when every league match is over.{% endif %}</span>
     {% endif %}
   </div>
   <div class="bracket-map__grid">

@@ -83,8 +83,14 @@ def format_name(tournament: 'dict | None', empty: str = 'Not generated') -> str:
     if tournament.get('triangular'):
         return 'Triangular series'
     return FORMAT_NAMES.get(tournament.get('format'), str(tournament.get('format') or '').title())
-KNOCKOUT_STAGES = ('semi', 'final', 'third')
-STAGE_NAMES = {'final': 'Final', 'semi': 'Semi-final', 'third': 'Third place'}
+KNOCKOUT_STAGES = ('semi', 'final', 'third', 'qualifier1', 'eliminator', 'qualifier2')
+STAGE_NAMES = {'final': 'Final', 'semi': 'Semi-final', 'third': 'Third place',
+               'qualifier1': 'Qualifier 1', 'eliminator': 'Eliminator', 'qualifier2': 'Qualifier 2'}
+# IPL-style playoffs (UPG-479): Qualifier 1 (1st v 1st, or 1 v 2) and the
+# Eliminator (2nd v 2nd, or 3 v 4); Qualifier 2 is Q1's loser v the
+# Eliminator's winner; the final is Q1's winner v Q2's winner. 4 matches.
+IPL = 'ipl'
+IPL_FIRST = ('qualifier1', 'eliminator')
 
 
 class TournamentError(ValueError):
@@ -403,9 +409,33 @@ def has_playoffs(tournament: dict) -> bool:
     return any(m.get('stage') in KNOCKOUT_STAGES for m in tournament.get('matches') or [])
 
 
+def ipl_style(tournament: dict) -> bool:
+    """The playoffs are (or will be) IPL style (UPG-479)."""
+    t = tournament or {}
+    return t.get('playoff_style') == IPL or any(m.get('stage') == 'qualifier1' for m in t.get('matches') or [])
+
+
+def set_playoff_style(tournament: dict, style: str) -> dict:
+    """Choose how the top 4 play off, before the playoffs are made: semi-finals,
+    or IPL style (UPG-479). Only this setting changes: no match, result or table."""
+    t, _ = _copy(tournament)
+    if t.get('format') != 'league_knockout':
+        raise TournamentError("Only a league then knockout has playoffs.")
+    if t.get('triangular'):
+        raise TournamentError("A triangular series plays the final only.")
+    if has_playoffs(t):
+        raise TournamentError("The playoffs are made. Undo the playoffs first, then change their format.")
+    if style == IPL:
+        t['playoff_style'] = IPL
+    else:
+        t.pop('playoff_style', None)
+    return t
+
+
 def make_playoffs(tournament: dict, size: int = 4, third_place: bool = None) -> dict:
     """After the league stage: the top 4 play semi-finals (1 v 4, 2 v 3) and a
-    final, and a third-place match if wanted; or the top 2 play the final (UPG-350)."""
+    final, and a third-place match if wanted; or the top 2 play the final (UPG-350).
+    IPL style (UPG-479): Qualifier 1, Eliminator, Qualifier 2 and the final."""
     t = dict(tournament)
     if t.get('format') != 'league_knockout':
         raise TournamentError("Only a league then knockout has playoffs.")
@@ -420,7 +450,10 @@ def make_playoffs(tournament: dict, size: int = 4, third_place: bool = None) -> 
         need = size // 2
         if len(a) < need or len(b) < need:
             raise TournamentError(f"Each pool needs at least {need} teams.")
-        seeds = [a[0]['id'], b[1]['id'], b[0]['id'], a[1]['id']] if size == 4 else [a[0]['id'], b[0]['id']]
+        if size == 4 and t.get('playoff_style') == IPL:   # 1st A v 1st B, 2nd A v 2nd B (UPG-479)
+            seeds = [a[0]['id'], b[0]['id'], a[1]['id'], b[1]['id']]
+        else:
+            seeds = [a[0]['id'], b[1]['id'], b[0]['id'], a[1]['id']] if size == 4 else [a[0]['id'], b[0]['id']]
     else:
         table = standings(t)
         if len(table) < size:
@@ -438,13 +471,21 @@ def make_playoffs(tournament: dict, size: int = 4, third_place: bool = None) -> 
         matches.append(m)
         return m
 
-    if size == 4 and t.get('pools'):
+    if size == 4 and t.get('playoff_style') == IPL:
+        q1 = new('qualifier1', rnd, seeds[0], seeds[1])
+        elim = new('eliminator', rnd, seeds[2], seeds[3])
+        q2 = new('qualifier2', rnd + 1)
+        final = new('final', rnd + 2)
+        q1.update(next=final['id'], next_side='home', loser_next=q2['id'], loser_side='home')
+        elim.update(next=q2['id'], next_side='away')
+        q2.update(next=final['id'], next_side='away')
+    elif size == 4 and t.get('pools'):
         semi1 = new('semi', rnd, seeds[0], seeds[1])
         semi2 = new('semi', rnd, seeds[2], seeds[3])
     elif size == 4:
         semi1 = new('semi', rnd, seeds[0], seeds[3])
         semi2 = new('semi', rnd, seeds[1], seeds[2])
-    if size == 4:
+    if size == 4 and t.get('playoff_style') != IPL:
         final = new('final', rnd + 1)
         semi1.update(next=final['id'], next_side='home')
         semi2.update(next=final['id'], next_side='away')
@@ -452,7 +493,7 @@ def make_playoffs(tournament: dict, size: int = 4, third_place: bool = None) -> 
             third = new('third', rnd + 1)
             semi1.update(loser_next=third['id'], loser_side='home')
             semi2.update(loser_next=third['id'], loser_side='away')
-    else:
+    elif size == 2:
         new('final', rnd, seeds[0], seeds[1])
     t['matches'] = matches
     t['playoffs'] = {'size': size, 'seeds': seeds}
@@ -729,7 +770,8 @@ def set_match_teams(tournament: dict, match_id: str, home: str, away: str) -> di
     if home and home == away:
         raise TournamentError("A team can't play itself.")
     for other in matches:                     # one match a round: swapping two matches goes through TBD
-        if other is not m and other.get('round') == m.get('round') and other.get('stage') == m.get('stage'):
+        same = other.get('stage') == m.get('stage') or {other.get('stage'), m.get('stage')} <= set(IPL_FIRST)
+        if other is not m and other.get('round') == m.get('round') and same:
             clash = {home, away} & {other.get('home'), other.get('away')} - {None}
             if clash:
                 raise TournamentError(
@@ -737,8 +779,8 @@ def set_match_teams(tournament: dict, match_id: str, home: str, away: str) -> di
                     "in this round. Set that side to TBD there first.")
     m.update(home=home, away=away)
     if t.get('playoffs'):                     # the seeds are whoever starts the playoffs now
-        first = 'semi' if t['playoffs'].get('size') == 4 else 'final'
-        t['playoffs'] = dict(t['playoffs'], seeds=[x for mm in matches if mm.get('stage') == first
+        first = (IPL_FIRST if ipl_style(t) else ('semi',)) if t['playoffs'].get('size') == 4 else ('final',)
+        t['playoffs'] = dict(t['playoffs'], seeds=[x for mm in matches if mm.get('stage') in first
                                                    for x in (mm.get('home'), mm.get('away')) if x])
     _settle_withdrawn(t, matches)
     t['matches'] = matches
@@ -852,6 +894,12 @@ def bracket(tournament: dict) -> dict:
         return {'columns': cols, 'champion': champion(t), 'projected': False}
     pools = bool(t.get('pools'))
     ko = [m for m in matches if m.get('stage') in KNOCKOUT_STAGES]
+    ipl_labels = ((('1st Pool A', '1st Pool B'), ('2nd Pool A', '2nd Pool B')) if pools
+                  else (('1st', '2nd'), ('3rd', '4th')))
+    if ko and any(m.get('stage') == 'qualifier1' for m in ko):     # IPL style (UPG-479)
+        by = {m['stage']: m for m in ko}
+        cols = _ipl_columns(lambda stage, h, a_, title: _slot(by.get(stage), h, a_, title=title), ipl_labels)
+        return {'columns': cols, 'champion': champion(t), 'projected': False, 'ipl': True}
     if ko:
         semis = [m for m in ko if m['stage'] == 'semi']
         finals = [m for m in ko if m['stage'] == 'final']
@@ -894,12 +942,25 @@ def bracket(tournament: dict) -> dict:
     def projected(h, a_, title):
         return dict(_slot(None, h, a_, title=title), home=team(h), away=team(a_), projected=True)
 
+    if size == 4 and t.get('playoff_style') == IPL:
+        cols = _ipl_columns(lambda stage, h, a_, title: (
+            projected(h, a_, title) if stage in IPL_FIRST
+            else dict(_slot(None, h, a_, title=title), projected=True)), ipl_labels)
+        return {'columns': cols, 'champion': None, 'projected': True, 'settled': settled, 'ipl': True}
     if size == 4:
         cols = [{'title': 'Semi-finals', 'slots': [projected(*pairs[0], 'Semi-final 1'), projected(*pairs[1], 'Semi-final 2')]},
                 {'title': 'Final', 'slots': [dict(_slot(None, 'Winner SF1', 'Winner SF2', title='Final'), projected=True)]}]
     else:
         cols = [{'title': 'Final', 'slots': [projected(*pairs[0], 'Final')]}]
     return {'columns': cols, 'champion': None, 'projected': True, 'settled': settled}
+
+
+def _ipl_columns(slot, labels) -> list:
+    """Qualifier 1 and the Eliminator → Qualifier 2 → Final (UPG-479)."""
+    return [{'title': 'Qualifier 1 & Eliminator',
+             'slots': [slot('qualifier1', *labels[0], 'Qualifier 1'), slot('eliminator', *labels[1], 'Eliminator')]},
+            {'title': 'Qualifier 2', 'slots': [slot('qualifier2', 'Loser Q1', 'Winner Eliminator', 'Qualifier 2')]},
+            {'title': 'Final', 'slots': [slot('final', 'Winner Q1', 'Winner Q2', 'Final')]}]
 
 
 def update_schedule(tournament: dict, match_id: str, date: str, time: str, venue: str) -> dict:
@@ -1345,7 +1406,11 @@ def placings(tournament: dict) -> dict:
         return {}
     places = {final['winner']: 1, _loser(final): 2}
     third = [m for m in matches if m.get('stage') == 'third']
-    if third:
+    q2 = [m for m in matches if m.get('stage') == 'qualifier2']
+    if q2:                                     # IPL style: Qualifier 2's loser is third (UPG-479)
+        if _loser(q2[0]):
+            places[_loser(q2[0])] = 3
+    elif third:
         if third[0].get('status') != 'played' or not third[0].get('winner'):
             return {}
         places[third[0]['winner']] = 3

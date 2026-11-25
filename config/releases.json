@@ -4,8 +4,8 @@
     {
       "version": "1.24",
       "date": "2026-11-25",
-      "commit": "",
-      "revision": "",
+      "commit": "e28cab8",
+      "revision": "saptha-e28c",
       "title": "IPL-style playoffs",
       "notes": [
         "Playoffs IPL style: on the tournament page, Playoffs → Playoff format → IPL style. Qualifier 1 is 1st Pool A v 1st Pool B and the Eliminator 2nd Pool A v 2nd Pool B; Qualifier 1's winner goes to the final, its loser plays the Eliminator's winner in Qualifier 2, whose winner plays the final. 4 matches. Choosing it changes no match or result."

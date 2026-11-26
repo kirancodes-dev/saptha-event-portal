@@ -218,7 +218,9 @@ def playoffs(event_id):
         return _back(event_id)
     log_action(db, "TOURNAMENT_PLAYOFFS", f"{session.get('user_id')} made the top-{t['playoffs']['size']} "
                f"playoffs of {event_id}")
-    if services_sports.ipl_style(t) and t['playoffs']['size'] == 4:
+    if t['playoffs']['size'] == 3:
+        flash("Playoffs made: the Eliminator, 2nd v 3rd, then its winner plays 1st in the final.", "success")
+    elif services_sports.ipl_style(t) and t['playoffs']['size'] == 4:
         flash("Playoffs made, IPL style: Qualifier 1 (" + ("1st A v 1st B" if t.get('pools') else "1st v 2nd")
               + "), the Eliminator (" + ("2nd A v 2nd B" if t.get('pools') else "3rd v 4th")
               + "), then Qualifier 2 and the final.", "success")

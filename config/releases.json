@@ -2,6 +2,17 @@
   "_about": "Every version of the portal, newest first (UPG-373). The top entry is the version of this code; shown at /whats-new and in the footer. A new entry starts after each deploy; until then every finished item goes into the top entry. 'revision' is the Cloud Run revision it went live as ('' until deployed).",
   "releases": [
     {
+      "version": "1.25",
+      "date": "2026-11-26",
+      "commit": "",
+      "revision": "",
+      "title": "Top 3 playoffs: an Eliminator for 2nd and 3rd",
+      "notes": [
+        "Three teams? Make the playoffs → Top 3: 1st in the table goes straight to the final, 2nd and 3rd play an Eliminator, and its winner plays 1st in the final. The Eliminator's loser is third. Teams level on points are ordered by score difference. The league results stay as they are."
+      ],
+      "items": ["UPG-480"]
+    },
+    {
       "version": "1.24",
       "date": "2026-11-25",
       "commit": "e28cab8",

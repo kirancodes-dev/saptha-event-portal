@@ -4,8 +4,8 @@
     {
       "version": "1.25",
       "date": "2026-11-26",
-      "commit": "",
-      "revision": "",
+      "commit": "d1043a8",
+      "revision": "saptha-d104",
       "title": "Top 3 playoffs: an Eliminator for 2nd and 3rd",
       "notes": [
         "Three teams? Make the playoffs → Top 3: 1st in the table goes straight to the final, 2nd and 3rd play an Eliminator, and its winner plays 1st in the final. The Eliminator's loser is third. Teams level on points are ordered by score difference. The league results stay as they are."

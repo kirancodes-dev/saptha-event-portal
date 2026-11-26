@@ -267,6 +267,15 @@
     <div class="card-body">
         <h2 class="h5">Playoffs</h2>
         {% set ipl = t.playoff_style == sports.IPL %}
+        {% if can_generate and not t.pools and t.legs != 2 %}
+        {#- Teams level after one round: every pair plays once more (UPG-481) #}
+        <form method="POST" action="/tournament/{{ event.id }}/league_again" class="d-flex flex-wrap gap-2 align-items-center mb-3" data-league-again
+              data-confirm="Add one more league match for every pair (home and away swapped)? The matches already played stay as they are.">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-outline-primary btn-sm"><i class="fas fa-redo" aria-hidden="true"></i> Play the league again</button>
+            <span class="small text-muted">Every pair plays once more{% if t.triangular %} (3 more matches){% endif %}; the table counts both rounds. The results already in stay.</span>
+        </form>
+        {% endif %}
         {% if can_generate and not t.triangular %}
         {#- Semi-finals or IPL style (UPG-479): changes no match or result #}
         <form method="POST" action="/tournament/{{ event.id }}/playoff_style" class="row g-2 align-items-end mb-3" data-playoff-style>
@@ -297,7 +306,7 @@
                         {% else %}
                         {% if table|length >= 4 %}<option value="4">{% if ipl %}Top 4, IPL style: Qualifier 1 (1 v 2), Eliminator (3 v 4), Qualifier 2, then the final{% else %}Top 4: semi-finals 1 v 4 and 2 v 3, then the final{% endif %}</option>{% endif %}
                         <option value="2">Top 2: the final{% if t.triangular %} (the 3rd team in the table is third){% endif %}</option>
-                        {% if table|length >= 3 %}<option value="3" data-top3 {% if t.triangular %}selected{% endif %}>Top 3: Eliminator 2nd v 3rd, the winner plays 1st in the final (the Eliminator's loser is third)</option>{% endif %}
+                        {% if table|length >= 3 %}<option value="3" data-top3>Top 3: Eliminator 2nd v 3rd, the winner plays 1st in the final (the Eliminator's loser is third)</option>{% endif %}
                         {% endif %}
                     </select>
                 </div>

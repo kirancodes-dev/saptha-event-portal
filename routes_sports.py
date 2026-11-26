@@ -230,6 +230,22 @@ def playoffs(event_id):
     return redirect(f'/tournament/{event_id}')
 
 
+@sports_bp.route('/<event_id>/league_again', methods=['POST'])
+@login_required
+def league_again(event_id):
+    """Every pair plays once more (UPG-481); no match or result already there changes."""
+    import services_sports
+    if not _allowed(_event(event_id), 'edit_event'):
+        abort(403)
+    before = len((_event(event_id).get('tournament') or {}).get('matches') or [])
+    t = _save(event_id, lambda cur, _e: services_sports.play_league_again(cur), None, '',
+              ("TOURNAMENT_LEAGUE_AGAIN", "added a second round of league matches"))
+    if t is not None:
+        added = [services_sports.match_no(m) for m in t['matches'][before:]]
+        flash(f"{len(added)} more league matches: {', '.join(added)}. The results already in stay.", "success")
+    return _back(event_id)
+
+
 @sports_bp.route('/<event_id>/playoff_style', methods=['POST'])
 @login_required
 def playoff_style(event_id):

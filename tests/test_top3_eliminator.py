@@ -38,7 +38,7 @@ def test_level_on_points_1st_waits_in_the_final_and_2nd_v_3rd_play_the_eliminato
     event_id, ids = _level_series(d)
     league = [dict(m) for m in _t(d, event_id)['matches']]
     page = d['owner'].get(f'/tournament/{event_id}').get_data(as_text=True)
-    assert re.search(r'<option value="3" data-top3 selected>Top 3: Eliminator 2nd v 3rd', page)
+    assert re.search(r'<option value="3" data-top3>Top 3: Eliminator 2nd v 3rd', page)  # not pre-selected since UPG-481
 
     resp = d['owner'].post(f'/tournament/{event_id}/playoffs', data={'size': '3'}, follow_redirects=True)
     assert 'the Eliminator, 2nd v 3rd, then its winner plays 1st in the final' in resp.get_data(as_text=True)

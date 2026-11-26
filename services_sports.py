@@ -764,6 +764,37 @@ def add_team(tournament: dict, new_team: dict) -> dict:
     return t
 
 
+def play_league_again(tournament: dict) -> dict:
+    """Every pair plays once more, home and away swapped, in new rounds after
+    the last (UPG-481): the women's 3 teams level after one round play
+    M-04 to M-06. The matches already played, their results and their raid
+    records stay as they are; the table counts both rounds."""
+    t, matches = _copy(tournament)
+    if t.get('format') not in ('league', 'league_knockout'):
+        raise TournamentError("Only a league can be played again.")
+    if has_playoffs(t):
+        raise TournamentError("The playoffs are made. Undo the playoffs first, then play the league again.")
+    if t.get('pools'):
+        raise TournamentError("With pools, each pool's matches are set when the fixtures are made.")
+    if t.get('legs') == 2:
+        raise TournamentError("Every pair already plays twice.")
+    league_matches = [m for m in matches if m.get('stage') not in KNOCKOUT_STAGES and m.get('status') != 'bye']
+    if not league_matches:
+        raise TournamentError("There are no league matches to play again.")
+    counter = max(int(str(m['id']).lstrip('m') or 0) for m in matches)
+    last = max(int(m.get('round') or 0) for m in matches)
+    for m in league_matches:
+        counter += 1
+        again = dict(_match(f"m{counter}", int(m.get('round') or 0) + last, m['away'], m['home']), leg=2)
+        if m.get('stage'):
+            again['stage'] = m['stage']
+        matches.append(again)
+    t['legs'] = 2
+    _settle_withdrawn(t, matches)
+    t['matches'] = matches
+    return t
+
+
 def set_match_teams(tournament: dict, match_id: str, home: str, away: str) -> dict:
     """Change who plays in a match not yet played: a seeding decided by a
     toss, a team put in the wrong slot (UPG-357)."""
